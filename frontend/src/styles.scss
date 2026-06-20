@@ -1,0 +1,165 @@
+/**======================================================================
+=========================================================================
+Template Name: MAntis Angular - Angular Admin Template
+Author: codedThemes
+Support: https://codedthemes.support-hub.io/
+File: style.css
+=========================================================================
+=================================================================================== */
+
+@import 'node_modules/bootstrap/scss/functions';
+@import 'node_modules/bootstrap/scss/variables';
+@import 'node_modules/bootstrap/scss/variables-dark';
+
+@import 'scss/settings/color-variables';
+@import 'scss/settings/theme-variables';
+@import 'scss/settings/bootstrap-variables';
+
+// bootstrap import
+@import 'scss/bootstrap/bootstrap.scss';
+
+// main framework
+@import 'scss/theme/generic.scss';
+@import 'scss/theme/general.scss';
+
+@import 'scss/theme/components/components.scss';
+
+// theme
+@import 'scss/theme/layouts/menu/sidebar.scss';
+@import 'scss/theme/layouts/navbar/navbar.scss';
+@import 'scss/theme/layouts/pc-common.scss';
+@import 'scss/theme/layouts/breadcrumb/breadcrumb.scss';
+@import 'scss/theme/layouts/footer/footer.scss';
+@import 'scss/theme/layouts/menu/horizontal.scss';
+@import 'scss/theme/layouts/menu/compact.scss';
+
+// isRTLMode
+@import 'scss/theme/layouts/RTL/rtl.scss';
+
+@import 'scss/theme/layouts/dark-mode/dark.scss';
+
+@import 'scss/theme/style-preset.scss';
+
+// ERP Design System (tokens layer)
+@import 'scss/erp/erp-tokens';
+
+body.mantis-ltr {
+  @import 'node_modules/bootstrap/scss/utilities';
+  @import 'node_modules/bootstrap/scss/utilities/api';
+}
+body.mantis-rtl {
+  @import 'scss/theme/layouts/RTL/style-rtl-utility.scss';
+  @import 'node_modules/bootstrap/scss/utilities/api';
+}
+
+// font
+@import 'scss/fonts/feather.css';
+@import 'scss/fonts/fontawesome.css';
+@import 'scss/fonts/material.css';
+@import 'scss/fonts/tabler-icons.min.css';
+
+// ============================================
+// RTL (Right-to-Left) Supplementary Overrides
+// NOTE: Core layout RTL (sidebar, header, container, footer,
+//       breadcrumb, forms, input-groups, checkboxes, tables)
+//       is handled by scss/theme/layouts/RTL/rtl.scss.
+//       This section adds ONLY rules not covered there.
+// ============================================
+
+[dir="rtl"],
+body.mantis-rtl {
+  // Icons that should mirror in RTL
+  .mirror-rtl {
+    transform: scaleX(-1);
+  }
+
+  // Buttons with icons — spacing adjustment
+  .btn i + span,
+  .btn span + i {
+    margin-left: 0;
+    margin-right: 0.5rem;
+  }
+
+  // AG Grid RTL
+  .ag-root-wrapper,
+  .ag-root,
+  ag-grid-angular {
+    direction: rtl !important;
+  }
+
+  .ag-header-cell-label {
+    flex-direction: row-reverse;
+  }
+
+  .ag-cell,
+  .ag-header-cell-text,
+  .ag-floating-filter-input {
+    text-align: right;
+  }
+
+  // Modal and Dialog adjustments
+  .modal-header {
+    flex-direction: row-reverse;
+
+    .btn-close {
+      margin: 0;
+      margin-right: auto;
+    }
+  }
+
+  .modal-title,
+  .modal-body {
+    text-align: right;
+  }
+
+  .modal-footer {
+    flex-direction: row-reverse;
+    justify-content: flex-start;
+  }
+
+  // Cards
+  .card-header,
+  .card-body,
+  .card-footer {
+    text-align: right;
+  }
+
+  .card-header-right {
+    justify-content: flex-start;
+  }
+
+  // Alerts
+  .alert {
+    text-align: right;
+  }
+
+  // Pagination
+  .pagination {
+    flex-direction: row-reverse;
+  }
+
+  // Toasts
+  .toast {
+    text-align: right;
+  }
+
+  // Badges
+  .badge {
+    margin-left: 0;
+    margin-right: 0.25rem;
+  }
+
+  // List Items
+  .list-group-item {
+    text-align: right;
+  }
+}
+
+// ============================================
+// Body scroll lock when mobile sidebar is open
+// ============================================
+body.sidebar-mobile-open {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+}

@@ -1,0 +1,61 @@
+services:
+  # ============================================
+  # Redis — Cache (host network)
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: erp-redis
+    network_mode: host
+    command: redis-server --save "" --appendonly no
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ============================================
+  # Backend — Spring Boot (host network)
+  # ============================================
+  backend:
+    build:
+      context: ..
+      dockerfile: deploy/backend/Dockerfile
+    container_name: erp-backend
+    network_mode: host
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      # DB_URL MUST be set in deploy/.env — no fallback to prevent silent misconfiguration.
+      # Example: DB_URL=jdbc:oracle:thin:@//localhost:1892/orclpdb
+      - DB_URL=${DB_URL}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_HOST=${REDIS_HOST:-localhost}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://89.117.37.75:8080,http://89.117.37.75,http://89.117.37.75:80}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:7272/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  # ============================================
+  # Frontend — Angular + Nginx (host network)
+  # ============================================
+  frontend:
+    build:
+      context: ..
+      dockerfile: deploy/frontend/Dockerfile
+    container_name: erp-frontend
+    network_mode: host
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped

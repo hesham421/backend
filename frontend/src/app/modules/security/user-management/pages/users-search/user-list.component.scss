@@ -1,0 +1,10 @@
+
+:host ::ng-deep .modal-header.rtl-header {
+  flex-direction: row-reverse;
+}
+
+:host ::ng-deep .modal-header.rtl-header .modal-title {
+  width: 100%;
+  text-align: right;
+}
+

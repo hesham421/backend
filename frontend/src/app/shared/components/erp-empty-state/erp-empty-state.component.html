@@ -1,0 +1,24 @@
+<div class="erp-empty-state">
+  @if (icon) {
+    <div class="erp-empty-state__icon">
+      <i [class]="icon" aria-hidden="true"></i>
+    </div>
+  }
+
+  @if (titleKey) {
+    <h4 class="erp-empty-state__title">{{ titleKey | translate }}</h4>
+  }
+  @if (messageKey) {
+    <p class="erp-empty-state__message">{{ messageKey | translate }}</p>
+  }
+
+  @if (actionLabelKey) {
+    <button
+      type="button"
+      class="btn btn-primary"
+      (click)="actionClicked.emit()"
+    >
+      {{ actionLabelKey | translate }}
+    </button>
+  }
+</div>
