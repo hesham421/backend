@@ -13,17 +13,17 @@ import java.util.Locale;
 
 /**
  * ERP System - Unified Main Application
- * 
+ *
  * Aggregates all ERP modules:
  * - Security & Authentication (Port 7272 standalone)
  * - Master Data Management (Port 7373 standalone)
  * - Finance - General Ledger (Port 7474 standalone)
- * 
+ *
  * All APIs accessible through single Swagger UI at port 7272
- * 
+ *
  * Architecture: Rule 6 - One-Way Dependencies (DAG)
  * common-utils → security → masterdata → finance-gl → main
- * 
+ *
  * @author ERP Team
  */
 @Import(JpaConfig.class)
@@ -38,13 +38,15 @@ import java.util.Locale;
 @EntityScan(basePackages = {
         "com.example.security.entity",
         "com.example.masterdata.entity",
-        "com.example.erp.finance.gl.entity"
+        "com.example.erp.finance.gl.entity",
+        "com.example.org.entity"
 })
 @EnableJpaRepositories(
         basePackages = {
                 "com.example.security.repository",
                 "com.example.masterdata.repository",
-                "com.example.erp.finance.gl.repository"
+                "com.example.erp.finance.gl.repository",
+                "com.example.org.repository"
         },
         entityManagerFactoryRef = "entityManagerFactory",
         transactionManagerRef = "transactionManager"
@@ -58,6 +60,7 @@ import java.util.Locale;
     "com.example.security",                      // Security module
     "com.example.masterdata",                    // Master Data module
     "com.example.erp.finance.gl",               // Finance GL module
+    "com.example.org",                           // Organization module
 
     // Common utilities
     "com.example.erp.common.web",               // Web components
@@ -74,7 +77,7 @@ public class ErpMainApplication {
         Locale.setDefault(Locale.forLanguageTag("en-US-u-nu-latn"));
         System.setProperty("user.language", "en");
         System.setProperty("user.country", "US");
-        
+
         SpringApplication.run(ErpMainApplication.class, args);
     }
 }
