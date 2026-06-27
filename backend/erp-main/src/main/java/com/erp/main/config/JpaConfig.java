@@ -3,36 +3,28 @@ package com.erp.main.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
 import java.util.Properties;
 
-/**
- * JPA Configuration for multi-module entity scanning.
- * Creates EntityManagerFactory with explicit entity packages and JPA properties
- * injected directly from the active Spring profile configuration.
- */
+// Registers entityManagerFactory early (application config, not auto-config) so that
+// @EnableJpaRepositories on ErpMainApplication can resolve it during its own import phase.
+// HibernateJpaAutoConfiguration is excluded to prevent a duplicate factory.
 @Configuration("erpMainJpaConfig")
-@EnableJpaRepositories(
-    basePackages = {
-        "com.example.security.repository",
-        "com.example.masterdata.repository",
-        "com.example.erp.finance.gl.repository"
-    }
-)
 public class JpaConfig {
 
-    @Value("${spring.jpa.properties.hibernate.dialect:org.hibernate.dialect.OracleDialect}")
+    @Value("${spring.jpa.properties.hibernate.dialect:org.hibernate.dialect.PostgreSQLDialect}")
     private String hibernateDialect;
 
-    @Value("${spring.jpa.properties.hibernate.default_schema:test}")
+    @Value("${spring.jpa.properties.hibernate.default_schema:public}")
     private String defaultSchema;
 
-    @Value("${spring.jpa.properties.jakarta.persistence.schema-generation.database.action:none}")
-    private String schemaAction;
+    @Value("${spring.jpa.hibernate.ddl-auto:none}")
+    private String ddlAuto;
 
     @Value("${spring.jpa.show-sql:false}")
     private boolean showSql;
@@ -41,7 +33,6 @@ public class JpaConfig {
     public LocalContainerEntityManagerFactoryBean entityManagerFactory(DataSource dataSource) {
         LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
         em.setDataSource(dataSource);
-
         em.setPackagesToScan(
             "com.example.security.entity",
             "com.example.masterdata.entity",
@@ -56,9 +47,16 @@ public class JpaConfig {
         Properties props = new Properties();
         props.setProperty("hibernate.dialect", hibernateDialect);
         props.setProperty("hibernate.default_schema", defaultSchema);
-        props.setProperty("jakarta.persistence.schema-generation.database.action", schemaAction);
+        props.setProperty("hibernate.hbm2ddl.auto", ddlAuto);
         em.setJpaProperties(props);
 
         return em;
+    }
+
+    @Bean
+    public PlatformTransactionManager transactionManager(LocalContainerEntityManagerFactoryBean entityManagerFactory) {
+        JpaTransactionManager tm = new JpaTransactionManager();
+        tm.setEntityManagerFactory(entityManagerFactory.getObject());
+        return tm;
     }
 }

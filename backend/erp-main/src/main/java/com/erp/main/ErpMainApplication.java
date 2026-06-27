@@ -1,9 +1,13 @@
 package com.erp.main;
 
+import com.erp.main.config.JpaConfig;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Import;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 import java.util.Locale;
 
@@ -22,12 +26,28 @@ import java.util.Locale;
  * 
  * @author ERP Team
  */
+@Import(JpaConfig.class)
 @SpringBootApplication(
         excludeName = {
                 "org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration",
                 "org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration",
-                "org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration"
+                "org.springframework.boot.data.jpa.autoconfigure.DataJpaRepositoriesAutoConfiguration",
+                "org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration"
         }
+)
+@EntityScan(basePackages = {
+        "com.example.security.entity",
+        "com.example.masterdata.entity",
+        "com.example.erp.finance.gl.entity"
+})
+@EnableJpaRepositories(
+        basePackages = {
+                "com.example.security.repository",
+                "com.example.masterdata.repository",
+                "com.example.erp.finance.gl.repository"
+        },
+        entityManagerFactoryRef = "entityManagerFactory",
+        transactionManagerRef = "transactionManager"
 )
 // @EnableCaching  // ❌ DISABLED: Redis caching disabled - will be enabled later
 @ComponentScan(basePackages = {

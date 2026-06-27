@@ -13,7 +13,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import com.example.security.constants.SecurityPermissions;
 
 @RestController
 @RequestMapping("/api/permissions")
@@ -24,12 +27,14 @@ public class PermissionController {
     private final PermissionService permissionService;
     private final OperationCode operationCode;
 
+    @PreAuthorize("hasAuthority('" + SecurityPermissions.PERMISSION_CREATE + "')")
     @PostMapping
     @Operation(summary = "Create new permission", description = "Creates a new system permission")
     public ResponseEntity<ApiResponse<PermissionDto>> create(@RequestBody @Valid CreatePermissionRequest req) {
         return operationCode.craftResponse(permissionService.createPermission(req));
     }
 
+    @PreAuthorize("hasAuthority('" + SecurityPermissions.PERMISSION_VIEW + "')")
     @PostMapping("/search")
     @Operation(
         summary = "Search permissions",

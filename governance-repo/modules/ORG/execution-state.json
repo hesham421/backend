@@ -1,0 +1,107 @@
+{
+  "module": "erp-org",
+  "generated_at": "2026-06-24",
+  "current_phase": "DATA-DOM",
+  "current_sub": "DATA-DOM-REFERENCE",
+  "phases": [
+    {
+      "id": "CORE",
+      "status": "COMPLETE",
+      "subs": [
+        { "id": "CORE", "status": "COMPLETE" }
+      ]
+    },
+    {
+      "id": "DATA-DOM",
+      "status": "IN_PROGRESS",
+      "subs": [
+        { "id": "DATA-DOM-MASTER", "status": "COMPLETE" },
+        { "id": "DATA-DOM-REFERENCE", "status": "PENDING" }
+      ]
+    },
+    {
+      "id": "SVC-API",
+      "status": "PENDING",
+      "subs": [
+        { "id": "SVC-API-CRUD", "status": "PENDING" },
+        { "id": "SVC-API-INT", "status": "PENDING" }
+      ]
+    },
+    {
+      "id": "DOC",
+      "status": "PENDING",
+      "subs": [
+        { "id": "DOC", "status": "PENDING" }
+      ]
+    },
+    {
+      "id": "INT-C",
+      "status": "PENDING",
+      "subs": [
+        { "id": "INT-C", "status": "PENDING" }
+      ]
+    },
+    {
+      "id": "INT-R",
+      "status": "PENDING",
+      "subs": [
+        { "id": "INT-R", "status": "PENDING" }
+      ]
+    },
+    {
+      "id": "F1",
+      "status": "PENDING",
+      "subs": [
+        { "id": "F1-SCR-ORG-001", "status": "PENDING" },
+        { "id": "F1-SCR-ORG-002", "status": "PENDING" },
+        { "id": "F1-SCR-ORG-003", "status": "PENDING" },
+        { "id": "F1-SCR-ORG-004", "status": "PENDING" },
+        { "id": "F1-SCR-ORG-005", "status": "PENDING" },
+        { "id": "F1-SCR-ORG-006", "status": "PENDING" },
+        { "id": "F1-SCR-ORG-007", "status": "PENDING" }
+      ]
+    },
+    {
+      "id": "F2",
+      "status": "PENDING",
+      "subs": [
+        { "id": "F2-SCR-ORG-001", "status": "PENDING" },
+        { "id": "F2-SCR-ORG-002", "status": "PENDING" },
+        { "id": "F2-SCR-ORG-003", "status": "PENDING" },
+        { "id": "F2-SCR-ORG-004", "status": "PENDING" },
+        { "id": "F2-SCR-ORG-005", "status": "PENDING" },
+        { "id": "F2-SCR-ORG-006", "status": "PENDING" },
+        { "id": "F2-SCR-ORG-007", "status": "PENDING" }
+      ]
+    },
+    {
+      "id": "F3",
+      "status": "PENDING",
+      "subs": [
+        { "id": "F3-SCR-ORG-001", "status": "PENDING" },
+        { "id": "F3-SCR-ORG-002", "status": "PENDING" },
+        { "id": "F3-SCR-ORG-003", "status": "PENDING" },
+        { "id": "F3-SCR-ORG-004", "status": "PENDING" },
+        { "id": "F3-SCR-ORG-005", "status": "PENDING" },
+        { "id": "F3-SCR-ORG-006", "status": "PENDING" },
+        { "id": "F3-SCR-ORG-007", "status": "PENDING" }
+      ]
+    },
+    {
+      "id": "SEC",
+      "status": "PENDING",
+      "subs": [
+        { "id": "SEC", "status": "PENDING" }
+      ]
+    },
+    {
+      "id": "ALIGN",
+      "status": "PENDING",
+      "subs": [
+        { "id": "ALIGN", "status": "PENDING" }
+      ]
+    }
+  ],
+  "blocked": [],
+  "deferred_xm": []
+}

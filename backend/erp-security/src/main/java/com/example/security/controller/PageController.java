@@ -13,7 +13,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import com.example.security.constants.SecurityPermissions;
 
 /**
  * Controller for managing Pages (UI screens)
@@ -49,6 +52,7 @@ public class PageController {
      * POST /api/pages/search
      * Search pages with dynamic filters, sorting, and pagination
      */
+    @PreAuthorize("hasAuthority('" + SecurityPermissions.PAGE_VIEW + "')")
     @PostMapping("/search")
     @Operation(
         summary = "Search pages",
@@ -64,6 +68,7 @@ public class PageController {
      * GET /api/pages/active
      * جلب جميع الصفحات النشطة (للاستخدام في Dropdowns)
      */
+    @PreAuthorize("hasAuthority('" + SecurityPermissions.PAGE_VIEW + "')")
     @GetMapping("/active")
     @Operation(
         summary = "Get active pages",
@@ -77,6 +82,7 @@ public class PageController {
      * GET /api/pages/{id}
      * جلب صفحة واحدة بالـ ID
      */
+    @PreAuthorize("hasAuthority('" + SecurityPermissions.PAGE_VIEW + "')")
     @GetMapping("/{id}")
     @Operation(
         summary = "Get page by ID",
@@ -106,6 +112,7 @@ public class PageController {
      * PUT /api/pages/{id}/deactivate
      * تعطيل صفحة (Soft Delete)
      */
+    @PreAuthorize("hasAuthority('" + SecurityPermissions.PAGE_DELETE + "')")
     @PutMapping("/{id}/deactivate")
     @Operation(
         summary = "Deactivate page",
@@ -119,6 +126,7 @@ public class PageController {
      * PUT /api/pages/{id}/reactivate
      * إعادة تفعيل صفحة معطلة
      */
+    @PreAuthorize("hasAuthority('" + SecurityPermissions.PAGE_UPDATE + "')")
     @PutMapping("/{id}/reactivate")
     @Operation(
         summary = "Reactivate page",

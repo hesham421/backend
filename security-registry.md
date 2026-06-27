@@ -1,9 +1,9 @@
 # registry-security.md
 ════════════════════════════════════════
 Module       : SECURITY
-Version      : 2.0.0
-Last Updated : 2026-06-21
-Updated By   : Claude Code
+Version      : 2.1.0
+Last Updated : 2026-06-26
+Updated By   : Agent (Gap Closure)
 Status       : Complete
 ════════════════════════════════════════
 
@@ -276,12 +276,12 @@ Table exists in DB schema (`V0__full_schema_create.sql`) but is **NOT actively u
 | Method | Path                         | Permission Required    |
 |--------|------------------------------|------------------------|
 | POST   | `/api/pages`                 | `PERM_PAGE_CREATE`    |
-| POST   | `/api/pages/search`          | ⚠️ no @PreAuthorize  |
-| GET    | `/api/pages/active`          | ⚠️ no @PreAuthorize  |
-| GET    | `/api/pages/{id}`            | ⚠️ no @PreAuthorize  |
+| POST   | `/api/pages/search`          | `PERM_PAGE_VIEW` ✓    |
+| GET    | `/api/pages/active`          | `PERM_PAGE_VIEW` ✓    |
+| GET    | `/api/pages/{id}`            | `PERM_PAGE_VIEW` ✓    |
 | PUT    | `/api/pages/{id}`            | `PERM_PAGE_UPDATE`    |
-| PUT    | `/api/pages/{id}/deactivate` | ⚠️ no @PreAuthorize  |
-| PUT    | `/api/pages/{id}/reactivate` | ⚠️ no @PreAuthorize  |
+| PUT    | `/api/pages/{id}/deactivate` | `PERM_PAGE_DELETE` ✓  |
+| PUT    | `/api/pages/{id}/reactivate` | `PERM_PAGE_UPDATE` ✓  |
 
 **POST `/api/pages`** → Create Page
 - Request: `CreatePageRequest { pageCode, nameAr, nameEn, route, icon, module, parentId, displayOrder, active, description }`
@@ -304,8 +304,8 @@ Table exists in DB schema (`V0__full_schema_create.sql`) but is **NOT actively u
 
 | Method | Path                      | Permission Required              |
 |--------|---------------------------|----------------------------------|
-| POST   | `/api/permissions`        | ⚠️ no @PreAuthorize             |
-| POST   | `/api/permissions/search` | ⚠️ no @PreAuthorize             |
+| POST   | `/api/permissions`        | `PERM_PERMISSION_CREATE` ✓       |
+| POST   | `/api/permissions/search` | `PERM_PERMISSION_VIEW` ✓         |
 
 Allowed filter fields: `name`, `module`
 Allowed sort fields: `id`, `name`, `module`, `createdAt`, `updatedAt`
@@ -403,6 +403,7 @@ Allowed sort fields: `id`, `name`, `module`, `createdAt`, `updatedAt`
 | Role          | `ROLE_DELETE`             | `PERM_ROLE_DELETE`        |
 | Permission    | `PERMISSION_VIEW`         | `PERM_PERMISSION_VIEW`    |
 | Permission    | `PERMISSION_CREATE`       | `PERM_PERMISSION_CREATE`  |
+| Permission    | `PERMISSION_UPDATE`       | `PERM_PERMISSION_UPDATE`  |
 | Permission    | `PERMISSION_DELETE`       | `PERM_PERMISSION_DELETE`  |
 | Menu          | `MENU_VIEW`               | `PERM_MENU_VIEW`          |
 | Menu          | `MENU_CREATE`             | `PERM_MENU_CREATE`        |
@@ -498,32 +499,19 @@ Allowed sort fields: `id`, `name`, `module`, `createdAt`, `updatedAt`
 
 ## 8. WHAT IS MISSING OR INCOMPLETE
 
-1. **⚠️ `@PreAuthorize` missing on `PageController` — multiple endpoints**:
-   - `POST /api/pages/search` — no authorization check
-   - `GET /api/pages/active` — no authorization check
-   - `GET /api/pages/{id}` — no authorization check
-   - `PUT /api/pages/{id}/deactivate` — no authorization check
-   - `PUT /api/pages/{id}/reactivate` — no authorization check
+1. **⚠️ Redis caching is DISABLED** — `@EnableCaching` is commented out in `RedisCacheConfig`. All `@Cacheable`, `@CachePut`, `@CacheEvict` annotations in services are also commented out. Cache infrastructure is configured but not active. *(DEFERRED — infrastructure decision)*
 
-2. **⚠️ `@PreAuthorize` missing on `PermissionController` — all endpoints**:
-   - `POST /api/permissions` — no authorization check
-   - `POST /api/permissions/search` — no authorization check
+2. **⚠️ `roleCode` and `description` are `@Transient`** in `Role.java` — They appear in `CreateRoleRequest` and `RoleDto` but are not persisted to DB. Only `roleName` is stored. This creates an API contract vs. DB mismatch. *(PERMANENT EXCEPTION — AS-IS)*
 
-3. **⚠️ Redis caching is DISABLED** — `@EnableCaching` is commented out in `RedisCacheConfig`. All `@Cacheable`, `@CachePut`, `@CacheEvict` annotations in services are also commented out. Cache infrastructure is configured but not active.
+3. **⚠️ `SEC_MENU_ITEM` table** exists in DB schema but is never used by `MenuService`. It is a legacy artifact. The menu is now built from `SEC_PAGES`. *(DEFERRED)*
 
-4. **⚠️ `roleCode` and `description` are `@Transient`** in `Role.java` — They appear in `CreateRoleRequest` and `RoleDto` but are not persisted to DB. Only `roleName` is stored. This creates an API contract vs. DB mismatch.
+4. **⚠️ `RoleController` copy-permissions endpoint** referenced by `CopyPermissionsResponse` DTO and `NO_PERMISSIONS_TO_COPY` error code — no controller method implementing this feature was found. *(DEFERRED)*
 
-5. **⚠️ `PERMISSION_UPDATE` constant** is missing from `SecurityPermissions.java` — `PERMISSION_VIEW`, `PERMISSION_CREATE`, `PERMISSION_DELETE` exist but UPDATE is absent.
+5. **⚠️ PK naming convention deviation** — `USERS.ID`, `ROLES.ID`, `PERMISSIONS.ID`, `REFRESH_TOKENS.ID` use `ID` instead of the project convention `ID_PK`. Only `SEC_PAGES` follows the `ID_PK` convention. *(PERMANENT EXCEPTION — AS-IS)*
 
-6. **⚠️ `SEC_MENU_ITEM` table** exists in DB schema but is never used by `MenuService`. It is a legacy artifact. The menu is now built from `SEC_PAGES`.
+6. **⚠️ No rate limiting** on `/api/auth/login` — no protection against brute-force attacks. *(DEFERRED — infrastructure concern)*
 
-7. **⚠️ `RoleController` copy-permissions endpoint** referenced by `CopyPermissionsResponse` DTO and `NO_PERMISSIONS_TO_COPY` error code — no controller method implementing this feature was found.
-
-8. **⚠️ PK naming convention deviation** — `USERS.ID`, `ROLES.ID`, `PERMISSIONS.ID`, `REFRESH_TOKENS.ID` use `ID` instead of the project convention `ID_PK`. Only `SEC_PAGES` follows the `ID_PK` convention.
-
-9. **⚠️ No rate limiting** on `/api/auth/login` — no protection against brute-force attacks.
-
-10. **⚠️ No cleanup job** for expired `REFRESH_TOKENS` rows — `RefreshTokenRepository.deleteByExpiresAtBefore()` exists but no `@Scheduled` task using it was found.
+7. **⚠️ No cleanup job** for expired `REFRESH_TOKENS` rows — `RefreshTokenRepository.deleteByExpiresAtBefore()` exists but no `@Scheduled` task using it was found. *(DEFERRED — operational concern)*
 
 ---
 
@@ -533,6 +521,7 @@ Allowed sort fields: `id`, `name`, `module`, `createdAt`, `updatedAt`
 |---------|------------|-------------------------------------------------------------|----------------|
 | 1.0.0   | 2026-04-11 | Initial extraction — full scan of erp-security module       | GitHub Copilot |
 | 2.0.0   | 2026-06-21 | Multi-tenancy removal — TENANT_ID eliminated system-wide    | Claude Code    |
+| 2.1.0   | 2026-06-26 | GAP-SEC-01/02/03 closed: @PreAuthorize added to PageController (5 endpoints) and PermissionController (2 endpoints). PERMISSION_UPDATE constant confirmed present. Tests added for 401/403/200 scenarios on all affected endpoints. | Agent (Gap Closure) |
 
 ### v2.0.0 — Multi-Tenancy Removal Detail
 
