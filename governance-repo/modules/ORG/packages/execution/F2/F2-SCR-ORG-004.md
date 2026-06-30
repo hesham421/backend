@@ -1,23 +1,13 @@
 <!-- Source: PHASE:F2 / SUB:SCR-ORG-004 -->
 
-## F2 — SCR-ORG-004 — Department Screen (Tree)
+  ### F2-SERVICE — DepartmentService
+  Service class       : `DepartmentService`
+  Methods              : create, search, update, deactivate, activate, getById, getTree(branchFk, isActiveFl?) — mapped to API-ORG-019,021,022,023,024,025,020
+  Observable type       : `Observable<Department>` (create/update/getById/activate) · `Observable<Page<Department>>` (search) · `Observable<DepartmentTreeNode[]>` (getTree) · `Observable<void>` (deactivate/activate)
+  Error handling         : ERR-ORG-0001, 0003, 0004, 0011 (RULE-ORG-007 cycle), 0016 (RULE-ORG-019 inactive Branch), 0017 (RULE-ORG-020 nodeType immutable)
+  Loading state          : LOCAL for CRUD/search · GLOBAL for getTree (full-subtree fetch blocks the tree panel — deviation from default, justified by DRV-ORG-020: a partially-rendered tree is more confusing than a brief full-panel spinner)
+  Caching strategy       : NONE
+  XM-ID impact            : None — no outbound XM-IDs
 
-```
-SCREEN INIT:
-  1. Check PERM_DEPARTMENT_VIEW
-  2. Load LOV-ORG-003: GET /api/lookups/DEPARTMENT_NODE_TYPE?active=true → nodeTypeOptions
-  3. Load active Branches (for tree filter)
-  4. No auto-tree load — wait for branchFk selection
-
-F2-FACADE — SCR-ORG-004 — Department Management
-STATE: departmentTree (List<DeptTreeNode>), selectedBranchFk, selectedItem, isLoading,
-       lastTreeFilter, nodeTypeOptions, branchOptions
-OPERATIONS: loadDepartmentTree(branchFk, isActiveFl?) → API-ORG-022
-            getDepartmentById(id) → API-ORG-024
-            createDepartment(data) → API-ORG-021 → reload tree
-            updateDepartment(id, data) → API-ORG-025 → reload tree
-            deactivateDepartment(id) → API-ORG-026 → reload tree
-            reactivateDepartment(id) → API-ORG-027 → reload tree
-            loadNodeTypeOptions() | loadBranchOptions()
-            loadParentDeptOptions(branchFk) → API-ORG-023 (active DETAIL depts for parent LOV)
-```
+  ### F2-FACADE — DepartmentFacade (SCR-ORG-004)
+  State includes treeData$ in addition to standard search/entry state; exposes expandNode/collapseNode helpers (client-side, no API).

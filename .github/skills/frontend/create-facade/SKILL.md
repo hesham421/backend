@@ -221,11 +221,32 @@ export class <ENTITY_NAME>Facade {
     ).subscribe();
   }
 
-  toggleActive(id: number, active: boolean, onSuccess?: (entity: <ENTITY_NAME>Dto) => void): void {
+  activate(id: number, onSuccess?: (entity: <ENTITY_NAME>Dto) => void): void {
     this.savingSignal.set(true);
     this.saveErrorSignal.set(null);
 
-    this.apiService.toggleActive(id, active).pipe(
+    this.apiService.activate(id).pipe(
+      tap(entity => {
+        this.currentEntitySignal.set(entity);
+        this.entitiesSignal.update(list =>
+          list.map(e => e.id === id ? entity : e)
+        );
+        onSuccess?.(entity);
+      }),
+      catchError(error => {
+        this.handleError(error, this.saveErrorSignal);
+        return EMPTY;
+      }),
+      finalize(() => this.savingSignal.set(false)),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe();
+  }
+
+  deactivate(id: number, onSuccess?: (entity: <ENTITY_NAME>Dto) => void): void {
+    this.savingSignal.set(true);
+    this.saveErrorSignal.set(null);
+
+    this.apiService.deactivate(id).pipe(
       tap(entity => {
         this.currentEntitySignal.set(entity);
         this.entitiesSignal.update(list =>
@@ -349,11 +370,31 @@ export class <ENTITY_NAME>Facade {
     ).subscribe();
   }
 
-  toggleChildActive(id: number, active: boolean, onSuccess?: (child: <CHILD_NAME>Dto) => void): void {
+  activateChild(id: number, onSuccess?: (child: <CHILD_NAME>Dto) => void): void {
     this.childSavingSignal.set(true);
     this.childErrorSignal.set(null);
 
-    this.apiService.toggleChildActive(id, active).pipe(
+    this.apiService.activateChild(id).pipe(
+      tap(updated => {
+        this.childEntitiesSignal.update(items =>
+          items.map(d => d.id === id ? updated : d)
+        );
+        onSuccess?.(updated);
+      }),
+      catchError(error => {
+        this.handleError(error, this.childErrorSignal);
+        return EMPTY;
+      }),
+      finalize(() => this.childSavingSignal.set(false)),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe();
+  }
+
+  deactivateChild(id: number, onSuccess?: (child: <CHILD_NAME>Dto) => void): void {
+    this.childSavingSignal.set(true);
+    this.childErrorSignal.set(null);
+
+    this.apiService.deactivateChild(id).pipe(
       tap(updated => {
         this.childEntitiesSignal.update(items =>
           items.map(d => d.id === id ? updated : d)
@@ -447,7 +488,7 @@ Before creating a new facade, verify the following shared resources are consumed
 - NEVER add notification/dialog/navigation logic in facade — use `onSuccess` callbacks to components
 - NEVER use `BehaviorSubject` or `ReplaySubject` — use Angular `signal()` exclusively
 
-> **Cross-reference:** After creating the facade, run [`enforce-reusability`](../enforce-reusability/SKILL.md) to verify no shared code was duplicated.
+> **Cross-reference:** After creating the facade, run [`enforce-state-management`](../enforce-state-management/SKILL.md) to verify Signal patterns, then [`enforce-reusability`](../enforce-reusability/SKILL.md) to verify no shared code was duplicated.
 
 ---
 

@@ -1,5 +1,5 @@
 ---
-description: "Generates a thin @RestController delegating ALL logic to the service. Phase 1, Step 1.8 — LAST step before tests. Enforces OperationCode.craftResponse, @Valid @RequestBody, @Operation, zero business logic, 204 for delete."
+description: "Generates a thin @RestController delegating ALL logic to the service. Phase 1, Step 1.8 — LAST step before tests. Enforces OperationCode.craftResponse, @Valid, @Operation, zero business logic, 204 for delete. Search uses POST /search + @RequestBody. Activation uses separate activate/deactivate endpoints."
 ---
 
 # Skill: create-controller
@@ -100,14 +100,18 @@ public ResponseEntity<ApiResponse<Page<<ENTITY>Response>>> search(
 }
 ```
 
-### 7. Toggle Active Endpoint
+### 7. Activate / Deactivate Endpoints
 ```java
-@PutMapping("/{id}/toggle-active")
-@Operation(summary = "Toggle <Entity> active status", description = "تبديل حالة التفعيل")
-public ResponseEntity<ApiResponse<<ENTITY>Response>> toggleActive(
-        @PathVariable Long id,
-        @Valid @RequestBody ToggleActiveRequest request) {
-    return operationCode.craftResponse(service.toggleActive(id, request.getActive()));
+@PutMapping("/{id}/activate")
+@Operation(summary = "Activate <Entity>", description = "تفعيل <Entity>")
+public ResponseEntity<ApiResponse<<ENTITY>Response>> activate(@PathVariable Long id) {
+    return operationCode.craftResponse(service.activate(id));
+}
+
+@PutMapping("/{id}/deactivate")
+@Operation(summary = "Deactivate <Entity>", description = "إلغاء تفعيل <Entity>")
+public ResponseEntity<ApiResponse<<ENTITY>Response>> deactivate(@PathVariable Long id) {
+    return operationCode.craftResponse(service.deactivate(id));
 }
 ```
 
@@ -154,11 +158,14 @@ public ResponseEntity<ApiResponse<<Child>Response>> updateDetail(
     return operationCode.craftResponse(childService.update(id, request));
 }
 
-@PutMapping("/details/{id}/toggle-active")
-public ResponseEntity<ApiResponse<<Child>Response>> toggleDetailActive(
-        @PathVariable Long id,
-        @Valid @RequestBody ToggleActiveRequest request) {
-    return operationCode.craftResponse(childService.toggleActive(id, request.getActive()));
+@PutMapping("/details/{id}/activate")
+public ResponseEntity<ApiResponse<<Child>Response>> activateDetail(@PathVariable Long id) {
+    return operationCode.craftResponse(childService.activate(id));
+}
+
+@PutMapping("/details/{id}/deactivate")
+public ResponseEntity<ApiResponse<<Child>Response>> deactivateDetail(@PathVariable Long id) {
+    return operationCode.craftResponse(childService.deactivate(id));
 }
 
 @DeleteMapping("/details/{id}")
@@ -208,8 +215,8 @@ Before creating a controller, verify the following shared resources from `erp-co
 | A.6.3 | Controller injects ONLY service(s) + `OperationCode` | YES |
 | A.6.4 | Non-delete endpoints return `ResponseEntity<ApiResponse<T>>` via `operationCode.craftResponse()` | YES |
 | A.6.5 | Delete: `@ResponseStatus(NO_CONTENT)` + `void` return — no ServiceResult | YES |
-| A.6.6 | Search: `@PostMapping("/search")` — NOT GET with query params | YES |
-| A.6.7 | Toggle: `@PutMapping("/{id}/toggle-active")` | YES |
+| A.6.6 | Search: `@PostMapping("/search")` + `@RequestBody` — NOT `@GetMapping` with `@ModelAttribute` | YES |
+| A.6.7 | Activation: separate `@PutMapping("/{id}/activate")` and `@PutMapping("/{id}/deactivate")` — NOT a single `toggle-active` | YES |
 | A.6.8 | Usage: `@GetMapping("/{id}/usage")` | YES |
 | A.6.9 | Child endpoints under SAME controller (`/details/...`) | YES |
 | A.6.10 | Every method has `@Operation(summary, description)` | YES |
@@ -236,8 +243,8 @@ Before creating a controller, verify the following shared resources from `erp-co
 - ❌ Returning raw DTOs — must use `operationCode.craftResponse()`
 - ❌ `@ResponseStatus(CREATED)` on POST — handled by `ServiceResult` mapping
 - ❌ Wrapping `delete()` in `ServiceResult` or `craftResponse` — stays `void` with 204
-- ❌ `GET` for search — must use `POST /search`
-- ❌ Separate activate/deactivate endpoints — single `toggle-active`
+- ❌ `GET /search` with `@ModelAttribute` — must use `POST /search` with `@RequestBody`
+- ❌ Single `toggle-active` endpoint — must use separate `activate` and `deactivate` endpoints
 - ❌ Separate controller for child entity — unified under parent controller
 - ❌ Missing `@Valid` on `@RequestBody`
 - ❌ Missing `@Operation` on any endpoint

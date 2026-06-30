@@ -76,7 +76,7 @@ public class Md<ENTITY_NAME> extends AuditableEntity {
 @Id
 @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "<entity>_seq")
 @SequenceGenerator(name = "<entity>_seq", sequenceName = "<ENTITY_SEQ>", allocationSize = 1)
-@Column(name = "ID_PK")
+@Column(name = "<ENTITY_PK_COLUMN>") // derive from db-script — e.g. LEGAL_ENTITY_PK, BRANCH_PK
 private Long id;
 ```
 
@@ -109,7 +109,7 @@ private Md<PARENT_ENTITY> parentEntity;
 @OneToMany(mappedBy = "<childField>", cascade = CascadeType.ALL, orphanRemoval = false, fetch = FetchType.LAZY)
 private List<Md<CHILD_ENTITY>> children = new ArrayList<>();
 
-@Formula("(SELECT COUNT(*) FROM <CHILD_TABLE> c WHERE c.<PARENT>_ID_FK = ID_PK)")
+@Formula("(SELECT COUNT(*) FROM <CHILD_TABLE> c WHERE c.<PARENT>_ID_FK = <ENTITY_PK_COLUMN>)")
 private Integer childCount;
 ```
 
@@ -153,7 +153,7 @@ Before creating a new entity, verify the following shared resources from `erp-co
 | # | Requirement | Shared Class | Package |
 |---|-------------|-------------|--------|
 | SH.1 | MUST extend `AuditableEntity` for audit fields. Exception: short-lived security/session artifacts (e.g., RefreshToken) with their own lifecycle fields (issuedAt, expiresAt, revoked) are NOT required to extend AuditableEntity. Declare in Phase CORE: "[EntityName]: Session artifact — does not extend AuditableEntity." | `AuditableEntity` | `com.example.erp.common.domain` |
-| SH.2 | MUST use `BooleanNumberConverter` for all boolean columns (NUMBER(1)) | `BooleanNumberConverter` | `com.example.erp.common.converter` |
+| SH.2 | MUST use `BooleanNumberConverter` for all boolean columns (SMALLINT) | `BooleanNumberConverter` | `com.example.erp.common.converter` |
 | SH.3 | Audit fields auto-populated by `AuditEntityListener` — do NOT set manually | `AuditEntityListener` | `com.example.erp.common.audit` |
 | SH.4 | Use `@SuperBuilder` due to `AuditableEntity` inheritance — NEVER `@Builder` | — | Lombok |
 
@@ -172,12 +172,12 @@ Before creating a new entity, verify the following shared resources from `erp-co
 | Rule ID | Rule | MUST |
 |---------|------|------|
 | A.1.1 | Extends `AuditableEntity` | YES — except short-lived security/session artifacts (e.g., RefreshToken) with own lifecycle (issuedAt/expiresAt/revoked). Verify exemption is intentional before flagging. |
-| A.1.2 | PK column is `ID_PK` with `@Column(name = "ID_PK")` | YES |
+| A.1.2 | PK `@Column` name derived from db-script — entity-specific (e.g. `LEGAL_ENTITY_PK`, `BRANCH_PK`) — NEVER generic `"ID"` or hardcoded `"ID_PK"` | YES |
 | A.1.3 | PK uses `GenerationType.SEQUENCE` with explicit `@SequenceGenerator` | YES |
 | A.1.4 | `allocationSize = 1` on `@SequenceGenerator` | YES |
 | A.1.5 | FK columns end with `_ID_FK` | YES |
 | A.1.6 | Booleans stored via `BooleanNumberConverter` | YES |
-| A.1.7 | Boolean default: `@Builder.Default Boolean isActive = Boolean.TRUE` | YES |
+| A.1.7 | Boolean default: `@Builder.Default Boolean isActive = Boolean.TRUE` — `@Builder.Default` is compatible with `@SuperBuilder` | YES |
 | A.1.8 | Every `@ManyToOne` uses `fetch = FetchType.LAZY` | YES |
 | A.1.9 | `@OneToMany` uses `cascade = ALL, orphanRemoval = false, fetch = LAZY` | YES |
 | A.1.10 | Uses `@SuperBuilder` (NOT `@Builder`) due to `AuditableEntity` | YES |
@@ -198,7 +198,7 @@ Before creating a new entity, verify the following shared resources from `erp-co
 - ❌ `@Builder` instead of `@SuperBuilder`
 - ❌ `GenerationType.IDENTITY` or `GenerationType.AUTO`
 - ❌ `allocationSize` != 1
-- ❌ `@Column(name = "ID")` — must be `ID_PK`
+- ❌ Generic `@Column(name = "ID")` or hardcoded `@Column(name = "ID_PK")` — must use the entity-specific PK column name from db-script
 - ❌ FK columns without `_ID_FK` suffix
 - ❌ `boolean` primitive for boolean fields — must be `Boolean` wrapper
 - ❌ `fetch = FetchType.EAGER` on relationships
@@ -230,7 +230,7 @@ public class MdMasterLookup extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "master_lookup_seq")
     @SequenceGenerator(name = "master_lookup_seq", sequenceName = "MD_MASTER_LOOKUP_SEQ", allocationSize = 1)
-    @Column(name = "ID_PK")
+    @Column(name = "MASTER_LOOKUP_PK") // entity-specific — from db-script
     private Long id;
 
     @NotBlank(message = "{validation.required}")
@@ -255,7 +255,7 @@ public class MdMasterLookup extends AuditableEntity {
     @OneToMany(mappedBy = "masterLookup", cascade = CascadeType.ALL, orphanRemoval = false, fetch = FetchType.LAZY)
     private List<MdLookupDetail> lookupDetails = new ArrayList<>();
 
-    @Formula("(SELECT COUNT(*) FROM MD_LOOKUP_DETAIL d WHERE d.MASTER_LOOKUP_ID_FK = ID_PK)")
+    @Formula("(SELECT COUNT(*) FROM MD_LOOKUP_DETAIL d WHERE d.MASTER_LOOKUP_ID_FK = MASTER_LOOKUP_PK)")
     private Integer detailCount;
 
     @PrePersist

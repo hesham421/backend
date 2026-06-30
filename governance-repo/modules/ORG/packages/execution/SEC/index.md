@@ -1,3 +1,3 @@
-# Index — execution/SEC
+# Index — execution\SEC
 
 - [SEC](SEC.md)

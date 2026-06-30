@@ -1,15 +1,13 @@
 <!-- Source: PHASE:F2 / SUB:SCR-ORG-007 -->
 
-## F2 — SCR-ORG-007 — LocationSite Screen
+  ### F2-SERVICE — LocationSiteService
+  Service class       : `LocationSiteService`
+  Methods              : create, search, update, deactivate, activate, getById — mapped to API-ORG-039..044
+  Observable type       : `Observable<LocationSite>` (create/update/getById/activate) · `Observable<Page<LocationSite>>` (search) · `Observable<void>` (deactivate/activate)
+  Error handling         : ERR-ORG-0001, 0003, 0004, 0016 (RULE-ORG-019 inactive Branch) — no entity-specific deactivate guard
+  Loading state          : LOCAL
+  Caching strategy       : NONE — except siteTypeOptions$ (LOV-ORG-006), which uses the platform-shared lookup cache (SESSION-scoped, owned by the platform SYS module, not this service — non-default but pre-existing platform behavior, not a new deviation requiring its own DRV)
+  XM-ID impact            : None outbound — referenced by XM-INBOUND-STUB-2 (future Inventory consumer), no impact on this service's own contract
 
-```
-SCREEN INIT:
-  1. Check PERM_LOCATION_SITE_VIEW
-  2. Load LOV-ORG-006: GET /api/lookups/LOCATION_SITE_TYPE?active=true → siteTypeOptions
-  3. Load active Branches → branchOptions
-  4. Default search (isActiveFl=1)
-
-F2-FACADE — SCR-ORG-007 — LocationSite Management
-STATE: locationSiteList, selectedItem, isLoading, lastSearchRequest, siteTypeOptions, branchOptions
-OPERATIONS: searchLocationSites / getLocationSiteById / createLocationSite / updateLocationSite / deactivateLocationSite
-```
+  ### F2-FACADE — LocationSiteFacade (SCR-ORG-007)
+  Standard shape, exposes siteTypeOptions$ (LOV-ORG-006 via platform lookup service) and branchOptions$.

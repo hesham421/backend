@@ -1,8 +1,8 @@
 {
-  "module": "erp-org",
-  "generated_at": "2026-06-24",
-  "current_phase": "DATA-DOM",
-  "current_sub": "DATA-DOM-REFERENCE",
+  "module": "ORG",
+  "generated_at": "2026-06-30",
+  "current_phase": "SVC-API",
+  "current_sub": "SVC-API-CRUD",
   "phases": [
     {
       "id": "CORE",
@@ -13,10 +13,9 @@
     },
     {
       "id": "DATA-DOM",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "DATA-DOM-MASTER", "status": "COMPLETE" },
-        { "id": "DATA-DOM-REFERENCE", "status": "PENDING" }
+        { "id": "DATA-DOM-CORE-ENTITIES", "status": "COMPLETE" }
       ]
     },
     {
@@ -24,7 +23,7 @@
       "status": "PENDING",
       "subs": [
         { "id": "SVC-API-CRUD", "status": "PENDING" },
-        { "id": "SVC-API-INT", "status": "PENDING" }
+        { "id": "SVC-API-TREE", "status": "PENDING" }
       ]
     },
     {

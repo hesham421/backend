@@ -107,7 +107,7 @@ description: "ERROR HANDLING ENFORCER — ensures ALL exceptions use LocalizedEx
 [ ] Every findById uses .orElseThrow(() -> new LocalizedException(Status.NOT_FOUND, ...))
 [ ] Every uniqueness check throws LocalizedException(Status.ALREADY_EXISTS, ...)
 [ ] Delete does NOT try-catch DataIntegrityViolationException — it propagates to GlobalExceptionHandler
-[ ] Every toggleActive validates constraints before mutating
+[ ] Every deactivate() validates constraints before mutating
 [ ] No catch-all exception handlers that swallow errors
 ```
 

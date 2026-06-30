@@ -183,7 +183,7 @@ public class <Entity>UsageResponse {
     private long childCount;
 
     @Schema(description = "Can entity be deleted - هل يمكن حذف العنصر")
-    private boolean canBeDeleted;
+    private boolean canDelete;
 
     @Schema(description = "Can entity be deactivated - هل يمكن إلغاء التفعيل")
     private boolean canDeactivate;
@@ -246,7 +246,7 @@ Before creating DTOs, verify the following shared resources from `erp-common-uti
 | A.3.9 | `SearchRequest` extends `BaseSearchContractRequest` | YES |
 | A.3.10 | Child `SearchRequest` overrides `toCommonSearchRequest()` to exclude parent ID | YES |
 | A.3.11 | Child `SearchRequest` provides parent ID extractor method | YES |
-| A.3.12 | `UsageResponse` has `canBeDeleted`/`canDeactivate` booleans + reason | YES |
+| A.3.12 | `UsageResponse` has `canDelete`/`canDeactivate` booleans + reason | YES |
 | A.3.13 | `OptionResponse` is slim — no audit fields | YES |
 
 ---
@@ -261,7 +261,7 @@ Before creating DTOs, verify the following shared resources from `erp-common-uti
 - ❌ Missing `@JsonFormat` on `Instant` audit fields
 - ❌ Duplicating filter/sort parsing — must extend `BaseSearchContractRequest`
 - ❌ Reusing full `Response` DTO for dropdowns — use `OptionResponse`
-- ❌ Missing `canBeDeleted`/`canDeactivate` in `UsageResponse`
+- ❌ Missing `canDelete`/`canDeactivate` in `UsageResponse`
 - ❌ Using `@SuperBuilder` on non-search DTOs (only `SearchRequest` needs it for `BaseSearchContractRequest`)
 
 ---

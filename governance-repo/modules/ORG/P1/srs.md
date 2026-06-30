@@ -1,12 +1,13 @@
-<!-- ═══════════════════════════════════════════════════════════ -->
-<!-- SRS — وثيقة التحليل والمتطلبات                             -->
-<!-- Governed by: SRS Governance Engine (Project 1)             -->
-<!-- Compatible: PROJECT-2 | PROJECT-3 | PROJECT-4              -->
-<!-- Structure : PART A (Module Foundation) + PART B (Screens)  -->
-<!-- ═══════════════════════════════════════════════════════════ -->
+&lt;!-- ═══════════════════════════════════════════════════════════ --&gt;
+&lt;!-- SRS — وثيقة التحليل والمتطلبات                             --&gt;
+&lt;!-- Governed by: SRS Governance Engine (Project 1)             --&gt;
+&lt;!-- Compatible: PROJECT-2 | PROJECT-3 | PROJECT-4              --&gt;
+&lt;!-- Structure : PART A (Module Foundation) + PART B (Screens)  --&gt;
+&lt;!-- DB_TARGET : POSTGRESQL_16                                   --&gt;
+&lt;!-- ═══════════════════════════════════════════════════════════ --&gt;
 
 # وثيقة التحليل (SRS)
-## موديول التنظيم المؤسسي | Organization Module
+## موديول الهيكل التنظيمي | Organization Module
 
 ---
 
@@ -21,19 +22,18 @@
 
 | البند | القيمة |
 |---|---|
-| **اسم المشروع** | نظام إدارة الموارد الحكومية |
-| **الموديول** | التنظيم المؤسسي — Organization |
+| **اسم المشروع** | نظام إدارة الموارد المؤسسية (ERP) |
+| **الموديول** | الهيكل التنظيمي — Organization |
 | **Feature Code** | ORG-001 |
-| **Feature Type** | Master Data — Core Foundation |
-| **الطبقة** | Layer-1 — Foundation (L1-1) |
+| **Feature Type** | Master Data (Core — Foundation) |
+| **الطبقة** | LAYER-1 — Foundation (L1-1) |
 | **إعداد بواسطة** | SRS Governance Engine (Project 1) |
 | **النسخة** | 1.0 |
-| **التاريخ** | 2026-06-23 |
-| **الحالة** | GOVERNED ✓ |
-| **Open Questions** | 1 active (OQ-001) — see OQ Log |
+| **التاريخ** | 2026-06-28 |
+| **الحالة** | GOVERNED ✓ MODE 2 — ALIGN GATE PASSED ✓ |
+| **DB_TARGET** | POSTGRESQL_16 |
+| **Open Questions** | 1 active (OQ-001 — DEFERRED) — see OQ Log |
 | **Governed by** | SRS Governance Engine (Project 1) |
-| **P0 Context** | module-registry-ORG.md / business-policies-ORG.md — REGENERATED 2026-06-23 |
-| **Registry Status** | master-registry.md v2.7.2 — GOVERNED ✓ MODE 1.5 |
 
 ---
 
@@ -41,305 +41,307 @@
 
 ### ما يشمله هذا الموديول
 
-> يشمل هذا الموديول تعريف وإدارة الهيكل التنظيمي المؤسسي الكامل للمنظومة الحكومية، ويغطي سبعة كيانات أساسية: الكيان القانوني، والفرع، والمنطقة الجغرافية/التشغيلية، والقسم، ومركز التكلفة، ومركز الربح، والموقع الجغرافي. تُعدّ هذه الكيانات السبعة الجذر التنظيمي لجميع الموديولات الأخرى في المنصة.
+> يشمل هذا الموديول تعريف وإدارة الهيكل التنظيمي الكامل للمنشأة، ويتضمن: الكيانات القانونية، الفروع، المناطق، الأقسام (بهيكل شجري)، مراكز التكلفة (بهيكل شجري)، مراكز الربح، ومواقع العمل. وهو الموديول الجذري (ROOT MODULE) الذي تعتمد عليه جميع الموديولات الأخرى في المنصة.
 
 ### ما لا يشمله هذا الموديول
 
-> لا يشمل هذا الموديول: وحدة الأعمال (BusinessUnit — مؤجلة)، والدولة (Country — مملوكة لـ MasterData 1.4)، والمستودع (Warehouse — مملوك لـ Inventory 3.2). لا يتضمن الموديول أي منطق مالي، ولا آليات موافقة، ولا تدفقات عمل.
+> - لا يشمل إدارة الموظفين أو الموارد البشرية
+> - لا يشمل إدارة المستودعات التشغيلية (تملكها وحدة Inventory 3.2؛ LocationSite هو المفهوم المادي L1 فقط)
+> - لا يشمل وحدة الأعمال BusinessUnit (مؤجلة — غير مسجلة في master-registry Section 5)
+> - لا يشمل إدارة الدول — تملكها MasterData (1.4)
+> - لا يشمل أي منطق مالي أو محاسبي
+> - لا يطبّق Row-Level Security بذاته — مفوَّض بالكامل لموديول Security
 
 ### وظيفة الموديول
 
-> يُمكّن موديول التنظيم المؤسسي المستخدمين المخوّلين من إنشاء وإدارة الهيكل التنظيمي للمؤسسة بشكل هرمي وكامل الضبط، بدءاً من الكيان القانوني وصولاً إلى أدق مستويات التنظيم كالأقسام ومراكز التكلفة، مما يُشكّل الأساس البياني الذي تستند إليه جميع عمليات المنصة الأخرى.
+> يُمكّن هذا الموديول المستخدمين المخوّلين من إنشاء وإدارة الهيكل التنظيمي للمنشأة بالكامل عبر تسلسل هرمي متماسك يبدأ بالكيان القانوني وينتهي بأدق وحدات التشغيل، مما يوفر البنية التحتية المرجعية اللازمة لجميع عمليات النظام.
 
 ### الوصف الوظيفي التفصيلي
 
-> يُمثّل موديول التنظيم المؤسسي الركيزة التأسيسية للمنصة بأسرها. يبدأ الهيكل من **الكيان القانوني (LegalEntity)** الذي يُعرّف الوجود القانوني المستقل للمؤسسة أو أي جهة تابعة لها. تتفرع من كل كيان قانوني **فروع (Branches)** تمثّل الوحدات التشغيلية الرئيسية، وتُمثّل **المناطق (Regions)** تجميعاً جغرافياً أو تشغيلياً مرتبطاً بالكيان القانوني. تنتمي **الأقسام (Departments)** إلى الفروع وتُبنى كهيكل شجري متعدد المستويات يدعم التمييز بين عقد التجميع (SUMMARY) وعقد الإدخال (DETAIL). كذلك **مراكز التكلفة (CostCenters)** وهي كيانات مالية هرمية مرتبطة بالفروع، أما **مراكز الربح (ProfitCenters)** فترتبط بالكيان القانوني مباشرة بوصفها وحدات تقرير مالي. أخيراً، **المواقع الجغرافية (LocationSites)** تُعرّف المواقع الفيزيائية المرتبطة بالفروع وهي مصدر بيانات الموقع لموديول المخازن.
->
-> جميع الكيانات السبعة تُنشأ بشكل محكوم: لكل كيان رمز أعمال تلقائي غير قابل للتعديل، ونمط تفعيل/تعطيل ناعم (isActiveFl) مع قواعد منع التعطيل عند وجود تبعيات نشطة. لا توجد دورة حياة معقدة أو محرك موافقة — الكيانات إما نشطة أو غير نشطة.
+> يُنشئ المستخدم أولاً الكيانات القانونية (LegalEntity) التي تمثل الشركات أو المؤسسات القانونية المسجلة رسمياً. تحت كل كيان قانوني تُنشأ الفروع (Branch) التي تمثل التواجد الجغرافي أو التشغيلي. تُعرَّف المناطق (Region) مرتبطةً بالكيان القانوني لتوفير تجميع جغرافي أو مبيعاتي. تحت كل فرع تُبنى هياكل الأقسام (Department) بشكل شجري يدعم مستويات متعددة مع تمييز بين عُقد الملخص (SUMMARY) وعُقد التفصيل (DETAIL). بالمثل تُبنى مراكز التكلفة (CostCenter) بهيكل شجري تحت الفرع. مراكز الربح (ProfitCenter) ترتبط بالكيان القانوني مباشرة. وأخيراً تُعرَّف مواقع العمل (LocationSite) تحت كل فرع لتمثيل المواقع المادية. جميع الكيانات تحمل رموز أعمال (Business Codes) غير قابلة للتعديل بعد الحفظ، وجميعها تخضع للتدقيق الكامل عبر AuditEntityListener.
 
 #### الوضع الحالي
 
 | الخطوات | الجهة | ملاحظات |
 |---|---|---|
-| تعريف الكيان القانوني يدوياً | الإدارة العليا | غير رسمي |
-| تعريف الفروع والأقسام يدوياً | إدارة الموارد | مبعثرة في ملفات منفصلة |
-| لا يوجد نظام موحّد للهيكل التنظيمي | — | يُسبّب تعارضات في البيانات |
+| إنشاء الكيان القانوني | مسؤول النظام | أول خطوة في بناء الهيكل |
+| إنشاء الفروع والمناطق | مسؤول التنظيم | تعتمد على الكيان القانوني |
+| بناء هيكل الأقسام | مسؤول التنظيم | هيكل شجري متعدد المستويات |
+| بناء مراكز التكلفة والربح | مسؤول التنظيم | مرتبطة بالفرع أو الكيان |
+| تعريف مواقع العمل | مسؤول التنظيم | مرتبطة بالفرع |
 
 #### الصعوبات الحالية
 
 | # | الصعوبة |
 |---|---|
-| 1 | غياب مصدر موحّد للهيكل التنظيمي يُسبّب بيانات متضاربة بين الإدارات |
-| 2 | عدم وجود قواعد تحكم العلاقات الهرمية بين الكيانات |
-| 3 | عدم قدرة النظام الحالي على منع تعطيل كيانات لها تبعيات نشطة |
+| 1 | غياب مرجعية تنظيمية موحدة يجعل كل موديول يُعرّف كياناته الخاصة مما يُفضي إلى تضارب البيانات |
+| 2 | صعوبة تطبيق الصلاحيات على مستوى الفرع بدون كيان مرجعي مركزي |
+| 3 | تكرار بيانات الهيكل التنظيمي في أنظمة متعددة يُعيق الاتساق |
 
 #### النظام المقترح وفوائده
 
 | # | الفائدة |
 |---|---|
-| 1 | مصدر حقيقة واحد للهيكل التنظيمي تستهلكه جميع الموديولات |
-| 2 | رموز أعمال تلقائية وغير قابلة للتعديل تضمن ترتيباً موحّداً |
-| 3 | قواعد منع التعطيل تحمي سلامة البيانات عبر المنصة كاملة |
-| 4 | هياكل شجرية مُدارة للأقسام ومراكز التكلفة تدعم التقارير المالية الهرمية |
+| 1 | مرجعية تنظيمية واحدة تُستهلك من كل موديولات المنصة عبر HARD-FK موثّق |
+| 2 | تطبيق DataScope مركزي على مستوى الفرع عبر موديول Security |
+| 3 | رموز أعمال ثابتة وغير قابلة للتغيير تضمن سلامة التتبع التاريخي |
+| 4 | هيكل شجري مُدار بقواعد صارمة يمنع الإدخالات الخاطئة (الدوائر، إسناد SUMMARY) |
 
 ### ملاحظات عامة
 
-- جميع الكيانات السبعة مُصنَّفة SHARED (مالك): تستهلكها جميع الموديولات الأخرى عبر HARD-FK أو SOFT-READ
-- الموديول جذري (ROOT) — لا تبعيات خارجية صادرة
-- ORG_REGION_TYPE كيان مرجعي (Reference Table) — ليس Lookup Detail — يدعم > 15 قيمة وقابل للتوسيع
-- Department وCostCenter هياكل شجرية ذات مرجع ذاتي (self-reference)
-- AQ-003 مؤجّل وغير مانع للمتابعة: يُحسم عند تشغيل أول موديول مستهلك لـ Region في MODE 1.5
-- لا يوجد Workflow Engine — لا يُذكر ولا يُقترح (RULE-13)
+- **ROOT MODULE**: ORG-001 لا يملك أي XM dependencies صادرة — صفر تبعيات خارجية
+- **AQ-003 DEFERRED (غير مانع)**: تأثير إلغاء تفعيل Region على المستهلكين عبر SOFT-READ — يُحل تلقائياً عند تشغيل أول موديول مستهلك في MODE 1.5
+- **TENANT_ID**: أُزيل من النظام بالكامل بتاريخ 2026-06-21 (Conflict #17 CLOSED) — لا يوجد أي سياق متعدد المستأجرين
+- **DB_TARGET = POSTGRESQL_16**: جميع أنواع البيانات في هذه الوثيقة تتبع PG syntax وفق CORE-8
+- **ORG_REGION_TYPE**: جدول مرجعي منفصل (> 15 قيمة — Reference Table) — ليس MD_LOOKUP_DETAIL — يُستهلك عبر FK مباشر
 
 ---
 
 ## A3 — الكيانات والحقول (Entities & Fields)
 
-> **قاعدة إلزامية:** هذا القسم هو المصدر الوحيد لتعريف الكيانات والحقول.
-> PART B يُشير للكيانات بـ ENTITY-ID فقط — لا يُعيد تعريفها.
-> جميع الكيانات مُصنَّفة SHARED (owner) — مستهلكة من جميع الموديولات اللاحقة.
+> **DB_TARGET = POSTGRESQL_16**: جميع أنواع البيانات تتبع:
+> BIGINT (PKs/FKs) | VARCHAR(N) | SMALLINT DEFAULT 1 (flags) | TIMESTAMP (audit) | NUMERIC(N,N) (decimal)
 
 ---
 
-### ENTITY-ORG-001 — LegalEntity (الكيان القانوني)
+### ENTITY-ORG-001 — الكيان القانوني (LegalEntity)
 
 | البند | القيمة |
 |---|---|
 | **النوع** | SHARED (owner: Organization) |
-| **جدول DB** | ORG_LEGAL_ENTITY — GOVERNED ✓ DBS-ORG-001 |
-| **Business Code** | YES — Format: `LE-NNNNN` (توليد: NumberingEngine) |
+| **DB Table** | ORG_LEGAL_ENTITY |
+| **Business Code** | YES — Format: `LE-NNNNN` (global unique) |
+| **المصدر** | master-registry v2.7.4 Section 5 + module-registry-ORG.md |
 | **العمليات** | Create, Read, Update, Deactivate |
-| **Cross-Module** | None — ROOT entity |
+| **Cross-Module** | مستهلَك من: Security (1.2), MasterData (1.4), CurrencyCalendar (1.5), ProfitCenter, Region, جميع Layer-3 |
 
 #### حقول الكيان
 
-| اسم الحقل | نوع | إلزامي | القيم / المصدر | ملاحظات |
-|---|---|---|---|---|
-| legalEntityPk | NUMBER (PK) | نظام | — | رقم تسلسلي تلقائي |
-| legalEntityCode | VARCHAR2(20) | نظام | — | يُنشأ تلقائياً — Read-Only بعد الحفظ — NumberingEngine |
-| nameAr | VARCHAR2(200) | نعم | — | اسم الكيان بالعربي |
-| nameEn | VARCHAR2(100) | نعم | — | اسم الكيان بالإنجليزي |
-| entityTypeId | VARCHAR2(50) | نعم | LOV-ORG-001 | lookupKey: LEGAL_ENTITY_TYPE |
-| isActiveFl | NUMBER(1) | نظام | 1 / 0 | 1=نشط، 0=غير نشط — Fl suffix إلزامي |
-| createdBy | VARCHAR2(100) | نظام | — | AuditEntityListener — لا يُقبل في DTO |
-| createdAt | TIMESTAMP | نظام | — | AuditEntityListener — لا يُقبل في DTO |
-| updatedBy | VARCHAR2(100) | نظام | — | AuditEntityListener — لا يُقبل في DTO |
-| updatedAt | TIMESTAMP | نظام | — | AuditEntityListener — لا يُقبل في DTO |
-| notes | VARCHAR2(2000) | لا | — | ملاحظات |
+| اسم الحقل (PG snake_case) | نوع البيانات | إلزامي | القيم / المصدر | ملاحظات | Label-AR | Label-EN |
+|---|---|---|---|---|---|---|
+| legal_entity_pk | BIGINT (PK) | نظام | SEQ: ORG_LEGAL_ENTITY_SEQ | رقم إنشائي تلقائي | المعرف | ID |
+| legal_entity_code | VARCHAR(20) | نظام | NumberingEngine | يُنشأ تلقائياً — Read-Only بعد الحفظ — LE-NNNNN | الرمز | Code |
+| name_ar | VARCHAR(200) | نعم | — | الاسم بالعربي | الاسم بالعربي | Name (Arabic) |
+| name_en | VARCHAR(100) | نعم | — | الاسم بالإنجليزي | الاسم بالإنجليزي | Name (English) |
+| entity_type_id | VARCHAR(50) | نعم | LOV-ORG-001 | lookupKey: LEGAL_ENTITY_TYPE — يُخزَّن code | نوع الكيان | Entity Type |
+| is_active_fl | SMALLINT | نظام | DEFAULT 1 | 1=نشط، 0=غير نشط | نشط | Active |
+| created_by | VARCHAR(255) | نظام | — | AuditEntityListener | أنشئ بواسطة | Created By |
+| created_at | TIMESTAMP | نظام | — | AuditEntityListener | تاريخ الإنشاء | Created At |
+| updated_by | VARCHAR(255) | نظام | — | AuditEntityListener | عُدِّل بواسطة | Updated By |
+| updated_at | TIMESTAMP | نظام | — | AuditEntityListener | تاريخ التعديل | Updated At |
+| notes | VARCHAR(2000) | لا | — | ملاحظات | ملاحظات | Notes |
 
 ---
 
-### ENTITY-ORG-002 — Branch (الفرع)
+### ENTITY-ORG-002 — الفرع (Branch)
 
 | البند | القيمة |
 |---|---|
 | **النوع** | SHARED (owner: Organization) |
-| **جدول DB** | ORG_BRANCH — GOVERNED ✓ DBS-ORG-001 |
-| **Business Code** | YES — Format: `BR-[LE]-NNNNN` (فريد ضمن الكيان القانوني) |
+| **DB Table** | ORG_BRANCH |
+| **Business Code** | YES — Format: `BR-[LE_CODE]-NNNNN` (unique per LegalEntity) |
+| **المصدر** | master-registry v2.7.4 Section 5 + module-registry-ORG.md |
 | **العمليات** | Create, Read, Update, Deactivate |
-| **Cross-Module** | يُنشأ تحت ENTITY-ORG-001 (legalEntityFk NOT NULL RESTRICT) |
+| **Cross-Module** | حدود DataScope الرئيسية — مستهلَك من جميع الموديولات |
 
 #### حقول الكيان
 
-| اسم الحقل | نوع | إلزامي | القيم / المصدر | ملاحظات |
-|---|---|---|---|---|
-| branchPk | NUMBER (PK) | نظام | — | رقم تسلسلي تلقائي |
-| branchCode | VARCHAR2(20) | نظام | — | يُنشأ تلقائياً — Read-Only — فريد ضمن الكيان القانوني |
-| nameAr | VARCHAR2(200) | نعم | — | اسم الفرع بالعربي |
-| nameEn | VARCHAR2(100) | نعم | — | اسم الفرع بالإنجليزي |
-| legalEntityFk | NUMBER (FK) | نعم | ENTITY-ORG-001 | NOT NULL — RESTRICT on deactivate |
-| branchTypeId | VARCHAR2(50) | نعم | LOV-ORG-002 | lookupKey: BRANCH_TYPE |
-| isActiveFl | NUMBER(1) | نظام | 1 / 0 | 1=نشط، 0=غير نشط |
-| createdBy | VARCHAR2(100) | نظام | — | AuditEntityListener |
-| createdAt | TIMESTAMP | نظام | — | AuditEntityListener |
-| updatedBy | VARCHAR2(100) | نظام | — | AuditEntityListener |
-| updatedAt | TIMESTAMP | نظام | — | AuditEntityListener |
-| notes | VARCHAR2(2000) | لا | — | ملاحظات |
+| اسم الحقل (PG snake_case) | نوع البيانات | إلزامي | القيم / المصدر | ملاحظات | Label-AR | Label-EN |
+|---|---|---|---|---|---|---|
+| branch_pk | BIGINT (PK) | نظام | SEQ: ORG_BRANCH_SEQ | رقم إنشائي تلقائي | المعرف | ID |
+| branch_code | VARCHAR(20) | نظام | NumberingEngine | يُنشأ تلقائياً — Read-Only — فريد ضمن الكيان القانوني | الرمز | Code |
+| name_ar | VARCHAR(200) | نعم | — | الاسم بالعربي | الاسم بالعربي | Name (Arabic) |
+| name_en | VARCHAR(100) | نعم | — | الاسم بالإنجليزي | الاسم بالإنجليزي | Name (English) |
+| legal_entity_fk | BIGINT (FK) | نعم | ENTITY-ORG-001 → ORG_LEGAL_ENTITY | NOT NULL — RESTRICT | الكيان القانوني | Legal Entity |
+| branch_type_id | VARCHAR(50) | نعم | LOV-ORG-002 | lookupKey: BRANCH_TYPE — يُخزَّن code | نوع الفرع | Branch Type |
+| is_active_fl | SMALLINT | نظام | DEFAULT 1 | 1=نشط، 0=غير نشط | نشط | Active |
+| created_by | VARCHAR(255) | نظام | — | AuditEntityListener | أنشئ بواسطة | Created By |
+| created_at | TIMESTAMP | نظام | — | AuditEntityListener | تاريخ الإنشاء | Created At |
+| updated_by | VARCHAR(255) | نظام | — | AuditEntityListener | عُدِّل بواسطة | Updated By |
+| updated_at | TIMESTAMP | نظام | — | AuditEntityListener | تاريخ التعديل | Updated At |
+| notes | VARCHAR(2000) | لا | — | ملاحظات | ملاحظات | Notes |
 
 ---
 
-### ENTITY-ORG-003 — Region (المنطقة)
+### ENTITY-ORG-003 — المنطقة (Region)
 
 | البند | القيمة |
 |---|---|
 | **النوع** | SHARED (owner: Organization) |
-| **جدول DB** | ORG_REGION — GOVERNED ✓ DBS-ORG-001 |
-| **Business Code** | YES — Format: `RG-[LE]-NNNNN` (فريد ضمن الكيان القانوني) |
+| **DB Table** | ORG_REGION |
+| **Business Code** | YES — Format: `RG-[LE_CODE]-NNNNN` (unique per LegalEntity) |
+| **المصدر** | master-registry v2.7.4 Section 5 + module-registry-ORG.md |
 | **العمليات** | Create, Read, Update, Deactivate |
-| **Cross-Module** | يُنشأ تحت ENTITY-ORG-001 (legalEntityFk NOT NULL RESTRICT) |
-| **ملاحظة** | AQ-003 مؤجّل — المستهلكون عبر SOFT-READ غير محددين بعد |
+| **Cross-Module** | SOFT-READ محتمل من موديولات أخرى — AQ-003 DEFERRED |
 
 #### حقول الكيان
 
-| اسم الحقل | نوع | إلزامي | القيم / المصدر | ملاحظات |
-|---|---|---|---|---|
-| regionPk | NUMBER (PK) | نظام | — | رقم تسلسلي تلقائي |
-| regionCode | VARCHAR2(20) | نظام | — | يُنشأ تلقائياً — Read-Only — فريد ضمن الكيان القانوني |
-| nameAr | VARCHAR2(200) | نعم | — | اسم المنطقة بالعربي |
-| nameEn | VARCHAR2(100) | نعم | — | اسم المنطقة بالإنجليزي |
-| legalEntityFk | NUMBER (FK) | نعم | ENTITY-ORG-001 | NOT NULL — RESTRICT on deactivate |
-| regionTypeId | NUMBER (FK) | نعم | ENTITY-ORG-008 | FK إلى ORG_REGION_TYPE — Reference Table (ليس Lookup) |
-| isActiveFl | NUMBER(1) | نظام | 1 / 0 | 1=نشط، 0=غير نشط |
-| createdBy | VARCHAR2(100) | نظام | — | AuditEntityListener |
-| createdAt | TIMESTAMP | نظام | — | AuditEntityListener |
-| updatedBy | VARCHAR2(100) | نظام | — | AuditEntityListener |
-| updatedAt | TIMESTAMP | نظام | — | AuditEntityListener |
-| notes | VARCHAR2(2000) | لا | — | ملاحظات |
+| اسم الحقل (PG snake_case) | نوع البيانات | إلزامي | القيم / المصدر | ملاحظات | Label-AR | Label-EN |
+|---|---|---|---|---|---|---|
+| region_pk | BIGINT (PK) | نظام | SEQ: ORG_REGION_SEQ | رقم إنشائي تلقائي | المعرف | ID |
+| region_code | VARCHAR(20) | نظام | NumberingEngine | يُنشأ تلقائياً — Read-Only — فريد ضمن الكيان القانوني | الرمز | Code |
+| name_ar | VARCHAR(200) | نعم | — | الاسم بالعربي | الاسم بالعربي | Name (Arabic) |
+| name_en | VARCHAR(100) | نعم | — | الاسم بالإنجليزي | الاسم بالإنجليزي | Name (English) |
+| legal_entity_fk | BIGINT (FK) | نعم | ENTITY-ORG-001 → ORG_LEGAL_ENTITY | NOT NULL — RESTRICT | الكيان القانوني | Legal Entity |
+| region_type_id_fk | BIGINT (FK) | نعم | ENTITY-ORG-008 → ORG_REGION_TYPE | NOT NULL — RESTRICT | نوع المنطقة | Region Type |
+| is_active_fl | SMALLINT | نظام | DEFAULT 1 | 1=نشط، 0=غير نشط | نشط | Active |
+| created_by | VARCHAR(255) | نظام | — | AuditEntityListener | أنشئ بواسطة | Created By |
+| created_at | TIMESTAMP | نظام | — | AuditEntityListener | تاريخ الإنشاء | Created At |
+| updated_by | VARCHAR(255) | نظام | — | AuditEntityListener | عُدِّل بواسطة | Updated By |
+| updated_at | TIMESTAMP | نظام | — | AuditEntityListener | تاريخ التعديل | Updated At |
+| notes | VARCHAR(2000) | لا | — | ملاحظات | ملاحظات | Notes |
 
 ---
 
-### ENTITY-ORG-004 — Department (القسم)
+### ENTITY-ORG-004 — القسم (Department)
 
 | البند | القيمة |
 |---|---|
 | **النوع** | SHARED (owner: Organization) |
-| **جدول DB** | ORG_DEPARTMENT — GOVERNED ✓ DBS-ORG-001 |
-| **Business Code** | YES — Format: `DEP-[BR]-NNNNN` (فريد ضمن الفرع) |
+| **DB Table** | ORG_DEPARTMENT |
+| **Business Code** | YES — Format: `DEP-[BR_CODE]-NNNNN` (unique per Branch) |
+| **المصدر** | master-registry v2.7.4 Section 5 + module-registry-ORG.md |
 | **العمليات** | Create, Read, Update, Deactivate |
-| **Cross-Module** | يُنشأ تحت ENTITY-ORG-002 (branchFk NOT NULL RESTRICT) |
-| **هيكل** | شجري — self-reference (parentDepartmentFk NULLABLE) |
+| **Cross-Module** | مستهلَك من جميع Layer-3 modules عبر HARD-FK |
+| **الهيكل** | شجري — self-reference (parent_department_fk NULLABLE) |
 
 #### حقول الكيان
 
-| اسم الحقل | نوع | إلزامي | القيم / المصدر | ملاحظات |
-|---|---|---|---|---|
-| departmentPk | NUMBER (PK) | نظام | — | رقم تسلسلي تلقائي |
-| deptCode | VARCHAR2(20) | نظام | — | يُنشأ تلقائياً — Read-Only — فريد ضمن الفرع |
-| nameAr | VARCHAR2(200) | نعم | — | اسم القسم بالعربي |
-| nameEn | VARCHAR2(100) | نعم | — | اسم القسم بالإنجليزي |
-| branchFk | NUMBER (FK) | نعم | ENTITY-ORG-002 | NOT NULL — RESTRICT on deactivate |
-| parentDepartmentFk | NUMBER (FK) | لا | ENTITY-ORG-004 (self) | NULLABLE — يُحدد الأب في الشجرة |
-| nodeTypeId | VARCHAR2(50) | نعم | LOV-ORG-003 | lookupKey: DEPARTMENT_NODE_TYPE — SUMMARY / DETAIL |
-| isActiveFl | NUMBER(1) | نظام | 1 / 0 | 1=نشط، 0=غير نشط |
-| createdBy | VARCHAR2(100) | نظام | — | AuditEntityListener |
-| createdAt | TIMESTAMP | نظام | — | AuditEntityListener |
-| updatedBy | VARCHAR2(100) | نظام | — | AuditEntityListener |
-| updatedAt | TIMESTAMP | نظام | — | AuditEntityListener |
-| notes | VARCHAR2(2000) | لا | — | ملاحظات |
+| اسم الحقل (PG snake_case) | نوع البيانات | إلزامي | القيم / المصدر | ملاحظات | Label-AR | Label-EN |
+|---|---|---|---|---|---|---|
+| department_pk | BIGINT (PK) | نظام | SEQ: ORG_DEPARTMENT_SEQ | رقم إنشائي تلقائي | المعرف | ID |
+| department_code | VARCHAR(20) | نظام | NumberingEngine | يُنشأ تلقائياً — Read-Only — فريد ضمن الفرع | الرمز | Code |
+| name_ar | VARCHAR(200) | نعم | — | الاسم بالعربي | الاسم بالعربي | Name (Arabic) |
+| name_en | VARCHAR(100) | نعم | — | الاسم بالإنجليزي | الاسم بالإنجليزي | Name (English) |
+| branch_fk | BIGINT (FK) | نعم | ENTITY-ORG-002 → ORG_BRANCH | NOT NULL — RESTRICT | الفرع | Branch |
+| parent_department_fk | BIGINT (FK) | لا | ENTITY-ORG-004 → ORG_DEPARTMENT (self) | NULLABLE — RESTRICT | القسم الأب | Parent Department |
+| node_type_id | VARCHAR(50) | نعم | LOV-ORG-003 | lookupKey: DEPARTMENT_NODE_TYPE — SUMMARY / DETAIL | نوع العقدة | Node Type |
+| is_active_fl | SMALLINT | نظام | DEFAULT 1 | 1=نشط، 0=غير نشط | نشط | Active |
+| created_by | VARCHAR(255) | نظام | — | AuditEntityListener | أنشئ بواسطة | Created By |
+| created_at | TIMESTAMP | نظام | — | AuditEntityListener | تاريخ الإنشاء | Created At |
+| updated_by | VARCHAR(255) | نظام | — | AuditEntityListener | عُدِّل بواسطة | Updated By |
+| updated_at | TIMESTAMP | نظام | — | AuditEntityListener | تاريخ التعديل | Updated At |
+| notes | VARCHAR(2000) | لا | — | ملاحظات | ملاحظات | Notes |
 
 ---
 
-### ENTITY-ORG-005 — CostCenter (مركز التكلفة)
+### ENTITY-ORG-005 — مركز التكلفة (CostCenter)
 
 | البند | القيمة |
 |---|---|
 | **النوع** | SHARED (owner: Organization) |
-| **جدول DB** | ORG_COST_CENTER — GOVERNED ✓ DBS-ORG-001 |
-| **Business Code** | YES — Format: `CC-[BR]-NNNNN` (فريد ضمن الفرع) |
+| **DB Table** | ORG_COST_CENTER |
+| **Business Code** | YES — Format: `CC-[BR_CODE]-NNNNN` (unique per Branch) |
+| **المصدر** | master-registry v2.7.4 Section 5 + module-registry-ORG.md |
 | **العمليات** | Create, Read, Update, Deactivate |
-| **Cross-Module** | يُنشأ تحت ENTITY-ORG-002 (branchFk NOT NULL RESTRICT) |
-| **هيكل** | شجري — self-reference (parentCostCenterFk NULLABLE) |
+| **Cross-Module** | مستهلَك من Layer-2 و Layer-3 جميعاً عبر HARD-FK — Finance (3.4) مستهلك رئيسي |
+| **الهيكل** | شجري — self-reference (parent_cost_center_fk NULLABLE) |
 
 #### حقول الكيان
 
-| اسم الحقل | نوع | إلزامي | القيم / المصدر | ملاحظات |
-|---|---|---|---|---|
-| costCenterPk | NUMBER (PK) | نظام | — | رقم تسلسلي تلقائي |
-| costCenterCode | VARCHAR2(20) | نظام | — | يُنشأ تلقائياً — Read-Only — فريد ضمن الفرع |
-| nameAr | VARCHAR2(200) | نعم | — | اسم مركز التكلفة بالعربي |
-| nameEn | VARCHAR2(100) | نعم | — | اسم مركز التكلفة بالإنجليزي |
-| branchFk | NUMBER (FK) | نعم | ENTITY-ORG-002 | NOT NULL — RESTRICT on deactivate |
-| parentCostCenterFk | NUMBER (FK) | لا | ENTITY-ORG-005 (self) | NULLABLE — يُحدد الأب في الشجرة |
-| nodeTypeId | VARCHAR2(50) | نعم | LOV-ORG-004 | lookupKey: COST_CENTER_NODE_TYPE — SUMMARY / DETAIL |
-| costCenterTypeId | VARCHAR2(50) | نعم | LOV-ORG-005 | lookupKey: COST_CENTER_TYPE — Direct / Indirect / Shared |
-| isActiveFl | NUMBER(1) | نظام | 1 / 0 | 1=نشط، 0=غير نشط |
-| createdBy | VARCHAR2(100) | نظام | — | AuditEntityListener |
-| createdAt | TIMESTAMP | نظام | — | AuditEntityListener |
-| updatedBy | VARCHAR2(100) | نظام | — | AuditEntityListener |
-| updatedAt | TIMESTAMP | نظام | — | AuditEntityListener |
-| notes | VARCHAR2(2000) | لا | — | ملاحظات |
+| اسم الحقل (PG snake_case) | نوع البيانات | إلزامي | القيم / المصدر | ملاحظات | Label-AR | Label-EN |
+|---|---|---|---|---|---|---|
+| cost_center_pk | BIGINT (PK) | نظام | SEQ: ORG_COST_CENTER_SEQ | رقم إنشائي تلقائي | المعرف | ID |
+| cost_center_code | VARCHAR(20) | نظام | NumberingEngine | يُنشأ تلقائياً — Read-Only — فريد ضمن الفرع | الرمز | Code |
+| name_ar | VARCHAR(200) | نعم | — | الاسم بالعربي | الاسم بالعربي | Name (Arabic) |
+| name_en | VARCHAR(100) | نعم | — | الاسم بالإنجليزي | الاسم بالإنجليزي | Name (English) |
+| branch_fk | BIGINT (FK) | نعم | ENTITY-ORG-002 → ORG_BRANCH | NOT NULL — RESTRICT | الفرع | Branch |
+| parent_cost_center_fk | BIGINT (FK) | لا | ENTITY-ORG-005 → ORG_COST_CENTER (self) | NULLABLE — RESTRICT | مركز التكلفة الأب | Parent Cost Center |
+| node_type_id | VARCHAR(50) | نعم | LOV-ORG-004 | lookupKey: COST_CENTER_NODE_TYPE — SUMMARY / DETAIL | نوع العقدة | Node Type |
+| cost_center_type_id | VARCHAR(50) | نعم | LOV-ORG-005 | lookupKey: COST_CENTER_TYPE — Direct / Indirect / Shared | نوع مركز التكلفة | Cost Center Type |
+| is_active_fl | SMALLINT | نظام | DEFAULT 1 | 1=نشط، 0=غير نشط | نشط | Active |
+| created_by | VARCHAR(255) | نظام | — | AuditEntityListener | أنشئ بواسطة | Created By |
+| created_at | TIMESTAMP | نظام | — | AuditEntityListener | تاريخ الإنشاء | Created At |
+| updated_by | VARCHAR(255) | نظام | — | AuditEntityListener | عُدِّل بواسطة | Updated By |
+| updated_at | TIMESTAMP | نظام | — | AuditEntityListener | تاريخ التعديل | Updated At |
+| notes | VARCHAR(2000) | لا | — | ملاحظات | ملاحظات | Notes |
 
 ---
 
-### ENTITY-ORG-006 — ProfitCenter (مركز الربح)
+### ENTITY-ORG-006 — مركز الربح (ProfitCenter)
 
 | البند | القيمة |
 |---|---|
 | **النوع** | SHARED (owner: Organization) |
-| **جدول DB** | ORG_PROFIT_CENTER — GOVERNED ✓ DBS-ORG-001 |
-| **Business Code** | YES — Format: `PC-[LE]-NNNNN` (فريد ضمن الكيان القانوني) |
+| **DB Table** | ORG_PROFIT_CENTER |
+| **Business Code** | YES — Format: `PC-[LE_CODE]-NNNNN` (unique per LegalEntity) |
+| **المصدر** | master-registry v2.7.4 Section 5 + module-registry-ORG.md |
 | **العمليات** | Create, Read, Update, Deactivate |
-| **Cross-Module** | يُنشأ تحت ENTITY-ORG-001 (legalEntityFk NOT NULL RESTRICT) |
-| **ملاحظة** | مرتبط بالكيان القانوني مباشرة (وحدة تقرير مالي — ليس بالفرع) |
+| **Cross-Module** | مستهلَك من Finance (3.4) وLayer-3 جميعاً عبر HARD-FK |
+| **ملاحظة معمارية** | ProfitCenter تملكه Organization — Finance يستهلكه عبر HARD-FK (قرار CLOSED) |
 
 #### حقول الكيان
 
-| اسم الحقل | نوع | إلزامي | القيم / المصدر | ملاحظات |
-|---|---|---|---|---|
-| profitCenterPk | NUMBER (PK) | نظام | — | رقم تسلسلي تلقائي |
-| profitCenterCode | VARCHAR2(20) | نظام | — | يُنشأ تلقائياً — Read-Only — فريد ضمن الكيان القانوني |
-| nameAr | VARCHAR2(200) | نعم | — | اسم مركز الربح بالعربي |
-| nameEn | VARCHAR2(100) | نعم | — | اسم مركز الربح بالإنجليزي |
-| legalEntityFk | NUMBER (FK) | نعم | ENTITY-ORG-001 | NOT NULL — RESTRICT on deactivate |
-| isActiveFl | NUMBER(1) | نظام | 1 / 0 | 1=نشط، 0=غير نشط |
-| createdBy | VARCHAR2(100) | نظام | — | AuditEntityListener |
-| createdAt | TIMESTAMP | نظام | — | AuditEntityListener |
-| updatedBy | VARCHAR2(100) | نظام | — | AuditEntityListener |
-| updatedAt | TIMESTAMP | نظام | — | AuditEntityListener |
-| notes | VARCHAR2(2000) | لا | — | ملاحظات |
+| اسم الحقل (PG snake_case) | نوع البيانات | إلزامي | القيم / المصدر | ملاحظات | Label-AR | Label-EN |
+|---|---|---|---|---|---|---|
+| profit_center_pk | BIGINT (PK) | نظام | SEQ: ORG_PROFIT_CENTER_SEQ | رقم إنشائي تلقائي | المعرف | ID |
+| profit_center_code | VARCHAR(20) | نظام | NumberingEngine | يُنشأ تلقائياً — Read-Only — فريد ضمن الكيان القانوني | الرمز | Code |
+| name_ar | VARCHAR(200) | نعم | — | الاسم بالعربي | الاسم بالعربي | Name (Arabic) |
+| name_en | VARCHAR(100) | نعم | — | الاسم بالإنجليزي | الاسم بالإنجليزي | Name (English) |
+| legal_entity_fk | BIGINT (FK) | نعم | ENTITY-ORG-001 → ORG_LEGAL_ENTITY | NOT NULL — RESTRICT | الكيان القانوني | Legal Entity |
+| is_active_fl | SMALLINT | نظام | DEFAULT 1 | 1=نشط، 0=غير نشط | نشط | Active |
+| created_by | VARCHAR(255) | نظام | — | AuditEntityListener | أنشئ بواسطة | Created By |
+| created_at | TIMESTAMP | نظام | — | AuditEntityListener | تاريخ الإنشاء | Created At |
+| updated_by | VARCHAR(255) | نظام | — | AuditEntityListener | عُدِّل بواسطة | Updated By |
+| updated_at | TIMESTAMP | نظام | — | AuditEntityListener | تاريخ التعديل | Updated At |
+| notes | VARCHAR(2000) | لا | — | ملاحظات | ملاحظات | Notes |
 
 ---
 
-### ENTITY-ORG-007 — LocationSite (الموقع الجغرافي)
+### ENTITY-ORG-007 — موقع العمل (LocationSite)
 
 | البند | القيمة |
 |---|---|
 | **النوع** | SHARED (owner: Organization) |
-| **جدول DB** | ORG_LOCATION_SITE — GOVERNED ✓ DBS-ORG-001 |
-| **Business Code** | YES — Format: `LS-[BR]-NNNNN` (فريد ضمن الفرع) |
+| **DB Table** | ORG_LOCATION_SITE |
+| **Business Code** | YES — Format: `LS-[BR_CODE]-NNNNN` (unique per Branch) |
+| **المصدر** | master-registry v2.7.4 Section 5 + module-registry-ORG.md |
 | **العمليات** | Create, Read, Update, Deactivate |
-| **Cross-Module** | يُنشأ تحت ENTITY-ORG-002 (branchFk NOT NULL RESTRICT) |
-| **هيكل** | مسطّح (Flat) — لا هيكل شجري |
+| **Cross-Module** | مستهلَك من Inventory (3.2) عبر HARD-FK — مفهوم الموقع المادي L1 |
 
 #### حقول الكيان
 
-| اسم الحقل | نوع | إلزامي | القيم / المصدر | ملاحظات |
-|---|---|---|---|---|
-| locationSitePk | NUMBER (PK) | نظام | — | رقم تسلسلي تلقائي |
-| locationCode | VARCHAR2(20) | نظام | — | يُنشأ تلقائياً — Read-Only — فريد ضمن الفرع |
-| nameAr | VARCHAR2(200) | نعم | — | اسم الموقع بالعربي |
-| nameEn | VARCHAR2(100) | نعم | — | اسم الموقع بالإنجليزي |
-| branchFk | NUMBER (FK) | نعم | ENTITY-ORG-002 | NOT NULL — RESTRICT on deactivate |
-| siteTypeId | VARCHAR2(50) | نعم | LOV-ORG-006 | lookupKey: LOCATION_SITE_TYPE |
-| isActiveFl | NUMBER(1) | نظام | 1 / 0 | 1=نشط، 0=غير نشط |
-| createdBy | VARCHAR2(100) | نظام | — | AuditEntityListener |
-| createdAt | TIMESTAMP | نظام | — | AuditEntityListener |
-| updatedBy | VARCHAR2(100) | نظام | — | AuditEntityListener |
-| updatedAt | TIMESTAMP | نظام | — | AuditEntityListener |
-| notes | VARCHAR2(2000) | لا | — | ملاحظات |
+| اسم الحقل (PG snake_case) | نوع البيانات | إلزامي | القيم / المصدر | ملاحظات | Label-AR | Label-EN |
+|---|---|---|---|---|---|---|
+| location_site_pk | BIGINT (PK) | نظام | SEQ: ORG_LOCATION_SITE_SEQ | رقم إنشائي تلقائي | المعرف | ID |
+| location_site_code | VARCHAR(20) | نظام | NumberingEngine | يُنشأ تلقائياً — Read-Only — فريد ضمن الفرع | الرمز | Code |
+| name_ar | VARCHAR(200) | نعم | — | الاسم بالعربي | الاسم بالعربي | Name (Arabic) |
+| name_en | VARCHAR(100) | نعم | — | الاسم بالإنجليزي | الاسم بالإنجليزي | Name (English) |
+| branch_fk | BIGINT (FK) | نعم | ENTITY-ORG-002 → ORG_BRANCH | NOT NULL — RESTRICT | الفرع | Branch |
+| site_type_id | VARCHAR(50) | نعم | LOV-ORG-006 | lookupKey: LOCATION_SITE_TYPE — يُخزَّن code | نوع الموقع | Site Type |
+| is_active_fl | SMALLINT | نظام | DEFAULT 1 | 1=نشط، 0=غير نشط | نشط | Active |
+| created_by | VARCHAR(255) | نظام | — | AuditEntityListener | أنشئ بواسطة | Created By |
+| created_at | TIMESTAMP | نظام | — | AuditEntityListener | تاريخ الإنشاء | Created At |
+| updated_by | VARCHAR(255) | نظام | — | AuditEntityListener | عُدِّل بواسطة | Updated By |
+| updated_at | TIMESTAMP | نظام | — | AuditEntityListener | تاريخ التعديل | Updated At |
+| notes | VARCHAR(2000) | لا | — | ملاحظات | ملاحظات | Notes |
 
 ---
 
-### ENTITY-ORG-008 — RegionType (نوع المنطقة) — Reference Table
+### ENTITY-ORG-008 — نوع المنطقة (RegionType) — PRIVATE Reference Table
 
 | البند | القيمة |
 |---|---|
-| **النوع** | PRIVATE — Reference Table (قابل للتوسيع بواسطة Admin) |
-| **جدول DB** | ORG_REGION_TYPE — GOVERNED ✓ DBS-ORG-001 |
+| **النوع** | PRIVATE — Reference Table (مملوك بالكامل لـ Organization) |
+| **DB Table** | ORG_REGION_TYPE |
 | **Business Code** | لا — Reference Table |
-| **العمليات** | Create, Read, Update, Deactivate (Admin فقط) |
-| **ملاحظة** | > 15 قيمة متوقعة → Reference Table وليس MD_LOOKUP_DETAIL |
+| **المصدر** | master-registry v2.7.4 Section 5 + business-policies-ORG.md |
+| **العمليات** | Create, Read, Update (Admin only) |
+| **ملاحظة** | > 15 قيمة محتملة → Reference Table مستقل (ليس MD_LOOKUP_DETAIL) — قابل للتوسيع |
 
 #### حقول الكيان
 
-| اسم الحقل | نوع | إلزامي | القيم / المصدر | ملاحظات |
-|---|---|---|---|---|
-| regionTypePk | NUMBER (PK) | نظام | — | رقم تسلسلي تلقائي |
-| nameAr | VARCHAR2(200) | نعم | — | اسم نوع المنطقة بالعربي |
-| nameEn | VARCHAR2(100) | نعم | — | اسم نوع المنطقة بالإنجليزي |
-| isActiveFl | NUMBER(1) | نظام | 1 / 0 | 1=نشط، 0=غير نشط |
-| createdBy | VARCHAR2(100) | نظام | — | AuditEntityListener |
-| createdAt | TIMESTAMP | نظام | — | AuditEntityListener |
-| updatedBy | VARCHAR2(100) | نظام | — | AuditEntityListener |
-| updatedAt | TIMESTAMP | نظام | — | AuditEntityListener |
-
-**القيم الأولية (seed data):**
-
-| nameAr | nameEn |
-|---|---|
-| جغرافي | GEOGRAPHIC |
-| مبيعات | SALES |
-| تشغيلي | OPERATIONAL |
+| اسم الحقل (PG snake_case) | نوع البيانات | إلزامي | القيم / المصدر | ملاحظات | Label-AR | Label-EN |
+|---|---|---|---|---|---|---|
+| region_type_pk | BIGINT (PK) | نظام | SEQ: ORG_REGION_TYPE_SEQ | رقم إنشائي تلقائي | المعرف | ID |
+| region_type_code | VARCHAR(30) | نعم | — | فريد — GEOGRAPHIC / SALES / OPERATIONAL ... | الرمز | Code |
+| name_ar | VARCHAR(200) | نعم | — | الاسم بالعربي | الاسم بالعربي | Name (Arabic) |
+| name_en | VARCHAR(100) | نعم | — | الاسم بالإنجليزي | الاسم بالإنجليزي | Name (English) |
+| is_active_fl | SMALLINT | نظام | DEFAULT 1 | 1=نشط، 0=غير نشط | نشط | Active |
+| created_by | VARCHAR(255) | نظام | — | AuditEntityListener | أنشئ بواسطة | Created By |
+| created_at | TIMESTAMP | نظام | — | AuditEntityListener | تاريخ الإنشاء | Created At |
+| updated_by | VARCHAR(255) | نظام | — | AuditEntityListener | عُدِّل بواسطة | Updated By |
+| updated_at | TIMESTAMP | نظام | — | AuditEntityListener | تاريخ التعديل | Updated At |
 
 ---
 
@@ -347,272 +349,269 @@
 
 > **قاعدة إلزامية:** هذا القسم هو المصدر الوحيد لتعريف القواعد.
 > PART B يُشير للقواعد بـ RULE-ID فقط — لا يُعيد تعريفها.
-> رسائل الخطأ ثنائية اللغة (عربي + إنجليزي) إلزامية في جميع القواعد.
 
 ---
 
-### RULE-ORG-001 — منع تعطيل الكيان القانوني مع فروع نشطة
+### RULE-ORG-001 — منع إلغاء تفعيل الكيان القانوني — فروع نشطة
 
 | البند | القيمة |
 |---|---|
 | **Scope** | ENTITY-ORG-001 |
-| **Trigger** | عند طلب تعطيل Deactivate |
+| **Trigger** | عند محاولة إلغاء تفعيل Deactivate LegalEntity |
 | **Statement** | The system MUST prevent deactivation of a LegalEntity when one or more active Branches reference it |
-| **Message-AR** | لا يمكن تعطيل الكيان القانوني لوجود فروع نشطة مرتبطة به. يرجى تعطيل جميع الفروع أولاً. |
-| **Message-EN** | Cannot deactivate Legal Entity: active branches exist. Please deactivate all branches first. |
-| **Source** | module-registry-ORG.md — RULE-ORG-01 |
+| **Message-AR** | لا يمكن إلغاء تفعيل الكيان القانوني لوجود فروع نشطة مرتبطة به |
+| **Message-EN** | Cannot deactivate Legal Entity: active branches exist |
+| **Source** | RULE-ORG-01 (module-registry-ORG.md) |
 
 ---
 
-### RULE-ORG-002 — منع تعطيل الكيان القانوني مع مراكز ربح نشطة
+### RULE-ORG-002 — منع إلغاء تفعيل الكيان القانوني — مراكز ربح نشطة
 
 | البند | القيمة |
 |---|---|
 | **Scope** | ENTITY-ORG-001 |
-| **Trigger** | عند طلب تعطيل Deactivate |
+| **Trigger** | عند محاولة إلغاء تفعيل Deactivate LegalEntity |
 | **Statement** | The system MUST prevent deactivation of a LegalEntity when one or more active ProfitCenters reference it |
-| **Message-AR** | لا يمكن تعطيل الكيان القانوني لوجود مراكز ربح نشطة مرتبطة به. يرجى تعطيل جميع مراكز الربح أولاً. |
-| **Message-EN** | Cannot deactivate Legal Entity: active profit centers exist. Please deactivate all profit centers first. |
-| **Source** | module-registry-ORG.md — RULE-ORG-02 |
+| **Message-AR** | لا يمكن إلغاء تفعيل الكيان القانوني لوجود مراكز ربح نشطة مرتبطة به |
+| **Message-EN** | Cannot deactivate Legal Entity: active profit centers exist |
+| **Source** | RULE-ORG-02 (module-registry-ORG.md) |
 
 ---
 
-### RULE-ORG-003 — منع تعطيل الفرع مع أقسام نشطة
+### RULE-ORG-003 — منع إلغاء تفعيل الفرع — أقسام نشطة
 
 | البند | القيمة |
 |---|---|
 | **Scope** | ENTITY-ORG-002 |
-| **Trigger** | عند طلب تعطيل Deactivate |
+| **Trigger** | عند محاولة إلغاء تفعيل Deactivate Branch |
 | **Statement** | The system MUST prevent deactivation of a Branch when one or more active Departments reference it |
-| **Message-AR** | لا يمكن تعطيل الفرع لوجود أقسام نشطة مرتبطة به. يرجى تعطيل جميع الأقسام أولاً. |
-| **Message-EN** | Cannot deactivate Branch: active departments exist. Please deactivate all departments first. |
-| **Source** | module-registry-ORG.md — RULE-ORG-03 |
+| **Message-AR** | لا يمكن إلغاء تفعيل الفرع لوجود أقسام نشطة مرتبطة به |
+| **Message-EN** | Cannot deactivate Branch: active departments exist |
+| **Source** | RULE-ORG-03 (module-registry-ORG.md) |
 
 ---
 
-### RULE-ORG-004 — منع تعطيل الفرع مع مراكز تكلفة نشطة
+### RULE-ORG-004 — منع إلغاء تفعيل الفرع — مراكز تكلفة نشطة
 
 | البند | القيمة |
 |---|---|
 | **Scope** | ENTITY-ORG-002 |
-| **Trigger** | عند طلب تعطيل Deactivate |
+| **Trigger** | عند محاولة إلغاء تفعيل Deactivate Branch |
 | **Statement** | The system MUST prevent deactivation of a Branch when one or more active CostCenters reference it |
-| **Message-AR** | لا يمكن تعطيل الفرع لوجود مراكز تكلفة نشطة مرتبطة به. يرجى تعطيل جميع مراكز التكلفة أولاً. |
-| **Message-EN** | Cannot deactivate Branch: active cost centers exist. Please deactivate all cost centers first. |
-| **Source** | module-registry-ORG.md — RULE-ORG-04 |
+| **Message-AR** | لا يمكن إلغاء تفعيل الفرع لوجود مراكز تكلفة نشطة مرتبطة به |
+| **Message-EN** | Cannot deactivate Branch: active cost centers exist |
+| **Source** | RULE-ORG-04 (module-registry-ORG.md) |
 
 ---
 
-### RULE-ORG-005 — منع تعطيل الفرع مع مواقع جغرافية نشطة
+### RULE-ORG-005 — منع إلغاء تفعيل الفرع — مواقع عمل نشطة
 
 | البند | القيمة |
 |---|---|
 | **Scope** | ENTITY-ORG-002 |
-| **Trigger** | عند طلب تعطيل Deactivate |
+| **Trigger** | عند محاولة إلغاء تفعيل Deactivate Branch |
 | **Statement** | The system MUST prevent deactivation of a Branch when one or more active LocationSites reference it |
-| **Message-AR** | لا يمكن تعطيل الفرع لوجود مواقع جغرافية نشطة مرتبطة به. يرجى تعطيل جميع المواقع أولاً. |
-| **Message-EN** | Cannot deactivate Branch: active location sites exist. Please deactivate all location sites first. |
-| **Source** | module-registry-ORG.md — RULE-ORG-05 |
+| **Message-AR** | لا يمكن إلغاء تفعيل الفرع لوجود مواقع عمل نشطة مرتبطة به |
+| **Message-EN** | Cannot deactivate Branch: active location sites exist |
+| **Source** | RULE-ORG-05 (module-registry-ORG.md) |
 
 ---
 
-### RULE-ORG-006 — منع تعطيل المنطقة مع فروع نشطة تشير إليها
+### RULE-ORG-006 — منع إلغاء تفعيل المنطقة — فروع مرتبطة نشطة
 
 | البند | القيمة |
 |---|---|
 | **Scope** | ENTITY-ORG-003 |
-| **Trigger** | عند طلب تعطيل Deactivate |
+| **Trigger** | عند محاولة إلغاء تفعيل Deactivate Region |
 | **Statement** | The system MUST prevent deactivation of a Region when one or more active Branches reference it |
-| **Message-AR** | لا يمكن تعطيل المنطقة لوجود فروع نشطة مرتبطة بها. يرجى إلغاء ربط الفروع أولاً. |
-| **Message-EN** | Cannot deactivate Region: active branches reference it. Please unlink branches first. |
-| **Source** | module-registry-ORG.md — RULE-ORG-06 |
-| **ملاحظة** | يرتبط بـ OQ-001: تأثير التعطيل على مستهلكي SOFT-READ غير محدد |
+| **Message-AR** | لا يمكن إلغاء تفعيل المنطقة لوجود فروع نشطة مرتبطة بها |
+| **Message-EN** | Cannot deactivate Region: active branches reference it |
+| **Source** | RULE-ORG-06 (module-registry-ORG.md) |
+| **Test-Hint** | تحقق من الفروع النشطة فقط (is_active_fl=1) — لا يُمنع إذا كانت الفروع المرتبطة غير نشطة |
 
 ---
 
-### RULE-ORG-007 — منع المرجع الدائري في شجرة الأقسام
+### RULE-ORG-007 — منع الدورة في هيكل الأقسام
 
 | البند | القيمة |
 |---|---|
 | **Scope** | ENTITY-ORG-004 |
-| **Trigger** | عند الحفظ (Create أو Update لـ parentDepartmentFk) |
-| **Statement** | The system MUST prevent circular parent references in the Department tree — a Department may not be set as its own ancestor |
-| **Message-AR** | لا يمكن تعيين هذا القسم أباً لأن ذلك سيُنشئ حلقة دائرية في الهيكل الشجري. |
-| **Message-EN** | Cannot set this department as parent: circular reference detected in department hierarchy. |
-| **Source** | module-registry-ORG.md — RULE-ORG-07 |
+| **Trigger** | عند إنشاء أو تعديل parent_department_fk |
+| **Statement** | The system MUST prevent assignment of a parent Department that would create a circular reference in the Department tree |
+| **Message-AR** | لا يمكن تعيين هذا القسم كقسم أب — سيؤدي إلى دورة في هيكل الأقسام |
+| **Message-EN** | Cannot set parent department: circular reference detected |
+| **Source** | RULE-ORG-07 (module-registry-ORG.md) |
 
 ---
 
-### RULE-ORG-008 — منع المرجع الدائري في شجرة مراكز التكلفة
+### RULE-ORG-008 — منع الدورة في هيكل مراكز التكلفة
 
 | البند | القيمة |
 |---|---|
 | **Scope** | ENTITY-ORG-005 |
-| **Trigger** | عند الحفظ (Create أو Update لـ parentCostCenterFk) |
-| **Statement** | The system MUST prevent circular parent references in the CostCenter tree — a CostCenter may not be set as its own ancestor |
-| **Message-AR** | لا يمكن تعيين مركز التكلفة هذا أباً لأن ذلك سيُنشئ حلقة دائرية في الهيكل الشجري. |
-| **Message-EN** | Cannot set this cost center as parent: circular reference detected in cost center hierarchy. |
-| **Source** | module-registry-ORG.md — RULE-ORG-08 |
+| **Trigger** | عند إنشاء أو تعديل parent_cost_center_fk |
+| **Statement** | The system MUST prevent assignment of a parent CostCenter that would create a circular reference in the CostCenter tree |
+| **Message-AR** | لا يمكن تعيين مركز التكلفة هذا كأب — سيؤدي إلى دورة في هيكل مراكز التكلفة |
+| **Message-EN** | Cannot set parent cost center: circular reference detected |
+| **Source** | RULE-ORG-08 (module-registry-ORG.md) |
 
 ---
 
-### RULE-ORG-009 — منع ربط القسم SUMMARY بسجلات معاملات
+### RULE-ORG-009 — منع استخدام قسم SUMMARY في السجلات التشغيلية
 
 | البند | القيمة |
 |---|---|
 | **Scope** | ENTITY-ORG-004 |
-| **Trigger** | عند محاولة ربط قسم بسجل معاملة (يُطبَّق من الموديولات المستهلكة) |
-| **Statement** | The system MUST prevent assignment of a Department with nodeType=SUMMARY to any transactional record — only DETAIL departments may be directly assigned |
-| **Message-AR** | لا يمكن ربط قسم تجميعي (SUMMARY) بسجل معاملة مباشرة. يرجى اختيار قسم تفصيلي (DETAIL). |
-| **Message-EN** | Cannot assign a SUMMARY department to a transaction. Please select a DETAIL department. |
-| **Source** | module-registry-ORG.md — RULE-ORG-09 |
-| **ملاحظة** | يُطبَّق من الموديولات المستهلكة — موثَّق هنا كمصدر حقيقة واحد |
+| **Trigger** | عند محاولة ربط قسم بسجل تشغيلي في أي موديول مستهلك |
+| **Statement** | The system MUST prevent direct assignment of a SUMMARY-type Department to any transactional record |
+| **Message-AR** | لا يمكن استخدام قسم من نوع (ملخص) في السجلات التشغيلية — يُسمح فقط بأقسام من نوع (تفصيل) |
+| **Message-EN** | Cannot assign a SUMMARY department to transactional records — only DETAIL departments are permitted |
+| **Source** | RULE-ORG-09 (module-registry-ORG.md) |
+| **Test-Hint** | هذه القاعدة مُطبَّقة في طبقة التطبيق لدى الموديولات المستهلكة — ليس في Organization مباشرة |
 
 ---
 
-### RULE-ORG-010 — منع ربط مركز التكلفة SUMMARY بسجلات معاملات
+### RULE-ORG-010 — منع استخدام مركز تكلفة SUMMARY في السجلات التشغيلية
 
 | البند | القيمة |
 |---|---|
 | **Scope** | ENTITY-ORG-005 |
-| **Trigger** | عند محاولة ربط مركز تكلفة بسجل معاملة (يُطبَّق من الموديولات المستهلكة) |
-| **Statement** | The system MUST prevent assignment of a CostCenter with nodeType=SUMMARY to any transactional record — only DETAIL cost centers may be directly assigned |
-| **Message-AR** | لا يمكن ربط مركز تكلفة تجميعي (SUMMARY) بسجل معاملة مباشرة. يرجى اختيار مركز تكلفة تفصيلي (DETAIL). |
-| **Message-EN** | Cannot assign a SUMMARY cost center to a transaction. Please select a DETAIL cost center. |
-| **Source** | module-registry-ORG.md — RULE-ORG-10 |
-| **ملاحظة** | يُطبَّق من الموديولات المستهلكة — موثَّق هنا كمصدر حقيقة واحد |
+| **Trigger** | عند محاولة ربط مركز تكلفة بسجل تشغيلي في أي موديول مستهلك |
+| **Statement** | The system MUST prevent direct assignment of a SUMMARY-type CostCenter to any transactional record |
+| **Message-AR** | لا يمكن استخدام مركز تكلفة من نوع (ملخص) في السجلات التشغيلية — يُسمح فقط بمراكز من نوع (تفصيل) |
+| **Message-EN** | Cannot assign a SUMMARY cost center to transactional records — only DETAIL cost centers are permitted |
+| **Source** | RULE-ORG-10 (module-registry-ORG.md) |
+| **Test-Hint** | هذه القاعدة مُطبَّقة في طبقة التطبيق لدى الموديولات المستهلكة — ليس في Organization مباشرة |
 
 ---
 
-### RULE-ORG-011 — ثبات رموز الأعمال بعد الحفظ الأول
+### RULE-ORG-011 — ثبات رمز الأعمال بعد الحفظ
 
 | البند | القيمة |
 |---|---|
-| **Scope** | ENTITY-ORG-001, 002, 003, 004, 005, 006, 007 |
-| **Trigger** | عند محاولة تعديل أي حقل Business Code |
-| **Statement** | The system MUST prevent any modification to business codes (legalEntityCode, branchCode, regionCode, deptCode, costCenterCode, profitCenterCode, locationCode) after their initial creation — they are permanently immutable |
-| **Message-AR** | رمز الأعمال لا يمكن تعديله بعد الإنشاء الأول — هذه القيمة ثابتة نهائياً. |
-| **Message-EN** | Business code is immutable after creation and cannot be modified. |
-| **Source** | module-registry-ORG.md — RULE-ORG-11 / master-registry Section 4 |
-| **Test-Hint** | تحقق من أن حقل الرمز غير موجود في Update DTO بالكلية — لا مجرد validation |
+| **Scope** | جميع الكيانات: ENTITY-ORG-001 إلى ENTITY-ORG-007 |
+| **Trigger** | عند محاولة تعديل حقل الرمز (Business Code) لأي كيان |
+| **Statement** | The system MUST prevent modification of the Business Code field after the record has been saved for the first time |
+| **Message-AR** | رمز الأعمال لا يمكن تعديله بعد الحفظ الأول — هذا الحقل محمي ونهائي |
+| **Message-EN** | Business Code is immutable after first save and cannot be modified |
+| **Source** | RULE-ORG-11 / BC-RULE-4 (module-registry-ORG.md + Section 5.5.5) |
 
 ---
 
-### RULE-ORG-012 — فريد رموز الأعمال ضمن النطاق المحدد
+### RULE-ORG-012 — فريدية رمز الأعمال ضمن النطاق المحدد
 
 | البند | القيمة |
 |---|---|
-| **Scope** | ENTITY-ORG-001, 002, 003, 004, 005, 006, 007 |
-| **Trigger** | عند الحفظ الأول (Create) |
-| **Statement** | The system MUST ensure business codes are unique within their defined scope: LegalEntity globally, Branch per LegalEntity, Department per Branch, CostCenter per Branch, ProfitCenter per LegalEntity, Region per LegalEntity, LocationSite per Branch |
-| **Message-AR** | رمز الأعمال المُنشأ تلقائياً موجود مسبقاً. يرجى المحاولة مجدداً. |
-| **Message-EN** | Generated business code already exists. Please retry the operation. |
-| **Source** | module-registry-ORG.md — RULE-ORG-12 |
-| **ملاحظة** | يتولى NumberingEngine ضمان التفرد — هذه القاعدة تُوثّق السلوك المتوقع |
+| **Scope** | جميع الكيانات: ENTITY-ORG-001 إلى ENTITY-ORG-007 |
+| **Trigger** | عند إنشاء كيان جديد — NumberingEngine يتحقق أوتوماتياً |
+| **Statement** | The system MUST ensure the Business Code generated by NumberingEngine is globally unique within its defined scope (LegalEntity: global; Branch/Department/CostCenter/LocationSite: per LegalEntity or Branch; ProfitCenter/Region: per LegalEntity) |
+| **Message-AR** | تعذّر إنشاء رمز الأعمال — تعارض في التسلسل. يرجى المحاولة مرة أخرى |
+| **Message-EN** | Business Code generation failed due to sequence conflict. Please retry |
+| **Source** | RULE-ORG-12 (module-registry-ORG.md) |
 
 ---
 
-### RULE-ORG-013 — إلزامية اختيار الكيان القانوني عند إنشاء الفرع
+### RULE-ORG-013 — توليد رمز الأعمال عبر NumberingEngine حصراً
+
+| البند | القيمة |
+|---|---|
+| **Scope** | جميع الكيانات: ENTITY-ORG-001 إلى ENTITY-ORG-007 |
+| **Trigger** | عند الحفظ الأول لأي كيان |
+| **Statement** | The system MUST generate the Business Code exclusively through NumberingEngine — no module may implement its own numbering logic |
+| **Message-AR** | يجب إنشاء رمز الأعمال عبر محرك الترقيم المركزي فقط |
+| **Message-EN** | Business Code must be generated via NumberingEngine only |
+| **Source** | BC-RULE-6 / RULE-ORG-016 (Section 5.5.5 + module-registry-ORG.md) |
+
+---
+
+### RULE-ORG-014 — منع تعديل الرمز في عملية التحديث
+
+| البند | القيمة |
+|---|---|
+| **Scope** | جميع الكيانات: ENTITY-ORG-001 إلى ENTITY-ORG-007 |
+| **Trigger** | عند استقبال طلب PUT — فحص الحقول المُرسَلة |
+| **Statement** | The system MUST reject any Update request that includes the Business Code field in its payload — the field must be excluded from Update DTOs |
+| **Message-AR** | رمز الأعمال لا يُقبل ضمن طلبات التعديل |
+| **Message-EN** | Business Code field is not accepted in update requests |
+| **Source** | BC-RULE-4 (Section 5.5.5) |
+
+---
+
+### RULE-ORG-015 — فريدية الاسم ضمن النطاق الأب
+
+| البند | القيمة |
+|---|---|
+| **Scope** | جميع الكيانات: ENTITY-ORG-001 إلى ENTITY-ORG-007 |
+| **Trigger** | عند الإنشاء أو التعديل |
+| **Statement** | The system MUST prevent saving a record whose name_ar or name_en duplicates an existing active record within the same parent scope (e.g., same LegalEntity for Branches, same Branch for Departments) |
+| **Message-AR** | الاسم مُستخدم مسبقاً ضمن نفس النطاق — يرجى اختيار اسم مختلف |
+| **Message-EN** | Name already exists within the same parent scope — please choose a different name |
+| **Source** | ARCH-5 (Section 5.5.3) |
+
+---
+
+### RULE-ORG-016 — منع تعديل حقول Audit
+
+| البند | القيمة |
+|---|---|
+| **Scope** | جميع الكيانات: ENTITY-ORG-001 إلى ENTITY-ORG-007 |
+| **Trigger** | عند استقبال أي طلب Create أو Update |
+| **Statement** | The system MUST reject any request payload that includes audit fields (created_by, created_at, updated_by, updated_at) — these are populated exclusively by AuditEntityListener |
+| **Message-AR** | حقول التدقيق لا تُقبل من المستخدم — يملؤها النظام تلقائياً |
+| **Message-EN** | Audit fields are not accepted in request payloads — populated by system only |
+| **Source** | Section 5.4.2 — AuditEntityListener pattern |
+
+---
+
+### RULE-ORG-017 — منع إلغاء تفعيل الفرع لوجود region_fk
+
+| البند | القيمة |
+|---|---|
+| **Scope** | ENTITY-ORG-003 |
+| **Trigger** | عند محاولة إلغاء تفعيل Region |
+| **Statement** | The system MUST check for consuming modules referencing an active Region record via SOFT-READ before allowing deactivation, and must surface appropriate warnings if any are detected |
+| **Message-AR** | تحذير: المنطقة مُستخدمة من موديولات أخرى — تأكد من مراجعة الأثر قبل إلغاء التفعيل |
+| **Message-EN** | Warning: Region is referenced by other modules — review impact before deactivating |
+| **Source** | ARCH-8 auto-raise — AQ-003 / OQ-001 |
+
+---
+
+### RULE-ORG-018 — فرع يجب أن ينتمي لكيان قانوني نشط
 
 | البند | القيمة |
 |---|---|
 | **Scope** | ENTITY-ORG-002 |
-| **Trigger** | عند الحفظ (Create) |
-| **Statement** | The system MUST require a valid active LegalEntity reference before saving a new Branch |
-| **Message-AR** | يرجى اختيار كيان قانوني نشط لربط الفرع به. |
-| **Message-EN** | A valid active Legal Entity must be selected before saving a Branch. |
-| **Source** | علاقة ENTITY-ORG-001 → ENTITY-ORG-002 (NOT NULL) |
+| **Trigger** | عند إنشاء Branch جديد |
+| **Statement** | The system MUST prevent creation of a Branch under an inactive LegalEntity |
+| **Message-AR** | لا يمكن إنشاء فرع تحت كيان قانوني غير نشط |
+| **Message-EN** | Cannot create a Branch under an inactive Legal Entity |
+| **Source** | Business integrity rule — ARCH-4 |
 
 ---
 
-### RULE-ORG-014 — إلزامية اختيار الفرع عند إنشاء القسم
+### RULE-ORG-019 — قسم / مركز تكلفة / موقع تحت فرع نشط فقط
 
 | البند | القيمة |
 |---|---|
-| **Scope** | ENTITY-ORG-004 |
-| **Trigger** | عند الحفظ (Create) |
-| **Statement** | The system MUST require a valid active Branch reference before saving a new Department |
-| **Message-AR** | يرجى اختيار فرع نشط لربط القسم به. |
-| **Message-EN** | A valid active Branch must be selected before saving a Department. |
-| **Source** | علاقة ENTITY-ORG-002 → ENTITY-ORG-004 (NOT NULL) |
+| **Scope** | ENTITY-ORG-004, ENTITY-ORG-005, ENTITY-ORG-007 |
+| **Trigger** | عند إنشاء Department أو CostCenter أو LocationSite |
+| **Statement** | The system MUST prevent creation of a Department, CostCenter, or LocationSite under an inactive Branch |
+| **Message-AR** | لا يمكن إنشاء قسم أو مركز تكلفة أو موقع عمل تحت فرع غير نشط |
+| **Message-EN** | Cannot create organizational unit under an inactive Branch |
+| **Source** | Business integrity rule — ARCH-4 |
 
 ---
 
-### RULE-ORG-015 — إلزامية اختيار الفرع عند إنشاء مركز التكلفة
+### RULE-ORG-020 — حقل node_type_id ثابت بعد الحفظ للأقسام
 
 | البند | القيمة |
 |---|---|
-| **Scope** | ENTITY-ORG-005 |
-| **Trigger** | عند الحفظ (Create) |
-| **Statement** | The system MUST require a valid active Branch reference before saving a new CostCenter |
-| **Message-AR** | يرجى اختيار فرع نشط لربط مركز التكلفة به. |
-| **Message-EN** | A valid active Branch must be selected before saving a CostCenter. |
-| **Source** | علاقة ENTITY-ORG-002 → ENTITY-ORG-005 (NOT NULL) |
-
----
-
-### RULE-ORG-016 — توليد رموز الأعمال حصراً عبر NumberingEngine
-
-| البند | القيمة |
-|---|---|
-| **Scope** | ENTITY-ORG-001, 002, 003, 004, 005, 006, 007 |
-| **Trigger** | عند الحفظ الأول (Create) |
-| **Statement** | The system MUST generate all business codes exclusively through NumberingEngine — no module may implement its own numbering logic |
-| **Message-AR** | — (قاعدة بنية — لا رسالة للمستخدم) |
-| **Message-EN** | — (Architectural rule — no user-facing message) |
-| **Source** | master-registry Section 8 — NUMBERING RULES / BC-RULE-6 |
-
----
-
-### RULE-ORG-017 — منع القسم الأب من كونه قسماً غير نشط
-
-| البند | القيمة |
-|---|---|
-| **Scope** | ENTITY-ORG-004 |
-| **Trigger** | عند الحفظ (Create أو Update لـ parentDepartmentFk) |
-| **Statement** | The system MUST prevent assigning an inactive Department as the parent of another Department |
-| **Message-AR** | لا يمكن تعيين قسم غير نشط أباً للقسم. يرجى اختيار قسم نشط. |
-| **Message-EN** | Cannot set an inactive department as parent. Please select an active department. |
-| **Source** | قاعدة سلامة الشجرة — Section M.1 |
-
----
-
-### RULE-ORG-018 — منع مركز التكلفة الأب من كونه غير نشط
-
-| البند | القيمة |
-|---|---|
-| **Scope** | ENTITY-ORG-005 |
-| **Trigger** | عند الحفظ (Create أو Update لـ parentCostCenterFk) |
-| **Statement** | The system MUST prevent assigning an inactive CostCenter as the parent of another CostCenter |
-| **Message-AR** | لا يمكن تعيين مركز تكلفة غير نشط أباً لمركز التكلفة. يرجى اختيار مركز تكلفة نشط. |
-| **Message-EN** | Cannot set an inactive cost center as parent. Please select an active cost center. |
-| **Source** | قاعدة سلامة الشجرة — Section M.1 |
-
----
-
-### RULE-ORG-019 — إلزامية اختيار الكيان القانوني عند إنشاء المنطقة
-
-| البند | القيمة |
-|---|---|
-| **Scope** | ENTITY-ORG-003 |
-| **Trigger** | عند الحفظ (Create) |
-| **Statement** | The system MUST require a valid active LegalEntity reference before saving a new Region |
-| **Message-AR** | يرجى اختيار كيان قانوني نشط لربط المنطقة به. |
-| **Message-EN** | A valid active Legal Entity must be selected before saving a Region. |
-| **Source** | علاقة ENTITY-ORG-001 → ENTITY-ORG-003 (NOT NULL) |
-
----
-
-### RULE-ORG-020 — إلزامية اختيار الكيان القانوني عند إنشاء مركز الربح
-
-| البند | القيمة |
-|---|---|
-| **Scope** | ENTITY-ORG-006 |
-| **Trigger** | عند الحفظ (Create) |
-| **Statement** | The system MUST require a valid active LegalEntity reference before saving a new ProfitCenter |
-| **Message-AR** | يرجى اختيار كيان قانوني نشط لربط مركز الربح به. |
-| **Message-EN** | A valid active Legal Entity must be selected before saving a ProfitCenter. |
-| **Source** | علاقة ENTITY-ORG-001 → ENTITY-ORG-006 (NOT NULL) |
+| **Scope** | ENTITY-ORG-004, ENTITY-ORG-005 |
+| **Trigger** | عند محاولة تعديل node_type_id بعد الحفظ الأول |
+| **Statement** | The system MUST prevent modification of the node_type_id (SUMMARY / DETAIL) after a Department or CostCenter record has been saved, as this would corrupt the tree integrity |
+| **Message-AR** | لا يمكن تغيير نوع العقدة (ملخص/تفصيل) بعد الحفظ |
+| **Message-EN** | Node type (SUMMARY/DETAIL) cannot be changed after initial save |
+| **Source** | Tree integrity rule — ARCH-4 |
 
 ---
 
@@ -620,105 +619,92 @@
 
 > **قاعدة إلزامية:** هذا القسم هو المصدر الوحيد لتعريف LOVs.
 > PART B يُشير للـ LOVs بـ LOV-ID أو lookupKey فقط — لا يُعيد تعريفها.
-> الاستهلاك: `GET /api/lookups/{lookupKey}?active=true`
+> **جميع LOVs تُستهلك عبر:** GET /api/lookups/{lookup_key}?active=true
+> **القيمة المُخزَّنة:** code من MD_LOOKUP_DETAIL (ليس id)
 
 ---
 
-### LOV-ORG-001 — LEGAL_ENTITY_TYPE (نوع الكيان القانوني)
+### LOV-ORG-001 — نوع الكيان القانوني
 
 | البند | القيمة |
 |---|---|
-| **الحقل** | LegalEntity.entityTypeId |
-| **ENTITY-ID** | ENTITY-ORG-001 |
-| **نوع التحكم** | Dropdown (4 قيم ≤ 15) |
+| **الحقل** | ENTITY-ORG-001.entity_type_id |
+| **نوع التحكم** | Dropdown (≤ 15 — قيم ثابتة محدودة) |
 | **lookupKey** | LEGAL_ENTITY_TYPE |
 | **المصدر** | MD_LOOKUP_DETAIL |
 | **المالك** | Organization |
-| **API الاستهلاك** | GET /api/lookups/LEGAL_ENTITY_TYPE?active=true |
 
 | code | الاسم بالعربي | الاسم بالإنجليزي |
 |---|---|---|
 | HEAD_OFFICE | المقر الرئيسي | Head Office |
 | BRANCH_OFFICE | مكتب فرعي | Branch Office |
 | SUBSIDIARY | شركة تابعة | Subsidiary |
-| REPRESENTATIVE_OFFICE | مكتب تمثيل | Representative Office |
-
-> ⚠ القيمة المُخزَّنة في LegalEntity.entityTypeId: code من MD_LOOKUP_DETAIL (مثال: "HEAD_OFFICE")
+| REPRESENTATIVE_OFFICE | مكتب تمثيلي | Representative Office |
 
 ---
 
-### LOV-ORG-002 — BRANCH_TYPE (نوع الفرع)
+### LOV-ORG-002 — نوع الفرع
 
 | البند | القيمة |
 |---|---|
-| **الحقل** | Branch.branchTypeId |
-| **ENTITY-ID** | ENTITY-ORG-002 |
-| **نوع التحكم** | Dropdown (4 قيم ≤ 15) |
+| **الحقل** | ENTITY-ORG-002.branch_type_id |
+| **نوع التحكم** | Dropdown (≤ 15) |
 | **lookupKey** | BRANCH_TYPE |
 | **المصدر** | MD_LOOKUP_DETAIL |
 | **المالك** | Organization |
-| **API الاستهلاك** | GET /api/lookups/BRANCH_TYPE?active=true |
 
 | code | الاسم بالعربي | الاسم بالإنجليزي |
 |---|---|---|
-| MAIN_BRANCH | الفرع الرئيسي | Main Branch |
+| MAIN_BRANCH | فرع رئيسي | Main Branch |
 | SUB_BRANCH | فرع فرعي | Sub-Branch |
-| OPERATIONS_BRANCH | فرع عمليات | Operations Branch |
+| OPERATIONS_BRANCH | فرع العمليات | Operations Branch |
 | ADMIN_BRANCH | فرع إداري | Admin Branch |
-
-> ⚠ القيمة المُخزَّنة في Branch.branchTypeId: code من MD_LOOKUP_DETAIL
 
 ---
 
-### LOV-ORG-003 — DEPARTMENT_NODE_TYPE (نوع عقدة القسم)
+### LOV-ORG-003 — نوع عقدة القسم
 
 | البند | القيمة |
 |---|---|
-| **الحقل** | Department.nodeTypeId |
-| **ENTITY-ID** | ENTITY-ORG-004 |
-| **نوع التحكم** | Dropdown (2 قيم ≤ 15) |
+| **الحقل** | ENTITY-ORG-004.node_type_id |
+| **نوع التحكم** | Dropdown (2 قيم ثابتة) |
 | **lookupKey** | DEPARTMENT_NODE_TYPE |
 | **المصدر** | MD_LOOKUP_DETAIL |
 | **المالك** | Organization |
-| **API الاستهلاك** | GET /api/lookups/DEPARTMENT_NODE_TYPE?active=true |
 
 | code | الاسم بالعربي | الاسم بالإنجليزي |
 |---|---|---|
-| SUMMARY | تجميعي | Summary |
-| DETAIL | تفصيلي | Detail |
+| SUMMARY | ملخص | Summary |
+| DETAIL | تفصيل | Detail |
 
 ---
 
-### LOV-ORG-004 — COST_CENTER_NODE_TYPE (نوع عقدة مركز التكلفة)
+### LOV-ORG-004 — نوع عقدة مركز التكلفة
 
 | البند | القيمة |
 |---|---|
-| **الحقل** | CostCenter.nodeTypeId |
-| **ENTITY-ID** | ENTITY-ORG-005 |
-| **نوع التحكم** | Dropdown (2 قيم ≤ 15) |
+| **الحقل** | ENTITY-ORG-005.node_type_id |
+| **نوع التحكم** | Dropdown (2 قيم ثابتة) |
 | **lookupKey** | COST_CENTER_NODE_TYPE |
 | **المصدر** | MD_LOOKUP_DETAIL |
 | **المالك** | Organization |
-| **API الاستهلاك** | GET /api/lookups/COST_CENTER_NODE_TYPE?active=true |
 
 | code | الاسم بالعربي | الاسم بالإنجليزي |
 |---|---|---|
-| SUMMARY | تجميعي | Summary |
-| DETAIL | تفصيلي | Detail |
+| SUMMARY | ملخص | Summary |
+| DETAIL | تفصيل | Detail |
 
 ---
 
-### LOV-ORG-005 — COST_CENTER_TYPE (نوع مركز التكلفة)
+### LOV-ORG-005 — نوع مركز التكلفة
 
 | البند | القيمة |
 |---|---|
-| **الحقل** | CostCenter.costCenterTypeId |
-| **ENTITY-ID** | ENTITY-ORG-005 |
-| **نوع التحكم** | Dropdown (3 قيم ≤ 15) |
+| **الحقل** | ENTITY-ORG-005.cost_center_type_id |
+| **نوع التحكم** | Dropdown (≤ 15) |
 | **lookupKey** | COST_CENTER_TYPE |
 | **المصدر** | MD_LOOKUP_DETAIL |
 | **المالك** | Organization |
-| **API الاستهلاك** | GET /api/lookups/COST_CENTER_TYPE?active=true |
 
 | code | الاسم بالعربي | الاسم بالإنجليزي |
 |---|---|---|
@@ -728,17 +714,15 @@
 
 ---
 
-### LOV-ORG-006 — LOCATION_SITE_TYPE (نوع الموقع الجغرافي)
+### LOV-ORG-006 — نوع موقع العمل
 
 | البند | القيمة |
 |---|---|
-| **الحقل** | LocationSite.siteTypeId |
-| **ENTITY-ID** | ENTITY-ORG-007 |
-| **نوع التحكم** | Dropdown (5 قيم ≤ 15) |
+| **الحقل** | ENTITY-ORG-007.site_type_id |
+| **نوع التحكم** | Dropdown (≤ 15) |
 | **lookupKey** | LOCATION_SITE_TYPE |
 | **المصدر** | MD_LOOKUP_DETAIL |
 | **المالك** | Organization |
-| **API الاستهلاك** | GET /api/lookups/LOCATION_SITE_TYPE?active=true |
 
 | code | الاسم بالعربي | الاسم بالإنجليزي |
 |---|---|---|
@@ -746,74 +730,52 @@
 | WAREHOUSE | مستودع | Warehouse |
 | FACTORY | مصنع | Factory |
 | SITE | موقع | Site |
-| RETAIL | منفذ بيع | Retail |
-
----
-
-### LOV-ORG-007 — REGION_TYPE (Reference Table)
-
-| البند | القيمة |
-|---|---|
-| **الحقل** | Region.regionTypeId |
-| **ENTITY-ID** | ENTITY-ORG-003 |
-| **نوع التحكم** | LOV من Reference Table (> 15 قيمة متوقعة) |
-| **جدول DB** | ORG_REGION_TYPE (ENTITY-ORG-008) |
-| **المالك** | Organization |
-| **API الاستهلاك** | GET /api/v1/org/region-types?active=true |
-
-> ⚠ ليس MD_LOOKUP_DETAIL — هذا Reference Table مستقل يُدار بواسطة Admin
-> القيم الأولية: GEOGRAPHIC / SALES / OPERATIONAL — قابل للتوسيع
+| RETAIL | متجر | Retail |
 
 ---
 
 ## A6 — دورة الحالة (Status Lifecycle)
 
-> **حسب RULE-13 وSection M.1:** جميع الكيانات السبعة تستخدم isActiveFl حصراً.
-> حالتان فقط: نشط (1) ↔ غير نشط (0).
-> لا lifecycle معقد — لا workflow — لا approval flow.
+> جميع كيانات ORG-001 (ENTITY-ORG-001 إلى ENTITY-ORG-007) تستخدم:
+> **is_active_fl** فقط — حالتان: نشط (1) ↔ غير نشط (0)
+> لا workflow — لا approval flow — لا محطات وسيطة
+> إلغاء التفعيل محكوم بقواعد RULE-ORG-001 إلى RULE-ORG-006
 
 ```
-[نشط — isActiveFl=1] ◄──── إعادة تفعيل (Reactivate)
-         │
-         │ تعطيل (Deactivate)
-         │ [محكوم بـ RULE-ORG-001 حتى RULE-ORG-006]
-         ▼
-[غير نشط — isActiveFl=0]
-```
+[نشط: is_active_fl=1] ◄──────────────► [غير نشط: is_active_fl=0]
+       ▲                                         │
+       └────── إعادة التفعيل (Update PUT) ────────┘
 
-> ينطبق على: ENTITY-ORG-001, 002, 003, 004, 005, 006, 007, 008
-> منع التعطيل عند وجود تبعيات نشطة محكوم بـ RULE-ORG-001 إلى RULE-ORG-006.
+قيود إلغاء التفعيل (مُطبَّقة بطبقة الخدمة):
+  LegalEntity  : مقيّد إذا وجدت Branches أو ProfitCenters نشطة
+  Branch       : مقيّد إذا وجدت Departments أو CostCenters أو LocationSites نشطة
+  Region       : مقيّد إذا وجدت Branches نشطة مرتبطة
+  Department   : مقيّد إذا وجدت أقسام فرعية نشطة
+  CostCenter   : مقيّد إذا وجدت مراكز تكلفة فرعية نشطة
+  ProfitCenter : بدون قيود تبعية داخلية
+  LocationSite : بدون قيود تبعية داخلية
+```
 
 ---
 
 ## A7 — تبعيات الموديولات (Module Dependencies)
 
-> **ملاحظة:** Organization هو الموديول الجذري (ROOT) — لا تبعيات خارجية صادرة.
-> XM-IDs تُعيَّن في MODE 1.5 من الموديولات المستهلكة — ليس هنا.
-> هذا الجدول يوضّح من يستهلك Organization (لأغراض التوثيق وإشعار ARCH-8).
+> ORG-001 هو ROOT MODULE — لا تبعيات صادرة.
+> التبعيات الواردة (من موديولات أخرى) موثّقة في module-registry-ORG.md OUTGOING.
 
-### الموديولات المستهلكة لكيانات Organization
+### الكيانات المُستهلَكة من موديولات أخرى
 
-| الموديول المستهلك | الكيانات المستهلكة | نوع الاعتمادية | ملاحظات |
-|---|---|---|---|
-| Security (1.2) | Branch | HARD-FK | SEC_ROLE_BRANCH (M:M) |
-| MasterData (1.4) | LegalEntity, Branch | HARD-FK | — |
-| CurrencyCalendar (1.5) | LegalEntity | HARD-FK | نطاق السنة المالية |
-| NumberingEngine (1.6) | Branch | HARD-FK | نطاق الترقيم |
-| FileService (1.10) | Branch | HARD-FK | نطاق البيانات |
-| NotificationService (1.8) | Branch | HARD-FK | نطاق البيانات |
-| AuditService (1.9) | Branch | HARD-FK | نطاق البيانات |
-| جميع موديولات Layer-2 | Branch, CostCenter | HARD-FK | السياق التشغيلي |
-| جميع موديولات Layer-3 | Branch, Department, CostCenter, ProfitCenter | HARD-FK | — |
-| Inventory (3.2) | LocationSite | HARD-FK | سياق المستودع |
-| Finance (3.4) | CostCenter, ProfitCenter | HARD-FK | — |
-| TBD (مستهلكو Region) | Region | SOFT-READ | AQ-003 — مؤجل |
+| الكيان | نوع الاعتمادية | XM Candidate |
+|---|---|---|
+| لا توجد — Organization لا تستهلك كيانات خارجية | — | — |
 
-### ARCH-8 — Auto-raise OQ
+### الخدمات والتكاملات الخارجية
 
-> **تطبيقاً لـ ARCH-8:** Organization يملك APIs للتعطيل لجميع الكيانات السبعة.
-> Region مصنّف SHARED (owner) وله مستهلكون عبر SOFT-READ غير محددين (AQ-003).
-> OQ-001 مُرفَع تلقائياً — انظر OQ Log.
+| الخدمة | الغرض | نوع التكامل |
+|---|---|---|
+| NumberingEngine (1.6) | توليد Business Codes لجميع كيانات ORG | REST API (POST /api/numbering/generate) |
+| Security Engine | SEC_PAGES seeding — توليد PERM_* تلقائياً من PAGE_CODE | SEC-3 Declaration |
+| AuditEntityListener | ملء حقول الـ Audit تلقائياً عند الحفظ | Spring Listener (داخلي) |
 
 ---
 
@@ -829,7 +791,7 @@
 
 ---
 
-## SCR-ORG-001 — إدارة الكيانات القانونية
+## SCR-ORG-001 — الكيانات القانونية
 
 ---
 
@@ -840,15 +802,15 @@
 | **SCR-ID** | SCR-ORG-001 |
 | **اسم الشاشة** | إدارة الكيانات القانونية |
 | **UI Pattern** | PATTERN-1 — Search + Entry |
-| **Pattern Reason** | كيان رئيسي بـ 7+ حقول + مُستهلَك من جميع الموديولات — يستوجب PATTERN-1 |
+| **Pattern Reason** | حقول > 8 — كيان رئيسي يُستهلك من جميع الموديولات |
 | **SCR-ID Scope** | ONE SCR-ID covers: Search + Entry (CORE-9) |
 | **P3 Implication** | Two-screen UX navigation — P3 determines component names in F1 |
 | **ENTITY-ID** | ENTITY-ORG-001 |
-| **وظيفة الشاشة** | إنشاء وإدارة الكيانات القانونية للمؤسسة |
-| **المستخدمون** | مدير النظام، مدير التنظيم |
-| **الموضع في النظام** | التنظيم المؤسسي ← الكيانات القانونية |
-| **روابط من** | القائمة الرئيسية — التنظيم المؤسسي |
-| **روابط إلى** | إدارة الفروع (SCR-ORG-002)، مراكز الربح (SCR-ORG-006) |
+| **وظيفة الشاشة** | إنشاء وإدارة الكيانات القانونية المسجلة للمنشأة |
+| **المستخدمون** | مسؤول النظام، مسؤول التنظيم |
+| **الموضع في النظام** | الهيكل التنظيمي ← الكيانات القانونية |
+| **روابط من** | القائمة الرئيسية — الهيكل التنظيمي |
+| **روابط إلى** | شاشة الفروع (SCR-ORG-002) |
 
 ---
 
@@ -858,21 +820,21 @@
 
 | اسم الحقل | نوع الحقل | إلزامي | القيم / المصدر | ملاحظات |
 |---|---|---|---|---|
-| legalEntityCode | نص | لا | — | بحث جزئي |
-| nameAr | نص | لا | — | بحث جزئي |
-| nameEn | نص | لا | — | بحث جزئي |
-| entityTypeId | قائمة منسدلة | لا | LOV-ORG-001 → A5 | lookupKey: LEGAL_ENTITY_TYPE |
-| isActiveFl | قائمة منسدلة | لا | نشط / غير نشط | افتراضي: نشط |
+| legal_entity_code | نص | لا | — | بحث يساوي |
+| name_ar | نص | لا | — | بحث يحتوي |
+| name_en | نص | لا | — | بحث يحتوي |
+| entity_type_id | قائمة منسدلة | لا | LOV-ORG-001 → A5 | lookupKey: LEGAL_ENTITY_TYPE |
+| is_active_fl | قائمة منسدلة | لا | نشط / غير نشط | القيم: 1 / 0 |
 
-#### أعمدة نتائج البحث
+#### نتائج البحث (أعمدة الجدول)
 
-| العمود | المصدر |
-|---|---|
-| legalEntityCode | ENTITY-ORG-001 → A3 |
-| nameAr | ENTITY-ORG-001 → A3 |
-| nameEn | ENTITY-ORG-001 → A3 |
-| entityTypeId (معروض) | LOV-ORG-001 → A5 |
-| isActiveFl | ENTITY-ORG-001 → A3 |
+| اسم العمود | Label-AR | Label-EN |
+|---|---|---|
+| legal_entity_code | الرمز | Code |
+| name_ar | الاسم بالعربي | Name (Arabic) |
+| name_en | الاسم بالإنجليزي | Name (English) |
+| entity_type_id | نوع الكيان | Entity Type |
+| is_active_fl | الحالة | Status |
 
 #### الإجراءات المتاحة
 
@@ -881,13 +843,14 @@
 | New | دائماً | PERM_LEGAL_ENTITY_CREATE |
 | Edit | عند تحديد سجل | PERM_LEGAL_ENTITY_UPDATE |
 | Deactivate | عند تحديد سجل نشط | PERM_LEGAL_ENTITY_DELETE |
-| Reactivate | عند تحديد سجل غير نشط | PERM_LEGAL_ENTITY_UPDATE |
+| Activate | عند تحديد سجل غير نشط | PERM_LEGAL_ENTITY_UPDATE |
+| Export | دائماً | PERM_LEGAL_ENTITY_VIEW |
 
 #### قواعد البحث المطبَّقة
 
 | RULE-ID | الشرط | *(التفاصيل في A4)* |
 |---|---|---|
-| RULE-ORG-011 | لا يُعرض حقل legalEntityCode للتعديل | ← see A4 |
+| — | لا قواعد بحث خاصة | — |
 
 ---
 
@@ -897,60 +860,53 @@
 
 | اسم الحقل | نوع الحقل | إلزامي | المصدر | ملاحظات |
 |---|---|---|---|---|
-| legalEntityCode | نص (Read-Only) | نظام | ENTITY-ORG-001 → A3 | يُنشأ تلقائياً — لا يُقبل في Create DTO |
-| nameAr | نص | نعم | ENTITY-ORG-001 → A3 | |
-| nameEn | نص | نعم | ENTITY-ORG-001 → A3 | |
-| entityTypeId | قائمة منسدلة | نعم | LOV-ORG-001 → A5 | lookupKey: LEGAL_ENTITY_TYPE |
-| isActiveFl | لا يُعرض في Create | — | — | يبدأ نشطاً تلقائياً |
-| notes | نص | لا | ENTITY-ORG-001 → A3 | |
+| legal_entity_code | نص (Read-Only) | نظام | ENTITY-ORG-001 → A3 | يُنشأ تلقائياً عند الحفظ — لا يظهر في Create |
+| name_ar | نص | نعم | ENTITY-ORG-001 → A3 | |
+| name_en | نص | نعم | ENTITY-ORG-001 → A3 | |
+| entity_type_id | قائمة منسدلة | نعم | LOV-ORG-001 → A5 | lookupKey: LEGAL_ENTITY_TYPE |
+| notes | نص طويل | لا | ENTITY-ORG-001 → A3 | |
+| is_active_fl | عرض فقط | نظام | ENTITY-ORG-001 → A3 | يُدار عبر أزرار Activate/Deactivate |
 
 #### الأزرار والإجراءات
 
 | الزر | الإجراء | RULE-IDs المطبَّقة |
 |---|---|---|
-| حفظ (جديد) | POST | RULE-ORG-012, RULE-ORG-016 — *(تفاصيل في A4)* |
-| حفظ (تعديل) | PUT | RULE-ORG-011, RULE-ORG-012 — *(تفاصيل في A4)* |
-| تعطيل | DELETE (soft) | RULE-ORG-001, RULE-ORG-002 — *(تفاصيل في A4)* |
-| إعادة تفعيل | PUT (reactivate) | — |
+| حفظ (Create) | POST | RULE-ORG-012, RULE-ORG-013, RULE-ORG-015, RULE-ORG-016 |
+| حفظ (Update) | PUT | RULE-ORG-011, RULE-ORG-014, RULE-ORG-015, RULE-ORG-016 |
+| إلغاء تفعيل | PUT (is_active_fl=0) | RULE-ORG-001, RULE-ORG-002 |
+| تفعيل | PUT (is_active_fl=1) | — |
 | إلغاء | navigation back | — |
 
 ---
 
 ### B4 — الصلاحيات (Permissions)
 
-> **CORE-9:** هذه الشاشة المركبة = SCR-ID واحد = صف واحد في SEC_PAGES.
-> **SEC-3:** Security Engine يُنشئ PERM_* تلقائياً من PAGE_CODE — لا seed data هنا.
-> **ملاحظة INF-ORG-01:** PERM_LEGAL_ENTITY_VIEW مُنشأ مسبقاً في SEC_PAGES — لا يُكرَّر.
+> **SEC-3 Declaration:** Security Engine يولّد PERM_* تلقائياً من PAGE_CODE.
+> SRS تُعلن PAGE_CODE فقط — لا تُدرج INSERT statements صريحة.
 
-| الشاشة | عرض (VIEW) | إنشاء (CREATE) | تعديل (UPDATE) | حذف/تعطيل (DELETE) |
+| PAGE_CODE | PERM_VIEW | PERM_CREATE | PERM_UPDATE | PERM_DELETE |
 |---|---|---|---|---|
-| SCR-ORG-001 | مدير النظام، مدير التنظيم | مدير النظام | مدير النظام | مدير النظام |
+| LEGAL_ENTITY | مسؤول النظام، مسؤول التنظيم | مسؤول النظام | مسؤول النظام، مسؤول التنظيم | مسؤول النظام |
 
-**Security Engine Declaration:**
-```
-SEC_PAGES  : page_code = LEGAL_ENTITY, module = ORGANIZATION, parent_id_fk = [ORG_MENU]
-PERMISSIONS: يُنشئها Security Engine × 4 تلقائياً من PAGE_CODE
-```
+> VIEW = gateway: يمنح الوصول للبحث والإدخال (read mode)
+> SEC_PAGES: page_code=LEGAL_ENTITY, module=ORGANIZATION, parent_id_fk=[ORG_PARENT]
 
 ---
 
 ### B5 — الواجهات البرمجية (Functional APIs)
 
-> **Stack Rule (CORE-8):** جميع APIs تتبع Spring Boot REST conventions.
-> مسار موحّد: `/api/v1/org/legal-entities`
-
 | API-ID | العملية | HTTP | المسار | المدخلات | المخرجات | RULE-IDs |
 |---|---|---|---|---|---|---|
-| API-ORG-001 | إنشاء كيان قانوني | POST | /api/v1/org/legal-entities | nameAr, nameEn, entityTypeId, notes? | LegalEntity كامل | RULE-ORG-012, RULE-ORG-016 |
-| API-ORG-002 | بحث في الكيانات | GET | /api/v1/org/legal-entities | code?, nameAr?, entityTypeId?, isActiveFl?, page, size | قائمة LegalEntity | — |
-| API-ORG-003 | جلب كيان بالمعرف | GET | /api/v1/org/legal-entities/{id} | legalEntityPk | LegalEntity كامل | — |
-| API-ORG-004 | تعديل كيان قانوني | PUT | /api/v1/org/legal-entities/{id} | nameAr?, nameEn?, entityTypeId?, notes? | LegalEntity محدَّث | RULE-ORG-011 |
-| API-ORG-005 | تعطيل كيان قانوني | DELETE | /api/v1/org/legal-entities/{id} | legalEntityPk | تأكيد | RULE-ORG-001, RULE-ORG-002 |
-| API-ORG-006 | إعادة تفعيل كيان | PUT | /api/v1/org/legal-entities/{id}/reactivate | legalEntityPk | LegalEntity محدَّث | — |
+| API-ORG-001 | إنشاء كيان قانوني | POST | /api/v1/org/legal-entities | name_ar, name_en, entity_type_id, notes? | LegalEntity كامل | RULE-ORG-012, 013, 015, 016 |
+| API-ORG-002 | بحث الكيانات | GET | /api/v1/org/legal-entities | legal_entity_code?, name_ar?, name_en?, entity_type_id?, is_active_fl?, page, size | قائمة LegalEntity | — |
+| API-ORG-003 | تعديل كيان قانوني | PUT | /api/v1/org/legal-entities/{id} | name_ar?, name_en?, entity_type_id?, notes? | LegalEntity محدَّث | RULE-ORG-011, 014, 015, 016 |
+| API-ORG-004 | إلغاء تفعيل | PUT | /api/v1/org/legal-entities/{id}/deactivate | legal_entity_pk | تأكيد | RULE-ORG-001, 002 |
+| API-ORG-005 | تفعيل | PUT | /api/v1/org/legal-entities/{id}/activate | legal_entity_pk | تأكيد | — |
+| API-ORG-006 | جلب بالمعرف | GET | /api/v1/org/legal-entities/{id} | legal_entity_pk | LegalEntity كامل | — |
 
 ---
 
-## SCR-ORG-002 — إدارة الفروع
+## SCR-ORG-002 — الفروع
 
 ---
 
@@ -961,29 +917,41 @@ PERMISSIONS: يُنشئها Security Engine × 4 تلقائياً من PAGE_CODE
 | **SCR-ID** | SCR-ORG-002 |
 | **اسم الشاشة** | إدارة الفروع |
 | **UI Pattern** | PATTERN-1 — Search + Entry |
-| **Pattern Reason** | كيان رئيسي بـ 7+ حقول + مُستهلَك من جميع الموديولات — يستوجب PATTERN-1 |
+| **Pattern Reason** | حقول > 8 — تعتمد على LegalEntity — حدود DataScope الرئيسية |
 | **SCR-ID Scope** | ONE SCR-ID covers: Search + Entry (CORE-9) |
 | **P3 Implication** | Two-screen UX navigation — P3 determines component names in F1 |
 | **ENTITY-ID** | ENTITY-ORG-002 |
-| **وظيفة الشاشة** | إنشاء وإدارة الفروع ضمن الكيانات القانونية |
-| **المستخدمون** | مدير النظام، مدير التنظيم |
-| **الموضع في النظام** | التنظيم المؤسسي ← الفروع |
-| **روابط من** | القائمة الرئيسية — التنظيم المؤسسي |
-| **روابط إلى** | إدارة الأقسام (SCR-ORG-004)، مراكز التكلفة (SCR-ORG-005)، المواقع (SCR-ORG-007) |
+| **وظيفة الشاشة** | إنشاء وإدارة فروع المنشأة المرتبطة بالكيانات القانونية |
+| **المستخدمون** | مسؤول النظام، مسؤول التنظيم |
+| **الموضع في النظام** | الهيكل التنظيمي ← الفروع |
+| **روابط من** | الكيانات القانونية (SCR-ORG-001) |
+| **روابط إلى** | شاشة الأقسام (SCR-ORG-004)، مراكز التكلفة (SCR-ORG-005)، مواقع العمل (SCR-ORG-007) |
 
 ---
 
 ### B2 — مواصفة البحث (Search Specification)
 
-#### فلاتر البحث
+#### فلاتر البحث وأعمدة النتائج
 
 | اسم الحقل | نوع الحقل | إلزامي | القيم / المصدر | ملاحظات |
 |---|---|---|---|---|
-| branchCode | نص | لا | — | بحث جزئي |
-| nameAr | نص | لا | — | بحث جزئي |
-| legalEntityFk | LOV | لا | ENTITY-ORG-001 → A3 | اختيار من قائمة الكيانات النشطة |
-| branchTypeId | قائمة منسدلة | لا | LOV-ORG-002 → A5 | lookupKey: BRANCH_TYPE |
-| isActiveFl | قائمة منسدلة | لا | نشط / غير نشط | افتراضي: نشط |
+| branch_code | نص | لا | — | بحث يساوي |
+| name_ar | نص | لا | — | بحث يحتوي |
+| name_en | نص | لا | — | بحث يحتوي |
+| legal_entity_fk | LOV | لا | ENTITY-ORG-001 → API-ORG-002 | اختيار كيان قانوني |
+| branch_type_id | قائمة منسدلة | لا | LOV-ORG-002 → A5 | lookupKey: BRANCH_TYPE |
+| is_active_fl | قائمة منسدلة | لا | نشط / غير نشط | القيم: 1 / 0 |
+
+#### نتائج البحث (أعمدة الجدول)
+
+| اسم العمود | Label-AR | Label-EN |
+|---|---|---|
+| branch_code | الرمز | Code |
+| name_ar | الاسم بالعربي | Name (Arabic) |
+| name_en | الاسم بالإنجليزي | Name (English) |
+| legal_entity_fk | الكيان القانوني | Legal Entity |
+| branch_type_id | نوع الفرع | Branch Type |
+| is_active_fl | الحالة | Status |
 
 #### الإجراءات المتاحة
 
@@ -992,7 +960,8 @@ PERMISSIONS: يُنشئها Security Engine × 4 تلقائياً من PAGE_CODE
 | New | دائماً | PERM_BRANCH_CREATE |
 | Edit | عند تحديد سجل | PERM_BRANCH_UPDATE |
 | Deactivate | عند تحديد سجل نشط | PERM_BRANCH_DELETE |
-| Reactivate | عند تحديد سجل غير نشط | PERM_BRANCH_UPDATE |
+| Activate | عند تحديد سجل غير نشط | PERM_BRANCH_UPDATE |
+| Export | دائماً | PERM_BRANCH_VIEW |
 
 ---
 
@@ -1002,35 +971,31 @@ PERMISSIONS: يُنشئها Security Engine × 4 تلقائياً من PAGE_CODE
 
 | اسم الحقل | نوع الحقل | إلزامي | المصدر | ملاحظات |
 |---|---|---|---|---|
-| branchCode | نص (Read-Only) | نظام | ENTITY-ORG-002 → A3 | يُنشأ تلقائياً |
-| nameAr | نص | نعم | ENTITY-ORG-002 → A3 | |
-| nameEn | نص | نعم | ENTITY-ORG-002 → A3 | |
-| legalEntityFk | LOV | نعم | ENTITY-ORG-001 → A3 | اختيار الكيان القانوني (نشط فقط) |
-| branchTypeId | قائمة منسدلة | نعم | LOV-ORG-002 → A5 | lookupKey: BRANCH_TYPE |
-| notes | نص | لا | ENTITY-ORG-002 → A3 | |
+| branch_code | نص (Read-Only) | نظام | ENTITY-ORG-002 → A3 | يُنشأ تلقائياً |
+| name_ar | نص | نعم | ENTITY-ORG-002 → A3 | |
+| name_en | نص | نعم | ENTITY-ORG-002 → A3 | |
+| legal_entity_fk | LOV | نعم | ENTITY-ORG-001 → A3 | يُقيَّد بالكيانات النشطة فقط |
+| branch_type_id | قائمة منسدلة | نعم | LOV-ORG-002 → A5 | lookupKey: BRANCH_TYPE |
+| notes | نص طويل | لا | ENTITY-ORG-002 → A3 | |
 
 #### الأزرار والإجراءات
 
 | الزر | الإجراء | RULE-IDs المطبَّقة |
 |---|---|---|
-| حفظ (جديد) | POST | RULE-ORG-013, RULE-ORG-012, RULE-ORG-016 — *(تفاصيل في A4)* |
-| حفظ (تعديل) | PUT | RULE-ORG-011 — *(تفاصيل في A4)* |
-| تعطيل | DELETE (soft) | RULE-ORG-003, RULE-ORG-004, RULE-ORG-005 — *(تفاصيل في A4)* |
-| إعادة تفعيل | PUT (reactivate) | — |
+| حفظ (Create) | POST | RULE-ORG-012, 013, 015, 016, 018 |
+| حفظ (Update) | PUT | RULE-ORG-011, 014, 015, 016 |
+| إلغاء تفعيل | PUT | RULE-ORG-003, 004, 005 |
+| تفعيل | PUT | — |
 
 ---
 
 ### B4 — الصلاحيات (Permissions)
 
-| الشاشة | عرض (VIEW) | إنشاء (CREATE) | تعديل (UPDATE) | حذف/تعطيل (DELETE) |
+| PAGE_CODE | PERM_VIEW | PERM_CREATE | PERM_UPDATE | PERM_DELETE |
 |---|---|---|---|---|
-| SCR-ORG-002 | مدير النظام، مدير التنظيم | مدير النظام | مدير النظام | مدير النظام |
+| BRANCH | مسؤول النظام، مسؤول التنظيم | مسؤول النظام | مسؤول النظام، مسؤول التنظيم | مسؤول النظام |
 
-**Security Engine Declaration:**
-```
-SEC_PAGES  : page_code = BRANCH, module = ORGANIZATION, parent_id_fk = [ORG_MENU]
-PERMISSIONS: يُنشئها Security Engine × 4 تلقائياً
-```
+> SEC_PAGES: page_code=BRANCH, module=ORGANIZATION
 
 ---
 
@@ -1038,17 +1003,16 @@ PERMISSIONS: يُنشئها Security Engine × 4 تلقائياً
 
 | API-ID | العملية | HTTP | المسار | المدخلات | المخرجات | RULE-IDs |
 |---|---|---|---|---|---|---|
-| API-ORG-007 | إنشاء فرع | POST | /api/v1/org/branches | nameAr, nameEn, legalEntityFk, branchTypeId, notes? | Branch كامل | RULE-ORG-013, RULE-ORG-012, RULE-ORG-016 |
-| API-ORG-008 | بحث في الفروع | GET | /api/v1/org/branches | code?, nameAr?, legalEntityFk?, branchTypeId?, isActiveFl?, page, size | قائمة Branch | — |
-| API-ORG-009 | جلب فرع بالمعرف | GET | /api/v1/org/branches/{id} | branchPk | Branch كامل | — |
-| API-ORG-010 | تعديل فرع | PUT | /api/v1/org/branches/{id} | nameAr?, nameEn?, branchTypeId?, notes? | Branch محدَّث | RULE-ORG-011 |
-| API-ORG-011 | تعطيل فرع | DELETE | /api/v1/org/branches/{id} | branchPk | تأكيد | RULE-ORG-003, RULE-ORG-004, RULE-ORG-005 |
-| API-ORG-012 | إعادة تفعيل فرع | PUT | /api/v1/org/branches/{id}/reactivate | branchPk | Branch محدَّث | — |
-| API-ORG-013 | فروع حسب الكيان القانوني | GET | /api/v1/org/branches/by-legal-entity/{leId} | legalEntityFk, isActiveFl? | قائمة Branch | — |
+| API-ORG-007 | إنشاء فرع | POST | /api/v1/org/branches | name_ar, name_en, legal_entity_fk, branch_type_id, notes? | Branch كامل | RULE-ORG-012, 013, 015, 016, 018 |
+| API-ORG-008 | بحث الفروع | GET | /api/v1/org/branches | branch_code?, name_ar?, legal_entity_fk?, branch_type_id?, is_active_fl?, page, size | قائمة Branch | — |
+| API-ORG-009 | تعديل فرع | PUT | /api/v1/org/branches/{id} | name_ar?, name_en?, branch_type_id?, notes? | Branch محدَّث | RULE-ORG-011, 014, 015, 016 |
+| API-ORG-010 | إلغاء تفعيل فرع | PUT | /api/v1/org/branches/{id}/deactivate | branch_pk | تأكيد | RULE-ORG-003, 004, 005 |
+| API-ORG-011 | تفعيل فرع | PUT | /api/v1/org/branches/{id}/activate | branch_pk | تأكيد | — |
+| API-ORG-012 | جلب بالمعرف | GET | /api/v1/org/branches/{id} | branch_pk | Branch كامل | — |
 
 ---
 
-## SCR-ORG-003 — إدارة المناطق
+## SCR-ORG-003 — المناطق
 
 ---
 
@@ -1059,27 +1023,30 @@ PERMISSIONS: يُنشئها Security Engine × 4 تلقائياً
 | **SCR-ID** | SCR-ORG-003 |
 | **اسم الشاشة** | إدارة المناطق |
 | **UI Pattern** | PATTERN-1 — Search + Entry |
-| **Pattern Reason** | كيان رئيسي بـ 5+ حقول + LOV مرجعية — يستوجب PATTERN-1 |
+| **Pattern Reason** | حقول > 8 — تعتمد على LegalEntity و RegionType |
 | **SCR-ID Scope** | ONE SCR-ID covers: Search + Entry (CORE-9) |
 | **P3 Implication** | Two-screen UX navigation — P3 determines component names in F1 |
 | **ENTITY-ID** | ENTITY-ORG-003 |
-| **وظيفة الشاشة** | إنشاء وإدارة المناطق الجغرافية والتشغيلية |
-| **المستخدمون** | مدير النظام، مدير التنظيم |
-| **الموضع في النظام** | التنظيم المؤسسي ← المناطق |
+| **وظيفة الشاشة** | إنشاء وإدارة المناطق الجغرافية أو المبيعاتية المرتبطة بالكيانات القانونية |
+| **المستخدمون** | مسؤول النظام، مسؤول التنظيم |
+| **الموضع في النظام** | الهيكل التنظيمي ← المناطق |
+| **روابط من** | القائمة الرئيسية — الهيكل التنظيمي |
+| **روابط إلى** | — |
 
 ---
 
 ### B2 — مواصفة البحث (Search Specification)
 
-#### فلاتر البحث
+#### فلاتر البحث وأعمدة النتائج
 
 | اسم الحقل | نوع الحقل | إلزامي | القيم / المصدر | ملاحظات |
 |---|---|---|---|---|
-| regionCode | نص | لا | — | بحث جزئي |
-| nameAr | نص | لا | — | بحث جزئي |
-| legalEntityFk | LOV | لا | ENTITY-ORG-001 → A3 | |
-| regionTypeId | LOV | لا | LOV-ORG-007 → A5 | GET /api/v1/org/region-types |
-| isActiveFl | قائمة منسدلة | لا | نشط / غير نشط | افتراضي: نشط |
+| region_code | نص | لا | — | بحث يساوي |
+| name_ar | نص | لا | — | بحث يحتوي |
+| name_en | نص | لا | — | بحث يحتوي |
+| legal_entity_fk | LOV | لا | ENTITY-ORG-001 | اختيار كيان قانوني |
+| region_type_id_fk | LOV | لا | ENTITY-ORG-008 | اختيار نوع المنطقة |
+| is_active_fl | قائمة منسدلة | لا | نشط / غير نشط | القيم: 1 / 0 |
 
 #### الإجراءات المتاحة
 
@@ -1088,7 +1055,7 @@ PERMISSIONS: يُنشئها Security Engine × 4 تلقائياً
 | New | دائماً | PERM_REGION_CREATE |
 | Edit | عند تحديد سجل | PERM_REGION_UPDATE |
 | Deactivate | عند تحديد سجل نشط | PERM_REGION_DELETE |
-| Reactivate | عند تحديد سجل غير نشط | PERM_REGION_UPDATE |
+| Activate | عند تحديد سجل غير نشط | PERM_REGION_UPDATE |
 
 ---
 
@@ -1098,34 +1065,29 @@ PERMISSIONS: يُنشئها Security Engine × 4 تلقائياً
 
 | اسم الحقل | نوع الحقل | إلزامي | المصدر | ملاحظات |
 |---|---|---|---|---|
-| regionCode | نص (Read-Only) | نظام | ENTITY-ORG-003 → A3 | يُنشأ تلقائياً |
-| nameAr | نص | نعم | ENTITY-ORG-003 → A3 | |
-| nameEn | نص | نعم | ENTITY-ORG-003 → A3 | |
-| legalEntityFk | LOV | نعم | ENTITY-ORG-001 → A3 | نشط فقط |
-| regionTypeId | LOV | نعم | LOV-ORG-007 → A5 | Reference Table |
-| notes | نص | لا | ENTITY-ORG-003 → A3 | |
+| region_code | نص (Read-Only) | نظام | ENTITY-ORG-003 → A3 | يُنشأ تلقائياً |
+| name_ar | نص | نعم | ENTITY-ORG-003 → A3 | |
+| name_en | نص | نعم | ENTITY-ORG-003 → A3 | |
+| legal_entity_fk | LOV | نعم | ENTITY-ORG-001 → A3 | الكيانات النشطة فقط |
+| region_type_id_fk | LOV | نعم | ENTITY-ORG-008 → A3 | أنواع المناطق النشطة |
+| notes | نص طويل | لا | ENTITY-ORG-003 → A3 | |
 
 #### الأزرار والإجراءات
 
 | الزر | الإجراء | RULE-IDs المطبَّقة |
 |---|---|---|
-| حفظ (جديد) | POST | RULE-ORG-019, RULE-ORG-012, RULE-ORG-016 — *(تفاصيل في A4)* |
-| حفظ (تعديل) | PUT | RULE-ORG-011 — *(تفاصيل في A4)* |
-| تعطيل | DELETE (soft) | RULE-ORG-006 — *(تفاصيل في A4)* |
+| حفظ (Create) | POST | RULE-ORG-012, 013, 015, 016 |
+| حفظ (Update) | PUT | RULE-ORG-011, 014, 015, 016 |
+| إلغاء تفعيل | PUT | RULE-ORG-006, 017 |
+| تفعيل | PUT | — |
 
 ---
 
 ### B4 — الصلاحيات (Permissions)
 
-| الشاشة | عرض (VIEW) | إنشاء (CREATE) | تعديل (UPDATE) | حذف/تعطيل (DELETE) |
+| PAGE_CODE | PERM_VIEW | PERM_CREATE | PERM_UPDATE | PERM_DELETE |
 |---|---|---|---|---|
-| SCR-ORG-003 | مدير النظام، مدير التنظيم | مدير النظام | مدير النظام | مدير النظام |
-
-**Security Engine Declaration:**
-```
-SEC_PAGES  : page_code = REGION, module = ORGANIZATION, parent_id_fk = [ORG_MENU]
-PERMISSIONS: يُنشئها Security Engine × 4 تلقائياً
-```
+| REGION | مسؤول النظام، مسؤول التنظيم | مسؤول النظام | مسؤول النظام، مسؤول التنظيم | مسؤول النظام |
 
 ---
 
@@ -1133,17 +1095,16 @@ PERMISSIONS: يُنشئها Security Engine × 4 تلقائياً
 
 | API-ID | العملية | HTTP | المسار | المدخلات | المخرجات | RULE-IDs |
 |---|---|---|---|---|---|---|
-| API-ORG-014 | إنشاء منطقة | POST | /api/v1/org/regions | nameAr, nameEn, legalEntityFk, regionTypeId, notes? | Region كامل | RULE-ORG-019, RULE-ORG-012, RULE-ORG-016 |
-| API-ORG-015 | بحث في المناطق | GET | /api/v1/org/regions | code?, nameAr?, legalEntityFk?, regionTypeId?, isActiveFl?, page, size | قائمة Region | — |
-| API-ORG-016 | جلب منطقة بالمعرف | GET | /api/v1/org/regions/{id} | regionPk | Region كامل | — |
-| API-ORG-017 | تعديل منطقة | PUT | /api/v1/org/regions/{id} | nameAr?, nameEn?, regionTypeId?, notes? | Region محدَّث | RULE-ORG-011 |
-| API-ORG-018 | تعطيل منطقة | DELETE | /api/v1/org/regions/{id} | regionPk | تأكيد | RULE-ORG-006 |
-| API-ORG-019 | إعادة تفعيل منطقة | PUT | /api/v1/org/regions/{id}/reactivate | regionPk | Region محدَّث | — |
-| API-ORG-020 | جلب قائمة أنواع المناطق | GET | /api/v1/org/region-types | isActiveFl? | قائمة RegionType | — |
+| API-ORG-013 | إنشاء منطقة | POST | /api/v1/org/regions | name_ar, name_en, legal_entity_fk, region_type_id_fk, notes? | Region كامل | RULE-ORG-012, 013, 015, 016 |
+| API-ORG-014 | بحث المناطق | GET | /api/v1/org/regions | region_code?, name_ar?, legal_entity_fk?, region_type_id_fk?, is_active_fl?, page, size | قائمة Region | — |
+| API-ORG-015 | تعديل منطقة | PUT | /api/v1/org/regions/{id} | name_ar?, name_en?, region_type_id_fk?, notes? | Region محدَّث | RULE-ORG-011, 014, 015, 016 |
+| API-ORG-016 | إلغاء تفعيل منطقة | PUT | /api/v1/org/regions/{id}/deactivate | region_pk | تأكيد | RULE-ORG-006, 017 |
+| API-ORG-017 | تفعيل منطقة | PUT | /api/v1/org/regions/{id}/activate | region_pk | تأكيد | — |
+| API-ORG-018 | جلب بالمعرف | GET | /api/v1/org/regions/{id} | region_pk | Region كامل | — |
 
 ---
 
-## SCR-ORG-004 — إدارة الأقسام
+## SCR-ORG-004 — الأقسام
 
 ---
 
@@ -1153,40 +1114,42 @@ PERMISSIONS: يُنشئها Security Engine × 4 تلقائياً
 |---|---|
 | **SCR-ID** | SCR-ORG-004 |
 | **اسم الشاشة** | إدارة الأقسام |
-| **UI Pattern** | PATTERN-3 — Specialized (Hierarchical Tree) |
-| **Pattern Reason** | كيان شجري ذو مرجع ذاتي — يستوجب عرضاً شجرياً متخصصاً |
-| **SCR-ID Scope** | ONE SCR-ID covers: Tree Navigation + Entry (CORE-9) |
-| **P3 Implication** | Specialized tree UI — P3 determines tree component and entry panel in F1 |
+| **UI Pattern** | PATTERN-3 — Specialized (Tree Hierarchy) |
+| **Pattern Reason** | هيكل شجري متعدد المستويات — self-reference — يستلزم عرضاً هرمياً خاصاً |
+| **SCR-ID Scope** | ONE SCR-ID — Specialized Tree Layout |
+| **P3 Implication** | Specialized tree-view component + standard entry panel — P3 defines layout in F1 |
 | **ENTITY-ID** | ENTITY-ORG-004 |
-| **وظيفة الشاشة** | إنشاء وإدارة هيكل الأقسام الشجري ضمن الفروع |
-| **المستخدمون** | مدير النظام، مدير التنظيم |
-| **الموضع في النظام** | التنظيم المؤسسي ← الأقسام |
+| **وظيفة الشاشة** | إنشاء وإدارة هيكل الأقسام الهرمي تحت كل فرع |
+| **المستخدمون** | مسؤول النظام، مسؤول التنظيم |
+| **الموضع في النظام** | الهيكل التنظيمي ← الأقسام |
+| **روابط من** | الفروع (SCR-ORG-002) |
 
 **Specialized Layout Description:**
-| البند | القيمة |
+
+| نوع الشاشة الخاصة | Tree Hierarchy |
 |---|---|
-| نوع الشاشة | Hierarchical Tree + Entry Panel |
-| مبرر الاستثناء | الأقسام ذات هيكل شجري متعدد المستويات — PATTERN-1 لا يكفي |
-| المكونات الخاصة | Tree Explorer (يسار) + Entry Form (يمين/modal) + SUMMARY/DETAIL visual indicator |
+| مبرر الاستثناء | الأقسام تملك self-reference متعدد المستويات — قائمة مسطحة غير كافية للتعبير عن الهيكل |
+| المكونات الخاصة | Tree Panel (عرض هرمي بالتوسيع/الطي) + Entry Panel (تفاصيل العقدة المحددة) |
 
 ---
 
 ### B2 — مواصفة البحث (Search Specification)
 
-#### فلاتر تصفية الشجرة
+#### فلاتر التصفية في Tree View
 
-| اسم الحقل | نوع الحقل | إلزامي | القيم / المصدر | ملاحظات |
-|---|---|---|---|---|
-| branchFk | LOV | نعم | ENTITY-ORG-002 → A3 | تصفية الشجرة حسب الفرع |
-| nameAr | نص | لا | — | بحث جزئي |
-| nodeTypeId | قائمة منسدلة | لا | LOV-ORG-003 → A5 | SUMMARY / DETAIL |
-| isActiveFl | قائمة منسدلة | لا | نشط / غير نشط | افتراضي: نشط |
+| اسم الحقل | نوع الحقل | إلزامي | ملاحظات |
+|---|---|---|---|
+| branch_fk | LOV | نعم | فلتر إلزامي لعرض شجرة فرع محدد |
+| name_ar / name_en | نص | لا | بحث داخل الشجرة المعروضة |
+| node_type_id | قائمة منسدلة | لا | LOV-ORG-003 → A5 |
+| is_active_fl | قائمة منسدلة | لا | نشط / غير نشط |
 
 #### الإجراءات المتاحة
 
 | الإجراء | الشرط | الصلاحية المطلوبة |
 |---|---|---|
-| New | دائماً | PERM_DEPARTMENT_CREATE |
+| New (Root) | دائماً | PERM_DEPARTMENT_CREATE |
+| New (Child) | عند تحديد عقدة أب | PERM_DEPARTMENT_CREATE |
 | Edit | عند تحديد عقدة | PERM_DEPARTMENT_UPDATE |
 | Deactivate | عند تحديد عقدة نشطة | PERM_DEPARTMENT_DELETE |
 
@@ -1194,39 +1157,33 @@ PERMISSIONS: يُنشئها Security Engine × 4 تلقائياً
 
 ### B3 — مواصفة الإدخال (Input Specification)
 
-#### حقول شاشة الإدخال
+#### حقول Entry Panel
 
 | اسم الحقل | نوع الحقل | إلزامي | المصدر | ملاحظات |
 |---|---|---|---|---|
-| deptCode | نص (Read-Only) | نظام | ENTITY-ORG-004 → A3 | يُنشأ تلقائياً |
-| nameAr | نص | نعم | ENTITY-ORG-004 → A3 | |
-| nameEn | نص | نعم | ENTITY-ORG-004 → A3 | |
-| branchFk | LOV | نعم | ENTITY-ORG-002 → A3 | نشط فقط |
-| parentDepartmentFk | LOV | لا | ENTITY-ORG-004 → A3 | نشط فقط — يُمنع الدائري (RULE-ORG-007) |
-| nodeTypeId | قائمة منسدلة | نعم | LOV-ORG-003 → A5 | SUMMARY / DETAIL |
-| notes | نص | لا | ENTITY-ORG-004 → A3 | |
+| department_code | نص (Read-Only) | نظام | ENTITY-ORG-004 → A3 | يُنشأ تلقائياً |
+| name_ar | نص | نعم | ENTITY-ORG-004 → A3 | |
+| name_en | نص | نعم | ENTITY-ORG-004 → A3 | |
+| branch_fk | LOV | نعم | ENTITY-ORG-002 → A3 | الفروع النشطة فقط |
+| parent_department_fk | LOV (من الشجرة) | لا | ENTITY-ORG-004 → A3 | يُعبَّأ تلقائياً من العقدة المحددة |
+| node_type_id | قائمة منسدلة | نعم | LOV-ORG-003 → A5 | محمي بعد الحفظ — RULE-ORG-020 |
+| notes | نص طويل | لا | ENTITY-ORG-004 → A3 | |
 
 #### الأزرار والإجراءات
 
 | الزر | الإجراء | RULE-IDs المطبَّقة |
 |---|---|---|
-| حفظ (جديد) | POST | RULE-ORG-014, RULE-ORG-007, RULE-ORG-017, RULE-ORG-012, RULE-ORG-016 |
-| حفظ (تعديل) | PUT | RULE-ORG-011, RULE-ORG-007, RULE-ORG-017 |
-| تعطيل | DELETE (soft) | — (لا أبناء نشطة كقيد مُفترَض — يُوثَّق في P3) |
+| حفظ (Create) | POST | RULE-ORG-007, 012, 013, 015, 016, 019 |
+| حفظ (Update) | PUT | RULE-ORG-011, 014, 015, 016, 020 |
+| إلغاء تفعيل | PUT | — |
 
 ---
 
 ### B4 — الصلاحيات (Permissions)
 
-| الشاشة | عرض (VIEW) | إنشاء (CREATE) | تعديل (UPDATE) | حذف/تعطيل (DELETE) |
+| PAGE_CODE | PERM_VIEW | PERM_CREATE | PERM_UPDATE | PERM_DELETE |
 |---|---|---|---|---|
-| SCR-ORG-004 | مدير النظام، مدير التنظيم | مدير النظام | مدير النظام | مدير النظام |
-
-**Security Engine Declaration:**
-```
-SEC_PAGES  : page_code = DEPARTMENT, module = ORGANIZATION, parent_id_fk = [ORG_MENU]
-PERMISSIONS: يُنشئها Security Engine × 4 تلقائياً
-```
+| DEPARTMENT | مسؤول النظام، مسؤول التنظيم | مسؤول النظام | مسؤول النظام، مسؤول التنظيم | مسؤول النظام |
 
 ---
 
@@ -1234,17 +1191,17 @@ PERMISSIONS: يُنشئها Security Engine × 4 تلقائياً
 
 | API-ID | العملية | HTTP | المسار | المدخلات | المخرجات | RULE-IDs |
 |---|---|---|---|---|---|---|
-| API-ORG-021 | إنشاء قسم | POST | /api/v1/org/departments | nameAr, nameEn, branchFk, nodeTypeId, parentDepartmentFk?, notes? | Department كامل | RULE-ORG-014, RULE-ORG-007, RULE-ORG-017, RULE-ORG-012, RULE-ORG-016 |
-| API-ORG-022 | جلب شجرة الأقسام | GET | /api/v1/org/departments/tree | branchFk, isActiveFl? | Department Tree | — |
-| API-ORG-023 | بحث في الأقسام | GET | /api/v1/org/departments | branchFk?, nameAr?, nodeTypeId?, isActiveFl?, page, size | قائمة Department | — |
-| API-ORG-024 | جلب قسم بالمعرف | GET | /api/v1/org/departments/{id} | departmentPk | Department كامل | — |
-| API-ORG-025 | تعديل قسم | PUT | /api/v1/org/departments/{id} | nameAr?, nameEn?, nodeTypeId?, parentDepartmentFk?, notes? | Department محدَّث | RULE-ORG-011, RULE-ORG-007, RULE-ORG-017 |
-| API-ORG-026 | تعطيل قسم | DELETE | /api/v1/org/departments/{id} | departmentPk | تأكيد | — |
-| API-ORG-027 | إعادة تفعيل قسم | PUT | /api/v1/org/departments/{id}/reactivate | departmentPk | Department محدَّث | — |
+| API-ORG-019 | إنشاء قسم | POST | /api/v1/org/departments | name_ar, name_en, branch_fk, parent_department_fk?, node_type_id, notes? | Department كامل | RULE-ORG-007, 012, 013, 015, 016, 019 |
+| API-ORG-020 | جلب شجرة أقسام | GET | /api/v1/org/departments/tree | branch_fk, is_active_fl? | هيكل شجري كامل | — |
+| API-ORG-021 | بحث الأقسام (مسطّح) | GET | /api/v1/org/departments | branch_fk?, name_ar?, node_type_id?, is_active_fl?, page, size | قائمة Department | — |
+| API-ORG-022 | تعديل قسم | PUT | /api/v1/org/departments/{id} | name_ar?, name_en?, parent_department_fk?, notes? | Department محدَّث | RULE-ORG-007, 011, 014, 015, 016, 020 |
+| API-ORG-023 | إلغاء تفعيل قسم | PUT | /api/v1/org/departments/{id}/deactivate | department_pk | تأكيد | — |
+| API-ORG-024 | تفعيل قسم | PUT | /api/v1/org/departments/{id}/activate | department_pk | تأكيد | — |
+| API-ORG-025 | جلب بالمعرف | GET | /api/v1/org/departments/{id} | department_pk | Department كامل | — |
 
 ---
 
-## SCR-ORG-005 — إدارة مراكز التكلفة
+## SCR-ORG-005 — مراكز التكلفة
 
 ---
 
@@ -1254,82 +1211,61 @@ PERMISSIONS: يُنشئها Security Engine × 4 تلقائياً
 |---|---|
 | **SCR-ID** | SCR-ORG-005 |
 | **اسم الشاشة** | إدارة مراكز التكلفة |
-| **UI Pattern** | PATTERN-3 — Specialized (Hierarchical Tree) |
-| **Pattern Reason** | كيان شجري ذو مرجع ذاتي — يستوجب عرضاً شجرياً متخصصاً |
-| **SCR-ID Scope** | ONE SCR-ID covers: Tree Navigation + Entry (CORE-9) |
-| **P3 Implication** | Specialized tree UI — P3 determines tree component and entry panel in F1 |
+| **UI Pattern** | PATTERN-3 — Specialized (Tree Hierarchy) |
+| **Pattern Reason** | هيكل شجري متعدد المستويات — self-reference — مماثل لهيكل الأقسام |
+| **SCR-ID Scope** | ONE SCR-ID — Specialized Tree Layout |
+| **P3 Implication** | Specialized tree-view component — P3 defines layout in F1 |
 | **ENTITY-ID** | ENTITY-ORG-005 |
-| **وظيفة الشاشة** | إنشاء وإدارة هيكل مراكز التكلفة الشجري ضمن الفروع |
-| **المستخدمون** | مدير النظام، مدير التنظيم، مدير المالية |
-| **الموضع في النظام** | التنظيم المؤسسي ← مراكز التكلفة |
-
-**Specialized Layout Description:**
-| البند | القيمة |
-|---|---|
-| نوع الشاشة | Hierarchical Tree + Entry Panel |
-| مبرر الاستثناء | مراكز التكلفة ذات هيكل شجري + حقل نوع إضافي (Direct/Indirect/Shared) |
-| المكونات الخاصة | Tree Explorer + Entry Form + cost center type indicator |
+| **وظيفة الشاشة** | إنشاء وإدارة هيكل مراكز التكلفة الهرمي تحت كل فرع |
+| **المستخدمون** | مسؤول النظام، مسؤول المالية، مسؤول التنظيم |
+| **الموضع في النظام** | الهيكل التنظيمي ← مراكز التكلفة |
 
 ---
 
 ### B2 — مواصفة البحث (Search Specification)
 
-#### فلاتر تصفية الشجرة
+#### فلاتر التصفية في Tree View
 
-| اسم الحقل | نوع الحقل | إلزامي | القيم / المصدر | ملاحظات |
-|---|---|---|---|---|
-| branchFk | LOV | نعم | ENTITY-ORG-002 → A3 | تصفية الشجرة حسب الفرع |
-| nameAr | نص | لا | — | بحث جزئي |
-| nodeTypeId | قائمة منسدلة | لا | LOV-ORG-004 → A5 | SUMMARY / DETAIL |
-| costCenterTypeId | قائمة منسدلة | لا | LOV-ORG-005 → A5 | Direct / Indirect / Shared |
-| isActiveFl | قائمة منسدلة | لا | نشط / غير نشط | |
-
-#### الإجراءات المتاحة
-
-| الإجراء | الشرط | الصلاحية المطلوبة |
-|---|---|---|
-| New | دائماً | PERM_COST_CENTER_CREATE |
-| Edit | عند تحديد عقدة | PERM_COST_CENTER_UPDATE |
-| Deactivate | عند تحديد عقدة نشطة | PERM_COST_CENTER_DELETE |
+| اسم الحقل | نوع الحقل | إلزامي | ملاحظات |
+|---|---|---|---|
+| branch_fk | LOV | نعم | فلتر إلزامي |
+| name_ar / name_en | نص | لا | بحث داخل الشجرة |
+| node_type_id | قائمة منسدلة | لا | LOV-ORG-004 → A5 |
+| cost_center_type_id | قائمة منسدلة | لا | LOV-ORG-005 → A5 |
+| is_active_fl | قائمة منسدلة | لا | نشط / غير نشط |
 
 ---
 
 ### B3 — مواصفة الإدخال (Input Specification)
 
-#### حقول شاشة الإدخال
+#### حقول Entry Panel
 
 | اسم الحقل | نوع الحقل | إلزامي | المصدر | ملاحظات |
 |---|---|---|---|---|
-| costCenterCode | نص (Read-Only) | نظام | ENTITY-ORG-005 → A3 | يُنشأ تلقائياً |
-| nameAr | نص | نعم | ENTITY-ORG-005 → A3 | |
-| nameEn | نص | نعم | ENTITY-ORG-005 → A3 | |
-| branchFk | LOV | نعم | ENTITY-ORG-002 → A3 | نشط فقط |
-| parentCostCenterFk | LOV | لا | ENTITY-ORG-005 → A3 | نشط فقط — يُمنع الدائري (RULE-ORG-008) |
-| nodeTypeId | قائمة منسدلة | نعم | LOV-ORG-004 → A5 | SUMMARY / DETAIL |
-| costCenterTypeId | قائمة منسدلة | نعم | LOV-ORG-005 → A5 | Direct / Indirect / Shared |
-| notes | نص | لا | ENTITY-ORG-005 → A3 | |
+| cost_center_code | نص (Read-Only) | نظام | ENTITY-ORG-005 → A3 | يُنشأ تلقائياً |
+| name_ar | نص | نعم | ENTITY-ORG-005 → A3 | |
+| name_en | نص | نعم | ENTITY-ORG-005 → A3 | |
+| branch_fk | LOV | نعم | ENTITY-ORG-002 → A3 | الفروع النشطة فقط |
+| parent_cost_center_fk | LOV (من الشجرة) | لا | ENTITY-ORG-005 → A3 | |
+| node_type_id | قائمة منسدلة | نعم | LOV-ORG-004 → A5 | محمي بعد الحفظ — RULE-ORG-020 |
+| cost_center_type_id | قائمة منسدلة | نعم | LOV-ORG-005 → A5 | lookupKey: COST_CENTER_TYPE |
+| notes | نص طويل | لا | ENTITY-ORG-005 → A3 | |
 
 #### الأزرار والإجراءات
 
 | الزر | الإجراء | RULE-IDs المطبَّقة |
 |---|---|---|
-| حفظ (جديد) | POST | RULE-ORG-015, RULE-ORG-008, RULE-ORG-018, RULE-ORG-012, RULE-ORG-016 |
-| حفظ (تعديل) | PUT | RULE-ORG-011, RULE-ORG-008, RULE-ORG-018 |
-| تعطيل | DELETE (soft) | — |
+| حفظ (Create) | POST | RULE-ORG-008, 012, 013, 015, 016, 019 |
+| حفظ (Update) | PUT | RULE-ORG-011, 014, 015, 016, 020 |
+| إلغاء تفعيل | PUT | — |
 
 ---
 
 ### B4 — الصلاحيات (Permissions)
 
-| الشاشة | عرض (VIEW) | إنشاء (CREATE) | تعديل (UPDATE) | حذف/تعطيل (DELETE) |
+| PAGE_CODE | PERM_VIEW | PERM_CREATE | PERM_UPDATE | PERM_DELETE |
 |---|---|---|---|---|
-| SCR-ORG-005 | مدير النظام، مدير التنظيم، مدير المالية | مدير النظام | مدير النظام | مدير النظام |
-
-**Security Engine Declaration:**
-```
-SEC_PAGES  : page_code = COST_CENTER, module = ORGANIZATION, parent_id_fk = [ORG_MENU]
-PERMISSIONS: يُنشئها Security Engine × 4 تلقائياً
-```
+| COST_CENTER | مسؤول النظام، مسؤول المالية، مسؤول التنظيم | مسؤول النظام، مسؤول المالية | مسؤول النظام، مسؤول المالية | مسؤول النظام |
 
 ---
 
@@ -1337,17 +1273,17 @@ PERMISSIONS: يُنشئها Security Engine × 4 تلقائياً
 
 | API-ID | العملية | HTTP | المسار | المدخلات | المخرجات | RULE-IDs |
 |---|---|---|---|---|---|---|
-| API-ORG-028 | إنشاء مركز تكلفة | POST | /api/v1/org/cost-centers | nameAr, nameEn, branchFk, nodeTypeId, costCenterTypeId, parentCostCenterFk?, notes? | CostCenter كامل | RULE-ORG-015, RULE-ORG-008, RULE-ORG-018, RULE-ORG-012, RULE-ORG-016 |
-| API-ORG-029 | جلب شجرة مراكز التكلفة | GET | /api/v1/org/cost-centers/tree | branchFk, isActiveFl? | CostCenter Tree | — |
-| API-ORG-030 | بحث في مراكز التكلفة | GET | /api/v1/org/cost-centers | branchFk?, nameAr?, nodeTypeId?, costCenterTypeId?, isActiveFl?, page, size | قائمة CostCenter | — |
-| API-ORG-031 | جلب مركز تكلفة بالمعرف | GET | /api/v1/org/cost-centers/{id} | costCenterPk | CostCenter كامل | — |
-| API-ORG-032 | تعديل مركز تكلفة | PUT | /api/v1/org/cost-centers/{id} | nameAr?, nameEn?, nodeTypeId?, costCenterTypeId?, parentCostCenterFk?, notes? | CostCenter محدَّث | RULE-ORG-011, RULE-ORG-008, RULE-ORG-018 |
-| API-ORG-033 | تعطيل مركز تكلفة | DELETE | /api/v1/org/cost-centers/{id} | costCenterPk | تأكيد | — |
-| API-ORG-034 | إعادة تفعيل مركز تكلفة | PUT | /api/v1/org/cost-centers/{id}/reactivate | costCenterPk | CostCenter محدَّث | — |
+| API-ORG-026 | إنشاء مركز تكلفة | POST | /api/v1/org/cost-centers | name_ar, name_en, branch_fk, parent_cost_center_fk?, node_type_id, cost_center_type_id, notes? | CostCenter كامل | RULE-ORG-008, 012, 013, 015, 016, 019 |
+| API-ORG-027 | جلب شجرة مراكز التكلفة | GET | /api/v1/org/cost-centers/tree | branch_fk, is_active_fl? | هيكل شجري كامل | — |
+| API-ORG-028 | بحث مراكز التكلفة | GET | /api/v1/org/cost-centers | branch_fk?, name_ar?, node_type_id?, cost_center_type_id?, is_active_fl?, page, size | قائمة CostCenter | — |
+| API-ORG-029 | تعديل مركز تكلفة | PUT | /api/v1/org/cost-centers/{id} | name_ar?, name_en?, parent_cost_center_fk?, cost_center_type_id?, notes? | CostCenter محدَّث | RULE-ORG-008, 011, 014, 015, 016, 020 |
+| API-ORG-030 | إلغاء تفعيل | PUT | /api/v1/org/cost-centers/{id}/deactivate | cost_center_pk | تأكيد | — |
+| API-ORG-031 | تفعيل | PUT | /api/v1/org/cost-centers/{id}/activate | cost_center_pk | تأكيد | — |
+| API-ORG-032 | جلب بالمعرف | GET | /api/v1/org/cost-centers/{id} | cost_center_pk | CostCenter كامل | — |
 
 ---
 
-## SCR-ORG-006 — إدارة مراكز الربح
+## SCR-ORG-006 — مراكز الربح
 
 ---
 
@@ -1358,26 +1294,28 @@ PERMISSIONS: يُنشئها Security Engine × 4 تلقائياً
 | **SCR-ID** | SCR-ORG-006 |
 | **اسم الشاشة** | إدارة مراكز الربح |
 | **UI Pattern** | PATTERN-1 — Search + Entry |
-| **Pattern Reason** | كيان رئيسي بـ 5+ حقول مرتبط بالكيان القانوني — يستوجب PATTERN-1 |
+| **Pattern Reason** | حقول > 8 — كيان مسطّح بدون self-reference — مرتبط بالكيان القانوني |
 | **SCR-ID Scope** | ONE SCR-ID covers: Search + Entry (CORE-9) |
 | **P3 Implication** | Two-screen UX navigation — P3 determines component names in F1 |
 | **ENTITY-ID** | ENTITY-ORG-006 |
-| **وظيفة الشاشة** | إنشاء وإدارة مراكز الربح ضمن الكيانات القانونية |
-| **المستخدمون** | مدير النظام، مدير المالية |
-| **الموضع في النظام** | التنظيم المؤسسي ← مراكز الربح |
+| **وظيفة الشاشة** | إنشاء وإدارة مراكز الربح المرتبطة بالكيانات القانونية |
+| **المستخدمون** | مسؤول النظام، مسؤول المالية، مسؤول التنظيم |
+| **الموضع في النظام** | الهيكل التنظيمي ← مراكز الربح |
+| **ملاحظة معمارية** | ProfitCenter مملوك لـ Organization — Finance يستهلكه عبر HARD-FK |
 
 ---
 
 ### B2 — مواصفة البحث (Search Specification)
 
-#### فلاتر البحث
+#### فلاتر البحث وأعمدة النتائج
 
 | اسم الحقل | نوع الحقل | إلزامي | القيم / المصدر | ملاحظات |
 |---|---|---|---|---|
-| profitCenterCode | نص | لا | — | بحث جزئي |
-| nameAr | نص | لا | — | بحث جزئي |
-| legalEntityFk | LOV | لا | ENTITY-ORG-001 → A3 | |
-| isActiveFl | قائمة منسدلة | لا | نشط / غير نشط | |
+| profit_center_code | نص | لا | — | بحث يساوي |
+| name_ar | نص | لا | — | بحث يحتوي |
+| name_en | نص | لا | — | بحث يحتوي |
+| legal_entity_fk | LOV | لا | ENTITY-ORG-001 | اختيار كيان قانوني |
+| is_active_fl | قائمة منسدلة | لا | نشط / غير نشط | القيم: 1 / 0 |
 
 #### الإجراءات المتاحة
 
@@ -1386,6 +1324,7 @@ PERMISSIONS: يُنشئها Security Engine × 4 تلقائياً
 | New | دائماً | PERM_PROFIT_CENTER_CREATE |
 | Edit | عند تحديد سجل | PERM_PROFIT_CENTER_UPDATE |
 | Deactivate | عند تحديد سجل نشط | PERM_PROFIT_CENTER_DELETE |
+| Activate | عند تحديد سجل غير نشط | PERM_PROFIT_CENTER_UPDATE |
 
 ---
 
@@ -1395,33 +1334,28 @@ PERMISSIONS: يُنشئها Security Engine × 4 تلقائياً
 
 | اسم الحقل | نوع الحقل | إلزامي | المصدر | ملاحظات |
 |---|---|---|---|---|
-| profitCenterCode | نص (Read-Only) | نظام | ENTITY-ORG-006 → A3 | يُنشأ تلقائياً |
-| nameAr | نص | نعم | ENTITY-ORG-006 → A3 | |
-| nameEn | نص | نعم | ENTITY-ORG-006 → A3 | |
-| legalEntityFk | LOV | نعم | ENTITY-ORG-001 → A3 | نشط فقط |
-| notes | نص | لا | ENTITY-ORG-006 → A3 | |
+| profit_center_code | نص (Read-Only) | نظام | ENTITY-ORG-006 → A3 | يُنشأ تلقائياً |
+| name_ar | نص | نعم | ENTITY-ORG-006 → A3 | |
+| name_en | نص | نعم | ENTITY-ORG-006 → A3 | |
+| legal_entity_fk | LOV | نعم | ENTITY-ORG-001 → A3 | الكيانات النشطة فقط |
+| notes | نص طويل | لا | ENTITY-ORG-006 → A3 | |
 
 #### الأزرار والإجراءات
 
 | الزر | الإجراء | RULE-IDs المطبَّقة |
 |---|---|---|
-| حفظ (جديد) | POST | RULE-ORG-020, RULE-ORG-012, RULE-ORG-016 |
-| حفظ (تعديل) | PUT | RULE-ORG-011 |
-| تعطيل | DELETE (soft) | — |
+| حفظ (Create) | POST | RULE-ORG-012, 013, 015, 016 |
+| حفظ (Update) | PUT | RULE-ORG-011, 014, 015, 016 |
+| إلغاء تفعيل | PUT | RULE-ORG-002 (cascade check via LegalEntity) |
+| تفعيل | PUT | — |
 
 ---
 
 ### B4 — الصلاحيات (Permissions)
 
-| الشاشة | عرض (VIEW) | إنشاء (CREATE) | تعديل (UPDATE) | حذف/تعطيل (DELETE) |
+| PAGE_CODE | PERM_VIEW | PERM_CREATE | PERM_UPDATE | PERM_DELETE |
 |---|---|---|---|---|
-| SCR-ORG-006 | مدير النظام، مدير المالية | مدير النظام | مدير النظام | مدير النظام |
-
-**Security Engine Declaration:**
-```
-SEC_PAGES  : page_code = PROFIT_CENTER, module = ORGANIZATION, parent_id_fk = [ORG_MENU]
-PERMISSIONS: يُنشئها Security Engine × 4 تلقائياً
-```
+| PROFIT_CENTER | مسؤول النظام، مسؤول المالية، مسؤول التنظيم | مسؤول النظام، مسؤول المالية | مسؤول النظام، مسؤول المالية | مسؤول النظام |
 
 ---
 
@@ -1429,16 +1363,16 @@ PERMISSIONS: يُنشئها Security Engine × 4 تلقائياً
 
 | API-ID | العملية | HTTP | المسار | المدخلات | المخرجات | RULE-IDs |
 |---|---|---|---|---|---|---|
-| API-ORG-035 | إنشاء مركز ربح | POST | /api/v1/org/profit-centers | nameAr, nameEn, legalEntityFk, notes? | ProfitCenter كامل | RULE-ORG-020, RULE-ORG-012, RULE-ORG-016 |
-| API-ORG-036 | بحث في مراكز الربح | GET | /api/v1/org/profit-centers | code?, nameAr?, legalEntityFk?, isActiveFl?, page, size | قائمة ProfitCenter | — |
-| API-ORG-037 | جلب مركز ربح بالمعرف | GET | /api/v1/org/profit-centers/{id} | profitCenterPk | ProfitCenter كامل | — |
-| API-ORG-038 | تعديل مركز ربح | PUT | /api/v1/org/profit-centers/{id} | nameAr?, nameEn?, notes? | ProfitCenter محدَّث | RULE-ORG-011 |
-| API-ORG-039 | تعطيل مركز ربح | DELETE | /api/v1/org/profit-centers/{id} | profitCenterPk | تأكيد | — |
-| API-ORG-040 | إعادة تفعيل مركز ربح | PUT | /api/v1/org/profit-centers/{id}/reactivate | profitCenterPk | ProfitCenter محدَّث | — |
+| API-ORG-033 | إنشاء مركز ربح | POST | /api/v1/org/profit-centers | name_ar, name_en, legal_entity_fk, notes? | ProfitCenter كامل | RULE-ORG-012, 013, 015, 016 |
+| API-ORG-034 | بحث مراكز الربح | GET | /api/v1/org/profit-centers | profit_center_code?, name_ar?, legal_entity_fk?, is_active_fl?, page, size | قائمة ProfitCenter | — |
+| API-ORG-035 | تعديل مركز ربح | PUT | /api/v1/org/profit-centers/{id} | name_ar?, name_en?, notes? | ProfitCenter محدَّث | RULE-ORG-011, 014, 015, 016 |
+| API-ORG-036 | إلغاء تفعيل | PUT | /api/v1/org/profit-centers/{id}/deactivate | profit_center_pk | تأكيد | — |
+| API-ORG-037 | تفعيل | PUT | /api/v1/org/profit-centers/{id}/activate | profit_center_pk | تأكيد | — |
+| API-ORG-038 | جلب بالمعرف | GET | /api/v1/org/profit-centers/{id} | profit_center_pk | ProfitCenter كامل | — |
 
 ---
 
-## SCR-ORG-007 — إدارة المواقع الجغرافية
+## SCR-ORG-007 — مواقع العمل
 
 ---
 
@@ -1447,29 +1381,30 @@ PERMISSIONS: يُنشئها Security Engine × 4 تلقائياً
 | البند | القيمة |
 |---|---|
 | **SCR-ID** | SCR-ORG-007 |
-| **اسم الشاشة** | إدارة المواقع الجغرافية |
+| **اسم الشاشة** | إدارة مواقع العمل |
 | **UI Pattern** | PATTERN-1 — Search + Entry |
-| **Pattern Reason** | كيان رئيسي مسطّح بـ 5+ حقول — يستوجب PATTERN-1 |
+| **Pattern Reason** | حقول > 8 — كيان مسطّح مرتبط بالفرع |
 | **SCR-ID Scope** | ONE SCR-ID covers: Search + Entry (CORE-9) |
 | **P3 Implication** | Two-screen UX navigation — P3 determines component names in F1 |
 | **ENTITY-ID** | ENTITY-ORG-007 |
-| **وظيفة الشاشة** | إنشاء وإدارة المواقع الجغرافية ضمن الفروع |
-| **المستخدمون** | مدير النظام، مدير التنظيم |
-| **الموضع في النظام** | التنظيم المؤسسي ← المواقع الجغرافية |
+| **وظيفة الشاشة** | إنشاء وإدارة المواقع المادية للعمل المرتبطة بالفروع |
+| **المستخدمون** | مسؤول النظام، مسؤول التنظيم |
+| **الموضع في النظام** | الهيكل التنظيمي ← مواقع العمل |
 
 ---
 
 ### B2 — مواصفة البحث (Search Specification)
 
-#### فلاتر البحث
+#### فلاتر البحث وأعمدة النتائج
 
 | اسم الحقل | نوع الحقل | إلزامي | القيم / المصدر | ملاحظات |
 |---|---|---|---|---|
-| locationCode | نص | لا | — | بحث جزئي |
-| nameAr | نص | لا | — | بحث جزئي |
-| branchFk | LOV | لا | ENTITY-ORG-002 → A3 | |
-| siteTypeId | قائمة منسدلة | لا | LOV-ORG-006 → A5 | lookupKey: LOCATION_SITE_TYPE |
-| isActiveFl | قائمة منسدلة | لا | نشط / غير نشط | |
+| location_site_code | نص | لا | — | بحث يساوي |
+| name_ar | نص | لا | — | بحث يحتوي |
+| name_en | نص | لا | — | بحث يحتوي |
+| branch_fk | LOV | لا | ENTITY-ORG-002 | اختيار فرع |
+| site_type_id | قائمة منسدلة | لا | LOV-ORG-006 → A5 | lookupKey: LOCATION_SITE_TYPE |
+| is_active_fl | قائمة منسدلة | لا | نشط / غير نشط | القيم: 1 / 0 |
 
 #### الإجراءات المتاحة
 
@@ -1478,6 +1413,7 @@ PERMISSIONS: يُنشئها Security Engine × 4 تلقائياً
 | New | دائماً | PERM_LOCATION_SITE_CREATE |
 | Edit | عند تحديد سجل | PERM_LOCATION_SITE_UPDATE |
 | Deactivate | عند تحديد سجل نشط | PERM_LOCATION_SITE_DELETE |
+| Activate | عند تحديد سجل غير نشط | PERM_LOCATION_SITE_UPDATE |
 
 ---
 
@@ -1487,34 +1423,28 @@ PERMISSIONS: يُنشئها Security Engine × 4 تلقائياً
 
 | اسم الحقل | نوع الحقل | إلزامي | المصدر | ملاحظات |
 |---|---|---|---|---|
-| locationCode | نص (Read-Only) | نظام | ENTITY-ORG-007 → A3 | يُنشأ تلقائياً |
-| nameAr | نص | نعم | ENTITY-ORG-007 → A3 | |
-| nameEn | نص | نعم | ENTITY-ORG-007 → A3 | |
-| branchFk | LOV | نعم | ENTITY-ORG-002 → A3 | نشط فقط |
-| siteTypeId | قائمة منسدلة | نعم | LOV-ORG-006 → A5 | lookupKey: LOCATION_SITE_TYPE |
-| notes | نص | لا | ENTITY-ORG-007 → A3 | |
+| location_site_code | نص (Read-Only) | نظام | ENTITY-ORG-007 → A3 | يُنشأ تلقائياً |
+| name_ar | نص | نعم | ENTITY-ORG-007 → A3 | |
+| name_en | نص | نعم | ENTITY-ORG-007 → A3 | |
+| branch_fk | LOV | نعم | ENTITY-ORG-002 → A3 | الفروع النشطة فقط |
+| site_type_id | قائمة منسدلة | نعم | LOV-ORG-006 → A5 | lookupKey: LOCATION_SITE_TYPE |
+| notes | نص طويل | لا | ENTITY-ORG-007 → A3 | |
 
 #### الأزرار والإجراءات
 
 | الزر | الإجراء | RULE-IDs المطبَّقة |
 |---|---|---|
-| حفظ (جديد) | POST | RULE-ORG-012, RULE-ORG-016 |
-| حفظ (تعديل) | PUT | RULE-ORG-011 |
-| تعطيل | DELETE (soft) | — |
+| حفظ (Create) | POST | RULE-ORG-012, 013, 015, 016, 019 |
+| حفظ (Update) | PUT | RULE-ORG-011, 014, 015, 016 |
+| إلغاء تفعيل | PUT | RULE-ORG-005 (cascade check via Branch) |
 
 ---
 
 ### B4 — الصلاحيات (Permissions)
 
-| الشاشة | عرض (VIEW) | إنشاء (CREATE) | تعديل (UPDATE) | حذف/تعطيل (DELETE) |
+| PAGE_CODE | PERM_VIEW | PERM_CREATE | PERM_UPDATE | PERM_DELETE |
 |---|---|---|---|---|
-| SCR-ORG-007 | مدير النظام، مدير التنظيم | مدير النظام | مدير النظام | مدير النظام |
-
-**Security Engine Declaration:**
-```
-SEC_PAGES  : page_code = LOCATION_SITE, module = ORGANIZATION, parent_id_fk = [ORG_MENU]
-PERMISSIONS: يُنشئها Security Engine × 4 تلقائياً
-```
+| LOCATION_SITE | مسؤول النظام، مسؤول التنظيم | مسؤول النظام | مسؤول النظام، مسؤول التنظيم | مسؤول النظام |
 
 ---
 
@@ -1522,13 +1452,12 @@ PERMISSIONS: يُنشئها Security Engine × 4 تلقائياً
 
 | API-ID | العملية | HTTP | المسار | المدخلات | المخرجات | RULE-IDs |
 |---|---|---|---|---|---|---|
-| API-ORG-041 | إنشاء موقع جغرافي | POST | /api/v1/org/location-sites | nameAr, nameEn, branchFk, siteTypeId, notes? | LocationSite كامل | RULE-ORG-012, RULE-ORG-016 |
-| API-ORG-042 | بحث في المواقع | GET | /api/v1/org/location-sites | code?, nameAr?, branchFk?, siteTypeId?, isActiveFl?, page, size | قائمة LocationSite | — |
-| API-ORG-043 | جلب موقع بالمعرف | GET | /api/v1/org/location-sites/{id} | locationSitePk | LocationSite كامل | — |
-| API-ORG-044 | تعديل موقع جغرافي | PUT | /api/v1/org/location-sites/{id} | nameAr?, nameEn?, siteTypeId?, notes? | LocationSite محدَّث | RULE-ORG-011 |
-| API-ORG-045 | تعطيل موقع جغرافي | DELETE | /api/v1/org/location-sites/{id} | locationSitePk | تأكيد | — |
-| API-ORG-046 | إعادة تفعيل موقع | PUT | /api/v1/org/location-sites/{id}/reactivate | locationSitePk | LocationSite محدَّث | — |
-| API-ORG-047 | مواقع حسب الفرع | GET | /api/v1/org/location-sites/by-branch/{branchId} | branchFk, isActiveFl? | قائمة LocationSite | — |
+| API-ORG-039 | إنشاء موقع عمل | POST | /api/v1/org/location-sites | name_ar, name_en, branch_fk, site_type_id, notes? | LocationSite كامل | RULE-ORG-012, 013, 015, 016, 019 |
+| API-ORG-040 | بحث مواقع العمل | GET | /api/v1/org/location-sites | location_site_code?, name_ar?, branch_fk?, site_type_id?, is_active_fl?, page, size | قائمة LocationSite | — |
+| API-ORG-041 | تعديل موقع عمل | PUT | /api/v1/org/location-sites/{id} | name_ar?, name_en?, site_type_id?, notes? | LocationSite محدَّث | RULE-ORG-011, 014, 015, 016 |
+| API-ORG-042 | إلغاء تفعيل | PUT | /api/v1/org/location-sites/{id}/deactivate | location_site_pk | تأكيد | RULE-ORG-005 |
+| API-ORG-043 | تفعيل | PUT | /api/v1/org/location-sites/{id}/activate | location_site_pk | تأكيد | — |
+| API-ORG-044 | جلب بالمعرف | GET | /api/v1/org/location-sites/{id} | location_site_pk | LocationSite كامل | — |
 
 ---
 
@@ -1540,63 +1469,59 @@ PERMISSIONS: يُنشئها Security Engine × 4 تلقائياً
 
 ## Permissions Summary & Registry Update
 
-> **ملاحظة:** هذا الجدول aggregate view مُجمَّع من B4 sections.
+> هذا الجدول aggregate view مُجمَّع من B4 sections.
 > B4 هو المصدر — هذا الجدول للمراجعة الإجمالية (P4 CHECK-10).
 
-| الشاشة | PAGE_CODE | عرض (VIEW) | إنشاء (CREATE) | تعديل (UPDATE) | حذف (DELETE) |
-|---|---|---|---|---|---|
-| SCR-ORG-001 — الكيانات القانونية | LEGAL_ENTITY | مدير النظام، مدير التنظيم | مدير النظام | مدير النظام | مدير النظام |
-| SCR-ORG-002 — الفروع | BRANCH | مدير النظام، مدير التنظيم | مدير النظام | مدير النظام | مدير النظام |
-| SCR-ORG-003 — المناطق | REGION | مدير النظام، مدير التنظيم | مدير النظام | مدير النظام | مدير النظام |
-| SCR-ORG-004 — الأقسام | DEPARTMENT | مدير النظام، مدير التنظيم | مدير النظام | مدير النظام | مدير النظام |
-| SCR-ORG-005 — مراكز التكلفة | COST_CENTER | مدير النظام، مدير التنظيم، مدير المالية | مدير النظام | مدير النظام | مدير النظام |
-| SCR-ORG-006 — مراكز الربح | PROFIT_CENTER | مدير النظام، مدير المالية | مدير النظام | مدير النظام | مدير النظام |
-| SCR-ORG-007 — المواقع الجغرافية | LOCATION_SITE | مدير النظام، مدير التنظيم | مدير النظام | مدير النظام | مدير النظام |
+> **SEC-3 Rule:** Security Engine يولّد PERM_* تلقائياً من PAGE_CODE.
+> SRS لا تُدرج INSERT statements صريحة لـ PERMISSIONS — Security Engine هو المُولِّد.
 
-> **CORE-9:** كل شاشة = SCR-ID واحد = صف واحد في SEC_PAGES.
-> **SEC-3:** Security Engine يُنشئ 4 أذونات تلقائياً لكل PAGE_CODE.
-> **INF-ORG-01:** PERM_LEGAL_ENTITY_VIEW مُنشأ مسبقاً في security-registry — لا يُكرَّر.
+| الشاشة (SCR-ID) | PAGE_CODE | PERM_VIEW | PERM_CREATE | PERM_UPDATE | PERM_DELETE |
+|---|---|---|---|---|---|
+| SCR-ORG-001 — الكيانات القانونية | LEGAL_ENTITY | مسؤول النظام، مسؤول التنظيم | مسؤول النظام | مسؤول النظام، مسؤول التنظيم | مسؤول النظام |
+| SCR-ORG-002 — الفروع | BRANCH | مسؤول النظام، مسؤول التنظيم | مسؤول النظام | مسؤول النظام، مسؤول التنظيم | مسؤول النظام |
+| SCR-ORG-003 — المناطق | REGION | مسؤول النظام، مسؤول التنظيم | مسؤول النظام | مسؤول النظام، مسؤول التنظيم | مسؤول النظام |
+| SCR-ORG-004 — الأقسام | DEPARTMENT | مسؤول النظام، مسؤول التنظيم | مسؤول النظام | مسؤول النظام، مسؤول التنظيم | مسؤول النظام |
+| SCR-ORG-005 — مراكز التكلفة | COST_CENTER | مسؤول النظام، مسؤول المالية، مسؤول التنظيم | مسؤول النظام، مسؤول المالية | مسؤول النظام، مسؤول المالية | مسؤول النظام |
+| SCR-ORG-006 — مراكز الربح | PROFIT_CENTER | مسؤول النظام، مسؤول المالية، مسؤول التنظيم | مسؤول النظام، مسؤول المالية | مسؤول النظام، مسؤول المالية | مسؤول النظام |
+| SCR-ORG-007 — مواقع العمل | LOCATION_SITE | مسؤول النظام، مسؤول التنظيم | مسؤول النظام | مسؤول النظام، مسؤول التنظيم | مسؤول النظام |
+
+> VIEW = gateway: يمنح الوصول للبحث والإدخال (read mode) — لا يمكن الوصول لأي شاشة بدونه
+> SEC_PAGES seeding: module = ORGANIZATION لجميع الصفحات
 
 ---
 
 ### Registry Update — MODE 1
 
 ```
-## REGISTRY UPDATE — 2026-06-23
+## REGISTRY UPDATE — 2026-06-28
 ────────────────────────────────────────────────────────────────
-Source Mode    : MODE 1 — SRS Governance Engine
+Source Mode    : MODE 1 (SRS Regeneration — DB_TARGET=POSTGRESQL_16)
 Feature Code   : ORG-001
-SRS Version    : 1.0
-P0 Context     : module-registry-ORG.md v2026-06-23 (REGENERATED)
-DBS-ID         : DBS-ORG-001 (prior — GOVERNED ✓ MODE 1.5)
-Plan ID        : PLAN-ORG-001 (prior — GOVERNED ✓)
+DBS-ID         : DBS-ORG-001 (GOVERNED ✓ — PG syntax)
+Plan ID        : PLAN-ORG-001 (GOVERNED ✓ — ALIGN GATE PASSED)
 ────────────────────────────────────────────────────────────────
-Entities       : ENTITY-ORG-001 (LegalEntity — SHARED owner)
-                 ENTITY-ORG-002 (Branch — SHARED owner)
-                 ENTITY-ORG-003 (Region — SHARED owner)
-                 ENTITY-ORG-004 (Department — SHARED owner)
-                 ENTITY-ORG-005 (CostCenter — SHARED owner)
-                 ENTITY-ORG-006 (ProfitCenter — SHARED owner)
-                 ENTITY-ORG-007 (LocationSite — SHARED owner)
-                 ENTITY-ORG-008 (RegionType — PRIVATE Reference Table)
-DB Tables      : ORG_LEGAL_ENTITY / ORG_BRANCH / ORG_REGION /
-                 ORG_DEPARTMENT / ORG_COST_CENTER / ORG_PROFIT_CENTER /
-                 ORG_LOCATION_SITE / ORG_REGION_TYPE
-                 (all GOVERNED ✓ DBS-ORG-001 — no new tables)
-Screens        : SCR-ORG-001 through SCR-ORG-007 (7 screens)
-LOVs           : LOV-ORG-001 (LEGAL_ENTITY_TYPE)
-                 LOV-ORG-002 (BRANCH_TYPE)
-                 LOV-ORG-003 (DEPARTMENT_NODE_TYPE)
-                 LOV-ORG-004 (COST_CENTER_NODE_TYPE)
-                 LOV-ORG-005 (COST_CENTER_TYPE)
-                 LOV-ORG-006 (LOCATION_SITE_TYPE)
-                 LOV-ORG-007 (REGION_TYPE — Reference Table)
-Rules          : RULE-ORG-001 through RULE-ORG-020 (20 rules)
-APIs           : API-ORG-001 through API-ORG-047 (47 APIs)
-XM-IDs Open   : — (Organization is ROOT — no outbound XM dependencies)
-OQ-IDs Open   : OQ-001 (DEFERRED — see OQ Log)
-Gate Status    : PASSED ✓
-Next Action    : MODE 4A — Governance Audit Engine (P4)
+Entities       : ENTITY-ORG-001..008 (7 SHARED + 1 PRIVATE Ref Table)
+DB Tables      : ORG_LEGAL_ENTITY, ORG_BRANCH, ORG_REGION,
+                 ORG_DEPARTMENT, ORG_COST_CENTER, ORG_PROFIT_CENTER,
+                 ORG_LOCATION_SITE, ORG_REGION_TYPE
+Lookups        : LEGAL_ENTITY_TYPE, BRANCH_TYPE, DEPARTMENT_NODE_TYPE,
+                 COST_CENTER_NODE_TYPE, COST_CENTER_TYPE, LOCATION_SITE_TYPE
+SCR-IDs        : SCR-ORG-001 through SCR-ORG-007 (7 screens)
+APIs           : API-ORG-001 through API-ORG-044 (44 APIs)
+RULE-IDs       : RULE-ORG-001 through RULE-ORG-020 (20 rules)
+LOV-IDs        : LOV-ORG-001 through LOV-ORG-006 (6 LOVs)
+XM-IDs Open   : None — ROOT MODULE — zero outbound XM dependencies
+OQ-IDs Open   : OQ-001 (DEFERRED — AQ-003)
+Gate Status    : GOVERNED ✓ MODE 2 — ALIGN GATE PASSED ✓
+Next Action    : MODE 2.5 → test-plan-org-001.md
+────────────────────────────────────────────────────────────────
+DB_TARGET change note:
+  This SRS regenerated with DB_TARGET=POSTGRESQL_16.
+  All field type notations updated: VARCHAR2→VARCHAR, NUMBER(1)→SMALLINT,
+  NUMBER(10)/NUMBER→BIGINT, CLOB→TEXT.
+  DBS-ORG-001 must be confirmed as PG-aligned (per registry-update-blocks-ORG.md
+  note: "PG migration 2026-06-28"). If DBS-ORG-001 still uses Oracle syntax,
+  a separate P2 amendment session is required.
 ────────────────────────────────────────────────────────────────
 ```
 
@@ -1605,28 +1530,27 @@ Next Action    : MODE 4A — Governance Audit Engine (P4)
 ## OQ Log — سجل الأسئلة المفتوحة
 
 ```
-## OPEN QUESTIONS LOG — Organization (ORG-001) — 2026-06-23
-─────────────────────────────────────────────────────────────────────────────────────────
-OQ-ID  │ Question                                         │ Status   │ Raised   │ Resolved │ Escalation
-───────┼──────────────────────────────────────────────────┼──────────┼──────────┼──────────┼────────────────
-OQ-001 │ ما هو تأثير إلغاء تفعيل Region على الموديولات   │ DEFERRED │ MODE 1   │ —        │ XM-ESC-TBD
-       │ المستهلكة عبر SOFT-READ؟ هل يُمنع الإلغاء؟      │          │ (ARCH-8) │          │ (AQ-003)
-       │ هل يُبلَّغ المستهلكون؟                           │          │          │          │
-─────────────────────────────────────────────────────────────────────────────────────────
-Source : ARCH-8 auto-raise — SOFT-READ consumer impact on Region deactivation
-Status : DEFERRED — يُحسم عند تشغيل أول موديول مستهلك لـ Region في MODE 1.5
-Affects: ENTITY-ORG-003 — API-ORG-018 (Deactivate Region)
-AQ-003 : OQ-001 مُصعَّد إلى master-registry Section 14 كـ AQ-003 (DEFERRED — non-blocking)
-─────────────────────────────────────────────────────────────────────────────────────────
+## OPEN QUESTIONS LOG — Organization (ORG-001) — 2026-06-28
+─────────────────────────────────────────────────────────────────────
+OQ-ID  │ Question                                     │ Status   │ Raised   │ Resolved │ Escalation
+───────┼──────────────────────────────────────────────┼──────────┼──────────┼──────────┼──────────────────
+OQ-001 │ ما هو تأثير إلغاء تفعيل Region على          │ DEFERRED │ MODE 1.5 │ —        │ XM-ESC-[CONSUMER]
+       │ الموديولات المستهلكة عبر SOFT-READ؟          │          │          │          │
+       │ هل يُمنع الإلغاء؟ هل يُبلَّغ المستهلكون؟   │          │          │          │
+       │ Source: ARCH-8 auto-raise                     │          │          │          │
+       │ Affects: ENTITY-ORG-003 — API-ORG-016         │          │          │          │
+       │ Note: AQ-003 in master-registry Section 14    │          │          │          │
+       │ Non-blocking — resolves when first consumer   │          │          │          │
+       │ module runs MODE 1.5                          │          │          │          │
+─────────────────────────────────────────────────────────────────────
+Total: 1 active (DEFERRED — non-blocking)
 ```
 
 ---
 
 *نهاية الوثيقة | End of srs-org-001.md*
 *Governed by: SRS Governance Engine (Project 1)*
-*Feature Code: ORG-001 | Version: 1.0 | Date: 2026-06-23*
-*Structure: PART A (Module Foundation — A1–A7) + PART B (7 Screen Specifications) + Standalone*
-*Entities: 8 (7 SHARED owner + 1 PRIVATE Reference Table)*
-*Rules: 20 | LOVs: 7 | Screens: 7 | APIs: 47*
-*Next Mode: MODE 4A — Governance Audit Engine (Project 4)*
-*ROOT MODULE — zero outbound XM dependencies*
+*Feature Code: ORG-001 | Version: 1.0 | DB_TARGET: POSTGRESQL_16*
+*Structure: PART A (8 Entities | 20 Rules | 6 LOVs) + PART B (7 Screens | 44 APIs)*
+*Pipeline: GOVERNED ✓ MODE 2 — ALIGN GATE PASSED ✓*
+*Next Mode: MODE 2.5 — Test Plan Generation*

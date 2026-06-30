@@ -13,7 +13,7 @@ Generates all deployment artifacts required to containerize and deploy the ERP s
 
 **Architecture:**
 - Backend runs in Docker with `network_mode: host` (shares host network)
-- Database (Oracle) runs on the host machine — accessed via `localhost`
+- Database (PostgreSQL) runs on the host machine — accessed via `localhost`
 - Frontend served via Nginx (reverse proxy to `localhost:7272`)
 - All API calls go through Nginx `/api` — no direct backend access
 - Deployment is Git pull-based (push → SSH → pull → rebuild)
@@ -321,7 +321,7 @@ services:
     # No 'ports:' needed — host network binds directly to 7272
     environment:
       - SPRING_PROFILES_ACTIVE=prod
-      - DB_URL=${DB_URL:-jdbc:oracle:thin:@//localhost:1892/orclpdb}
+      - DB_URL=${DB_URL:-jdbc:postgresql://localhost:5432/erp_db}
       - DB_USERNAME=${DB_USERNAME}
       - DB_PASSWORD=${DB_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
@@ -366,7 +366,7 @@ services:
 # ============================================
 
 # Backend
-DB_URL=jdbc:oracle:thin:@//localhost:1892/orclpdb
+DB_URL=jdbc:postgresql://localhost:5432/erp_db
 DB_USERNAME=erp_user
 DB_PASSWORD=CHANGE_ME
 JWT_SECRET=CHANGE_ME_TO_A_RANDOM_256_BIT_SECRET
@@ -382,12 +382,12 @@ JWT_SECRET=CHANGE_ME_TO_A_RANDOM_256_BIT_SECRET
 | DC.4 | Frontend depends on backend | No dependency or `depends_on: backend` (without condition) | `depends_on: backend: condition: service_healthy` |
 | DC.5 | Host network mode | `networks:` or `ports:` on backend | `network_mode: host` on both backend and frontend |
 | DC.6 | Restart policy | `restart: always` or none | `restart: unless-stopped` |
-| DC.7 | DB URL uses localhost | `host.docker.internal` or Docker service name | `jdbc:oracle:thin:@//localhost:1892/orclpdb` |
+| DC.7 | DB URL uses localhost | `host.docker.internal` or Docker service name | `jdbc:postgresql://localhost:5432/erp_db` |
 | DC.8 | `.env.example` provided | No env template | `.env.example` with placeholder values |
 | DC.9 | `.env` in `.gitignore` | `.env` committed to repo | `.env` added to `.gitignore` |
 | DC.10 | No CORS env needed | `CORS_ALLOWED_ORIGINS` in env | CORS eliminated — all traffic through nginx `/api` |
 | DC.11 | No `version:` key | `version: "3.8"` (deprecated in Compose V2) | Omit `version:` — use modern Compose V2 format |
-| DC.12 | Oracle service name | Wrong SID or service (`XEPDB1`, `XE`) | `orclpdb` as the Oracle service name |
+| DC.12 | PostgreSQL database name | Wrong database name in DB_URL | `erp_db` as the PostgreSQL database name |
 
 ---
 
@@ -490,10 +490,10 @@ Both frontend and API are served from the **same origin** (Nginx on port 80). No
 1. **Prerequisites** — Docker, Docker Compose versions, Git, SSH access
 2. **Quick Start** — Copy `.env.example` → `.env`, fill values, run `docker compose up -d --build`
 3. **Environment Variables** — Table of all variables with descriptions
-4. **Architecture Diagram** — ASCII showing: `Browser → Nginx(:80) → /api → localhost:7272(backend) → localhost:1892(Oracle/orclpdb)`
+4. **Architecture Diagram** — ASCII showing: `Browser → Nginx(:80) → /api → localhost:7272(backend) → localhost:5432(PostgreSQL/erp_db)`
 5. **Git-Based Deployment** — Push from dev → SSH to server → `git pull` → `docker compose up -d --build`
 6. **Individual Container Builds** — How to build/run backend or frontend alone
-7. **Troubleshooting** — Common issues (port conflicts, DB connection, Oracle service name)
+7. **Troubleshooting** — Common issues (port conflicts, DB connection, PostgreSQL database name)
 
 ---
 
@@ -701,11 +701,11 @@ The canonical patterns above are based on the current project analysis. The skil
 | New module added to `backend/pom.xml` | Add its POM + src COPY lines to backend Dockerfile |
 | Module removed/commented out | Remove its COPY lines from backend Dockerfile |
 | `angular.json` output path changes | Update nginx COPY path in frontend Dockerfile |
-| Database changes from Oracle to PostgreSQL | Update `DB_URL` default in `.env.example` and docker-compose |
+| PostgreSQL database name changes from `erp_db` | Update `DB_URL` default in `.env.example` and docker-compose |
 | Backend port changes from 7272 | Update EXPOSE, health check URL, proxy_pass, and env defaults |
 | `application-prod.properties` adds new `${VAR}` | Add new variable to `.env.example` and docker-compose `environment:` |
 | Frontend `environment.prod.ts` adds new fields | Document in deploy README |
-| Oracle service name changes from `orclpdb` | Update all DB_URL defaults across `.env.example` and docker-compose |
+| PostgreSQL host/port changes | Update all DB_URL defaults across `.env.example` and docker-compose |
 
 ---
 
@@ -729,8 +729,8 @@ When the skill is invoked, produce output in this order:
   Modules:  erp-common-utils, erp-security, erp-masterdata, erp-finance-gl, erp-main
   Boot JAR: erp-main-1.0.0-SNAPSHOT.jar
   Prod Config: application-prod.properties
-  DB Driver: Oracle (ojdbc11)
-  DB URL:   jdbc:oracle:thin:@//localhost:1892/orclpdb
+  DB Driver: PostgreSQL (postgresql)
+  DB URL:   jdbc:postgresql://localhost:5432/erp_db
   Env Vars: DB_URL, DB_USERNAME, DB_PASSWORD, JWT_SECRET
   Network:  host (no Docker bridge)
   Profile:  prod (Dockerfile + docker-compose)
@@ -776,7 +776,7 @@ Before generating ANY deployment artifacts, the system MUST validate:
 | Spring profile | No `--spring.profiles.active=prod` in Dockerfile or compose | Profile set in both Dockerfile ENTRYPOINT and compose env |
 | Prod config exists | No `application-prod.properties` or `application-prod.yml` | File exists in bootable module `src/main/resources/` |
 | No dev configs active | `ddl-auto=update`, `show-sql=true`, `DEBUG` logging | `ddl-auto=none`, `show-sql=false`, `WARN` logging |
-| DB service name | `XEPDB1`, `XE`, or wrong Oracle SID | `orclpdb` in DB_URL |
+| DB database name | Wrong database name in DB_URL | `erp_db` in DB_URL |
 | DB uses localhost | `host.docker.internal` or any non-localhost | `localhost` in DB_URL |
 
 ### 16.2 Frontend Validation
@@ -811,4 +811,4 @@ If ANY check fails → **STOP** → report ALL issues → **DO NOT** generate de
 | Enforcement Checks | 64 |
 | Network Mode | `host` (no Docker bridge networks) |
 | Deployment Model | Git pull-based (`push → SSH → pull → rebuild`) |
-| Database | Oracle on host — `localhost:1892/orclpdb` |
+| Database | PostgreSQL on host — `localhost:5432/erp_db` |

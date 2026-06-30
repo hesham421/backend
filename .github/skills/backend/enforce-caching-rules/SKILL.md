@@ -119,7 +119,7 @@ Before allowing ANY caching annotation, verify the entity against the eligibilit
 ```
 [ ] D.4.1 — create() has @CacheEvict (if cached entity)
 [ ] D.4.2 — update() has @CacheEvict (if cached entity)
-[ ] D.4.3 — toggleActive() has @CacheEvict (if cached entity)
+[ ] D.4.3 — activate() and deactivate() have @CacheEvict (if cached entity)
 [ ] D.4.4 — delete() has @CacheEvict (if cached entity)
 [ ] D.4.5 — No partial key-based eviction without governance approval
 [ ] D.4.6 — Eviction co-located with @Transactional method

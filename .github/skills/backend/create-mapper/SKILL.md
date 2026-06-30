@@ -130,7 +130,7 @@ public <ENTITY_NAME>UsageResponse toUsageResponse(Md<ENTITY_NAME> entity, long c
     return <ENTITY_NAME>UsageResponse.builder()
             .id(entity.getId())
             .childCount(childCount)
-            .canBeDeleted(canDelete)
+            .canDelete(canDelete)
             .canDeactivate(canDeactivate)
             .reason(reason)
             .build();
@@ -169,7 +169,7 @@ Before creating a mapper, verify the following shared conventions from `erp-comm
 | A.4.4 | `updateEntityFromRequest()` does NOT update natural keys or FK refs | YES |
 | A.4.5 | `toResponse()` maps booleans with `Boolean.TRUE.equals(entity.getIsActive())` | YES |
 | A.4.6 | All mapper methods handle `null` input gracefully (return null) | YES |
-| A.4.7 | `toUsageResponse()` computes `canBeDeleted`/`canDeactivate` from counts | YES |
+| A.4.7 | `toUsageResponse()` computes `canDelete`/`canDeactivate` from counts | YES |
 
 ---
 
@@ -183,7 +183,7 @@ Before creating a mapper, verify the following shared conventions from `erp-comm
 - ❌ Updating `lookupKey`, `code`, or `parentId` in `updateEntityFromRequest()`
 - ❌ Using `entity.getIsActive()` directly without `Boolean.TRUE.equals()` — null-unsafe
 - ❌ Missing null checks on mapper methods
-- ❌ Hardcoded `canBeDeleted = true` — must be computed from counts
+- ❌ Hardcoded `canDelete = true` — must be computed from counts
 - ❌ Using MapStruct — manual mapping is the project standard
 - ❌ Missing audit fields in `toResponse()` — `createdAt`, `createdBy`, `updatedAt`, `updatedBy` are mandatory
 
@@ -235,7 +235,7 @@ public class MasterLookupMapper {
         return MasterLookupUsageResponse.builder()
                 .id(entity.getId())
                 .detailCount(detailCount)
-                .canBeDeleted(canDelete)
+                .canDelete(canDelete)
                 .canDeactivate(canDeactivate)
                 .reason(!canDelete ? "Lookup has " + detailCount + " detail records" : null)
                 .build();

@@ -97,14 +97,10 @@ export function confirmToggle<ENTITY_NAME>Active(
     confirmLabel: deps.translate?.instant('COMMON.CONFIRM') ?? 'Confirm'
   }).then(confirmed => {
     if (confirmed) {
-      deps.facade.toggleActive(entity.id, isActivating, () => {
-        deps.notify.showSuccess(
-          deps.translate?.instant(
-            isActivating ? '<FEATURE>S.ACTIVATED_SUCCESS' : '<FEATURE>S.DEACTIVATED_SUCCESS'
-          ) ?? ''
-        );
-        onDone?.();
-      });
+      const action = isActivating
+        ? deps.facade.activate(entity.id, onDone)
+        : deps.facade.deactivate(entity.id, onDone);
+      // onSuccess callback handles notification + onDone in the component
     }
   });
 }
@@ -122,17 +118,14 @@ export function confirmDelete<ENTITY_NAME>(
     return;
   }
 
-  // 2. Fetch usage info BEFORE showing confirm dialog
-  deps.facade.getUsageInfo?.(entity.id);
-
-  // Wait for usage — then check canDelete
-  // (In practice, usage is fetched and checked before rendering dialog)
+  // 2. Check usage info — MUST be preloaded before rendering action menu (not fetched here)
+  // usage is loaded via facade.getUsageInfo(id) when the row is selected or action menu opens
   const usage = deps.facade.usageInfo?.();
   if (usage && !usage.canDelete) {
     deps.dialog.confirm({
       title: deps.translate?.instant('COMMON.DELETE_BLOCKED') ?? '',
       message: deps.translate?.instant('<FEATURE>S.DELETE_BLOCKED_REASON', {
-        reason: usage.deleteBlockedReason
+        reason: usage.reason
       }) ?? '',
       type: 'warning',
       showCancel: false
@@ -164,7 +157,7 @@ export function confirmToggle<CHILD_NAME>Active(
   child: <CHILD_NAME>Dto,
   onDone?: () => void
 ): void {
-  // Same pattern as parent — permission check → dialog → facade.toggleChildActive()
+  // Same pattern as parent — permission check → dialog → facade.activateChild() or facade.deactivateChild()
 }
 
 export function confirmDelete<CHILD_NAME>(

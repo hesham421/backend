@@ -1,9 +1,9 @@
 # registry-security.md
 ════════════════════════════════════════
 Module       : SECURITY
-Version      : 2.1.0
-Last Updated : 2026-06-26
-Updated By   : Agent (Gap Closure)
+Version      : 2.2.0
+Last Updated : 2026-06-28
+Updated By   : Agent (PG Migration)
 Status       : Complete
 ════════════════════════════════════════
 
@@ -13,21 +13,21 @@ Status       : Complete
 
 ### 1.1 `USERS` → `UserAccount.java`
 
-| Column      | Type              | Nullable | Default | Constraints                    |
-|-------------|-------------------|----------|---------|--------------------------------|
-| ID          | NUMBER (IDENTITY) | NOT NULL | —       | PK → `USERS_PK`               |
-| USERNAME    | VARCHAR2(80)      | NOT NULL | —       | UK: `UK_USERS_USERNAME`        |
-| PASSWORD    | VARCHAR2(200)     | NOT NULL | —       | BCrypt hash                    |
-| ENABLED     | NUMBER(1)         | NOT NULL | 1       | CK: `CK_USERS_ENABLED` IN (0,1)|
-| CREATED_AT  | TIMESTAMP         | NOT NULL | —       | Audit                          |
-| CREATED_BY  | VARCHAR2(100)     | NOT NULL | —       | Audit                          |
-| UPDATED_AT  | TIMESTAMP         | NULL     | —       | Audit                          |
-| UPDATED_BY  | VARCHAR2(100)     | NULL     | —       | Audit                          |
+| Column      | Type                            | Nullable | Default | Constraints                    |
+|-------------|---------------------------------|----------|---------|--------------------------------|
+| ID          | BIGINT GENERATED ALWAYS AS IDENTITY | NOT NULL | — | PK → `USERS_PK`          |
+| USERNAME    | VARCHAR(80)                     | NOT NULL | —       | UK: `UK_USERS_USERNAME`        |
+| PASSWORD    | VARCHAR(200)                    | NOT NULL | —       | BCrypt hash                    |
+| ENABLED     | SMALLINT                        | NOT NULL | 1       | CK: `CK_USERS_ENABLED` IN (0,1)|
+| CREATED_AT  | TIMESTAMP                       | NOT NULL | —       | Audit                          |
+| CREATED_BY  | VARCHAR(100)                    | NOT NULL | —       | Audit                          |
+| UPDATED_AT  | TIMESTAMP                       | NULL     | —       | Audit                          |
+| UPDATED_BY  | VARCHAR(100)                    | NULL     | —       | Audit                          |
 
 - **Primary Key**: `ID` (`USERS_PK`)
 - **Indexes**: `IDX_USERS_ENABLED`, `IDX_USERS_USERNAME`
 - **FK Fields**: none (join table `USER_ROLES` links to `ROLES`)
-- **Flag Fields**: `ENABLED` (NUMBER(1) → converted to Boolean via `BooleanNumberConverter`)
+- **Flag Fields**: `ENABLED` (SMALLINT → converted to Boolean via `BooleanNumberConverter`)
 - **System Fields**: `CREATED_AT`, `CREATED_BY`, `UPDATED_AT`, `UPDATED_BY`
 - **Java Entity**: `UserAccount extends AuditableEntity`
 - **Relationships**: `@ManyToMany` → `ROLES` via join table `USER_ROLES`
@@ -37,19 +37,19 @@ Status       : Complete
 
 ### 1.2 `ROLES` → `Role.java`
 
-| Column      | Type              | Nullable | Default | Constraints                   |
-|-------------|-------------------|----------|---------|-------------------------------|
-| ID          | NUMBER (IDENTITY) | NOT NULL | —       | PK → `ROLES_PK`              |
-| NAME        | VARCHAR2(60)      | NOT NULL | —       | UK: `UK_ROLES_NAME`           |
-| IS_ACTIVE   | NUMBER(1)         | NOT NULL | 1       | CK: `CK_ROLES_ACTIVE` IN (0,1)|
-| CREATED_AT  | TIMESTAMP         | NOT NULL | —       | Audit                         |
-| CREATED_BY  | VARCHAR2(100)     | NOT NULL | —       | Audit                         |
-| UPDATED_AT  | TIMESTAMP         | NULL     | —       | Audit                         |
-| UPDATED_BY  | VARCHAR2(100)     | NULL     | —       | Audit                         |
+| Column      | Type                            | Nullable | Default | Constraints                   |
+|-------------|---------------------------------|----------|---------|-------------------------------|
+| ID          | BIGINT GENERATED ALWAYS AS IDENTITY | NOT NULL | — | PK → `ROLES_PK`          |
+| NAME        | VARCHAR(60)                     | NOT NULL | —       | UK: `UK_ROLES_NAME`           |
+| IS_ACTIVE   | SMALLINT                        | NOT NULL | 1       | CK: `CK_ROLES_ACTIVE` IN (0,1)|
+| CREATED_AT  | TIMESTAMP                       | NOT NULL | —       | Audit                         |
+| CREATED_BY  | VARCHAR(100)                    | NOT NULL | —       | Audit                         |
+| UPDATED_AT  | TIMESTAMP                       | NULL     | —       | Audit                         |
+| UPDATED_BY  | VARCHAR(100)                    | NULL     | —       | Audit                         |
 
 - **Primary Key**: `ID` (`ROLES_PK`)
 - **Indexes**: `IDX_ROLES_IS_ACTIVE`
-- **Flag Fields**: `IS_ACTIVE` (NUMBER(1) → Boolean via `BooleanNumberConverter`)
+- **Flag Fields**: `IS_ACTIVE` (SMALLINT → Boolean via `BooleanNumberConverter`)
 - **System Fields**: `CREATED_AT`, `CREATED_BY`, `UPDATED_AT`, `UPDATED_BY`
 - **Java Entity**: `Role extends AuditableEntity`
 - **Java Field Mapping**:
@@ -65,21 +65,21 @@ Status       : Complete
 
 | Column        | Type           | Nullable | Default | Constraints                       |
 |---------------|----------------|----------|---------|-----------------------------------|
-| ID_PK         | NUMBER         | NOT NULL | SEQ     | PK → `SEC_PAGES_PK` (uses `SEC_PAGES_SEQ`) |
-| PAGE_CODE     | VARCHAR2(50)   | NOT NULL | —       | UK: `UK_PAGES_CODE`               |
-| NAME_AR       | VARCHAR2(100)  | NOT NULL | —       | Arabic name                       |
-| NAME_EN       | VARCHAR2(100)  | NOT NULL | —       | English name                      |
-| ROUTE         | VARCHAR2(200)  | NOT NULL | —       | UK: `UK_PAGES_ROUTE`              |
-| ICON          | VARCHAR2(50)   | NULL     | —       | —                                 |
-| MODULE        | VARCHAR2(50)   | NULL     | —       | e.g., SECURITY, FINANCE, GL       |
-| PARENT_ID_FK  | NUMBER         | NULL     | —       | Self-reference FK (hierarchy)     |
-| DISPLAY_ORDER | NUMBER         | NULL     | —       | Sort order                        |
-| IS_ACTIVE     | NUMBER(1)      | NULL     | 1       | CK: `CK_PAGES_ACTIVE` IN (0,1)   |
-| DESCRIPTION   | VARCHAR2(500)  | NULL     | —       | —                                 |
+| ID_PK         | BIGINT         | NOT NULL | SEQ     | PK → `SEC_PAGES_PK` (uses `SEC_PAGES_SEQ`) |
+| PAGE_CODE     | VARCHAR(50)    | NOT NULL | —       | UK: `UK_PAGES_CODE`               |
+| NAME_AR       | VARCHAR(100)   | NOT NULL | —       | Arabic name                       |
+| NAME_EN       | VARCHAR(100)   | NOT NULL | —       | English name                      |
+| ROUTE         | VARCHAR(200)   | NOT NULL | —       | UK: `UK_PAGES_ROUTE`              |
+| ICON          | VARCHAR(50)    | NULL     | —       | —                                 |
+| MODULE        | VARCHAR(50)    | NULL     | —       | e.g., SECURITY, FINANCE, GL       |
+| PARENT_ID_FK  | BIGINT         | NULL     | —       | Self-reference FK (hierarchy)     |
+| DISPLAY_ORDER | BIGINT         | NULL     | —       | Sort order                        |
+| IS_ACTIVE     | SMALLINT       | NULL     | 1       | CK: `CK_PAGES_ACTIVE` IN (0,1)   |
+| DESCRIPTION   | VARCHAR(500)   | NULL     | —       | —                                 |
 | CREATED_AT    | TIMESTAMP      | NOT NULL | —       | Audit                             |
-| CREATED_BY    | VARCHAR2(100)  | NOT NULL | —       | Audit                             |
+| CREATED_BY    | VARCHAR(100)   | NOT NULL | —       | Audit                             |
 | UPDATED_AT    | TIMESTAMP      | NULL     | —       | Audit                             |
-| UPDATED_BY    | VARCHAR2(100)  | NULL     | —       | Audit                             |
+| UPDATED_BY    | VARCHAR(100)   | NULL     | —       | Audit                             |
 
 - **Primary Key**: `ID_PK` (`SEC_PAGES_PK`) — uses sequence `SEC_PAGES_SEQ`
 - **FK Fields**: `PARENT_ID_FK` (self-reference to `SEC_PAGES.ID_PK`)
@@ -94,16 +94,16 @@ Status       : Complete
 
 ### 1.4 `PERMISSIONS` → `Permission.java`
 
-| Column          | Type              | Nullable | Default | Constraints                    |
-|-----------------|-------------------|----------|---------|--------------------------------|
-| ID              | NUMBER (IDENTITY) | NOT NULL | —       | PK → `PERMISSIONS_PK`         |
-| NAME            | VARCHAR2(150)     | NOT NULL | —       | UK: `UK_PERMS_NAME`            |
-| PAGE_ID_FK      | NUMBER            | NULL     | —       | FK → `SEC_PAGES.ID_PK` (`FK_PERMS_PAGE`) |
-| PERMISSION_TYPE | VARCHAR2(20)      | NULL     | —       | Enum: VIEW, CREATE, UPDATE, DELETE |
-| CREATED_AT      | TIMESTAMP         | NOT NULL | —       | Audit                          |
-| CREATED_BY      | VARCHAR2(100)     | NOT NULL | —       | Audit                          |
-| UPDATED_AT      | TIMESTAMP         | NULL     | —       | Audit                          |
-| UPDATED_BY      | VARCHAR2(100)     | NULL     | —       | Audit                          |
+| Column          | Type                            | Nullable | Default | Constraints                    |
+|-----------------|---------------------------------|----------|---------|--------------------------------|
+| ID              | BIGINT GENERATED ALWAYS AS IDENTITY | NOT NULL | — | PK → `PERMISSIONS_PK`    |
+| NAME            | VARCHAR(150)                    | NOT NULL | —       | UK: `UK_PERMS_NAME`            |
+| PAGE_ID_FK      | BIGINT                          | NULL     | —       | FK → `SEC_PAGES.ID_PK` (`FK_PERMS_PAGE`) |
+| PERMISSION_TYPE | VARCHAR(20)                     | NULL     | —       | Enum: VIEW, CREATE, UPDATE, DELETE |
+| CREATED_AT      | TIMESTAMP                       | NOT NULL | —       | Audit                          |
+| CREATED_BY      | VARCHAR(100)                    | NOT NULL | —       | Audit                          |
+| UPDATED_AT      | TIMESTAMP                       | NULL     | —       | Audit                          |
+| UPDATED_BY      | VARCHAR(100)                    | NULL     | —       | Audit                          |
 
 - **Primary Key**: `ID` (`PERMISSIONS_PK`)
 - **FK Fields**: `PAGE_ID_FK` → `SEC_PAGES(ID_PK)` (nullable for system permissions)
@@ -116,18 +116,18 @@ Status       : Complete
 
 ### 1.5 `REFRESH_TOKENS` → `RefreshToken.java`
 
-| Column     | Type              | Nullable | Default | Constraints                          |
-|------------|-------------------|----------|---------|--------------------------------------|
-| ID         | NUMBER (IDENTITY) | NOT NULL | —       | PK → `REFRESH_TOKENS_PK`            |
-| JTI        | VARCHAR2(64)      | NOT NULL | —       | UK: `UK_REFRESH_TOKENS_JTI`         |
-| USER_ID    | NUMBER            | NOT NULL | —       | FK → `USERS.ID` (`FK_RT_USER`)      |
-| CREATED_AT | TIMESTAMP         | NOT NULL | —       | Auto via `@CreationTimestamp`        |
-| EXPIRES_AT | TIMESTAMP         | NOT NULL | —       | Expiry timestamp                     |
-| REVOKED    | NUMBER(1)         | NOT NULL | 0       | CK: `CK_RT_REVOKED` IN (0,1)        |
+| Column     | Type                            | Nullable | Default | Constraints                          |
+|------------|---------------------------------|----------|---------|--------------------------------------|
+| ID         | BIGINT GENERATED ALWAYS AS IDENTITY | NOT NULL | — | PK → `REFRESH_TOKENS_PK`        |
+| JTI        | VARCHAR(64)                     | NOT NULL | —       | UK: `UK_REFRESH_TOKENS_JTI`         |
+| USER_ID    | BIGINT                          | NOT NULL | —       | FK → `USERS.ID` (`FK_RT_USER`)      |
+| CREATED_AT | TIMESTAMP                       | NOT NULL | —       | Auto via `@CreationTimestamp`        |
+| EXPIRES_AT | TIMESTAMP                       | NOT NULL | —       | Expiry timestamp                     |
+| REVOKED    | SMALLINT                        | NOT NULL | 0       | CK: `CK_RT_REVOKED` IN (0,1)        |
 
 - **Primary Key**: `ID` (`REFRESH_TOKENS_PK`)
 - **FK Fields**: `USER_ID` → `USERS(ID)`
-- **Flag Fields**: `REVOKED` (NUMBER(1) → Boolean)
+- **Flag Fields**: `REVOKED` (SMALLINT → Boolean)
 - **JTI**: UUID used as refresh token identifier (stored in cookie)
 
 ---
@@ -137,16 +137,16 @@ Status       : Complete
 #### `USER_ROLES`
 | Column  | Type   | Constraints                                  |
 |---------|--------|----------------------------------------------|
-| USER_ID | NUMBER | FK → `USERS(ID)` (`FK_UR_USER`) + PK        |
-| ROLE_ID | NUMBER | FK → `ROLES(ID)` (`FK_UR_ROLE`) + PK        |
+| USER_ID | BIGINT | FK → `USERS(ID)` (`FK_UR_USER`) + PK        |
+| ROLE_ID | BIGINT | FK → `ROLES(ID)` (`FK_UR_ROLE`) + PK        |
 
 PK: `USER_ROLES_PK (USER_ID, ROLE_ID)`
 
 #### `ROLE_PERMISSIONS`
 | Column  | Type   | Constraints                                      |
 |---------|--------|--------------------------------------------------|
-| ROLE_ID | NUMBER | FK → `ROLES(ID)` (`FK_RP_ROLE`) + PK            |
-| PERM_ID | NUMBER | FK → `PERMISSIONS(ID)` (`FK_RP_PERM`) + PK      |
+| ROLE_ID | BIGINT | FK → `ROLES(ID)` (`FK_RP_ROLE`) + PK            |
+| PERM_ID | BIGINT | FK → `PERMISSIONS(ID)` (`FK_RP_PERM`) + PK      |
 
 PK: `ROLE_PERMISSIONS_PK (ROLE_ID, PERM_ID)`
 
@@ -522,6 +522,7 @@ Allowed sort fields: `id`, `name`, `module`, `createdAt`, `updatedAt`
 | 1.0.0   | 2026-04-11 | Initial extraction — full scan of erp-security module       | GitHub Copilot |
 | 2.0.0   | 2026-06-21 | Multi-tenancy removal — TENANT_ID eliminated system-wide    | Claude Code    |
 | 2.1.0   | 2026-06-26 | GAP-SEC-01/02/03 closed: @PreAuthorize added to PageController (5 endpoints) and PermissionController (2 endpoints). PERMISSION_UPDATE constant confirmed present. Tests added for 401/403/200 scenarios on all affected endpoints. | Agent (Gap Closure) |
+| 2.2.0   | 2026-06-28 | Oracle → PostgreSQL migration: column types updated in registry (NUMBER→BIGINT, NUMBER(IDENTITY)→BIGINT GENERATED ALWAYS AS IDENTITY, VARCHAR2→VARCHAR, NUMBER(1)→SMALLINT). No Java entity changes were required — all types were already PostgreSQL-compatible. | Agent (PG Migration) |
 
 ### v2.0.0 — Multi-Tenancy Removal Detail
 

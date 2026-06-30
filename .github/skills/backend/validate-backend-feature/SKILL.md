@@ -185,7 +185,7 @@ Run each enforcement skill's full checklist:
 ```
 [ ] Service methods return ServiceResult<T> (except delete)
 [ ] create() uses Status.CREATED
-[ ] update()/toggleActive() use Status.UPDATED
+[ ] update()/activate()/deactivate() use Status.UPDATED
 [ ] getById()/search()/getUsage() use default Status.SUCCESS
 [ ] delete() returns void (no ServiceResult)
 [ ] Controller uses operationCode.craftResponse() for non-delete
@@ -228,8 +228,9 @@ directly instead (entity.validateX() call pattern in service).
 [ ] Test: update_ShouldThrow_WhenNotFound → asserts LocalizedException.class
 [ ] Test: getById_Success → asserts .isSuccess()
 [ ] Test: getById_ShouldThrow_WhenNotFound → asserts LocalizedException.class
-[ ] Test: toggleActive_Success
-[ ] Test: toggleActive_ShouldFail_WhenConstraints (if parent)
+[ ] Test: activate_Success
+[ ] Test: deactivate_Success
+[ ] Test: deactivate_ShouldFail_WhenConstraints (if parent)
 [ ] Test: delete_Success
 [ ] Test: delete_ShouldFail_WhenHasChildren (if parent)
 [ ] Test: delete_ShouldFail_WhenReferenced (if applicable)

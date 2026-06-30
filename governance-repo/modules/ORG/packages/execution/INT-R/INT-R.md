@@ -1,13 +1,7 @@
 <!-- Source: PHASE:INT-R -->
 
+# PHASE INT-R — Runtime Activation Status
 
-# PHASE INT-R — Integration Runtime Specifications
+No outbound XM-IDs exist for this module — INT-R has no entries to activate. All 4 inbound stubs remain NOT-YET-ASSIGNED pending consumer-module governance; no runtime activation required from ORG-001 side.
 
-```
-INT-R SUMMARY — ORG-001 — PLAN-ORG-001
-══════════════════════════════════════════════════════════════════════════
-No XM-IDs to resolve at runtime. ROOT MODULE.
-INT-R Gate: PASSED ✓
-══════════════════════════════════════════════════════════════════════════
-```
-
+INT-R GATE: PASSED ✓ (vacuously — no outbound dependencies to activate)

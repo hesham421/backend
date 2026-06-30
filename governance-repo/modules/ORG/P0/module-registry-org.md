@@ -5,13 +5,26 @@ Module Code    : ORG
 Layer          : L1
 Type           : Master Data (Core — Foundation)
 Execution Tier : L1-1 (Step 1 of Layer 1 — no prerequisites)
-P0 Date        : 2026-06-23  (REGENERATED — replaces 2026-06-16 original)
+P0 Date        : 2026-06-28  (UPDATED — reflects master-registry v2.7.4 + security-registry v2.2.0)
 Readiness      : READY ✓
+Pipeline State : GOVERNED ✓ MODE 2 — ALIGN GATE PASSED ✓
+                 Next stage: MODE 2.5 → test-plan-org-001.md
+DB_TARGET      : POSTGRESQL_16  (system-wide PG migration confirmed 2026-06-28)
 ERP Pattern    : platform-standards.md Section M.1
-Source         : REGENERATED — rebuilt from master-registry v2.7.2 + Section M.1
-                 (prior registry-srs-ORG.md / registry-db-ORG.md artifacts NOT uploaded —
-                  clean rebuild from authoritative registry + vision + governance docs)
+Source         : UPDATED — rebuilt from master-registry v2.7.4 + security-registry v2.2.0
 ══════════════════════════════════════════════════════════════════
+
+PIPELINE STATUS
+──────────────────────────────────────────────────────────────────
+P0   COMPLETE  : module-registry-ORG.md + business-policies-ORG.md  ✓
+P1   COMPLETE  : srs-org-001.md v1.0 — 8 entities / 20 rules / 47 APIs / 7 screens  ✓
+P2   COMPLETE  : DBS-ORG-001 — 8 tables / 102 DBF-IDs  ✓
+P3   COMPLETE  : PLAN-ORG-001 — ALIGN GATE PASSED ✓  ✓
+P2.5 PENDING   : test-plan-org-001.md  ← NEXT
+P4   PENDING   : MODE 4A — Governance Audit Engine
+──────────────────────────────────────────────────────────────────
+Note: SRS entity count updated — master-registry v2.7.4 shows 8 entities
+(previously 7 in v2.7.0 note). DBS-ORG-001 = 8 tables confirmed.
 
 ENTITIES OWNED
 ──────────────────────────────────────────────────────────────────
@@ -23,10 +36,12 @@ CostCenter     │ Master Data  │ SHARED (owner)    [tree — self-reference]
 ProfitCenter   │ Master Data  │ SHARED (owner)
 LocationSite   │ Master Data  │ SHARED (owner)
 ──────────────────────────────────────────────────────────────────
-7 entities — all SHARED: every downstream module consumes via FK.
-Note: Entity names only — ENTITY-IDs assigned by P1, not here.
+7 entities declared in P0. 8th entity in DBS-ORG-001 is the
+ORG_REGION_TYPE reference table (treated as configuration, not a
+named entity in this registry — governed separately below).
+Note: ENTITY-IDs assigned by P1 (srs-org-001.md) — not reproduced here.
 
-DB TABLE NAMES (confirmed in master-registry v2.7.2 Section 5 — GOVERNED ✓)
+DB TABLE NAMES (confirmed GOVERNED ✓ — DBS-ORG-001 / master-registry v2.7.4 Section 5)
 ──────────────────────────────────────────────────────────────────
 LegalEntity   → ORG_LEGAL_ENTITY
 Branch        → ORG_BRANCH
@@ -35,90 +50,107 @@ Department    → ORG_DEPARTMENT
 CostCenter    → ORG_COST_CENTER
 ProfitCenter  → ORG_PROFIT_CENTER
 LocationSite  → ORG_LOCATION_SITE
+[8th table]   → ORG_REGION_TYPE  (reference table — see below)
 ──────────────────────────────────────────────────────────────────
-DBS-ORG-001 confirmed in master-registry (GOVERNED ✓ MODE 1.5 status).
-These table names are LOCKED — P1/P2 must not rename them.
+DB_TARGET: POSTGRESQL_16. All DDL in DBS-ORG-001 uses PG syntax:
+  PKs          : BIGINT with sequences (not IDENTITY — per CORE-8 rule)
+  Flag fields  : SMALLINT DEFAULT 1 (not BOOLEAN — per CORE-8 rule)
+  String fields: VARCHAR(N) (not VARCHAR2 — PG dialect)
+  Audit fields : TIMESTAMP
+These table names are LOCKED — no rename permitted without AQ + conflict log.
 
 ENTITY RELATIONSHIPS
 ──────────────────────────────────────────────────────────────────
 LegalEntity    ROOT — no parent
-Branch         → LegalEntity    1:M  NOT NULL  RESTRICT
-Region         → LegalEntity    1:M  NOT NULL  RESTRICT
-Department     → Branch         1:M  NOT NULL  RESTRICT
-               → Department     self-ref  NULLABLE  (parent_departmentFk)
-               → node_type: SUMMARY | DETAIL
-CostCenter     → Branch         1:M  NOT NULL  RESTRICT
-               → CostCenter     self-ref  NULLABLE  (parent_costCenterFk)
-               → node_type: SUMMARY | DETAIL
-ProfitCenter   → LegalEntity    1:M  NOT NULL  RESTRICT
-LocationSite   → Branch         1:M  NOT NULL  RESTRICT
+Branch         → LegalEntity    1:M  NOT NULL FK  RESTRICT
+Region         → LegalEntity    1:M  NOT NULL FK  RESTRICT
+Department     → Branch         1:M  NOT NULL FK  RESTRICT
+               → Department     self-ref  NULLABLE FK  (parent_department_fk)
+               → node_type_id: SUMMARY | DETAIL
+CostCenter     → Branch         1:M  NOT NULL FK  RESTRICT
+               → CostCenter     self-ref  NULLABLE FK  (parent_cost_center_fk)
+               → node_type_id: SUMMARY | DETAIL
+ProfitCenter   → LegalEntity    1:M  NOT NULL FK  RESTRICT
+LocationSite   → Branch         1:M  NOT NULL FK  RESTRICT
 ──────────────────────────────────────────────────────────────────
-Delete behavior: RESTRICT on all. No CASCADE, no SET NULL on business data.
-DEACTIVATE pattern: soft-delete (isActiveFl) — parent cannot deactivate if
-children are active (enforced via operational rules below).
+Delete behavior: RESTRICT on all. No CASCADE or SET NULL on business entities.
+Soft-delete via is_active_fl (SMALLINT 0/1). Deactivation blocked when active
+children exist (enforced at application layer — see rules below).
 
-REFERENCE TABLE (NOT a Lookup Detail)
+FK naming: all FK columns end with _fk per master-registry Section 4.
+  Examples: legal_entity_fk, parent_department_fk, parent_cost_center_fk
+
+REFERENCE TABLE (separate from Lookup Detail)
 ──────────────────────────────────────────────────────────────────
-ORG_REGION_TYPE  │ Owner: Organization  │ > 15 values → Reference Table
+ORG_REGION_TYPE  │ DB Table — GOVERNED ✓ under DBS-ORG-001
+                 │ > 15 values → Reference Table (not MD_LOOKUP_DETAIL)
+                 │ Owner: Organization
+                 │ Used by: ORG_REGION.region_type_id_fk
                  │ Initial values: GEOGRAPHIC / SALES / OPERATIONAL
-                 │ Extensible by Admin
-                 │ Source: master-registry Section 5 Organization Reference Table Note
+                 │ Extensible by Admin at runtime
+                 │ Source: master-registry v2.7.4 Section 5 + Section 6
 ──────────────────────────────────────────────────────────────────
-This is a separate DB table, NOT stored in MD_LOOKUP_DETAIL.
-All other ORG lookups use MD_LOOKUP_DETAIL via lookupKey.
 
-LOVs OWNED (stored in MD_LOOKUP_DETAIL via lookupKey)
+LOVs OWNED (consumed via MD_LOOKUP_DETAIL — lookup_key is the stable contract)
 ──────────────────────────────────────────────────────────────────
-LEGAL_ENTITY_TYPE    │ LegalEntity.entityTypeId   │ Lookup  │ Head Office / Branch Office / Subsidiary / Representative Office
-BRANCH_TYPE          │ Branch.branchTypeId         │ Lookup  │ Main Branch / Sub-Branch / Operations Branch / Admin Branch
-DEPARTMENT_NODE_TYPE │ Department.nodeTypeId       │ Lookup  │ SUMMARY / DETAIL
-COST_CENTER_NODE_TYPE│ CostCenter.nodeTypeId       │ Lookup  │ SUMMARY / DETAIL
-COST_CENTER_TYPE     │ CostCenter.costCenterTypeId │ Lookup  │ Direct / Indirect / Shared
-LOCATION_SITE_TYPE   │ LocationSite.siteTypeId     │ Lookup  │ Office / Warehouse / Factory / Site / Retail
+LEGAL_ENTITY_TYPE    │ LegalEntity.entity_type_id    │ Lookup  │ Head Office / Branch Office / Subsidiary / Representative Office
+BRANCH_TYPE          │ Branch.branch_type_id          │ Lookup  │ Main Branch / Sub-Branch / Operations Branch / Admin Branch
+DEPARTMENT_NODE_TYPE │ Department.node_type_id        │ Lookup  │ SUMMARY / DETAIL
+COST_CENTER_NODE_TYPE│ CostCenter.node_type_id        │ Lookup  │ SUMMARY / DETAIL
+COST_CENTER_TYPE     │ CostCenter.cost_center_type_id │ Lookup  │ Direct / Indirect / Shared
+LOCATION_SITE_TYPE   │ LocationSite.site_type_id      │ Lookup  │ Office / Warehouse / Factory / Site / Retail
 ──────────────────────────────────────────────────────────────────
-6 lookup keys confirmed in master-registry Section 6.
-Note: REGION_TYPE is a Reference Table (separate row above) — not a lookup.
-Note: LOV-IDs assigned by P1, not here.
+6 lookup keys registered in master-registry v2.7.4 Section 6 (LOV-ORG-001..006).
+REGION_TYPE is a Reference Table — separate entry above, not in this list.
+Consumption: GET /api/lookups/{lookup_key}?active=true
+Direct DB query of MD_MASTER_LOOKUP / MD_LOOKUP_DETAIL: PROHIBITED.
+PG column actuals: lookup_key (VARCHAR), name_ar (VARCHAR), name_en (VARCHAR),
+  code (VARCHAR), extra_value (VARCHAR), is_active (SMALLINT), id_pk (BIGINT).
+Note: LOV-IDs assigned by P1 (srs-org-001.md) — not reproduced here.
 
 LOVs CONSUMED (from other modules)
 ──────────────────────────────────────────────────────────────────
-None — Organization is ROOT. It consumes no external LOVs.
+None — Organization is ROOT. Consumes no external LOVs.
 ──────────────────────────────────────────────────────────────────
 
 SHARED ENTITIES CONSUMED
 ──────────────────────────────────────────────────────────────────
-None — Organization is ROOT. It consumes no external entities.
+None — Organization is ROOT. Zero outbound XM dependencies confirmed
+(master-registry v2.7.4 Section 3 + Section 7).
 ──────────────────────────────────────────────────────────────────
 
 DEPENDENCIES
 ──────────────────────────────────────────────────────────────────
-ROOT : YES — zero outbound dependencies confirmed (master-registry Section 7)
+ROOT : YES — no external dependencies
 ──────────────────────────────────────────────────────────────────
 
 OUTGOING — WHO CONSUMES ORGANIZATION
 ──────────────────────────────────────────────────────────────────
-Security (1.2)           │ HARD-FK  │ Branch via SEC_ROLE_BRANCH (M:M)
-MasterData (1.4)         │ HARD-FK  │ LegalEntity, Branch
-CurrencyCalendar (1.5)   │ HARD-FK  │ LegalEntity (fiscal year scope)
-NumberingEngine (1.6)    │ HARD-FK  │ Branch (numbering scope)
-FileService (1.10)       │ HARD-FK  │ Branch (scope)
-NotificationService (1.8)│ HARD-FK  │ Branch (scope)
-AuditService (1.9)       │ HARD-FK  │ Branch (scope)
-All Layer-2 modules      │ HARD-FK  │ Branch, CostCenter (operational context)
-All Layer-3 modules      │ HARD-FK  │ Branch, Department, CostCenter, ProfitCenter
-Inventory (3.2)          │ HARD-FK  │ LocationSite (warehouse context)
-Finance (3.4)            │ HARD-FK  │ CostCenter, ProfitCenter
+Security (1.2)           │ HARD-FK  │ ORG_BRANCH — DataScope / SEC_ROLE_BRANCH
+MasterData (1.4)         │ HARD-FK  │ ORG_LEGAL_ENTITY, ORG_BRANCH
+CurrencyCalendar (1.5)   │ HARD-FK  │ ORG_LEGAL_ENTITY (fiscal year scope)
+NumberingEngine (1.6)    │ HARD-FK  │ ORG_BRANCH (numbering scope)
+FileService (1.10)       │ HARD-FK  │ ORG_BRANCH (access scope)
+NotificationService (1.8)│ HARD-FK  │ ORG_BRANCH (scope)
+AuditService (1.9)       │ HARD-FK  │ ORG_BRANCH (scope)
+All Layer-2 modules      │ HARD-FK  │ ORG_BRANCH, ORG_COST_CENTER
+All Layer-3 modules      │ HARD-FK  │ ORG_BRANCH, ORG_DEPARTMENT, ORG_COST_CENTER, ORG_PROFIT_CENTER
+Inventory (3.2)          │ HARD-FK  │ ORG_LOCATION_SITE (physical site context)
+Finance (3.4)            │ HARD-FK  │ ORG_COST_CENTER, ORG_PROFIT_CENTER
 ──────────────────────────────────────────────────────────────────
+Note: Cross-module FK naming follows CORE-8 SOFT-READ rule —
+  cross-module FKs are validated at service layer, not DB-level.
+  Convention: suffix _fk (e.g., branch_fk, cost_center_fk, location_site_fk).
 
 STATUS LIFECYCLES
 ──────────────────────────────────────────────────────────────────
-All 7 entities: is_active flag only (isActiveFl — NUMBER(1) default 1)
+All 7 entities: is_active_fl flag only (SMALLINT DEFAULT 1 — PG)
   Active (1) ↔ Inactive (0) — no additional states
   No workflow, no approval, no terminal states
-  Deactivation blocked by operational rules below
+  Deactivation blocked by operational rules — see below
 ──────────────────────────────────────────────────────────────────
 
-OPERATIONAL RULES
+OPERATIONAL RULES (P0 labels — formal RULE-IDs in srs-org-001.md)
 ──────────────────────────────────────────────────────────────────
 RULE-ORG-01  : MUST prevent deactivation of LegalEntity with active Branches
 RULE-ORG-02  : MUST prevent deactivation of LegalEntity with active ProfitCenters
@@ -128,111 +160,118 @@ RULE-ORG-05  : MUST prevent deactivation of Branch with active LocationSites
 RULE-ORG-06  : MUST prevent deactivation of Region with active Branches referencing it
 RULE-ORG-07  : MUST prevent circular parent reference in Department tree
 RULE-ORG-08  : MUST prevent circular parent reference in CostCenter tree
-RULE-ORG-09  : MUST prevent Department with node_type=SUMMARY from being assigned
-               directly to transactional records (enforced by consumers — documented here)
-RULE-ORG-10  : MUST prevent CostCenter with node_type=SUMMARY from being assigned
-               directly to transactional records (enforced by consumers — documented here)
-RULE-ORG-11  : Business codes (legalEntityCode, branchCode, deptCode, costCenterCode,
-               profitCenterCode, locationCode) MUST be immutable after first save
-RULE-ORG-12  : Business codes MUST be unique within their defined scope
-               (LegalEntity: global | Branch: per LegalEntity |
-                Department: per Branch | CostCenter: per Branch |
-                ProfitCenter: per LegalEntity | Region: per LegalEntity |
-                LocationSite: per Branch)
-──────────────────────────────────────────────────────────────────
-Note: RULE-ORG-IDs are P0 labels — P1 assigns formal RULE-IDs in srs.md.
-
-PLATFORM CONVENTIONS
-──────────────────────────────────────────────────────────────────
-Audit Trail         : YES — all 7 entities (createdAt, createdBy, updatedAt, updatedBy)
-Soft Delete         : YES — isActiveFl for all 7 entities
-Business Code       : YES — all 7 entities carry an immutable code field
-File Attachments    : NOT APPLICABLE — structural master data
-Document Numbering  : NOT APPLICABLE — no transactional documents
-Notifications       : NO — structural changes do not trigger notifications
+RULE-ORG-09  : SUMMARY Department MUST NOT be directly assigned to transactional records
+               (enforced at application layer in consuming modules)
+RULE-ORG-10  : SUMMARY CostCenter MUST NOT be directly assigned to transactional records
+               (enforced at application layer in consuming modules)
+RULE-ORG-11  : Business codes MUST be immutable after first save
+RULE-ORG-12  : Business codes MUST be unique within their defined scope:
+               LegalEntity: global | Branch: per LegalEntity |
+               Department: per Branch | CostCenter: per Branch |
+               ProfitCenter: per LegalEntity | Region: per LegalEntity |
+               LocationSite: per Branch
 ──────────────────────────────────────────────────────────────────
 
 NAMING CONVENTION COMPLIANCE
 ──────────────────────────────────────────────────────────────────
-All ORG entities follow master-registry Section 4 standards:
-  Primary keys    : end with Pk         (e.g. legalEntityPk)
-  Foreign keys    : end with Fk         (e.g. legalEntityFk, parentDepartmentFk)
-  Dropdown fields : end with Id         (e.g. entityTypeId, branchTypeId)
-  Flag fields     : end with Fl         (e.g. isActiveFl)
-No naming exceptions — Organization is a fully governed, new-build module.
+All ORG entities follow master-registry Section 4 standards (PG snake_case):
+  Primary keys    : end with _pk    (e.g. legal_entity_pk  BIGINT)
+  Foreign keys    : end with _fk    (e.g. legal_entity_fk, parent_department_fk)
+  Dropdown fields : end with _id    (e.g. entity_type_id, branch_type_id)
+  Flag fields     : end with _fl    (e.g. is_active_fl  SMALLINT DEFAULT 1)
+  Audit fields    : created_at, created_by, updated_at, updated_by (TIMESTAMP / VARCHAR)
+No naming exceptions — Organization is fully governed, new-build module.
 ──────────────────────────────────────────────────────────────────
 
-SECURITY INTEGRATION NOTE
+PLATFORM CONVENTIONS
 ──────────────────────────────────────────────────────────────────
-Per master-registry Section 4 + security-registry v2.0.0:
-  PERM_LEGAL_ENTITY_VIEW is seeded in Security's SEC_PAGES.
-  → ORG seeds its pages into SEC_PAGES at build time (PAGE_CODE per entity/screen)
-  → Confirmed from vision.md 1.1 note: "يُؤخذ AS-IS كجزء من SEC_PAGES seeding"
-  → ORG does not own SEC_PAGES rows — Security owns the table, ORG seeds into it
+Audit Trail         : YES — all 7 entities (created_at, created_by, updated_at, updated_by)
+Soft Delete         : YES — is_active_fl (SMALLINT 0/1) for all 7 entities
+Business Code       : YES — all 7 entities carry an immutable code field
+File Attachments    : NOT APPLICABLE — structural master data
+Document Numbering  : NOT APPLICABLE — no transactional documents
+Notifications       : NO — structural changes do not trigger notifications
+Lookup Consumption  : Via GET /api/lookups/{lookup_key}?active=true — never direct DB query
 ──────────────────────────────────────────────────────────────────
 
-AUTO-DECISIONS
+SECURITY INTEGRATION
 ──────────────────────────────────────────────────────────────────
-AUTO: 7 entities — LegalEntity, Branch, Region, Department, CostCenter,
-      ProfitCenter, LocationSite
-FROM: master-registry v2.7.2 Section 5 (GOVERNED ✓ — DBS-ORG-001)
-IF WRONG: flag as conflict in master-registry Section 13 before P1
+SEC_PAGES seeding:
+  PERM_LEGAL_ENTITY_VIEW confirmed seeded in SecurityPermissions.java
+  (security-registry v2.2.0 Section 5.1 — LEGAL_ENTITY_VIEW constant)
+  → ORG seeds all its screens into SEC_PAGES at module build time
+  → SEC_PAGES column types (PG): ID_PK BIGINT, PAGE_CODE VARCHAR(50),
+    NAME_AR/NAME_EN VARCHAR(100), ROUTE VARCHAR(200), IS_ACTIVE SMALLINT,
+    DISPLAY_ORDER BIGINT, PARENT_ID_FK BIGINT
+  → Permission pattern: PERM_<PAGE_CODE>_VIEW/CREATE/UPDATE/DELETE
+    (auto-generated by POST /api/pages per security-registry Section 2.4)
+  → ORG does not own SEC_PAGES — Security owns table structure; ORG seeds rows
 
-AUTO: Region entity retained (not deferred)
-FROM: master-registry Section 5 — ORG_REGION table is GOVERNED ✓
-      Despite AQ-003 (consumers TBD), Region exists and is owned by ORG
-IF WRONG: would require removing ORG_REGION from DBS-ORG-001 — major change
+DataScope:
+  Row-Level Security enforced by Security module at query layer.
+  ORG_BRANCH is the primary DataScope boundary entity.
+  ORG module does not implement its own scope filter.
 
-AUTO: ORG_REGION_TYPE as Reference Table (not Lookup Detail)
-FROM: master-registry Section 5 Organization Reference Table Note —
-      explicitly declared as > 15 values → Reference Table
-IF WRONG: change to Lookup Detail in master-registry Section 6 first
+JWT:
+  No tenant claim (removed 2026-06-21 — TENANT_ID eliminated system-wide).
+  Access token claims: sub (username), authorities[], userId.
+  Session: STATELESS.
+──────────────────────────────────────────────────────────────────
 
-AUTO: Department and CostCenter as tree structures (self-reference)
-FROM: Section M.1 + vision.md 1.1 (Departments listed as hierarchical) +
-      master-registry Section 6 DEPARTMENT_NODE_TYPE / COST_CENTER_NODE_TYPE lookups
-IF WRONG: remove self-reference FK and node_type field — notify all consumers
+AUTO-DECISIONS (updated for PG migration)
+──────────────────────────────────────────────────────────────────
+AUTO: DB_TARGET = POSTGRESQL_16 applied to all ORG DDL in DBS-ORG-001
+FROM: master-registry v2.7.4 versioning log (2026-06-28 PG migration)
+      + security-registry v2.2.0 (PG types confirmed)
+IF WRONG: revert DBS-ORG-001 to ORACLE_19C and re-run P2
 
-AUTO: LocationSite → Branch (flat, not tree)
-FROM: Section M.1 "LocationSite as flat Day 1 entity" + vision.md 1.1 listing
-      "المواقع والمستودعات" as a single flat concept
-IF WRONG: add self-reference to LocationSite — notify Inventory module (primary consumer)
+AUTO: All flag fields use SMALLINT DEFAULT 1 (not BOOLEAN, not NUMBER(1))
+FROM: CORE-8 DB_TARGET Syntax Mapping — SMALLINT for boolean flags in PG
+      Consistent with Security PG migration (IS_ACTIVE SMALLINT in all tables)
+IF WRONG: change flag type in DBS-ORG-001 — notify all consumers
 
-AUTO: ProfitCenter → LegalEntity (not Branch)
-FROM: Section M.1 pattern + master-registry Section 5 (ProfitCenter owner = Organization)
-      ProfitCenter is a financial reporting entity at legal-entity level
-IF WRONG: change parent FK to Branch — notify Finance module
+AUTO: All PK columns use BIGINT with explicit sequences (not GENERATED IDENTITY)
+FROM: CORE-8 rule — "SERIAL / GENERATED ALWAYS AS IDENTITY NOT used; sequences
+      always created explicitly"
+      Note: Security uses BIGINT GENERATED ALWAYS AS IDENTITY (PERMANENT EXCEPTION)
+      ORG is a governed new-build — must follow CORE-8 PG sequence rule
+IF WRONG: verify DBS-ORG-001 sequence definitions match PG sequence standard
 
-AUTO: All entities use isActiveFl (soft delete) — no status lifecycle
-FROM: Section M.1 "Master Data → is_active only" + Section M.0 universal defaults
-IF WRONG: define state machine and notify P1
+AUTO: 7 entities (P0 layer) + ORG_REGION_TYPE as 8th table in DBS-ORG-001
+FROM: master-registry v2.7.4 Section 3 ("8 tables") confirming ORG_REGION_TYPE
+      is a full DB table, not a lookup row
+IF WRONG: reclassify ORG_REGION_TYPE as MD_LOOKUP_DETAIL entry — requires
+          master-registry Section 6 + Section 5 update and DBS-ORG-001 amendment
 
 AUTO: No approval flow for any ORG entity
 FROM: RULE-13 (shared-governance-rules.md) — workflow deferred by default
-      No explicit approval request in vision.md for Organization
-IF WRONG: explicitly request per-entity approval in business-policies-ORG.md
+      No approval request in vision.md for Organization
+IF WRONG: declare exception per RULE-13 protocol in business-policies-ORG.md
 ──────────────────────────────────────────────────────────────────
 
 INF-IDs
 ──────────────────────────────────────────────────────────────────
-INF-ORG-01  │ PERM_LEGAL_ENTITY_VIEW seed exists in Security's SEC_PAGES
-             │ Implies ORG had partial SEC_PAGES seeding done before formal P0
-             │ Risk: Other ORG SEC_PAGES seeds may already exist in Security —
-             │       P1 must audit existing PAGE_CODE entries for ORG module
-             │       before generating new page seeds to avoid duplicates
-             │ Source: vision.md 1.1 security note + security-registry v2.0.0
+INF-ORG-01  │ PERM_LEGAL_ENTITY_VIEW confirmed seeded in SecurityPermissions.java
+             │ (security-registry v2.2.0 Section 5.1)
+             │ Risk: Other ORG SEC_PAGES entries may already exist in DB from
+             │ prior seeding activity. P2.5 / P4 should audit existing PAGE_CODE
+             │ entries for MODULE='ORGANIZATION' (or similar) to confirm no
+             │ duplicate pages before test-plan generation.
+             │ Non-blocking — ORG already at MODE 2.
 ──────────────────────────────────────────────────────────────────
 
-OPEN AQ-IDs (from master-registry Section 14)
+OPEN AQ-IDs (master-registry v2.7.4 Section 14)
 ──────────────────────────────────────────────────────────────────
 AQ-003  │ DEFERRED — non-blocking
          │ Which modules consume ORG_REGION via SOFT-READ?
+         │ Impact of Region deactivation on consumers?
          │ Resolves automatically when first consuming module runs MODE 1.5
-         │ ORG P0 READY status unaffected — P1 may proceed
+         │ ORG currently at MODE 2 — AQ-003 does not block MODE 2.5
 ──────────────────────────────────────────────────────────────────
 
 ══════════════════════════════════════════════════════════════════
-Readiness : READY ✓
-            AQ-003 is DEFERRED and non-blocking (master-registry Section 14 note)
-            INF-ORG-01 is non-blocking (P1 converts to OQ if unresolved at MODE 1 start)
+Readiness   : READY ✓
+Pipeline    : GOVERNED ✓ MODE 2 — ALIGN GATE PASSED ✓
+Next Stage  : MODE 2.5 → test-plan-org-001.md
+              (upload srs-org-001.md + execution-plan-org-001.md + this registry)
 ══════════════════════════════════════════════════════════════════

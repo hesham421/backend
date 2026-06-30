@@ -237,4 +237,60 @@ public final class SecurityPermissions {
 
     /** حذف قسم */
     public static final String DEPARTMENT_DELETE = "PERM_DEPARTMENT_DELETE";
+
+    // ==================== Cost Center Permissions ====================
+
+    /** عرض مراكز التكلفة */
+    public static final String COST_CENTER_VIEW = "PERM_COST_CENTER_VIEW";
+
+    /** إنشاء مركز تكلفة جديد */
+    public static final String COST_CENTER_CREATE = "PERM_COST_CENTER_CREATE";
+
+    /** تعديل مركز تكلفة موجود */
+    public static final String COST_CENTER_UPDATE = "PERM_COST_CENTER_UPDATE";
+
+    /** حذف مركز تكلفة */
+    public static final String COST_CENTER_DELETE = "PERM_COST_CENTER_DELETE";
+
+    // ==================== Profit Center Permissions ====================
+
+    /** عرض مراكز الربح */
+    public static final String PROFIT_CENTER_VIEW = "PERM_PROFIT_CENTER_VIEW";
+
+    /** إنشاء مركز ربح جديد */
+    public static final String PROFIT_CENTER_CREATE = "PERM_PROFIT_CENTER_CREATE";
+
+    /** تعديل مركز ربح موجود */
+    public static final String PROFIT_CENTER_UPDATE = "PERM_PROFIT_CENTER_UPDATE";
+
+    /** حذف مركز ربح */
+    public static final String PROFIT_CENTER_DELETE = "PERM_PROFIT_CENTER_DELETE";
+
+    // ==================== Location Site Permissions ====================
+
+    /** عرض مواقع العمل */
+    public static final String LOCATION_SITE_VIEW = "PERM_LOCATION_SITE_VIEW";
+
+    /** إنشاء موقع عمل جديد */
+    public static final String LOCATION_SITE_CREATE = "PERM_LOCATION_SITE_CREATE";
+
+    /** تعديل موقع عمل موجود */
+    public static final String LOCATION_SITE_UPDATE = "PERM_LOCATION_SITE_UPDATE";
+
+    /** حذف موقع عمل */
+    public static final String LOCATION_SITE_DELETE = "PERM_LOCATION_SITE_DELETE";
+
+    // ==================== Region Type Permissions ====================
+
+    /** عرض أنواع المناطق */
+    public static final String REGION_TYPE_VIEW = "PERM_REGION_TYPE_VIEW";
+
+    /** إنشاء نوع منطقة جديد */
+    public static final String REGION_TYPE_CREATE = "PERM_REGION_TYPE_CREATE";
+
+    /** تعديل نوع منطقة موجود */
+    public static final String REGION_TYPE_UPDATE = "PERM_REGION_TYPE_UPDATE";
+
+    /** حذف نوع منطقة */
+    public static final String REGION_TYPE_DELETE = "PERM_REGION_TYPE_DELETE";
 }

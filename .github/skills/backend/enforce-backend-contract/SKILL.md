@@ -68,11 +68,12 @@ Run EVERY check. Mark ✅ PASS or ❌ VIOLATION.
              (e.g., RefreshToken) with their own lifecycle
              (issuedAt/expiresAt/revoked) are exempt — verify
              exemption is intentional before flagging as violation.
-[ ] A.1.2  — PK column is @Column(name = "ID_PK") — NOT "ID", "ENTITY_ID", etc.
+[ ] A.1.2  — PK @Column name matches the entity's PK column defined in db-script (entity-specific,
+             e.g. LEGAL_ENTITY_PK, BRANCH_PK) — NOT a generic "ID" or hardcoded "ID_PK"
 [ ] A.1.3  — PK uses GenerationType.SEQUENCE with @SequenceGenerator
 [ ] A.1.4  — allocationSize = 1 on @SequenceGenerator
 [ ] A.1.5  — FK columns end with _ID_FK suffix
-[ ] A.1.6  — Booleans use BooleanNumberConverter
+[ ] A.1.6  — Booleans use BooleanNumberConverter (SMALLINT) or BooleanCharYNConverter (CHAR(1)) — based on db-script column type
 [ ] A.1.7  — Boolean default: @Builder.Default Boolean isActive = Boolean.TRUE
 [ ] A.1.8  — Every @ManyToOne uses fetch = FetchType.LAZY
 [ ] A.1.9  — @OneToMany uses cascade = ALL, orphanRemoval = false, fetch = LAZY
@@ -116,7 +117,7 @@ Run EVERY check. Mark ✅ PASS or ❌ VIOLATION.
 [ ] A.3.9  — SearchRequest extends BaseSearchContractRequest
 [ ] A.3.10 — Child SearchRequest overrides toCommonSearchRequest()
 [ ] A.3.11 — Child SearchRequest has parent ID extractor
-[ ] A.3.12 — UsageResponse has canBeDeleted/canDeactivate + reason
+[ ] A.3.12 — UsageResponse has canDelete/canDeactivate + reason
 [ ] A.3.13 — OptionResponse is slim (no audit fields)
 ```
 
@@ -146,17 +147,17 @@ Run EVERY check. Mark ✅ PASS or ❌ VIOLATION.
 [ ] A.5.9  — create() → validate → map → save → ServiceResult(CREATED)
 [ ] A.5.10 — update() → find → LocalizedException(NOT_FOUND) → update → ServiceResult(UPDATED)
 [ ] A.5.11 — delete() → find → check refs → delete (no try-catch — DIVE handled by GlobalExceptionHandler)
-[ ] A.5.12 — toggleActive() → find → validate → activate/deactivate
+[ ] A.5.12 — activate() → find → entity.activate() → save
+             deactivate() → find → validate constraints → entity.deactivate() → save
 [ ] A.5.13 — Error codes from <Module>ErrorCodes constants
 [ ] A.5.14 — log.info() for writes, log.debug() for reads
 [ ] A.5.15 — ALL exceptions are LocalizedException — NotFoundException NOT USED
 [ ] A.5.16 — Child search requires non-null parent ID
 [ ] A.5.17 — Child search uses Specification JOIN
-[ ] A.5.18 — Business rule checks (deactivation guards, FK
-             constraints, state transitions, domain invariants)
-             are delegated to domain/ classes or Entity methods —
-             NOT inlined directly in service method bodies.
-             Service body is orchestration-only after delegation.
+[ ] A.5.18 — Business rule checks (deactivation guards, FK constraints,
+             state transitions, domain invariants) are delegated to
+             domain/ classes or Entity methods — NOT inlined directly
+             in service method bodies. Service body is orchestration-only.
 ```
 
 ### LAYER 6: Controller Contract Enforcement
@@ -167,8 +168,9 @@ Run EVERY check. Mark ✅ PASS or ❌ VIOLATION.
 [ ] A.6.3  — Injects ONLY service(s) + OperationCode
 [ ] A.6.4  — Non-delete: operationCode.craftResponse()
 [ ] A.6.5  — Delete: @ResponseStatus(NO_CONTENT) + void
-[ ] A.6.6  — Search is POST /search
-[ ] A.6.7  — Toggle: PUT /{id}/toggle-active
+[ ] A.6.6  — Search uses POST /search with @RequestBody — NOT GET with @ModelAttribute
+[ ] A.6.7  — Activation: separate PUT /{id}/activate and PUT /{id}/deactivate endpoints
+             — NOT a single toggle-active endpoint
 [ ] A.6.8  — Usage: GET /{id}/usage
 [ ] A.6.9  — Child endpoints under same controller
 [ ] A.6.10 — @Operation on every method
@@ -207,13 +209,13 @@ The following patterns trigger IMMEDIATE rejection — no exceptions:
 | Service method without `@PreAuthorize` | Security breach — ALL methods need authorization |
 | Service returning raw DTO (not `ServiceResult`) | Must wrap in `ServiceResult<T>` |
 | `GenerationType.IDENTITY` or `AUTO` | Must use `GenerationType.SEQUENCE` |
-| `@Builder` on entity (instead of `@SuperBuilder`) | Breaks `AuditableEntity` inheritance |
+| `@Builder` annotation on entity class (instead of `@SuperBuilder`) | Breaks `AuditableEntity` inheritance — `@Builder.Default` on fields is allowed with `@SuperBuilder` |
 | Repository injected outside its module | Cross-module violation |
 | Controller with business logic | Thin controller violation |
 | Controller injecting repository | Layer violation |
 | `@ResponseStatus(CREATED)` on POST | Handled by ServiceResult mapping |
 | Entity without `AuditableEntity` | Missing audit trail — EXCEPT short-lived security/session artifacts (e.g., RefreshToken) with their own lifecycle (issuedAt/expiresAt/revoked). Verify exemption is declared in Phase CORE before rejecting. |
-| Boolean without `BooleanNumberConverter` | Oracle compatibility breach |
+| Boolean without `BooleanNumberConverter` | PostgreSQL SMALLINT convention breach |
 | Mapper doing `.toUpperCase()` | Canonical violation — entity @PrePersist handles it |
 | `entity.setIsActive(true)` in service | Must use `activate()`/`deactivate()` |
 
@@ -234,9 +236,9 @@ The following patterns trigger IMMEDIATE rejection — no exceptions:
 | Repository | 9 | ? | ? | ✅/❌ |
 | DTO | 13 | ? | ? | ✅/❌ |
 | Mapper | 7 | ? | ? | ✅/❌ |
-| Service | 17 | ? | ? | ✅/❌ |
+| Service | 18 | ? | ? | ✅/❌ |
 | Controller | 12 | ? | ? | ✅/❌ |
-| **TOTAL** | **77** | **?** | **?** | **?** |
+| **TOTAL** | **78** | **?** | **?** | **?** |
 
 ### Violations Found:
 1. [Violation details]
@@ -254,7 +256,7 @@ When running this enforcement, also verify shared code from `erp-common-utils` i
 | # | Check | Expected | Violation |
 |---|-------|----------|----------|
 | CU.1 | Entity extends `AuditableEntity` | `extends AuditableEntity` | Custom audit base class |
-| CU.2 | Boolean columns use `BooleanNumberConverter` | `@Convert(converter = BooleanNumberConverter.class)` | Custom boolean converter |
+| CU.2 | Boolean columns use `BooleanNumberConverter` (SMALLINT) or `BooleanCharYNConverter` (CHAR(1)) | `@Convert(converter = BooleanNumberConverter.class)` | Custom boolean converter |
 | CU.3 | Service returns `ServiceResult<T>` | All non-delete methods return `ServiceResult` | Custom result wrapper |
 | CU.4 | Errors use `LocalizedException` | `throw new LocalizedException(...)` | Raw `RuntimeException` or `NotFoundException` |
 | CU.5 | Search uses `SpecBuilder` + `PageableBuilder` | `SpecBuilder.build()` + `PageableBuilder.from()` | Manual `Specification` or `Pageable` construction |

@@ -73,15 +73,13 @@ export interface <ENTITY_NAME>Dto {
 ### 3. Usage DTO
 ```typescript
 export interface <ENTITY_NAME>UsageDto {
-  entityId: number;
-  // Reference counts
-  childEntityCount: number;
-  otherReferenceCount: number;
-  // Computed eligibility
+  id: number;
+  // Reference counts (field names derived from backend UsageResponse — check db-script)
+  childCount: number;
+  // Computed eligibility — matches backend canDelete/canDeactivate field names exactly
   canDelete: boolean;
   canDeactivate: boolean;
-  deleteBlockedReason?: string;
-  deactivateBlockedReason?: string;
+  reason?: string;  // Populated by backend when an action is blocked
 }
 ```
 

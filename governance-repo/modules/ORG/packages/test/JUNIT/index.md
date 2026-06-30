@@ -1,4 +1,4 @@
-# Index — test/JUNIT
+# Index — test\JUNIT
 
 - [API-SCENARIOS](API-SCENARIOS.md)
 - [RULE-SCENARIOS](RULE-SCENARIOS.md)

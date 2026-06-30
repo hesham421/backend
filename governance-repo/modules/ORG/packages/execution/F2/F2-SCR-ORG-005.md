@@ -1,22 +1,13 @@
 <!-- Source: PHASE:F2 / SUB:SCR-ORG-005 -->
 
-## F2 — SCR-ORG-005 — CostCenter Screen (Tree)
+  ### F2-SERVICE — CostCenterService
+  Service class       : `CostCenterService`
+  Methods              : create, search, update, deactivate, activate, getById, getTree(branchFk, isActiveFl?) — mapped to API-ORG-026..032 (tree via API-ORG-027)
+  Observable type       : `Observable<CostCenter>` (create/update/getById/activate) · `Observable<Page<CostCenter>>` (search) · `Observable<CostCenterTreeNode[]>` (getTree) · `Observable<void>` (deactivate/activate)
+  Error handling         : ERR-ORG-0001, 0003, 0004, 0012 (RULE-ORG-008 cycle), 0016 (RULE-ORG-019), 0017 (RULE-ORG-020)
+  Loading state          : LOCAL for CRUD/search · GLOBAL for getTree (mirrors DepartmentService rationale)
+  Caching strategy       : NONE
+  XM-ID impact            : None — no outbound XM-IDs (inbound stub XM-INBOUND-STUB-3 relates to future Layer-3 consumers, not this service)
 
-```
-SCREEN INIT:
-  1. Check PERM_COST_CENTER_VIEW
-  2. Load LOV-ORG-004 (COST_CENTER_NODE_TYPE) → nodeTypeOptions
-  3. Load LOV-ORG-005 (COST_CENTER_TYPE) → costCenterTypeOptions
-  4. Load active Branches
-
-F2-FACADE — SCR-ORG-005 — CostCenter Management
-STATE: costCenterTree, selectedBranchFk, selectedItem, isLoading, lastTreeFilter,
-       nodeTypeOptions, costCenterTypeOptions, branchOptions
-OPERATIONS: loadCostCenterTree(branchFk) → API-ORG-029
-            getCostCenterById(id) → API-ORG-031
-            createCostCenter(data) → API-ORG-028
-            updateCostCenter(id, data) → API-ORG-032
-            deactivateCostCenter(id) → API-ORG-033
-            reactivateCostCenter(id) → API-ORG-034
-            loadParentCCOptions(branchFk) → API-ORG-030 (active CostCenters for parent LOV)
-```
+  ### F2-FACADE — CostCenterFacade (SCR-ORG-005)
+  Mirrors DepartmentFacade (treeData$, expandNode/collapseNode).

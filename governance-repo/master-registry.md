@@ -5,8 +5,8 @@
 =====================================================
 
 - Project Name  : Enterprise Engine Platform
-- Version       : 2.7.2
-- Last Updated  : 2026-06-21
+- Version       : 2.7.4
+- Last Updated  : 2026-06-28
 - Maintained By : System Architect
 - Governance Level: LOCKED
 
@@ -60,7 +60,7 @@ LAYER-1 — Foundation
 
 | #    | Module Name          | Type   | Shared | Status                  | Depends On              |
 |------|----------------------|--------|--------|-------------------------|-------------------------|
-| 1.1  | Organization         | Core   | Yes    | GOVERNED ✓ MODE 1.5     | —                       |
+| 1.1  | Organization         | Core   | Yes    | GOVERNED ✓ MODE 2       | —                       |
 | 1.2  | Security             | Core   | Yes    | Active ⚠️ EXCEPTION      | 1.1                     |
 | 1.3  | UserManagement       | Core   | Yes    | Merged → Security ⚠️ EXCEPTION                          |
 | 1.4  | MasterData           | Core   | Yes    | Partial Active ⚠️        | 1.1 / 1.2               |
@@ -72,11 +72,11 @@ LAYER-1 — Foundation
 | 1.10 | FileService          | Core   | Yes    | Planned                 | 1.1 / 1.2               |
 
 Organization Governance Note:
-  GOVERNED ✓ MODE 1.5 means:
-  - SRS complete (srs-org-001.md v1.0) — 7 entities / 20 rules / 43 APIs / 7 screens
+  GOVERNED ✓ MODE 2 (ALIGN GATE PASSED ✓) means:
+  - SRS complete (srs-org-001.md v1.0) — 8 entities / 20 rules / 47 APIs / 7 screens
   - DB script complete (DBS-ORG-001) — 8 tables / 102 DBF-IDs
   - Execution plan complete (PLAN-ORG-001) — ALIGN GATE PASSED ✓
-  - Next stage: MODE 4A → Governance Audit Engine (P4)
+  - Next stage: MODE 2.5 → test-plan-org-001.md
   - ROOT MODULE — zero outbound XM dependencies
 
 MasterData Status Note:
@@ -228,17 +228,17 @@ MasterData Lookup actual naming (for reference only — NOT a template):
 
 | Convention      | Standard          | MasterData Lookup Actual              | Table              |
 |-----------------|-------------------|---------------------------------------|--------------------|
-| Primary Key     | ends with Pk      | id                                    | MD_MASTER_LOOKUP   |
-| Primary Key     | ends with Pk      | id                                    | MD_LOOKUP_DETAIL   |
-| Foreign Key     | ends with Fk      | masterLookup (as object reference)    | MD_LOOKUP_DETAIL   |
-| Business Code   | lookupCode        | lookupKey  (UPPERCASE, immutable)     | MD_MASTER_LOOKUP   |
+| Primary Key     | ends with Pk      | id_pk                                 | MD_MASTER_LOOKUP   |
+| Primary Key     | ends with Pk      | id_pk                                 | MD_LOOKUP_DETAIL   |
+| Foreign Key     | ends with Fk      | master_lookup_id_fk                   | MD_LOOKUP_DETAIL   |
+| Business Code   | lookupCode        | lookup_key  (UPPERCASE, immutable)    | MD_MASTER_LOOKUP   |
 | Business Code   | detailCode        | code       (unique per parent, immutable) | MD_LOOKUP_DETAIL|
-| Value Arabic    | detailValueAr     | nameAr                                | MD_LOOKUP_DETAIL   |
-| Value English   | detailValueEn     | nameEn                                | MD_LOOKUP_DETAIL   |
-| Flag Field      | isActiveFl        | isActive   (Boolean)                  | Both               |
+| Value Arabic    | detailValueAr     | name_ar                               | MD_LOOKUP_DETAIL   |
+| Value English   | detailValueEn     | name_en                               | MD_LOOKUP_DETAIL   |
+| Flag Field      | isActiveFl        | is_active  (SMALLINT 0/1)             | Both               |
 | System Flag     | isSystemFl        | NOT IMPLEMENTED — no plan to add      | Both               |
-| Extra Field     | —                 | extraValue (flexible business value)  | MD_LOOKUP_DETAIL   |
-| Derived Field   | —                 | detailCountFormula (count of details) | MD_MASTER_LOOKUP   |
+| Extra Field     | —                 | extra_value (flexible business value) | MD_LOOKUP_DETAIL   |
+| Derived Field   | —                 | NOT IN DB — removed in PG migration   | MD_MASTER_LOOKUP   |
 
 Consumption Rule:
 Any module consuming MD_MASTER_LOOKUP or MD_LOOKUP_DETAIL MUST use
@@ -246,7 +246,7 @@ the actual column names above. Standard convention names MUST NOT be assumed.
 All modules MUST consume lookup values via the API only:
   GET /api/lookups/{lookupKey}?active=true
 Modules MUST NOT query MD_MASTER_LOOKUP or MD_LOOKUP_DETAIL directly.
-lookupKey is the stable contract — id is internal and MUST NOT be exposed.
+lookup_key is the stable contract — id_pk is internal and MUST NOT be exposed.
 
 =====================================================
 5. Shared Core Entities
@@ -265,24 +265,23 @@ LOOKUP ENTITIES — Cross-Platform (Used by All Modules)
 MD_MASTER_LOOKUP — Actual Columns (PERMANENT EXCEPTION)
 -----------------------------------------------------
 
-| Actual Field Name   | Type     | Required | Notes                                              |
-|---------------------|----------|-----------|----------------------------------------------------|
-| id                  | Number   | Yes       | Auto-generated PK                                  |
-| lookupKey           | String   | Yes       | Unique business code. UPPERCASE. Immutable.        |
-| lookupName          | String   | Yes       | Arabic display name                                |
-| lookupNameEn        | String   | No        | English display name                               |
-| description         | String   | No        | Functional description                             |
-| isActive            | Boolean  | Yes       | Active / Inactive state                            |
-| detailCountFormula  | Number   | Derived   | Count of related detail values (read-only)         |
-| createdAt           | DateTime | Yes       | Audit field                                        |
-| createdBy           | String   | Yes       | Audit field                                        |
-| updatedAt           | DateTime | Yes       | Audit field                                        |
-| updatedBy           | String   | Yes       | Audit field                                        |
+| Actual Field Name   | Type          | Required | Notes                                              |
+|---------------------|---------------|----------|----------------------------------------------------|
+| id_pk               | BIGINT        | Yes      | Auto-generated PK                                  |
+| lookup_key          | VARCHAR(50)   | Yes      | Unique business code. UPPERCASE. Immutable.        |
+| lookup_name         | VARCHAR(200)  | Yes      | Arabic display name                                |
+| lookup_name_en      | VARCHAR(200)  | No       | English display name                               |
+| description         | VARCHAR(500)  | No       | Functional description                             |
+| is_active           | SMALLINT(0/1) | Yes      | Active / Inactive state                            |
+| created_at          | TIMESTAMP     | Yes      | Audit field                                        |
+| created_by          | VARCHAR(100)  | Yes      | Audit field                                        |
+| updated_at          | TIMESTAMP     | No       | Audit field                                        |
+| updated_by          | VARCHAR(100)  | No       | Audit field                                        |
 
 Business Rules on MD_MASTER_LOOKUP:
-- lookupKey MUST be unique across all records
-- lookupKey MUST be stored as UPPERCASE always
-- lookupKey MUST NOT be modified after creation
+- lookup_key MUST be unique across all records
+- lookup_key MUST be stored as UPPERCASE always
+- lookup_key MUST NOT be modified after creation
 - A lookup type MUST NOT be deactivated if it has active detail values
 - A lookup type MUST NOT be deleted if it has any detail values
 
@@ -290,27 +289,27 @@ Business Rules on MD_MASTER_LOOKUP:
 MD_LOOKUP_DETAIL — Actual Columns (PERMANENT EXCEPTION)
 -----------------------------------------------------
 
-| Actual Field Name   | Type     | Required | Notes                                                        |
-|---------------------|----------|----------|--------------------------------------------------------------|
-| id                  | Number   | Yes      | Auto-generated PK                                            |
-| masterLookup        | FK Obj   | Yes      | Reference to MD_MASTER_LOOKUP. Immutable after creation.     |
-| code                | String   | Yes      | Unique per parent lookup. Immutable after creation.          |
-| nameAr              | String   | Yes      | Arabic display value                                         |
-| nameEn              | String   | No       | English display value                                        |
-| extraValue          | String   | No       | Flexible business value field. Used as-is.                   |
-| sortOrder           | Number   | No       | Display order in dropdowns. Default: 0. Min: 0.              |
-| isActive            | Boolean  | Yes      | Active / Inactive state                                      |
-| createdAt           | DateTime | Yes      | Audit field                                                  |
-| createdBy           | String   | Yes      | Audit field                                                  |
-| updatedAt           | DateTime | Yes      | Audit field                                                  |
-| updatedBy           | String   | Yes      | Audit field                                                  |
+| Actual Field Name   | Type          | Required | Notes                                                        |
+|---------------------|---------------|----------|--------------------------------------------------------------|
+| id_pk               | BIGINT        | Yes      | Auto-generated PK                                            |
+| master_lookup_id_fk | BIGINT        | Yes      | FK → MD_MASTER_LOOKUP(id_pk). Immutable after creation.      |
+| code                | VARCHAR(50)   | Yes      | Unique per parent lookup. Immutable after creation.          |
+| name_ar             | VARCHAR(200)  | Yes      | Arabic display value                                         |
+| name_en             | VARCHAR(200)  | No       | English display value                                        |
+| extra_value         | VARCHAR(255)  | No       | Flexible business value field. Used as-is.                   |
+| sort_order          | INTEGER       | No       | Display order in dropdowns. Default: 0. Min: 0.              |
+| is_active           | SMALLINT(0/1) | Yes      | Active / Inactive state                                      |
+| created_at          | TIMESTAMP     | Yes      | Audit field                                                  |
+| created_by          | VARCHAR(100)  | Yes      | Audit field                                                  |
+| updated_at          | TIMESTAMP     | No       | Audit field                                                  |
+| updated_by          | VARCHAR(100)  | No       | Audit field                                                  |
 
-Composite Unique: masterLookup + code (unique per parent lookup)
+Composite Unique: master_lookup_id_fk + code (unique per parent lookup)
 
 Business Rules on MD_LOOKUP_DETAIL:
 - code MUST be unique within the same parent lookup type
-- masterLookup and code MUST NOT be modified after creation
-- Edit allowed: nameAr / nameEn / extraValue / sortOrder only
+- master_lookup_id_fk and code MUST NOT be modified after creation
+- Edit allowed: name_ar / name_en / extra_value / sort_order only
 - Delete may fail if the detail value is referenced by other entities
 
 -----------------------------------------------------
@@ -320,10 +319,10 @@ Lookup Governance Rules (apply to all modules)
 - ALL dropdown fields across ALL modules MUST reference MD_LOOKUP_DETAIL
 - No module may create its own dropdown or enum table
 - No Java ENUMs for lookup values — ever
-- lookupKey is the stable external contract — never changes after creation
+- lookup_key is the stable external contract — never changes after creation
 - code is the stable detail contract — never changes after creation
 - Max values per lookup category: <= 15  (if > 15 → Reference Table instead)
-- All modules consume via API: GET /api/lookups/{lookupKey}?active=true
+- All modules consume via API: GET /api/lookups/{lookup_key}?active=true
 - Modules MUST NOT query lookup tables directly
 
 -----------------------------------------------------
@@ -567,9 +566,9 @@ CROSS-MODULE FK RULES:
 - Cross-module FK MUST NOT rely on DB-level foreign key constraints
 
 LOOKUP CONSUMPTION RULES:
-- All modules consume lookup values via: GET /api/lookups/{lookupKey}?active=true
+- All modules consume lookup values via: GET /api/lookups/{lookup_key}?active=true
 - Modules MUST NOT query MD_MASTER_LOOKUP or MD_LOOKUP_DETAIL directly
-- lookupKey is the only stable external contract — id is internal and MUST NOT be shared
+- lookup_key is the only stable external contract — id_pk is internal and MUST NOT be shared
 - Any field referencing a lookup value stores the detail id internally
 
 =====================================================
@@ -712,6 +711,18 @@ Rule: All deferred modules MUST be buildable on top without redesigning any core
 |         |            | TenantAuditableEntity) but is INACTIVE — not used in any     |             |
 |         |            | query — system is single-tenant. Source: registry-security   |             |
 |         |            | .md v1.1.0. Section 15: registry-security.md registered.    |             |
+
+| 2.7.4   | 2026-06-28 | MasterData Lookup columns updated — Oracle → PostgreSQL migration. | Architect   |
+|         |            | Column names updated to PostgreSQL snake_case actuals:            |             |
+|         |            | id→id_pk, lookupKey→lookup_key, masterLookup→master_lookup_id_fk,|             |
+|         |            | nameAr→name_ar, nameEn→name_en, extraValue→extra_value,          |             |
+|         |            | isActive→is_active. detailCountFormula removed (not in PG DB).   |             |
+|         |            | Security module: Oracle→PG type migration noted (no registry      |             |
+|         |            | change required — table names unchanged). Source:                 |             |
+|         |            | security-registry.md v2.2.0 / MD DDL PostgreSQL script.          |             |
+
+| 2.7.3   | 2026-06-26 | Organization promoted MODE 1.5 → MODE 2 (ALIGN GATE PASSED ✓).  | Architect   |
+|         |            | Source: registry-exec-org.md (PLAN-ORG-001).                 |             |
 
 | 2.7.2   | 2026-06-21 | TENANT_ID REMOVED system-wide — Security PERMANENT           | Architect   |
 |         |            | EXCEPTION amended (one-time, architect-approved) to permit   |             |

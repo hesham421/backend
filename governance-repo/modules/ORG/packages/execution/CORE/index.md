@@ -1,3 +1,3 @@
-# Index — execution/CORE
+# Index — execution\CORE
 
 - [CORE](CORE.md)

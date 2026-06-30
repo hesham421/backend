@@ -1,5 +1,5 @@
 ---
-description: "Generates the @Service for application orchestration: CRUD, search, toggleActive, getUsage. Owns transactions, security, caching, logging. Delegates business rules to domain/ classes. Phase 1, Step 1.7. Enforces @PreAuthorize, @Transactional, ServiceResult<T>, LocalizedException, SpecBuilder + PageableBuilder, ALLOWED_SORT_FIELDS."
+description: "Generates the @Service for application orchestration: CRUD, search, activate, deactivate, getUsage. Owns transactions, security, caching, logging. Delegates business rules to domain/ classes. Phase 1, Step 1.7. Enforces @PreAuthorize, @Transactional, ServiceResult<T>, LocalizedException, SpecBuilder + PageableBuilder, ALLOWED_SORT_FIELDS."
 ---
 
 # Skill: create-service
@@ -25,7 +25,7 @@ Generates the service class for an ERP feature. This is **Phase 1, Step 1.7** of
 
 ## Responsibilities
 
-- Generate service class with all CRUD operations: `create`, `getById`, `update`, `delete`, `toggleActive`, `search`, `getUsage`
+- Generate service class with all CRUD operations: `create`, `getById`, `update`, `delete`, `activate`, `deactivate`, `search`, `getUsage`
 - Apply `@PreAuthorize` on every public method using `SecurityPermissions` constants
 - Apply `@Transactional` on write methods and `@Transactional(readOnly = true)` on reads
 - Apply `@CacheEvict` on writes and `@Cacheable` on reads if entity is cache-eligible
@@ -179,41 +179,55 @@ public ServiceResult<Page<<ENTITY>Response>> search(<ENTITY>SearchRequest search
 }
 ```
 
-### 7. toggleActive() Method
+### 7. activate() Method
 ```java
 @CacheEvict(cacheNames = "<cacheName>", allEntries = true) // ONLY if cache-eligible
 @Transactional
 @PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).<ENTITY>_UPDATE)")
-public ServiceResult<<ENTITY>Response> toggleActive(Long id, Boolean active) {
-    log.info("Toggling <Entity> ID: {} to active: {}", id, active);
+public ServiceResult<<ENTITY>Response> activate(Long id) {
+    log.info("Activating <Entity> ID: {}", id);
 
     Md<ENTITY> entity = repository.findById(id)
         .orElseThrow(() -> new LocalizedException(
             Status.NOT_FOUND, <Module>ErrorCodes.<ENTITY>_NOT_FOUND, id));
 
-    // Delegate deactivation constraint to domain
-    if (Boolean.FALSE.equals(active)) {
-        entityDomain.validateNoActiveChildren(id);
-    }
-    // entityDomain is injected from domain/<Entity>Domain.java (if
-    // module declares domain/ layer) or called as entity.validateX()
-    // if domain behavior is embedded in Entity methods. Check module
-    // Phase CORE for the declared domain behavior placement.
-
-    if (Boolean.TRUE.equals(active)) {
-        entity.activate();
-    } else {
-        entity.deactivate();
-    }
+    entity.activate();
 
     Md<ENTITY> saved = repository.save(entity);
-    log.info("Toggled <Entity> ID: {} active: {}", saved.getId(), active);
+    log.info("Activated <Entity> ID: {}", saved.getId());
 
     return ServiceResult.success(mapper.toResponse(saved), Status.UPDATED);
 }
 ```
 
-### 8. delete() Method
+### 8. deactivate() Method
+```java
+@CacheEvict(cacheNames = "<cacheName>", allEntries = true) // ONLY if cache-eligible
+@Transactional
+@PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).<ENTITY>_UPDATE)")
+public ServiceResult<<ENTITY>Response> deactivate(Long id) {
+    log.info("Deactivating <Entity> ID: {}", id);
+
+    Md<ENTITY> entity = repository.findById(id)
+        .orElseThrow(() -> new LocalizedException(
+            Status.NOT_FOUND, <Module>ErrorCodes.<ENTITY>_NOT_FOUND, id));
+
+    // Delegate pre-deactivation business rule guards to domain
+    // entityDomain.validateDeactivation(id); — injected from domain/<Entity>Domain.java
+    // (if module declares domain/ layer) or called as entity.validateDeactivation()
+    // if domain behavior is embedded in Entity methods. Check module
+    // Phase CORE for the declared domain behavior placement.
+
+    entity.deactivate();
+
+    Md<ENTITY> saved = repository.save(entity);
+    log.info("Deactivated <Entity> ID: {}", saved.getId());
+
+    return ServiceResult.success(mapper.toResponse(saved), Status.UPDATED);
+}
+```
+
+### 9. delete() Method
 ```java
 @CacheEvict(cacheNames = "<cacheName>", allEntries = true) // ONLY if cache-eligible
 @Transactional
@@ -238,7 +252,7 @@ public void delete(Long id) {
 }
 ```
 
-### 9. getUsage() Method
+### 10. getUsage() Method
 ```java
 @Transactional(readOnly = true)
 @PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).<ENTITY>_VIEW)")
@@ -298,7 +312,7 @@ Before creating a service, verify the following shared resources from `erp-commo
 | A.5.9 | `create()` → validate → map → save → `ServiceResult.success(dto, Status.CREATED)` | YES |
 | A.5.10 | `update()` → find → throw `LocalizedException(NOT_FOUND)` → map → save → `ServiceResult.success(dto, Status.UPDATED)` | YES |
 | A.5.11 | `delete()` → find → check refs → delete (no try-catch — DIVE handled by `GlobalExceptionHandler`) | YES |
-| A.5.12 | `toggleActive()` → find → validate constraints → activate/deactivate → save | YES |
+| A.5.12 | `activate()` → find → `entity.activate()` → save · `deactivate()` → find → validate constraints (via domain) → `entity.deactivate()` → save | YES |
 | A.5.13 | Error codes from `<Module>ErrorCodes` constants, NEVER inline strings | YES |
 | A.5.14 | `log.info()` for writes, `log.debug()` for reads | YES |
 | A.5.15 | ALL exceptions are `LocalizedException(Status, ErrorCode, ...args)` — `NotFoundException` is **NOT USED** | YES |

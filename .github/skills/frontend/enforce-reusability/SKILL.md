@@ -319,12 +319,13 @@ export class RuleActionsCellComponent implements ICellRendererAngularComp { ... 
 
 ```typescript
 // From models/<entity>-form.model.ts
-export class AccountFormMapper {
-  static createEmpty(): AccountFormModel { ... }
-  static fromDomain(dto: AccountChartDto): AccountFormModel { ... }
-  static toCreateRequest(form: AccountFormModel): CreateAccountRequest { ... }
-  static toUpdateRequest(form: AccountFormModel): UpdateAccountRequest { ... }
-}
+// MUST be a const object — NOT a class with static methods
+export const AccountFormMapper = {
+  createEmpty(): AccountFormModel { ... },
+  fromDomain(dto: AccountChartDto): AccountFormModel { ... },
+  toCreateRequest(form: AccountFormModel): CreateAccountRequest { ... },
+  toUpdateRequest(form: AccountFormModel): UpdateAccountRequest { ... }
+};
 ```
 
 ### Pattern G: Barrel Exports

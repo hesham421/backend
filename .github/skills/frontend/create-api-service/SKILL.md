@@ -93,8 +93,12 @@ export class <ENTITY_NAME>ApiService extends BaseApiService {
     return this.doPut<<ENTITY_NAME>Dto>(`${this.entityUrl}/${id}`, request);
   }
 
-  toggleActive(id: number, active: boolean): Observable<<ENTITY_NAME>Dto> {
-    return this.doPut<<ENTITY_NAME>Dto>(`${this.entityUrl}/${id}/toggle-active`, { active });
+  activate(id: number): Observable<<ENTITY_NAME>Dto> {
+    return this.doPut<<ENTITY_NAME>Dto>(`${this.entityUrl}/${id}/activate`, {});
+  }
+
+  deactivate(id: number): Observable<<ENTITY_NAME>Dto> {
+    return this.doPut<<ENTITY_NAME>Dto>(`${this.entityUrl}/${id}/deactivate`, {});
   }
 
   delete(id: number): Observable<void> {
@@ -125,8 +129,12 @@ export class <ENTITY_NAME>ApiService extends BaseApiService {
     return this.doPut<<CHILD_NAME>Dto>(`${this.childUrl}/${id}`, request);
   }
 
-  toggleChildActive(id: number, active: boolean): Observable<<CHILD_NAME>Dto> {
-    return this.doPut<<CHILD_NAME>Dto>(`${this.childUrl}/${id}/toggle-active`, { active });
+  activateChild(id: number): Observable<<CHILD_NAME>Dto> {
+    return this.doPut<<CHILD_NAME>Dto>(`${this.childUrl}/${id}/activate`, {});
+  }
+
+  deactivateChild(id: number): Observable<<CHILD_NAME>Dto> {
+    return this.doPut<<CHILD_NAME>Dto>(`${this.childUrl}/${id}/deactivate`, {});
   }
 
   deleteChild(id: number): Observable<void> {
@@ -165,7 +173,7 @@ Before creating a new API service, verify the following shared resources are con
 | B.2.2 | Uses `doGet/doPost/doPut/doDelete` from base (handles response unwrapping) | Contract B.2.2 | Manual `.pipe(map(...))` for unwrapping `ApiResponse` |
 | B.2.3 | NOT `providedIn: 'root'` — provided at component `providers: [...]` level | Contract B.2.3 | `@Injectable({ providedIn: 'root' })` singleton service |
 | B.2.4 | Uses `environment.authApiUrl` for base URL | Contract B.2.4 | Hardcoded URL strings |
-| B.2.5 | Toggle active sends `doPut(url, { active })` — body is `{ active: boolean }` | Contract B.2.5 | Sending active as query param |
+| B.2.5 | Activation uses separate `activate(id)` → `PUT /{id}/activate` and `deactivate(id)` → `PUT /{id}/deactivate` — NOT a single `toggle-active` | Contract B.2.5 | Single `toggleActive` endpoint or query param |
 | D.5.2 | Feature API services MUST NOT use `shareReplay` or in-memory caching | Contract D.5.2 | `shareReplay(1)` on CRUD service |
 | D.5.4 | Frontend MUST NOT implement its own TTL or expiration logic | Contract D.5.4 | Custom `setTimeout`-based cache expiration |
 
@@ -180,7 +188,7 @@ Before creating a new API service, verify the following shared resources are con
 | Hardcoded API base URL (e.g., `'http://localhost:8080'`) | B.2.4 |
 | `shareReplay(1)` in a feature CRUD API service | D.5.2 |
 | Manual `.pipe(map(res => res.data))` to unwrap `ApiResponse` | B.2.2 |
-| Toggle active sending `{ isActive: boolean }` instead of `{ active: boolean }` | B.2.5 |
+| Single `toggleActive(id, active)` method instead of separate `activate(id)` / `deactivate(id)` | B.2.5 |
 | Missing `search()` method using POST | Blueprint §7.1 |
 | Not extending `BaseApiService` | B.2.1 |
 
@@ -230,8 +238,12 @@ export class MasterLookupApiService extends BaseApiService {
     return this.doPut<MasterLookupDto>(`${this.entityUrl}/${id}`, request);
   }
 
-  toggleActive(id: number, active: boolean): Observable<MasterLookupDto> {
-    return this.doPut<MasterLookupDto>(`${this.entityUrl}/${id}/toggle-active`, { active });
+  activate(id: number): Observable<MasterLookupDto> {
+    return this.doPut<MasterLookupDto>(`${this.entityUrl}/${id}/activate`, {});
+  }
+
+  deactivate(id: number): Observable<MasterLookupDto> {
+    return this.doPut<MasterLookupDto>(`${this.entityUrl}/${id}/deactivate`, {});
   }
 
   delete(id: number): Observable<void> {
@@ -256,8 +268,12 @@ export class MasterLookupApiService extends BaseApiService {
     return this.doPut<LookupDetailDto>(`${this.detailUrl}/${id}`, request);
   }
 
-  toggleDetailActive(id: number, active: boolean): Observable<LookupDetailDto> {
-    return this.doPut<LookupDetailDto>(`${this.detailUrl}/${id}/toggle-active`, { active });
+  activateDetail(id: number): Observable<LookupDetailDto> {
+    return this.doPut<LookupDetailDto>(`${this.detailUrl}/${id}/activate`, {});
+  }
+
+  deactivateDetail(id: number): Observable<LookupDetailDto> {
+    return this.doPut<LookupDetailDto>(`${this.detailUrl}/${id}/deactivate`, {});
   }
 
   deleteDetail(id: number): Observable<void> {
