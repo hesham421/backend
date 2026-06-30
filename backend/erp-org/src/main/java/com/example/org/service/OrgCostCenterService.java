@@ -25,8 +25,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -189,6 +192,45 @@ public class OrgCostCenterService {
                 : repository.findAll().stream().filter(c -> Boolean.TRUE.equals(c.getIsActiveFl())).toList())
                 .stream().map(mapper::toOptionResponse).toList();
         return ServiceResult.success(options);
+    }
+
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasAuthority('PERM_COST_CENTER_VIEW')")
+    public ServiceResult<List<CostCenterTreeNodeResponse>> getTree(Long branchId, Boolean isActiveFl) {
+        log.debug("Building CostCenter tree for branchId={} isActiveFl={}", branchId, isActiveFl);
+        List<OrgCostCenter> flat = isActiveFl != null
+                ? repository.findFlatByBranchIdAndIsActiveFl(branchId, isActiveFl)
+                : repository.findFlatByBranchId(branchId);
+        return ServiceResult.success(assembleCostCenterTree(flat));
+    }
+
+    private List<CostCenterTreeNodeResponse> assembleCostCenterTree(List<OrgCostCenter> flat) {
+        Map<Long, CostCenterTreeNodeResponse> nodeMap = new LinkedHashMap<>();
+        for (OrgCostCenter c : flat) {
+            nodeMap.put(c.getId(), CostCenterTreeNodeResponse.builder()
+                    .id(c.getId())
+                    .code(c.getCostCenterCode())
+                    .nameAr(c.getNameAr())
+                    .nameEn(c.getNameEn())
+                    .nodeType(c.getNodeTypeId())
+                    .children(new ArrayList<>())
+                    .build());
+        }
+        List<CostCenterTreeNodeResponse> roots = new ArrayList<>();
+        for (OrgCostCenter c : flat) {
+            CostCenterTreeNodeResponse node = nodeMap.get(c.getId());
+            if (c.getParentCostCenter() == null) {
+                roots.add(node);
+            } else {
+                CostCenterTreeNodeResponse parent = nodeMap.get(c.getParentCostCenter().getId());
+                if (parent != null) {
+                    parent.getChildren().add(node);
+                } else {
+                    roots.add(node);
+                }
+            }
+        }
+        return roots;
     }
 
     private void validateNoCircularRef(Long entityId, Long newParentId) {

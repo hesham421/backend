@@ -24,4 +24,11 @@ public interface OrgCostCenterRepository
 
     @Query("SELECT c FROM OrgCostCenter c WHERE c.branch.id = :branchId AND c.parentCostCenter IS NULL ORDER BY c.nameEn")
     List<OrgCostCenter> findRootsByBranchId(@Param("branchId") Long branchId);
+
+    // QR-ORG-015: flat fetch for in-service recursive tree assembly (API-ORG-027)
+    @Query("SELECT c FROM OrgCostCenter c WHERE c.branch.id = :branchId ORDER BY c.nameEn")
+    List<OrgCostCenter> findFlatByBranchId(@Param("branchId") Long branchId);
+
+    @Query("SELECT c FROM OrgCostCenter c WHERE c.branch.id = :branchId AND c.isActiveFl = :isActiveFl ORDER BY c.nameEn")
+    List<OrgCostCenter> findFlatByBranchIdAndIsActiveFl(@Param("branchId") Long branchId, @Param("isActiveFl") Boolean isActiveFl);
 }

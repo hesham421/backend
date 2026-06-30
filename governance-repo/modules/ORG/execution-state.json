@@ -1,8 +1,8 @@
 {
   "module": "ORG",
   "generated_at": "2026-06-30",
-  "current_phase": "SVC-API",
-  "current_sub": "SVC-API-CRUD",
+  "current_phase": "DOC",
+  "current_sub": "DOC",
   "phases": [
     {
       "id": "CORE",
@@ -20,10 +20,10 @@
     },
     {
       "id": "SVC-API",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "SVC-API-CRUD", "status": "PENDING" },
-        { "id": "SVC-API-TREE", "status": "PENDING" }
+        { "id": "SVC-API-CRUD", "status": "COMPLETE" },
+        { "id": "SVC-API-TREE", "status": "COMPLETE" }
       ]
     },
     {

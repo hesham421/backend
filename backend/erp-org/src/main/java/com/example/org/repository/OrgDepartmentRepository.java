@@ -27,4 +27,11 @@ public interface OrgDepartmentRepository
 
     @Query("SELECT d FROM OrgDepartment d JOIN FETCH d.children WHERE d.branch.id = :branchId AND d.parentDepartment IS NULL")
     List<OrgDepartment> findTreeRootsByBranchId(@Param("branchId") Long branchId);
+
+    // QR-ORG-012: flat fetch for in-service recursive tree assembly (API-ORG-020)
+    @Query("SELECT d FROM OrgDepartment d WHERE d.branch.id = :branchId ORDER BY d.nameEn")
+    List<OrgDepartment> findFlatByBranchId(@Param("branchId") Long branchId);
+
+    @Query("SELECT d FROM OrgDepartment d WHERE d.branch.id = :branchId AND d.isActiveFl = :isActiveFl ORDER BY d.nameEn")
+    List<OrgDepartment> findFlatByBranchIdAndIsActiveFl(@Param("branchId") Long branchId, @Param("isActiveFl") Boolean isActiveFl);
 }

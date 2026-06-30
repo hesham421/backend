@@ -25,8 +25,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -189,6 +192,45 @@ public class OrgDepartmentService {
                 : repository.findAll().stream().filter(d -> Boolean.TRUE.equals(d.getIsActiveFl())).toList())
                 .stream().map(mapper::toOptionResponse).toList();
         return ServiceResult.success(options);
+    }
+
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasAuthority('PERM_DEPARTMENT_VIEW')")
+    public ServiceResult<List<DepartmentTreeNodeResponse>> getTree(Long branchId, Boolean isActiveFl) {
+        log.debug("Building Department tree for branchId={} isActiveFl={}", branchId, isActiveFl);
+        List<OrgDepartment> flat = isActiveFl != null
+                ? repository.findFlatByBranchIdAndIsActiveFl(branchId, isActiveFl)
+                : repository.findFlatByBranchId(branchId);
+        return ServiceResult.success(assembleDepartmentTree(flat));
+    }
+
+    private List<DepartmentTreeNodeResponse> assembleDepartmentTree(List<OrgDepartment> flat) {
+        Map<Long, DepartmentTreeNodeResponse> nodeMap = new LinkedHashMap<>();
+        for (OrgDepartment d : flat) {
+            nodeMap.put(d.getId(), DepartmentTreeNodeResponse.builder()
+                    .id(d.getId())
+                    .code(d.getDepartmentCode())
+                    .nameAr(d.getNameAr())
+                    .nameEn(d.getNameEn())
+                    .nodeType(d.getNodeTypeId())
+                    .children(new ArrayList<>())
+                    .build());
+        }
+        List<DepartmentTreeNodeResponse> roots = new ArrayList<>();
+        for (OrgDepartment d : flat) {
+            DepartmentTreeNodeResponse node = nodeMap.get(d.getId());
+            if (d.getParentDepartment() == null) {
+                roots.add(node);
+            } else {
+                DepartmentTreeNodeResponse parent = nodeMap.get(d.getParentDepartment().getId());
+                if (parent != null) {
+                    parent.getChildren().add(node);
+                } else {
+                    roots.add(node);
+                }
+            }
+        }
+        return roots;
     }
 
     private void validateNoCircularRef(Long entityId, Long newParentId) {
