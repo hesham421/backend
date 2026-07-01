@@ -6,26 +6,37 @@ Desktop.ini
 # IDE and editor files
 .idea/
 .vscode/
-**/.idea/
-**/.vscode/
 *.iml
 
-# This workspace root is not a deployable project.
-# Each subdirectory (backend/, frontend/, governance-repo/, deploy/)
-# is its own repository with its own .gitignore.
-#
-# Rules below protect the root workspace from common accidental commits.
+# Java / Maven / Spring Boot
+**/target/
+**/out/
+*.class
+*.jar
+*.war
+*.ear
 
-# Secrets
-.env
-*.env
-
-# Logs
+# Logs and runtime output
 *.log
 *.log.*
+logs/
+erp-security/cp.txt
+erp-security/temp-log.txt
+startup.log
+test-output.txt
+test-run-output.txt
 
 # Docker overrides
 docker-compose.override.yml
 
-# Postman local environment
-ERP-Local.postman_environment.json
+# Environment secrets — never commit the real .env
+.env
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+tests/masterdata-test-results.json
