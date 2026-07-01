@@ -25,10 +25,17 @@ deploy.sh            ← Git pull → build → restart
 README.md            ← Deployment runbook
 ```
 
-## Key Architecture Rules
+## Repository Facts
 
 - Backend image: `context: ../backend`, `dockerfile: Dockerfile`
 - Frontend image: `context: ../frontend`, `dockerfile: Dockerfile`
-- Backend runs with `network_mode: host`
-- All API calls proxied through Nginx `/api` — no direct backend access
-- Deployment is Git pull-based, not image push-based
+
+## Architecture Rules
+
+> Deployment architecture (network mode, reverse-proxy topology, deployment
+> model) is owned by the skill below — read it for current detail, do not rely
+> on a restatement here.
+
+| Concern | Canonical skill |
+|---------|-----------------|
+| Network mode, Nginx proxy topology, Git-pull deployment model | `devops/deploy` |

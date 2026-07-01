@@ -46,11 +46,17 @@ src/
 | Validate architecture | `enforce-frontend-architecture` |
 | Validate feature | `validate-frontend-feature` |
 
-## Key Architecture Rules
+## Architecture Rules
 
-> ERP rules always take precedence over Angular conventions.
+> ERP rules always take precedence over Angular conventions. These rules are
+> owned by the skills below — read the skill for current detail, do not rely
+> on a restatement here.
 
-- State: Angular `signal()` only — never `BehaviorSubject`
-- Components: `standalone: true` + `ChangeDetectionStrategy.OnPush` always
-- Facade and ApiService: never `providedIn: 'root'`
-- Build output: `dist/n-erp-system/` (no `/browser` subdirectory)
+| Concern | Canonical skill |
+|---------|-----------------|
+| State management (signals vs. `BehaviorSubject`) | `enforce-state-management` |
+| Component/architecture contracts (`standalone`, `OnPush`) | `enforce-frontend-architecture` |
+| Facade / API service provider scoping | `create-facade`, `create-api-service` |
+
+Build output: `dist/n-erp-system/` (no `/browser` subdirectory) — a repository
+build fact, not a governance rule.

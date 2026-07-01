@@ -13,110 +13,16 @@ execution protocols live here. No other repository may duplicate or redefine the
 
 ## Workspace Layout
 
-This governance repository is one of four sibling repositories:
-
-```
-workspace/
-  backend/          ← Java / Spring Boot source code
-  frontend/         ← Angular source code
-  deploy/           ← Docker Compose orchestration and deployment scripts
-  governance-repo/  ← this repository — AI governance, skills, context, commands
-```
-
-The repositories are independent — there is no monorepo root above them.
+See `WORKSPACE.md` for the full sibling-repository layout, ownership boundaries,
+and expected developer workflow.
 
 ---
 
-## Governance Content Map
+## Shared Governance
 
-| Artifact | Path in this repository |
-|----------|------------------------|
-| Backend skills | `.github/skills/backend/` |
-| Frontend skills | `.github/skills/frontend/` |
-| DevOps / deploy skill | `.github/skills/devops/deploy/` |
-| Backend architecture context | `.github/context/backend.md` |
-| Frontend architecture context | `.github/context/frontend.md` |
-| Master entity registry | `master-registry.md` |
-| Modules registry | `modules-registry.json` |
-| AI commands | `.claude/commands/` |
-| Governance automation tools | `governance-tools/` |
-| Module execution plans | `modules/` |
-
----
-
-## Task → Skill Routing
-
-Read the matching skill BEFORE generating or modifying any code.
-
-### Backend (code lives in `backend` repo)
-
-| Task | Skill |
-|------|-------|
-| **Always first — contract validation** | `enforce-backend-contract` |
-| Create / modify Entity | `create-entity` |
-| Create / modify Repository | `create-repository` |
-| Create / modify DTOs | `create-dto` |
-| Create / modify Mapper | `create-mapper` |
-| Create / modify Service | `create-service` |
-| Create / modify Controller | `create-controller` |
-| Review / validate backend code | `enforce-backend-contract` |
-| Add / review caching | `enforce-caching-rules` |
-| Add / review error handling | `enforce-error-handling` |
-| Validate a complete feature | `validate-backend-feature` |
-
-### Frontend (code lives in `frontend` repo)
-
-> ERP rules always take precedence over Angular/skills guidance.
-
-| Task | Skill |
-|------|-------|
-| Create / modify models / DTOs / FormMapper | `create-models` |
-| Create / modify API service | `create-api-service` |
-| Create / modify Facade | `create-facade` |
-| Create / modify Routing | `create-routing` |
-| Create / modify Components | `create-components` |
-| Review frontend architecture | `enforce-frontend-architecture` |
-| Review UI/UX & data display | `enforce-ui-ux` |
-| Review design system & CSS | `enforce-design-system` |
-| Review code reusability | `enforce-reusability` |
-| Review permissions | `enforce-permissions` |
-| Review state management | `enforce-state-management` |
-| Validate a complete feature | `validate-frontend-feature` |
-
-### DevOps (infrastructure lives in `deploy` repo)
-
-| Task | Skill |
-|------|-------|
-| Dockerfiles / docker-compose / nginx / deployment | `deploy` |
-
----
-
-## Execution Order
-
-**Backend (strict):**
-`enforce-backend-contract` → `create-entity` → `create-repository` → `create-dto` → `create-mapper` → `create-service` → `create-controller` → `validate-backend-feature`
-
-**Frontend (strict):**
-`create-models` → `create-api-service` → `create-facade` → `create-routing` → `create-components` → `validate-frontend-feature`
-
----
-
-## Governance Rules
-
-- NEVER generate backend code without first reading the corresponding skill
-- NEVER generate frontend code without first reading the corresponding skill
-- When a task spans multiple layers, read ALL relevant skills
-- After completing a feature, run the validation skill to verify compliance
-- Reference existing implementations in the codebase as canonical examples
-- `master-registry.md` is the single source of truth for all entities and rules
-
----
-
-## Context Reference (read on demand)
-
-- Backend architecture overview: `.github/context/backend.md`
-- Frontend architecture overview + navigation i18n keys: `.github/context/frontend.md`
-- All detailed rules live in `.github/skills/`
+Skill routing, execution order, governance rules, and context references are
+shared across every AI runtime and defined once in `GOVERNANCE-RULES.md`. Read
+it before generating or modifying any code — do not restate its contents here.
 
 ---
 
