@@ -32,7 +32,7 @@ public class RegionController {
     private final OperationCode operationCode;
 
     @PostMapping
-    @Operation(summary = "Create Region", description = "إنشاء منطقة جديدة")
+    @Operation(operationId = "API-ORG-013", summary = "Create Region", description = "إنشاء منطقة جديدة")
     public ResponseEntity<ApiResponse<RegionResponse>> create(
             @Valid @RequestBody RegionCreateRequest request) {
         ServiceResult<RegionResponse> result = regionService.create(request);
@@ -40,7 +40,7 @@ public class RegionController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Update Region", description = "تحديث منطقة")
+    @Operation(operationId = "API-ORG-015", summary = "Update Region", description = "تحديث منطقة")
     public ResponseEntity<ApiResponse<RegionResponse>> update(
             @PathVariable Long id,
             @Valid @RequestBody RegionUpdateRequest request) {
@@ -49,14 +49,14 @@ public class RegionController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Get Region by ID", description = "جلب منطقة بالمعرف")
+    @Operation(operationId = "API-ORG-018", summary = "Get Region by ID", description = "جلب منطقة بالمعرف")
     public ResponseEntity<ApiResponse<RegionResponse>> getById(@PathVariable Long id) {
         ServiceResult<RegionResponse> result = regionService.getById(id);
         return operationCode.craftResponse(result);
     }
 
     @PostMapping("/search")
-    @Operation(summary = "Search Regions", description = "بحث في المناطق")
+    @Operation(operationId = "API-ORG-014", summary = "Search Regions", description = "بحث في المناطق")
     public ResponseEntity<ApiResponse<Page<RegionResponse>>> search(
             @Valid @RequestBody RegionSearchRequest searchRequest) {
         ServiceResult<Page<RegionResponse>> result = regionService.search(searchRequest);
@@ -64,14 +64,14 @@ public class RegionController {
     }
 
     @PutMapping("/{id}/activate")
-    @Operation(summary = "Activate Region", description = "تفعيل منطقة")
+    @Operation(operationId = "API-ORG-017", summary = "Activate Region", description = "تفعيل منطقة")
     public ResponseEntity<ApiResponse<RegionResponse>> activate(@PathVariable Long id) {
         ServiceResult<RegionResponse> result = regionService.activate(id);
         return operationCode.craftResponse(result);
     }
 
     @PutMapping("/{id}/deactivate")
-    @Operation(summary = "Deactivate Region", description = "إلغاء تفعيل منطقة")
+    @Operation(operationId = "API-ORG-016", summary = "Deactivate Region", description = "إلغاء تفعيل منطقة")
     public ResponseEntity<ApiResponse<RegionResponse>> deactivate(@PathVariable Long id) {
         ServiceResult<RegionResponse> result = regionService.deactivate(id);
         return operationCode.craftResponse(result);

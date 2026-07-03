@@ -40,7 +40,7 @@ public class DepartmentController {
     private final OperationCode operationCode;
 
     @PostMapping
-    @Operation(summary = "Create Department", description = "إنشاء قسم جديد")
+    @Operation(operationId = "API-ORG-019", summary = "Create Department", description = "إنشاء قسم جديد")
     public ResponseEntity<ApiResponse<DepartmentResponse>> create(
             @Valid @RequestBody DepartmentCreateRequest request) {
         ServiceResult<DepartmentResponse> result = departmentService.create(request);
@@ -48,7 +48,7 @@ public class DepartmentController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Update Department", description = "تحديث قسم")
+    @Operation(operationId = "API-ORG-022", summary = "Update Department", description = "تحديث قسم")
     public ResponseEntity<ApiResponse<DepartmentResponse>> update(
             @PathVariable Long id,
             @Valid @RequestBody DepartmentUpdateRequest request) {
@@ -57,14 +57,14 @@ public class DepartmentController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Get Department by ID", description = "جلب قسم بالمعرف")
+    @Operation(operationId = "API-ORG-025", summary = "Get Department by ID", description = "جلب قسم بالمعرف")
     public ResponseEntity<ApiResponse<DepartmentResponse>> getById(@PathVariable Long id) {
         ServiceResult<DepartmentResponse> result = departmentService.getById(id);
         return operationCode.craftResponse(result);
     }
 
     @PostMapping("/search")
-    @Operation(summary = "Search Departments", description = "بحث في الأقسام")
+    @Operation(operationId = "API-ORG-021", summary = "Search Departments", description = "بحث في الأقسام")
     public ResponseEntity<ApiResponse<Page<DepartmentResponse>>> search(
             @Valid @RequestBody DepartmentSearchRequest searchRequest) {
         ServiceResult<Page<DepartmentResponse>> result = departmentService.search(searchRequest);
@@ -72,7 +72,7 @@ public class DepartmentController {
     }
 
     @GetMapping("/tree")
-    @Operation(summary = "Get Department tree", description = "جلب الهيكل الشجري للأقسام")
+    @Operation(operationId = "API-ORG-020", summary = "Get Department tree", description = "جلب الهيكل الشجري للأقسام")
     public ResponseEntity<ApiResponse<List<DepartmentTreeNodeResponse>>> getTree(
             @RequestParam Long branchFk,
             @RequestParam(required = false) Boolean isActiveFl) {
@@ -81,14 +81,14 @@ public class DepartmentController {
     }
 
     @PutMapping("/{id}/activate")
-    @Operation(summary = "Activate Department", description = "تفعيل قسم")
+    @Operation(operationId = "API-ORG-024", summary = "Activate Department", description = "تفعيل قسم")
     public ResponseEntity<ApiResponse<DepartmentResponse>> activate(@PathVariable Long id) {
         ServiceResult<DepartmentResponse> result = departmentService.activate(id);
         return operationCode.craftResponse(result);
     }
 
     @PutMapping("/{id}/deactivate")
-    @Operation(summary = "Deactivate Department", description = "إلغاء تفعيل قسم")
+    @Operation(operationId = "API-ORG-023", summary = "Deactivate Department", description = "إلغاء تفعيل قسم")
     public ResponseEntity<ApiResponse<DepartmentResponse>> deactivate(@PathVariable Long id) {
         ServiceResult<DepartmentResponse> result = departmentService.deactivate(id);
         return operationCode.craftResponse(result);

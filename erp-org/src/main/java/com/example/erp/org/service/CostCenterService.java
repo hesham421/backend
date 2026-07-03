@@ -74,7 +74,7 @@ public class CostCenterService {
         assertNameNotDuplicate(parent.getId(), request.getNameAr(), request.getNameEn(), null);
 
         String generatedCode = orgNumberGenerator.next(
-            "CC-" + parent.getBranchCode() + "-",
+            "CC-" + orgNumberGenerator.parentSuffix(parent.getBranchCode()) + "-",
             costCenterRepository.countByBranch_Id(parent.getId()),
             code -> costCenterRepository.existsByBranch_IdAndCostCenterCode(parent.getId(), code));
         OrgCostCenterDomain.create(generatedCode, Boolean.TRUE.equals(parent.getIsActiveFl()));

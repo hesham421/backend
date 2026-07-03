@@ -166,6 +166,21 @@ public class OpenApiConfig {
     }
 
     /**
+     * 🏢 Organization Module APIs
+     * - Legal Entities, Branches, Regions
+     * - Departments, Cost Centers, Profit Centers
+     * - Location Sites
+     */
+    @Bean
+    public GroupedOpenApi organizationApi() {
+        return GroupedOpenApi.builder()
+            .group("4-organization")
+            .displayName("🏢 Organization")
+            .packagesToScan("com.example.erp.org.controller")
+            .build();
+    }
+
+    /**
      * 📊 All APIs (Combined view)
      * Shows all endpoints from all modules
      */
@@ -177,7 +192,8 @@ public class OpenApiConfig {
             .packagesToScan(
                 "com.example.security.controller",
                 "com.example.masterdata.controller",
-                "com.example.erp.finance.gl.controller"
+                "com.example.erp.finance.gl.controller",
+                "com.example.erp.org.controller"
             )
             .build();
     }

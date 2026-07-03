@@ -43,4 +43,17 @@ public class OrgNumberGenerator {
         log.warn("Number generation exhausted {} attempts for prefix={}", MAX_ATTEMPTS, prefix);
         throw new LocalizedException(Status.CONFLICT, OrgErrorCodes.CODE_GENERATION_CONFLICT);
     }
+
+    /**
+     * Every generated code ends in a {@value #SEQUENCE_WIDTH}-digit sequence by construction, so
+     * this extracts a parent's own suffix rather than its full code. Deeper entities (e.g.
+     * Department under Branch) build their prefix from this instead of the parent's complete
+     * code, otherwise the prefix grows with hierarchy depth and overflows the VARCHAR(20) column
+     * (e.g. "DEP-" + full Branch code + "-" + own sequence exceeded 20 chars).
+     */
+    public String parentSuffix(String parentCode) {
+        return parentCode.length() >= SEQUENCE_WIDTH
+            ? parentCode.substring(parentCode.length() - SEQUENCE_WIDTH)
+            : parentCode;
+    }
 }

@@ -64,7 +64,7 @@ public class LocationSiteService {
         assertNameNotDuplicate(parent.getId(), request.getNameAr(), request.getNameEn(), null);
 
         String generatedCode = orgNumberGenerator.next(
-            "LS-" + parent.getBranchCode() + "-",
+            "LS-" + orgNumberGenerator.parentSuffix(parent.getBranchCode()) + "-",
             locationSiteRepository.countByBranch_Id(parent.getId()),
             code -> locationSiteRepository.existsByBranch_IdAndLocationSiteCode(parent.getId(), code));
         OrgLocationSiteDomain.create(generatedCode, Boolean.TRUE.equals(parent.getIsActiveFl()));

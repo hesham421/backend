@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ORG API Test Report — 2026-07-03 19:12</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0; padding: 20px; background: #f4f6f9; color: #1a1a2e; }
+    h1 { margin-bottom: 4px; }
+    .meta { color: #666; font-size: .9rem; margin-bottom: 24px; }
+    .summary { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 28px; }
+    .card { background: #fff; border-radius: 10px; padding: 18px 24px;
+             box-shadow: 0 2px 6px rgba(0,0,0,.08); min-width: 140px; text-align: center; }
+    .card .num { font-size: 2.2rem; font-weight: 700; line-height: 1; }
+    .card .label { font-size: .8rem; color: #888; margin-top: 4px; }
+    .card.total .num { color: #3a86ff; }
+    .card.pass .num { color: #2ec4b6; }
+    .card.fail .num { color: #e63946; }
+    .suite-table { background: #fff; border-radius: 10px; padding: 0;
+                    box-shadow: 0 2px 6px rgba(0,0,0,.08); margin-bottom: 28px;
+                    overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+    th { background: #f0f2f5; text-align: left; padding: 10px 14px;
+          font-weight: 600; color: #555; }
+    td { padding: 8px 14px; border-top: 1px solid #eef0f3; vertical-align: top; }
+    tr.pass td { background: #f6fff8; }
+    tr.fail td { background: #fff5f5; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px;
+              font-size: .75rem; font-weight: 700; }
+    .badge.pass { background: #d4f7ef; color: #1a7a6f; }
+    .badge.fail { background: #fde8e8; color: #b91c1c; }
+    .method { display: inline-block; padding: 2px 6px; border-radius: 4px;
+               font-size: .7rem; font-weight: 700; color: #fff; }
+    .method.get  { background: #3a86ff; }
+    .method.post { background: #2ec4b6; }
+    .method.put  { background: #f4a261; }
+    .num { text-align: center; }
+    .url { font-size: .75rem; color: #666; word-break: break-all; max-width: 260px; }
+    .test-name { font-weight: 500; }
+    .note { font-size: .72rem; color: #999; margin-left: 6px; }
+    .error-msg { color: #b91c1c; font-size: .8rem; }
+    details summary { cursor: pointer; color: #3a86ff; font-size: .78rem; margin-top: 4px; }
+    pre { background: #f8f8f8; padding: 8px; border-radius: 4px;
+           font-size: .72rem; overflow-x: auto; max-width: 400px; white-space: pre-wrap; }
+    section { background: #fff; border-radius: 10px;
+               box-shadow: 0 2px 6px rgba(0,0,0,.08); margin-bottom: 28px;
+               overflow: hidden; }
+    section h2 { padding: 14px 20px; margin: 0; background: #f0f2f5;
+                  font-size: 1rem; border-bottom: 1px solid #e0e4ea; }
+  </style>
+</head>
+<body>
+  <h1>ORG Module API Test Report</h1>
+  <p class="meta">Generated 2026-07-03 19:12:52 &nbsp;·&nbsp;
+     Base URL: http://localhost:7273 &nbsp;·&nbsp; Duration: 0.8s</p>
+
+  <div class="summary">
+    <div class="card total"><div class="num">47</div><div class="label">Total</div></div>
+    <div class="card pass"><div class="num">44</div><div class="label">Passed</div></div>
+    <div class="card fail"><div class="num">3</div><div class="label">Failed</div></div>
+    <div class="card total"><div class="num">93.6%</div><div class="label">Pass Rate</div></div>
+  </div>
+
+  <div class="suite-table">
+    <table>
+      <thead>
+        <tr><th>Suite</th><th>Total</th><th>Pass</th><th>Fail</th><th>Rate</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Auth</td>
+          <td class="num">2</td>
+          <td class="num pass">2</td>
+          <td class="num fail">0</td>
+          <td class="num">100.0%</td>
+        </tr>
+        <tr>
+          <td>Auth Guard</td>
+          <td class="num">1</td>
+          <td class="num pass">1</td>
+          <td class="num fail">0</td>
+          <td class="num">100.0%</td>
+        </tr>
+        <tr>
+          <td>Legal Entity</td>
+          <td class="num">9</td>
+          <td class="num pass">9</td>
+          <td class="num fail">0</td>
+          <td class="num">100.0%</td>
+        </tr>
+        <tr>
+          <td>Branch</td>
+          <td class="num">9</td>
+          <td class="num pass">9</td>
+          <td class="num fail">0</td>
+          <td class="num">100.0%</td>
+        </tr>
+        <tr>
+          <td>Region</td>
+          <td class="num">8</td>
+          <td class="num pass">8</td>
+          <td class="num fail">0</td>
+          <td class="num">100.0%</td>
+        </tr>
+        <tr>
+          <td>Profit Center</td>
+          <td class="num">7</td>
+          <td class="num pass">7</td>
+          <td class="num fail">0</td>
+          <td class="num">100.0%</td>
+        </tr>
+        <tr>
+          <td>Department</td>
+          <td class="num">4</td>
+          <td class="num pass">3</td>
+          <td class="num fail">1</td>
+          <td class="num">75.0%</td>
+        </tr>
+        <tr>
+          <td>Cost Center</td>
+          <td class="num">4</td>
+          <td class="num pass">3</td>
+          <td class="num fail">1</td>
+          <td class="num">75.0%</td>
+        </tr>
+        <tr>
+          <td>Location Site</td>
+          <td class="num">3</td>
+          <td class="num pass">2</td>
+          <td class="num fail">1</td>
+          <td class="num">66.7%</td>
+        </tr></tbody>
+    </table>
+  </div>
+
+  
+        <section>
+          <h2>Auth — 2/2 passed</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Status</th><th>Method</th><th>Test</th><th>URL</th>
+                <th>Got</th><th>Expected</th><th>Time</th><th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Admin Login </td>
+              <td class="url">http://localhost:7273/api/auth/login</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">174ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsInVzZXJJZCI6MSwiYXV0aG9yaXRpZXMiOlsiUEVSTV9CUkFOQ0hfQ1JFQVRFIiwiUEVSTV9CUkFOQ0hfREVMRVRFIiwiUEVSTV9CUkFOQ0hfVVBEQVRFIiwiUEVSTV9CUkFOQ0hfVklFVyIsIlBFUk1fQ09TVF9DRU5URVJfQ1JFQVRFIiwiUEVSTV9DT1NUX0NFTlRFUl9ERUxFVEUiLCJQRVJNX0NPU...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Login — Invalid Password </td>
+              <td class="url">http://localhost:7273/api/auth/login</td>
+              <td class="num">401</td>
+              <td class="num">401</td>
+              <td class="num">145ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "error": {
+    "code": "INVALID_CREDENTIALS",
+    "details": "Invalid username or password",
+    "path": "/api/auth/login",
+    "timestamp": "2026-07-03T15:12:51.941720Z"
+  },
+  "message": "Invalid credentials",
+  "success": false,
+  "timestamp": "2026-07-03T15:12:51.941721Z"
+}</pre></details></td>
+            </tr></tbody>
+          </table>
+        </section>
+        <section>
+          <h2>Auth Guard — 1/1 passed</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Status</th><th>Method</th><th>Test</th><th>URL</th>
+                <th>Got</th><th>Expected</th><th>Time</th><th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">Legal Entities — No Token → 401 </td>
+              <td class="url">http://localhost:7273/api/v1/org/legal-entities/1</td>
+              <td class="num">401</td>
+              <td class="num">401</td>
+              <td class="num">2ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "success": false,
+  "message": "Authentication failed",
+  "error": {
+    "code": "UNAUTHORIZED",
+    "details": "Authentication required. Please provide valid credentials.",
+    "timestamp": "2026-07-03T15:12:51.943895Z",
+    "path": "/api/v1/org/legal-entities/1"
+  },
+  "timestamp": "2026-07-03...</pre></details></td>
+            </tr></tbody>
+          </table>
+        </section>
+        <section>
+          <h2>Legal Entity — 9/9 passed</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Status</th><th>Method</th><th>Test</th><th>URL</th>
+                <th>Got</th><th>Expected</th><th>Time</th><th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create Legal Entity </td>
+              <td class="url">http://localhost:7273/api/v1/org/legal-entities</td>
+              <td class="num">201</td>
+              <td class="num">201</td>
+              <td class="num">16ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "data": {
+    "id": 3,
+    "legalEntityCode": "LE-00003",
+    "nameAr": "شركة اختبار 1783091571",
+    "nameEn": "Test Legal Entity 1783091571",
+    "entityTypeId": "HEAD_OFFICE",
+    "isActive": true,
+    "notes": "Created by test_org_apis.py",
+    "createdAt": "2026-07-03T15:12:51.957Z",
+    "c...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create Legal Entity — Missing Required Field </td>
+              <td class="url">http://localhost:7273/api/v1/org/legal-entities</td>
+              <td class="num">400</td>
+              <td class="num">400</td>
+              <td class="num">7ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "details": "Request validation failed. Please check the field errors.",
+    "fieldErrors": [
+      {
+        "field": "nameAr",
+        "message": "This field is required"
+      }
+    ],
+    "path": "/api/v1/org/legal-entities",
+    "timestamp": "20...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create Legal Entity — Duplicate Name <span class="note">RULE-ORG-015 — name uniqueness is global scope</span></td>
+              <td class="url">http://localhost:7273/api/v1/org/legal-entities</td>
+              <td class="num">409</td>
+              <td class="num">409</td>
+              <td class="num">10ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "error": {
+    "code": "ERR_ORG_0001",
+    "details": "Name already exists within the same parent scope — please choose a different name",
+    "path": "/api/v1/org/legal-entities",
+    "timestamp": "2026-07-03T15:12:51.977147Z"
+  },
+  "message": "Name already exists within the same parent scope ...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Search Legal Entities </td>
+              <td class="url">http://localhost:7273/api/v1/org/legal-entities/search</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">10ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "data": {
+    "content": [
+      {
+        "id": 2,
+        "legalEntityCode": "LE-00002",
+        "nameAr": "شركة اختبار 1783091344",
+        "nameEn": "Test Legal Entity 1783091344",
+        "entityTypeId": "HEAD_OFFICE",
+        "isActive": true,
+        "notes": "Updated by test_org_apis.py"...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">Get Legal Entity by ID </td>
+              <td class="url">http://localhost:7273/api/v1/org/legal-entities/3</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">6ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "data": {
+    "id": 3,
+    "legalEntityCode": "LE-00003",
+    "nameAr": "شركة اختبار 1783091571",
+    "nameEn": "Test Legal Entity 1783091571",
+    "entityTypeId": "HEAD_OFFICE",
+    "isActive": true,
+    "notes": "Created by test_org_apis.py",
+    "createdAt": "2026-07-03T15:12:51.957Z",
+    "c...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">Get Legal Entity by ID — Not Found </td>
+              <td class="url">http://localhost:7273/api/v1/org/legal-entities/999999999</td>
+              <td class="num">404</td>
+              <td class="num">404</td>
+              <td class="num">7ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "error": {
+    "code": "ERR_ORG_0004",
+    "details": "Record not found",
+    "path": "/api/v1/org/legal-entities/999999999",
+    "timestamp": "2026-07-03T15:12:52.001630Z"
+  },
+  "message": "Record not found",
+  "success": false,
+  "timestamp": "2026-07-03T15:12:52.001631Z"
+}</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method put">PUT</span></td>
+              <td class="test-name">Update Legal Entity </td>
+              <td class="url">http://localhost:7273/api/v1/org/legal-entities/3</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">12ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "data": {
+    "id": 3,
+    "legalEntityCode": "LE-00003",
+    "nameAr": "شركة اختبار 1783091571",
+    "nameEn": "Test Legal Entity 1783091571",
+    "entityTypeId": "HEAD_OFFICE",
+    "isActive": true,
+    "notes": "Updated by test_org_apis.py",
+    "createdAt": "2026-07-03T15:12:51.957Z",
+    "c...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method put">PUT</span></td>
+              <td class="test-name">Deactivate Legal Entity </td>
+              <td class="url">http://localhost:7273/api/v1/org/legal-entities/3/deactivate</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">11ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "data": {
+    "id": 3,
+    "legalEntityCode": "LE-00003",
+    "nameAr": "شركة اختبار 1783091571",
+    "nameEn": "Test Legal Entity 1783091571",
+    "entityTypeId": "HEAD_OFFICE",
+    "isActive": false,
+    "notes": "Updated by test_org_apis.py",
+    "createdAt": "2026-07-03T15:12:51.957Z",
+    "...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method put">PUT</span></td>
+              <td class="test-name">Activate Legal Entity <span class="note">Left active so downstream entities (Branch/Region/ProfitCenter) can be created under it</span></td>
+              <td class="url">http://localhost:7273/api/v1/org/legal-entities/3/activate</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">9ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "data": {
+    "id": 3,
+    "legalEntityCode": "LE-00003",
+    "nameAr": "شركة اختبار 1783091571",
+    "nameEn": "Test Legal Entity 1783091571",
+    "entityTypeId": "HEAD_OFFICE",
+    "isActive": true,
+    "notes": "Updated by test_org_apis.py",
+    "createdAt": "2026-07-03T15:12:51.957Z",
+    "c...</pre></details></td>
+            </tr></tbody>
+          </table>
+        </section>
+        <section>
+          <h2>Branch — 9/9 passed</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Status</th><th>Method</th><th>Test</th><th>URL</th>
+                <th>Got</th><th>Expected</th><th>Time</th><th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create Branch </td>
+              <td class="url">http://localhost:7273/api/v1/org/branches</td>
+              <td class="num">201</td>
+              <td class="num">201</td>
+              <td class="num">15ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "data": {
+    "id": 3,
+    "branchCode": "BR-LE-00003-00001",
+    "nameAr": "فرع اختبار 1783091572",
+    "nameEn": "Test Branch 1783091572",
+    "legalEntityFk": 3,
+    "legalEntityCode": "LE-00003",
+    "legalEntityNameEn": "Test Legal Entity 1783091571",
+    "branchTypeId": "MAIN_BRANCH",
+    ...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create Branch — Missing Required Field </td>
+              <td class="url">http://localhost:7273/api/v1/org/branches</td>
+              <td class="num">400</td>
+              <td class="num">400</td>
+              <td class="num">6ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "details": "Request validation failed. Please check the field errors.",
+    "fieldErrors": [
+      {
+        "field": "nameAr",
+        "message": "This field is required"
+      }
+    ],
+    "path": "/api/v1/org/branches",
+    "timestamp": "2026-07-...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create Branch — Unknown Legal Entity </td>
+              <td class="url">http://localhost:7273/api/v1/org/branches</td>
+              <td class="num">404</td>
+              <td class="num">404, 422, 400</td>
+              <td class="num">8ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "error": {
+    "code": "ERR_ORG_0004",
+    "details": "Record not found",
+    "path": "/api/v1/org/branches",
+    "timestamp": "2026-07-03T15:12:52.063538Z"
+  },
+  "message": "Record not found",
+  "success": false,
+  "timestamp": "2026-07-03T15:12:52.063538Z"
+}</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Search Branches </td>
+              <td class="url">http://localhost:7273/api/v1/org/branches/search</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">9ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "data": {
+    "content": [
+      {
+        "id": 3,
+        "branchCode": "BR-LE-00003-00001",
+        "nameAr": "فرع اختبار 1783091572",
+        "nameEn": "Test Branch 1783091572",
+        "legalEntityFk": 3,
+        "legalEntityCode": "LE-00003",
+        "legalEntityNameEn": "Test Legal Entity...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">Get Branch by ID </td>
+              <td class="url">http://localhost:7273/api/v1/org/branches/3</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">8ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "data": {
+    "id": 3,
+    "branchCode": "BR-LE-00003-00001",
+    "nameAr": "فرع اختبار 1783091572",
+    "nameEn": "Test Branch 1783091572",
+    "legalEntityFk": 3,
+    "legalEntityCode": "LE-00003",
+    "legalEntityNameEn": "Test Legal Entity 1783091571",
+    "branchTypeId": "MAIN_BRANCH",
+    ...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">Get Branch by ID — Not Found </td>
+              <td class="url">http://localhost:7273/api/v1/org/branches/999999999</td>
+              <td class="num">404</td>
+              <td class="num">404</td>
+              <td class="num">6ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "error": {
+    "code": "ERR_ORG_0004",
+    "details": "Record not found",
+    "path": "/api/v1/org/branches/999999999",
+    "timestamp": "2026-07-03T15:12:52.087298Z"
+  },
+  "message": "Record not found",
+  "success": false,
+  "timestamp": "2026-07-03T15:12:52.087299Z"
+}</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method put">PUT</span></td>
+              <td class="test-name">Update Branch </td>
+              <td class="url">http://localhost:7273/api/v1/org/branches/3</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">12ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "data": {
+    "id": 3,
+    "branchCode": "BR-LE-00003-00001",
+    "nameAr": "فرع اختبار 1783091572",
+    "nameEn": "Test Branch 1783091572",
+    "legalEntityFk": 3,
+    "legalEntityCode": "LE-00003",
+    "legalEntityNameEn": "Test Legal Entity 1783091571",
+    "branchTypeId": "MAIN_BRANCH",
+    ...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method put">PUT</span></td>
+              <td class="test-name">Deactivate Branch </td>
+              <td class="url">http://localhost:7273/api/v1/org/branches/3/deactivate</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">16ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "data": {
+    "id": 3,
+    "branchCode": "BR-LE-00003-00001",
+    "nameAr": "فرع اختبار 1783091572",
+    "nameEn": "Test Branch 1783091572",
+    "legalEntityFk": 3,
+    "legalEntityCode": "LE-00003",
+    "legalEntityNameEn": "Test Legal Entity 1783091571",
+    "branchTypeId": "MAIN_BRANCH",
+    ...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method put">PUT</span></td>
+              <td class="test-name">Activate Branch <span class="note">Left active so Department/CostCenter/LocationSite can be created under it</span></td>
+              <td class="url">http://localhost:7273/api/v1/org/branches/3/activate</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">9ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "data": {
+    "id": 3,
+    "branchCode": "BR-LE-00003-00001",
+    "nameAr": "فرع اختبار 1783091572",
+    "nameEn": "Test Branch 1783091572",
+    "legalEntityFk": 3,
+    "legalEntityCode": "LE-00003",
+    "legalEntityNameEn": "Test Legal Entity 1783091571",
+    "branchTypeId": "MAIN_BRANCH",
+    ...</pre></details></td>
+            </tr></tbody>
+          </table>
+        </section>
+        <section>
+          <h2>Region — 8/8 passed</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Status</th><th>Method</th><th>Test</th><th>URL</th>
+                <th>Got</th><th>Expected</th><th>Time</th><th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create Region </td>
+              <td class="url">http://localhost:7273/api/v1/org/regions</td>
+              <td class="num">201</td>
+              <td class="num">201</td>
+              <td class="num">14ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "data": {
+    "id": 2,
+    "regionCode": "RG-LE-00003-00001",
+    "nameAr": "منطقة اختبار 1783091572",
+    "nameEn": "Test Region 1783091572",
+    "legalEntityFk": 3,
+    "legalEntityCode": "LE-00003",
+    "regionTypeIdFk": 1,
+    "regionTypeNameEn": "Geographic",
+    "isActive": true,
+    "note...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create Region — Unknown Region Type </td>
+              <td class="url">http://localhost:7273/api/v1/org/regions</td>
+              <td class="num">404</td>
+              <td class="num">404, 422, 400</td>
+              <td class="num">9ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "error": {
+    "code": "ERR_ORG_0004",
+    "details": "Record not found",
+    "path": "/api/v1/org/regions",
+    "timestamp": "2026-07-03T15:12:52.146952Z"
+  },
+  "message": "Record not found",
+  "success": false,
+  "timestamp": "2026-07-03T15:12:52.146952Z"
+}</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Search Regions </td>
+              <td class="url">http://localhost:7273/api/v1/org/regions/search</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">13ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "data": {
+    "content": [
+      {
+        "id": 2,
+        "regionCode": "RG-LE-00003-00001",
+        "nameAr": "منطقة اختبار 1783091572",
+        "nameEn": "Test Region 1783091572",
+        "legalEntityFk": 3,
+        "legalEntityCode": "LE-00003",
+        "regionTypeIdFk": 1,
+        "regionT...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">Get Region by ID </td>
+              <td class="url">http://localhost:7273/api/v1/org/regions/2</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">10ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "data": {
+    "id": 2,
+    "regionCode": "RG-LE-00003-00001",
+    "nameAr": "منطقة اختبار 1783091572",
+    "nameEn": "Test Region 1783091572",
+    "legalEntityFk": 3,
+    "legalEntityCode": "LE-00003",
+    "regionTypeIdFk": 1,
+    "regionTypeNameEn": "Geographic",
+    "isActive": true,
+    "note...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">Get Region by ID — Not Found </td>
+              <td class="url">http://localhost:7273/api/v1/org/regions/999999999</td>
+              <td class="num">404</td>
+              <td class="num">404</td>
+              <td class="num">8ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "error": {
+    "code": "ERR_ORG_0004",
+    "details": "Record not found",
+    "path": "/api/v1/org/regions/999999999",
+    "timestamp": "2026-07-03T15:12:52.178012Z"
+  },
+  "message": "Record not found",
+  "success": false,
+  "timestamp": "2026-07-03T15:12:52.178013Z"
+}</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method put">PUT</span></td>
+              <td class="test-name">Update Region </td>
+              <td class="url">http://localhost:7273/api/v1/org/regions/2</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">12ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "data": {
+    "id": 2,
+    "regionCode": "RG-LE-00003-00001",
+    "nameAr": "منطقة اختبار 1783091572",
+    "nameEn": "Test Region 1783091572",
+    "legalEntityFk": 3,
+    "legalEntityCode": "LE-00003",
+    "regionTypeIdFk": 1,
+    "regionTypeNameEn": "Geographic",
+    "isActive": true,
+    "note...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method put">PUT</span></td>
+              <td class="test-name">Deactivate Region </td>
+              <td class="url">http://localhost:7273/api/v1/org/regions/2/deactivate</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">10ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "data": {
+    "id": 2,
+    "regionCode": "RG-LE-00003-00001",
+    "nameAr": "منطقة اختبار 1783091572",
+    "nameEn": "Test Region 1783091572",
+    "legalEntityFk": 3,
+    "legalEntityCode": "LE-00003",
+    "regionTypeIdFk": 1,
+    "regionTypeNameEn": "Geographic",
+    "isActive": false,
+    "not...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method put">PUT</span></td>
+              <td class="test-name">Activate Region </td>
+              <td class="url">http://localhost:7273/api/v1/org/regions/2/activate</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">14ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "data": {
+    "id": 2,
+    "regionCode": "RG-LE-00003-00001",
+    "nameAr": "منطقة اختبار 1783091572",
+    "nameEn": "Test Region 1783091572",
+    "legalEntityFk": 3,
+    "legalEntityCode": "LE-00003",
+    "regionTypeIdFk": 1,
+    "regionTypeNameEn": "Geographic",
+    "isActive": true,
+    "note...</pre></details></td>
+            </tr></tbody>
+          </table>
+        </section>
+        <section>
+          <h2>Profit Center — 7/7 passed</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Status</th><th>Method</th><th>Test</th><th>URL</th>
+                <th>Got</th><th>Expected</th><th>Time</th><th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create Profit Center </td>
+              <td class="url">http://localhost:7273/api/v1/org/profit-centers</td>
+              <td class="num">201</td>
+              <td class="num">201</td>
+              <td class="num">14ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "data": {
+    "id": 2,
+    "profitCenterCode": "PC-LE-00003-00001",
+    "nameAr": "مركز ربح اختبار 1783091572",
+    "nameEn": "Test Profit Center 1783091572",
+    "legalEntityFk": 3,
+    "legalEntityCode": "LE-00003",
+    "legalEntityNameEn": "Test Legal Entity 1783091571",
+    "isActive": true,...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Search Profit Centers </td>
+              <td class="url">http://localhost:7273/api/v1/org/profit-centers/search</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">12ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "data": {
+    "content": [
+      {
+        "id": 2,
+        "profitCenterCode": "PC-LE-00003-00001",
+        "nameAr": "مركز ربح اختبار 1783091572",
+        "nameEn": "Test Profit Center 1783091572",
+        "legalEntityFk": 3,
+        "legalEntityCode": "LE-00003",
+        "legalEntityNameEn": ...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">Get Profit Center by ID </td>
+              <td class="url">http://localhost:7273/api/v1/org/profit-centers/2</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">9ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "data": {
+    "id": 2,
+    "profitCenterCode": "PC-LE-00003-00001",
+    "nameAr": "مركز ربح اختبار 1783091572",
+    "nameEn": "Test Profit Center 1783091572",
+    "legalEntityFk": 3,
+    "legalEntityCode": "LE-00003",
+    "legalEntityNameEn": "Test Legal Entity 1783091571",
+    "isActive": true,...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">Get Profit Center by ID — Not Found </td>
+              <td class="url">http://localhost:7273/api/v1/org/profit-centers/999999999</td>
+              <td class="num">404</td>
+              <td class="num">404</td>
+              <td class="num">7ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "error": {
+    "code": "ERR_ORG_0004",
+    "details": "Record not found",
+    "path": "/api/v1/org/profit-centers/999999999",
+    "timestamp": "2026-07-03T15:12:52.257176Z"
+  },
+  "message": "Record not found",
+  "success": false,
+  "timestamp": "2026-07-03T15:12:52.257176Z"
+}</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method put">PUT</span></td>
+              <td class="test-name">Update Profit Center </td>
+              <td class="url">http://localhost:7273/api/v1/org/profit-centers/2</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">11ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "data": {
+    "id": 2,
+    "profitCenterCode": "PC-LE-00003-00001",
+    "nameAr": "مركز ربح اختبار 1783091572",
+    "nameEn": "Test Profit Center 1783091572",
+    "legalEntityFk": 3,
+    "legalEntityCode": "LE-00003",
+    "legalEntityNameEn": "Test Legal Entity 1783091571",
+    "isActive": true,...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method put">PUT</span></td>
+              <td class="test-name">Deactivate Profit Center </td>
+              <td class="url">http://localhost:7273/api/v1/org/profit-centers/2/deactivate</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">8ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "data": {
+    "id": 2,
+    "profitCenterCode": "PC-LE-00003-00001",
+    "nameAr": "مركز ربح اختبار 1783091572",
+    "nameEn": "Test Profit Center 1783091572",
+    "legalEntityFk": 3,
+    "legalEntityCode": "LE-00003",
+    "legalEntityNameEn": "Test Legal Entity 1783091571",
+    "isActive": false...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method put">PUT</span></td>
+              <td class="test-name">Activate Profit Center </td>
+              <td class="url">http://localhost:7273/api/v1/org/profit-centers/2/activate</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">11ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "data": {
+    "id": 2,
+    "profitCenterCode": "PC-LE-00003-00001",
+    "nameAr": "مركز ربح اختبار 1783091572",
+    "nameEn": "Test Profit Center 1783091572",
+    "legalEntityFk": 3,
+    "legalEntityCode": "LE-00003",
+    "legalEntityNameEn": "Test Legal Entity 1783091571",
+    "isActive": true,...</pre></details></td>
+            </tr></tbody>
+          </table>
+        </section>
+        <section>
+          <h2>Department — 3/4 passed</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Status</th><th>Method</th><th>Test</th><th>URL</th>
+                <th>Got</th><th>Expected</th><th>Time</th><th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+            <tr class="fail">
+              <td><span class="badge fail">FAIL</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create Department </td>
+              <td class="url">http://localhost:7273/api/v1/org/departments</td>
+              <td class="num">500</td>
+              <td class="num">201</td>
+              <td class="num">13ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "error": {
+    "code": "INTERNAL_ERROR",
+    "details": "An unexpected error occurred. Please contact support if this persists.",
+    "path": "/api/v1/org/departments",
+    "timestamp": "2026-07-03T15:12:52.300756Z"
+  },
+  "message": "Internal server error",
+  "success": false,
+  "timestamp": "2...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Search Departments </td>
+              <td class="url">http://localhost:7273/api/v1/org/departments/search</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">9ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "data": {
+    "content": [],
+    "empty": true,
+    "first": true,
+    "last": true,
+    "number": 0,
+    "numberOfElements": 0,
+    "pageable": {
+      "offset": 0,
+      "pageNumber": 0,
+      "pageSize": 20,
+      "paged": true,
+      "sort": {
+        "empty": false,
+        "sorted": true,
+...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">Get Department Tree </td>
+              <td class="url">http://localhost:7273/api/v1/org/departments/tree?branchFk=3</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">8ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "data": [],
+  "message": "OK",
+  "success": true,
+  "timestamp": "2026-07-03T15:12:52.317490Z"
+}</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">Get Department by ID — Not Found </td>
+              <td class="url">http://localhost:7273/api/v1/org/departments/999999999</td>
+              <td class="num">404</td>
+              <td class="num">404</td>
+              <td class="num">8ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "error": {
+    "code": "ERR_ORG_0004",
+    "details": "Record not found",
+    "path": "/api/v1/org/departments/999999999",
+    "timestamp": "2026-07-03T15:12:52.325323Z"
+  },
+  "message": "Record not found",
+  "success": false,
+  "timestamp": "2026-07-03T15:12:52.325324Z"
+}</pre></details></td>
+            </tr></tbody>
+          </table>
+        </section>
+        <section>
+          <h2>Cost Center — 3/4 passed</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Status</th><th>Method</th><th>Test</th><th>URL</th>
+                <th>Got</th><th>Expected</th><th>Time</th><th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+            <tr class="fail">
+              <td><span class="badge fail">FAIL</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create Cost Center </td>
+              <td class="url">http://localhost:7273/api/v1/org/cost-centers</td>
+              <td class="num">500</td>
+              <td class="num">201</td>
+              <td class="num">14ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "error": {
+    "code": "INTERNAL_ERROR",
+    "details": "An unexpected error occurred. Please contact support if this persists.",
+    "path": "/api/v1/org/cost-centers",
+    "timestamp": "2026-07-03T15:12:52.339337Z"
+  },
+  "message": "Internal server error",
+  "success": false,
+  "timestamp": "...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Search Cost Centers </td>
+              <td class="url">http://localhost:7273/api/v1/org/cost-centers/search</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">9ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "data": {
+    "content": [],
+    "empty": true,
+    "first": true,
+    "last": true,
+    "number": 0,
+    "numberOfElements": 0,
+    "pageable": {
+      "offset": 0,
+      "pageNumber": 0,
+      "pageSize": 20,
+      "paged": true,
+      "sort": {
+        "empty": false,
+        "sorted": true,
+...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">Get Cost Center Tree </td>
+              <td class="url">http://localhost:7273/api/v1/org/cost-centers/tree?branchFk=3</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">8ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "data": [],
+  "message": "OK",
+  "success": true,
+  "timestamp": "2026-07-03T15:12:52.355849Z"
+}</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">Get Cost Center by ID — Not Found </td>
+              <td class="url">http://localhost:7273/api/v1/org/cost-centers/999999999</td>
+              <td class="num">404</td>
+              <td class="num">404</td>
+              <td class="num">8ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "error": {
+    "code": "ERR_ORG_0004",
+    "details": "Record not found",
+    "path": "/api/v1/org/cost-centers/999999999",
+    "timestamp": "2026-07-03T15:12:52.363841Z"
+  },
+  "message": "Record not found",
+  "success": false,
+  "timestamp": "2026-07-03T15:12:52.363843Z"
+}</pre></details></td>
+            </tr></tbody>
+          </table>
+        </section>
+        <section>
+          <h2>Location Site — 2/3 passed</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Status</th><th>Method</th><th>Test</th><th>URL</th>
+                <th>Got</th><th>Expected</th><th>Time</th><th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+            <tr class="fail">
+              <td><span class="badge fail">FAIL</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create Location Site </td>
+              <td class="url">http://localhost:7273/api/v1/org/location-sites</td>
+              <td class="num">500</td>
+              <td class="num">201</td>
+              <td class="num">12ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "error": {
+    "code": "INTERNAL_ERROR",
+    "details": "An unexpected error occurred. Please contact support if this persists.",
+    "path": "/api/v1/org/location-sites",
+    "timestamp": "2026-07-03T15:12:52.376082Z"
+  },
+  "message": "Internal server error",
+  "success": false,
+  "timestamp":...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Search Location Sites </td>
+              <td class="url">http://localhost:7273/api/v1/org/location-sites/search</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">10ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "data": {
+    "content": [],
+    "empty": true,
+    "first": true,
+    "last": true,
+    "number": 0,
+    "numberOfElements": 0,
+    "pageable": {
+      "offset": 0,
+      "pageNumber": 0,
+      "pageSize": 20,
+      "paged": true,
+      "sort": {
+        "empty": false,
+        "sorted": true,
+...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">Get Location Site by ID — Not Found </td>
+              <td class="url">http://localhost:7273/api/v1/org/location-sites/999999999</td>
+              <td class="num">404</td>
+              <td class="num">404</td>
+              <td class="num">8ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "error": {
+    "code": "ERR_ORG_0004",
+    "details": "Record not found",
+    "path": "/api/v1/org/location-sites/999999999",
+    "timestamp": "2026-07-03T15:12:52.394123Z"
+  },
+  "message": "Record not found",
+  "success": false,
+  "timestamp": "2026-07-03T15:12:52.394124Z"
+}</pre></details></td>
+            </tr></tbody>
+          </table>
+        </section>
+</body>
+</html>

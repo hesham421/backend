@@ -73,7 +73,7 @@ public class DepartmentService {
         assertNameNotDuplicate(parent.getId(), request.getNameAr(), request.getNameEn(), null);
 
         String generatedCode = orgNumberGenerator.next(
-            "DEP-" + parent.getBranchCode() + "-",
+            "DEP-" + orgNumberGenerator.parentSuffix(parent.getBranchCode()) + "-",
             departmentRepository.countByBranch_Id(parent.getId()),
             code -> departmentRepository.existsByBranch_IdAndDepartmentCode(parent.getId(), code));
         OrgDepartmentDomain.create(generatedCode, Boolean.TRUE.equals(parent.getIsActiveFl()));

@@ -32,7 +32,7 @@ public class BranchController {
     private final OperationCode operationCode;
 
     @PostMapping
-    @Operation(summary = "Create Branch", description = "إنشاء فرع جديد")
+    @Operation(operationId = "API-ORG-007", summary = "Create Branch", description = "إنشاء فرع جديد")
     public ResponseEntity<ApiResponse<BranchResponse>> create(
             @Valid @RequestBody BranchCreateRequest request) {
         ServiceResult<BranchResponse> result = branchService.create(request);
@@ -40,7 +40,7 @@ public class BranchController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Update Branch", description = "تحديث فرع")
+    @Operation(operationId = "API-ORG-009", summary = "Update Branch", description = "تحديث فرع")
     public ResponseEntity<ApiResponse<BranchResponse>> update(
             @PathVariable Long id,
             @Valid @RequestBody BranchUpdateRequest request) {
@@ -49,14 +49,14 @@ public class BranchController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Get Branch by ID", description = "جلب فرع بالمعرف")
+    @Operation(operationId = "API-ORG-012", summary = "Get Branch by ID", description = "جلب فرع بالمعرف")
     public ResponseEntity<ApiResponse<BranchResponse>> getById(@PathVariable Long id) {
         ServiceResult<BranchResponse> result = branchService.getById(id);
         return operationCode.craftResponse(result);
     }
 
     @PostMapping("/search")
-    @Operation(summary = "Search Branches", description = "بحث في الفروع")
+    @Operation(operationId = "API-ORG-008", summary = "Search Branches", description = "بحث في الفروع")
     public ResponseEntity<ApiResponse<Page<BranchResponse>>> search(
             @Valid @RequestBody BranchSearchRequest searchRequest) {
         ServiceResult<Page<BranchResponse>> result = branchService.search(searchRequest);
@@ -64,14 +64,14 @@ public class BranchController {
     }
 
     @PutMapping("/{id}/activate")
-    @Operation(summary = "Activate Branch", description = "تفعيل فرع")
+    @Operation(operationId = "API-ORG-011", summary = "Activate Branch", description = "تفعيل فرع")
     public ResponseEntity<ApiResponse<BranchResponse>> activate(@PathVariable Long id) {
         ServiceResult<BranchResponse> result = branchService.activate(id);
         return operationCode.craftResponse(result);
     }
 
     @PutMapping("/{id}/deactivate")
-    @Operation(summary = "Deactivate Branch", description = "إلغاء تفعيل فرع")
+    @Operation(operationId = "API-ORG-010", summary = "Deactivate Branch", description = "إلغاء تفعيل فرع")
     public ResponseEntity<ApiResponse<BranchResponse>> deactivate(@PathVariable Long id) {
         ServiceResult<BranchResponse> result = branchService.deactivate(id);
         return operationCode.craftResponse(result);

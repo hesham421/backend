@@ -32,7 +32,7 @@ public class LocationSiteController {
     private final OperationCode operationCode;
 
     @PostMapping
-    @Operation(summary = "Create Location Site", description = "إنشاء موقع عمل جديد")
+    @Operation(operationId = "API-ORG-039", summary = "Create Location Site", description = "إنشاء موقع عمل جديد")
     public ResponseEntity<ApiResponse<LocationSiteResponse>> create(
             @Valid @RequestBody LocationSiteCreateRequest request) {
         ServiceResult<LocationSiteResponse> result = locationSiteService.create(request);
@@ -40,7 +40,7 @@ public class LocationSiteController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Update Location Site", description = "تحديث موقع عمل")
+    @Operation(operationId = "API-ORG-041", summary = "Update Location Site", description = "تحديث موقع عمل")
     public ResponseEntity<ApiResponse<LocationSiteResponse>> update(
             @PathVariable Long id,
             @Valid @RequestBody LocationSiteUpdateRequest request) {
@@ -49,14 +49,14 @@ public class LocationSiteController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Get Location Site by ID", description = "جلب موقع عمل بالمعرف")
+    @Operation(operationId = "API-ORG-044", summary = "Get Location Site by ID", description = "جلب موقع عمل بالمعرف")
     public ResponseEntity<ApiResponse<LocationSiteResponse>> getById(@PathVariable Long id) {
         ServiceResult<LocationSiteResponse> result = locationSiteService.getById(id);
         return operationCode.craftResponse(result);
     }
 
     @PostMapping("/search")
-    @Operation(summary = "Search Location Sites", description = "بحث في مواقع العمل")
+    @Operation(operationId = "API-ORG-040", summary = "Search Location Sites", description = "بحث في مواقع العمل")
     public ResponseEntity<ApiResponse<Page<LocationSiteResponse>>> search(
             @Valid @RequestBody LocationSiteSearchRequest searchRequest) {
         ServiceResult<Page<LocationSiteResponse>> result = locationSiteService.search(searchRequest);
@@ -64,14 +64,14 @@ public class LocationSiteController {
     }
 
     @PutMapping("/{id}/activate")
-    @Operation(summary = "Activate Location Site", description = "تفعيل موقع عمل")
+    @Operation(operationId = "API-ORG-043", summary = "Activate Location Site", description = "تفعيل موقع عمل")
     public ResponseEntity<ApiResponse<LocationSiteResponse>> activate(@PathVariable Long id) {
         ServiceResult<LocationSiteResponse> result = locationSiteService.activate(id);
         return operationCode.craftResponse(result);
     }
 
     @PutMapping("/{id}/deactivate")
-    @Operation(summary = "Deactivate Location Site", description = "إلغاء تفعيل موقع عمل")
+    @Operation(operationId = "API-ORG-042", summary = "Deactivate Location Site", description = "إلغاء تفعيل موقع عمل")
     public ResponseEntity<ApiResponse<LocationSiteResponse>> deactivate(@PathVariable Long id) {
         ServiceResult<LocationSiteResponse> result = locationSiteService.deactivate(id);
         return operationCode.craftResponse(result);

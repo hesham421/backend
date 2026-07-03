@@ -36,7 +36,8 @@ public class JpaConfig {
         em.setPackagesToScan(
             "com.example.security.entity",
             "com.example.masterdata.entity",
-            "com.example.erp.finance.gl.entity"
+            "com.example.erp.finance.gl.entity",
+            "com.example.erp.org.entity"
         );
 
         HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();

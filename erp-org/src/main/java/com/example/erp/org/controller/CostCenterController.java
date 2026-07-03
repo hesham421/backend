@@ -40,7 +40,7 @@ public class CostCenterController {
     private final OperationCode operationCode;
 
     @PostMapping
-    @Operation(summary = "Create Cost Center", description = "إنشاء مركز تكلفة جديد")
+    @Operation(operationId = "API-ORG-026", summary = "Create Cost Center", description = "إنشاء مركز تكلفة جديد")
     public ResponseEntity<ApiResponse<CostCenterResponse>> create(
             @Valid @RequestBody CostCenterCreateRequest request) {
         ServiceResult<CostCenterResponse> result = costCenterService.create(request);
@@ -48,7 +48,7 @@ public class CostCenterController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Update Cost Center", description = "تحديث مركز تكلفة")
+    @Operation(operationId = "API-ORG-029", summary = "Update Cost Center", description = "تحديث مركز تكلفة")
     public ResponseEntity<ApiResponse<CostCenterResponse>> update(
             @PathVariable Long id,
             @Valid @RequestBody CostCenterUpdateRequest request) {
@@ -57,14 +57,14 @@ public class CostCenterController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Get Cost Center by ID", description = "جلب مركز تكلفة بالمعرف")
+    @Operation(operationId = "API-ORG-032", summary = "Get Cost Center by ID", description = "جلب مركز تكلفة بالمعرف")
     public ResponseEntity<ApiResponse<CostCenterResponse>> getById(@PathVariable Long id) {
         ServiceResult<CostCenterResponse> result = costCenterService.getById(id);
         return operationCode.craftResponse(result);
     }
 
     @PostMapping("/search")
-    @Operation(summary = "Search Cost Centers", description = "بحث في مراكز التكلفة")
+    @Operation(operationId = "API-ORG-028", summary = "Search Cost Centers", description = "بحث في مراكز التكلفة")
     public ResponseEntity<ApiResponse<Page<CostCenterResponse>>> search(
             @Valid @RequestBody CostCenterSearchRequest searchRequest) {
         ServiceResult<Page<CostCenterResponse>> result = costCenterService.search(searchRequest);
@@ -72,7 +72,7 @@ public class CostCenterController {
     }
 
     @GetMapping("/tree")
-    @Operation(summary = "Get Cost Center tree", description = "جلب الهيكل الشجري لمراكز التكلفة")
+    @Operation(operationId = "API-ORG-027", summary = "Get Cost Center tree", description = "جلب الهيكل الشجري لمراكز التكلفة")
     public ResponseEntity<ApiResponse<List<CostCenterTreeNodeResponse>>> getTree(
             @RequestParam Long branchFk,
             @RequestParam(required = false) Boolean isActiveFl) {
@@ -81,14 +81,14 @@ public class CostCenterController {
     }
 
     @PutMapping("/{id}/activate")
-    @Operation(summary = "Activate Cost Center", description = "تفعيل مركز تكلفة")
+    @Operation(operationId = "API-ORG-031", summary = "Activate Cost Center", description = "تفعيل مركز تكلفة")
     public ResponseEntity<ApiResponse<CostCenterResponse>> activate(@PathVariable Long id) {
         ServiceResult<CostCenterResponse> result = costCenterService.activate(id);
         return operationCode.craftResponse(result);
     }
 
     @PutMapping("/{id}/deactivate")
-    @Operation(summary = "Deactivate Cost Center", description = "إلغاء تفعيل مركز تكلفة")
+    @Operation(operationId = "API-ORG-030", summary = "Deactivate Cost Center", description = "إلغاء تفعيل مركز تكلفة")
     public ResponseEntity<ApiResponse<CostCenterResponse>> deactivate(@PathVariable Long id) {
         ServiceResult<CostCenterResponse> result = costCenterService.deactivate(id);
         return operationCode.craftResponse(result);

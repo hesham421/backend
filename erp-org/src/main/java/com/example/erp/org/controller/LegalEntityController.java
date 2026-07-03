@@ -32,7 +32,7 @@ public class LegalEntityController {
     private final OperationCode operationCode;
 
     @PostMapping
-    @Operation(summary = "Create Legal Entity", description = "إنشاء كيان قانوني جديد")
+    @Operation(operationId = "API-ORG-001", summary = "Create Legal Entity", description = "إنشاء كيان قانوني جديد")
     public ResponseEntity<ApiResponse<LegalEntityResponse>> create(
             @Valid @RequestBody LegalEntityCreateRequest request) {
         ServiceResult<LegalEntityResponse> result = legalEntityService.create(request);
@@ -40,7 +40,7 @@ public class LegalEntityController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Update Legal Entity", description = "تحديث كيان قانوني")
+    @Operation(operationId = "API-ORG-003", summary = "Update Legal Entity", description = "تحديث كيان قانوني")
     public ResponseEntity<ApiResponse<LegalEntityResponse>> update(
             @PathVariable Long id,
             @Valid @RequestBody LegalEntityUpdateRequest request) {
@@ -49,14 +49,14 @@ public class LegalEntityController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Get Legal Entity by ID", description = "جلب كيان قانوني بالمعرف")
+    @Operation(operationId = "API-ORG-006", summary = "Get Legal Entity by ID", description = "جلب كيان قانوني بالمعرف")
     public ResponseEntity<ApiResponse<LegalEntityResponse>> getById(@PathVariable Long id) {
         ServiceResult<LegalEntityResponse> result = legalEntityService.getById(id);
         return operationCode.craftResponse(result);
     }
 
     @PostMapping("/search")
-    @Operation(summary = "Search Legal Entities", description = "بحث في الكيانات القانونية")
+    @Operation(operationId = "API-ORG-002", summary = "Search Legal Entities", description = "بحث في الكيانات القانونية")
     public ResponseEntity<ApiResponse<Page<LegalEntityResponse>>> search(
             @Valid @RequestBody LegalEntitySearchRequest searchRequest) {
         ServiceResult<Page<LegalEntityResponse>> result = legalEntityService.search(searchRequest);
@@ -64,14 +64,14 @@ public class LegalEntityController {
     }
 
     @PutMapping("/{id}/activate")
-    @Operation(summary = "Activate Legal Entity", description = "تفعيل كيان قانوني")
+    @Operation(operationId = "API-ORG-005", summary = "Activate Legal Entity", description = "تفعيل كيان قانوني")
     public ResponseEntity<ApiResponse<LegalEntityResponse>> activate(@PathVariable Long id) {
         ServiceResult<LegalEntityResponse> result = legalEntityService.activate(id);
         return operationCode.craftResponse(result);
     }
 
     @PutMapping("/{id}/deactivate")
-    @Operation(summary = "Deactivate Legal Entity", description = "إلغاء تفعيل كيان قانوني")
+    @Operation(operationId = "API-ORG-004", summary = "Deactivate Legal Entity", description = "إلغاء تفعيل كيان قانوني")
     public ResponseEntity<ApiResponse<LegalEntityResponse>> deactivate(@PathVariable Long id) {
         ServiceResult<LegalEntityResponse> result = legalEntityService.deactivate(id);
         return operationCode.craftResponse(result);

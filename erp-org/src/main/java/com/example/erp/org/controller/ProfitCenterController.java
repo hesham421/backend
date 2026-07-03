@@ -32,7 +32,7 @@ public class ProfitCenterController {
     private final OperationCode operationCode;
 
     @PostMapping
-    @Operation(summary = "Create Profit Center", description = "إنشاء مركز ربح جديد")
+    @Operation(operationId = "API-ORG-033", summary = "Create Profit Center", description = "إنشاء مركز ربح جديد")
     public ResponseEntity<ApiResponse<ProfitCenterResponse>> create(
             @Valid @RequestBody ProfitCenterCreateRequest request) {
         ServiceResult<ProfitCenterResponse> result = profitCenterService.create(request);
@@ -40,7 +40,7 @@ public class ProfitCenterController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Update Profit Center", description = "تحديث مركز ربح")
+    @Operation(operationId = "API-ORG-035", summary = "Update Profit Center", description = "تحديث مركز ربح")
     public ResponseEntity<ApiResponse<ProfitCenterResponse>> update(
             @PathVariable Long id,
             @Valid @RequestBody ProfitCenterUpdateRequest request) {
@@ -49,14 +49,14 @@ public class ProfitCenterController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Get Profit Center by ID", description = "جلب مركز ربح بالمعرف")
+    @Operation(operationId = "API-ORG-038", summary = "Get Profit Center by ID", description = "جلب مركز ربح بالمعرف")
     public ResponseEntity<ApiResponse<ProfitCenterResponse>> getById(@PathVariable Long id) {
         ServiceResult<ProfitCenterResponse> result = profitCenterService.getById(id);
         return operationCode.craftResponse(result);
     }
 
     @PostMapping("/search")
-    @Operation(summary = "Search Profit Centers", description = "بحث في مراكز الربح")
+    @Operation(operationId = "API-ORG-034", summary = "Search Profit Centers", description = "بحث في مراكز الربح")
     public ResponseEntity<ApiResponse<Page<ProfitCenterResponse>>> search(
             @Valid @RequestBody ProfitCenterSearchRequest searchRequest) {
         ServiceResult<Page<ProfitCenterResponse>> result = profitCenterService.search(searchRequest);
@@ -64,14 +64,14 @@ public class ProfitCenterController {
     }
 
     @PutMapping("/{id}/activate")
-    @Operation(summary = "Activate Profit Center", description = "تفعيل مركز ربح")
+    @Operation(operationId = "API-ORG-037", summary = "Activate Profit Center", description = "تفعيل مركز ربح")
     public ResponseEntity<ApiResponse<ProfitCenterResponse>> activate(@PathVariable Long id) {
         ServiceResult<ProfitCenterResponse> result = profitCenterService.activate(id);
         return operationCode.craftResponse(result);
     }
 
     @PutMapping("/{id}/deactivate")
-    @Operation(summary = "Deactivate Profit Center", description = "إلغاء تفعيل مركز ربح")
+    @Operation(operationId = "API-ORG-036", summary = "Deactivate Profit Center", description = "إلغاء تفعيل مركز ربح")
     public ResponseEntity<ApiResponse<ProfitCenterResponse>> deactivate(@PathVariable Long id) {
         ServiceResult<ProfitCenterResponse> result = profitCenterService.deactivate(id);
         return operationCode.craftResponse(result);
