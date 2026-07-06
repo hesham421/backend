@@ -49,10 +49,10 @@ public final class OrgLegalEntityDomain {
      */
     public void assertCanDeactivate(long activeBranchCount, long activeProfitCenterCount) {
         if (activeBranchCount > 0) {
-            throw new LocalizedException(Status.BUSINESS_RULE_VIOLATION, OrgErrorCodes.LE_HAS_ACTIVE_BRANCHES);
+            throw new LocalizedException(Status.CONFLICT, OrgErrorCodes.LE_HAS_ACTIVE_BRANCHES);
         }
         if (activeProfitCenterCount > 0) {
-            throw new LocalizedException(Status.BUSINESS_RULE_VIOLATION, OrgErrorCodes.LE_HAS_ACTIVE_PROFIT_CENTERS);
+            throw new LocalizedException(Status.CONFLICT, OrgErrorCodes.LE_HAS_ACTIVE_PROFIT_CENTERS);
         }
     }
 }

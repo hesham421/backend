@@ -173,7 +173,7 @@ public class AccountChartNumberGenerator {
     private String resolveAccountTypePrefix(String accountType) {
         return lookupValidationApi.getSortOrder(LK_GL_ACCOUNT_TYPE, accountType)
                 .map(String::valueOf)
-                .orElseThrow(() -> new LocalizedException(Status.BUSINESS_RULE_VIOLATION,
+                .orElseThrow(() -> new LocalizedException(Status.BAD_REQUEST,
                         GlErrorCodes.GL_INVALID_ROOT_ACCOUNT_TYPE,
                         "Cannot resolve sort order for account type: " + accountType));
     }

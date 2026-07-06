@@ -28,7 +28,15 @@ import org.springframework.http.HttpStatus;
  */
 @Getter
 public class LocalizedException extends RuntimeException {
-    
+
+    /**
+     * Best-effort default, computed at construction time so {@link #getStatus()} always returns
+     * something. NOT the authoritative response status: {@code GlobalExceptionHandler} resolves
+     * the actual HTTP response status via {@code OperationCode.toHttpStatus(getStatusCode(), ...)},
+     * using this only as the fallback when no mapping is found. Kept in sync with OperationCodeImpl
+     * by convention, not by a shared code path (statically wiring exception -> web-layer OperationCode
+     * would create a package cycle, since the web layer already depends on the exception layer).
+     */
     private final HttpStatus status;
     private final StatusCode statusCode;
     private final String messageKey;

@@ -1,9 +1,11 @@
 package com.example.erp.common.web;
 
+import com.example.erp.common.web.filter.CorrelationIdFilter;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.slf4j.MDC;
 
 import java.time.Instant;
 
@@ -57,6 +59,14 @@ public class ApiResponse<T> {
      */
     private Instant timestamp = Instant.now();
 
+    /**
+     * Correlation/trace ID for this request, for log correlation from the response body alone.
+     * Read from MDC (populated by CorrelationIdFilter for every request); null outside a request
+     * context (e.g. unit tests constructing ApiResponse directly), in which case it is omitted
+     * from the JSON body.
+     */
+    private String correlationId = currentCorrelationId();
+
     // ============== Constructors ==============
 
     /**
@@ -69,6 +79,7 @@ public class ApiResponse<T> {
         this.data = data;
         this.error = error;
         this.timestamp = Instant.now();
+        this.correlationId = currentCorrelationId();
     }
 
     /**
@@ -80,6 +91,11 @@ public class ApiResponse<T> {
         this.data = data;
         this.error = error;
         this.timestamp = timestamp;
+        this.correlationId = currentCorrelationId();
+    }
+
+    private static String currentCorrelationId() {
+        return MDC.get(CorrelationIdFilter.CORRELATION_ID_MDC_KEY);
     }
 
     // ============== Static Factory Methods ==============

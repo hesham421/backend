@@ -30,7 +30,7 @@ public final class OrgDepartmentDomain {
             throw new LocalizedException(Status.VALIDATION_ERROR, "validation.required", "departmentCode");
         }
         if (!parentBranchActive) {
-            throw new LocalizedException(Status.BUSINESS_RULE_VIOLATION, OrgErrorCodes.BR_INACTIVE);
+            throw new LocalizedException(Status.PRECONDITION_VIOLATION, OrgErrorCodes.BR_INACTIVE);
         }
         return new OrgDepartmentDomain(generatedCode, true);
     }
@@ -57,7 +57,7 @@ public final class OrgDepartmentDomain {
             return;
         }
         if (selfId.equals(proposedParentId) || ancestorIds.contains(selfId)) {
-            throw new LocalizedException(Status.BUSINESS_RULE_VIOLATION, OrgErrorCodes.DEP_CYCLE_DETECTED);
+            throw new LocalizedException(Status.PRECONDITION_VIOLATION, OrgErrorCodes.DEP_CYCLE_DETECTED);
         }
     }
 }

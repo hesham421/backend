@@ -82,6 +82,7 @@ public class OperationCodeImpl implements OperationCode {
         statusMappings.put(Status.OPERATION_NOT_ALLOWED, HttpStatus.UNPROCESSABLE_ENTITY);
         statusMappings.put(Status.INVALID_STATE, HttpStatus.UNPROCESSABLE_ENTITY);
         statusMappings.put(Status.PRECONDITION_FAILED, HttpStatus.PRECONDITION_FAILED);
+        statusMappings.put(Status.PRECONDITION_VIOLATION, HttpStatus.BAD_REQUEST);
 
         // Conflict
         statusMappings.put(Status.DUPLICATE, HttpStatus.CONFLICT);

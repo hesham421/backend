@@ -142,7 +142,8 @@ public class AccountChartTreeValidator {
         if (currentType != null && !currentType.equals(requestedType)) {
             boolean hasChildren = accountsChartRepository.hasChildren(accountPk);
             if (hasChildren) {
-                throw new LocalizedException(Status.BUSINESS_RULE_VIOLATION,
+                // Same "blocked by existing children" shape as validateNoActiveChildren below -> CONFLICT (409).
+                throw new LocalizedException(Status.CONFLICT,
                         GlErrorCodes.GL_ACCOUNT_TYPE_CHANGE_WITH_CHILDREN, accountPk);
             }
         }

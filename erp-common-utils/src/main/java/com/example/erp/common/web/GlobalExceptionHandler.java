@@ -68,6 +68,7 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
 
     private final LocalizationService localizationService;
+    private final OperationCode operationCode;
 
     // ============== Validation Errors (HTTP 400) ==============
 
@@ -411,7 +412,8 @@ public class GlobalExceptionHandler {
         ApiError error = createError(ex.getCode(), ex.getDetails(), request.getRequestURI());
         ApiResponse<Void> response = ApiResponse.fail(ex.getMessage(), error);
 
-        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(response);
+        HttpStatus httpStatus = operationCode.toHttpStatus(ex.getStatusCode(), HttpStatus.UNPROCESSABLE_ENTITY);
+        return ResponseEntity.status(httpStatus).body(response);
     }
 
     /**
@@ -429,7 +431,10 @@ public class GlobalExceptionHandler {
         ApiError error = createError(ex.getMessageKey(), localizedMessage, request.getRequestURI());
         ApiResponse<Void> response = ApiResponse.fail(localizedMessage, error);
 
-        return ResponseEntity.status(ex.getStatus()).body(response);
+        // OperationCode is the single source of truth for Status->HttpStatus; ex.getStatus() is
+        // only a fallback default (kept for the deprecated HttpStatus constructor's edge cases).
+        HttpStatus httpStatus = operationCode.toHttpStatus(ex.getStatusCode(), ex.getStatus());
+        return ResponseEntity.status(httpStatus).body(response);
     }
 
     // ============== Database Errors (HTTP 409, 500) ==============

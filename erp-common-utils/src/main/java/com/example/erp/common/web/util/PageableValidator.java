@@ -1,5 +1,6 @@
 package com.example.erp.common.web.util;
 
+import com.example.erp.common.domain.status.Status;
 import com.example.erp.common.exception.BusinessException;
 import com.example.erp.common.exception.CommonErrorCodes;
 import org.springframework.data.domain.PageRequest;
@@ -74,6 +75,7 @@ public final class PageableValidator {
 
         if (!invalidFields.isEmpty()) {
             throw new BusinessException(
+                Status.VALIDATION_ERROR,
                 CommonErrorCodes.INVALID_SORT_FIELD,
                 "Invalid sort fields: " + invalidFields,
                 "Allowed fields: " + String.join(", ", allowedFields)

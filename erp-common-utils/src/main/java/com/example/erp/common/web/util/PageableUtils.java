@@ -1,5 +1,6 @@
 package com.example.erp.common.web.util;
 
+import com.example.erp.common.domain.status.Status;
 import com.example.erp.common.exception.BusinessException;
 import com.example.erp.common.exception.CommonErrorCodes;
 import org.springframework.data.domain.PageRequest;
@@ -68,7 +69,7 @@ public final class PageableUtils {
      */
     public static Pageable enforceConstraints(Pageable pageable) {
         if (pageable == null) {
-            throw new BusinessException(CommonErrorCodes.PAGEABLE_NULL, "Pageable cannot be null");
+            throw new BusinessException(Status.VALIDATION_ERROR, CommonErrorCodes.PAGEABLE_NULL, "Pageable cannot be null");
         }
 
         // Enforce page number constraint
@@ -97,11 +98,12 @@ public final class PageableUtils {
      */
     public static Pageable enforceConstraints(Pageable pageable, int customMaxSize) {
         if (pageable == null) {
-            throw new BusinessException(CommonErrorCodes.PAGEABLE_NULL, "Pageable cannot be null");
+            throw new BusinessException(Status.VALIDATION_ERROR, CommonErrorCodes.PAGEABLE_NULL, "Pageable cannot be null");
         }
         
         if (customMaxSize < MIN_PAGE_SIZE) {
             throw new BusinessException(
+                Status.VALIDATION_ERROR,
                 CommonErrorCodes.PAGEABLE_INVALID_MAX_SIZE,
                 "Custom max size must be at least " + MIN_PAGE_SIZE
             );

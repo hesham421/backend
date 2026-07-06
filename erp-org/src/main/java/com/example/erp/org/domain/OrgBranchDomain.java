@@ -28,7 +28,7 @@ public final class OrgBranchDomain {
             throw new LocalizedException(Status.VALIDATION_ERROR, "validation.required", "branchCode");
         }
         if (!parentLegalEntityActive) {
-            throw new LocalizedException(Status.BUSINESS_RULE_VIOLATION, OrgErrorCodes.LE_INACTIVE);
+            throw new LocalizedException(Status.PRECONDITION_VIOLATION, OrgErrorCodes.LE_INACTIVE);
         }
         return new OrgBranchDomain(generatedCode, true);
     }
@@ -51,13 +51,13 @@ public final class OrgBranchDomain {
      */
     public void assertCanDeactivate(long activeDepartmentCount, long activeCostCenterCount, long activeLocationSiteCount) {
         if (activeDepartmentCount > 0) {
-            throw new LocalizedException(Status.BUSINESS_RULE_VIOLATION, OrgErrorCodes.BR_HAS_ACTIVE_DEPARTMENTS);
+            throw new LocalizedException(Status.CONFLICT, OrgErrorCodes.BR_HAS_ACTIVE_DEPARTMENTS);
         }
         if (activeCostCenterCount > 0) {
-            throw new LocalizedException(Status.BUSINESS_RULE_VIOLATION, OrgErrorCodes.BR_HAS_ACTIVE_COST_CENTERS);
+            throw new LocalizedException(Status.CONFLICT, OrgErrorCodes.BR_HAS_ACTIVE_COST_CENTERS);
         }
         if (activeLocationSiteCount > 0) {
-            throw new LocalizedException(Status.BUSINESS_RULE_VIOLATION, OrgErrorCodes.BR_HAS_ACTIVE_LOCATION_SITES);
+            throw new LocalizedException(Status.CONFLICT, OrgErrorCodes.BR_HAS_ACTIVE_LOCATION_SITES);
         }
     }
 }

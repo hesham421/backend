@@ -30,7 +30,7 @@ public final class OrgCostCenterDomain {
             throw new LocalizedException(Status.VALIDATION_ERROR, "validation.required", "costCenterCode");
         }
         if (!parentBranchActive) {
-            throw new LocalizedException(Status.BUSINESS_RULE_VIOLATION, OrgErrorCodes.BR_INACTIVE);
+            throw new LocalizedException(Status.PRECONDITION_VIOLATION, OrgErrorCodes.BR_INACTIVE);
         }
         return new OrgCostCenterDomain(generatedCode, true);
     }
@@ -57,7 +57,7 @@ public final class OrgCostCenterDomain {
             return;
         }
         if (selfId.equals(proposedParentId) || ancestorIds.contains(selfId)) {
-            throw new LocalizedException(Status.BUSINESS_RULE_VIOLATION, OrgErrorCodes.CC_CYCLE_DETECTED);
+            throw new LocalizedException(Status.PRECONDITION_VIOLATION, OrgErrorCodes.CC_CYCLE_DETECTED);
         }
     }
 }

@@ -28,7 +28,7 @@ public final class OrgLocationSiteDomain {
             throw new LocalizedException(Status.VALIDATION_ERROR, "validation.required", "locationSiteCode");
         }
         if (!parentBranchActive) {
-            throw new LocalizedException(Status.BUSINESS_RULE_VIOLATION, OrgErrorCodes.BR_INACTIVE);
+            throw new LocalizedException(Status.PRECONDITION_VIOLATION, OrgErrorCodes.BR_INACTIVE);
         }
         return new OrgLocationSiteDomain(generatedCode, true);
     }

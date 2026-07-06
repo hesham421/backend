@@ -55,6 +55,14 @@ public enum Status implements StatusCode {
     INVALID_STATE("INVALID_STATE", "status.invalid.state", StatusCategory.BUSINESS_ERROR),
     PRECONDITION_FAILED("PRECONDITION_FAILED", "status.precondition.failed", StatusCategory.BUSINESS_ERROR),
 
+    /**
+     * Request is well-formed, but a related/referenced entity is not in a state that allows the
+     * operation (e.g. parent must be active, or the requested structure would form a cycle).
+     * Maps to HTTP 400 (see OperationCodeImpl) — distinct from PRECONDITION_FAILED, which is
+     * reserved for RFC 7232 conditional-request semantics (HTTP 412) and unrelated to this.
+     */
+    PRECONDITION_VIOLATION("PRECONDITION_VIOLATION", "status.precondition.violation", StatusCategory.BUSINESS_ERROR),
+
     // ==================== Conflict Statuses ====================
     
     CONFLICT("CONFLICT", "status.conflict", StatusCategory.CONFLICT),

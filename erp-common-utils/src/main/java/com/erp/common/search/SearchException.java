@@ -1,5 +1,6 @@
 package com.erp.common.search;
 
+import com.example.erp.common.domain.status.Status;
 import com.example.erp.common.exception.BusinessException;
 
 /**
@@ -7,7 +8,9 @@ import com.example.erp.common.exception.BusinessException;
  * <p>
  * Extends {@link BusinessException} per Rule 31.1 - only approved exception types allowed.
  * This exception is used throughout the dynamic search framework to signal
- * configuration errors, validation failures, or unsupported operations.
+ * configuration errors, validation failures, or unsupported operations. All scenarios below
+ * are client-input errors, so this always carries {@link Status#VALIDATION_ERROR} (HTTP 400)
+ * rather than the {@link BusinessException} default of 422.
  * </p>
  *
  * <p><b>Common scenarios:</b></p>
@@ -30,7 +33,7 @@ public class SearchException extends BusinessException {
      * @param message the detail message
      */
     public SearchException(String code, String message) {
-        super(code, message);
+        super(Status.VALIDATION_ERROR, code, message);
     }
 
     /**
@@ -42,7 +45,7 @@ public class SearchException extends BusinessException {
      */
     @Deprecated
     public SearchException(String message) {
-        super("SEARCH_ERROR", message);
+        super(Status.VALIDATION_ERROR, "SEARCH_ERROR", message);
     }
 
     /**
@@ -55,6 +58,6 @@ public class SearchException extends BusinessException {
      */
     @Deprecated
     public SearchException(String message, Throwable cause) {
-        super("SEARCH_ERROR", message, cause);
+        super(Status.VALIDATION_ERROR, "SEARCH_ERROR", message, cause);
     }
 }
