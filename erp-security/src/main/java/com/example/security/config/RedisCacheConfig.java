@@ -77,7 +77,7 @@ import java.util.Map;
  * @see ARCHITECTURE-RULES.md Rule 16
  */
 @Configuration
-// @EnableCaching  // ❌ DISABLED: Redis caching disabled - will be enabled later
+@EnableCaching
 @ConditionalOnProperty(name = "spring.cache.type", havingValue = "redis")
 public class RedisCacheConfig implements CachingConfigurer {
 

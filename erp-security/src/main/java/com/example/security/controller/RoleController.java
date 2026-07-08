@@ -201,14 +201,14 @@ public class RoleController {
 
     /**
      * POST /api/roles/{roleId}/copy-from/{sourceRoleId}
-     * Copy permissions from another role
-     * 
+     * Copy page-scoped permissions from another role
+     *
      * Contract: role-access.contract.md - Endpoint 10
      */
     @PostMapping("/{roleId}/copy-from/{sourceRoleId}")
     @Operation(
-        summary = "Copy permissions from another role",
-        description = "Copy all page permissions from source role. Replaces ALL existing assignments in target role."
+        summary = "Copy page permissions from another role",
+        description = "Copy source role's page-scoped permissions (PAGE_ID_FK IS NOT NULL) to this role, replacing its existing page-scoped assignments. System-level permissions on this role are left untouched."
     )
     public ResponseEntity<ApiResponse<CopyPermissionsResponse>> copyFromRole(
             @PathVariable Long roleId,

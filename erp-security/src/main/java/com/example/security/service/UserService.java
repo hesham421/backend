@@ -23,7 +23,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -134,7 +133,6 @@ public class UserService {
      */
     @Transactional(readOnly = true)
     @PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).USER_VIEW)")
-    @Cacheable(cacheNames = "userRoleNames", key = "#userId")
     public ServiceResult<List<String>> getUserRoleNames(Long userId) {
         UserAccount user = repo.findById(userId)
             .orElseThrow(() -> new LocalizedException(

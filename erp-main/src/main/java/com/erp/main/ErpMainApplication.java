@@ -8,6 +8,7 @@ import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.util.Locale;
 
@@ -51,7 +52,8 @@ import java.util.Locale;
         entityManagerFactoryRef = "entityManagerFactory",
         transactionManagerRef = "transactionManager"
 )
-// @EnableCaching  // ❌ DISABLED: Redis caching disabled - will be enabled later
+@EnableCaching
+@EnableScheduling
 @ComponentScan(basePackages = {
     // Main module (must be included when overriding component scan)
     "com.erp.main",

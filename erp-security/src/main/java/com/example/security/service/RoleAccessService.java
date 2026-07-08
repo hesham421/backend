@@ -276,9 +276,12 @@ public class RoleAccessService {
 
     /**
      * POST /api/roles/{roleId}/copy-from/{sourceRoleId}
-     * Copy all pages and CRUD permissions from source role to target role
-     * VIEW is auto-added for all pages
-     * Replaces ALL existing assignments in target role
+     * Copy page-scoped CRUD permissions (VIEW + optional CRUD) from
+     * source role to target role. Only permissions linked to a Page
+     * (PAGE_ID_FK IS NOT NULL) are copied; the target's system-level
+     * permissions (PAGE_ID_FK IS NULL, e.g. PERM_SYSTEM_ADMIN) are left
+     * untouched, to avoid silently escalating privileges the source
+     * role happens to hold.
      *
      * Contract: role-access.contract.md - Endpoint 10
      * Returns: CopyPermissionsResponse
@@ -299,19 +302,23 @@ public class RoleAccessService {
         Role sourceRole = roleRepository.findByIdWithPermissions(sourceRoleId)
                 .orElseThrow(() -> new LocalizedException(Status.NOT_FOUND, SecurityErrorCodes.ROLE_NOT_FOUND, sourceRoleId));
 
-        // Get all page-related permissions from source role
+        // Get only page-scoped permissions from source role (system-level permissions excluded)
         Set<Permission> sourcePagePermissions = sourceRole.getPermissions().stream()
-                .filter(p -> p.getName().startsWith("PERM_"))
+                .filter(Permission::isPagePermission)
                 .collect(Collectors.toSet());
 
-        // Remove current page permissions from target role
+        if (sourcePagePermissions.isEmpty()) {
+            throw new LocalizedException(Status.CONFLICT, SecurityErrorCodes.NO_PERMISSIONS_TO_COPY);
+        }
+
+        // Remove target's current page-scoped permissions only; its system-level permissions are preserved
         Set<Permission> currentTargetPagePermissions = targetRole.getPermissions().stream()
-                .filter(p -> p.getName().startsWith("PERM_"))
+                .filter(Permission::isPagePermission)
                 .collect(Collectors.toSet());
 
         targetRole.getPermissions().removeAll(currentTargetPagePermissions);
 
-        // Add source permissions to target (even if empty - clears all permissions)
+        // Add source's page-scoped permissions to target
         targetRole.getPermissions().addAll(sourcePagePermissions);
 
         roleRepository.save(targetRole);
