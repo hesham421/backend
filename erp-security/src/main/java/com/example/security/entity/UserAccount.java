@@ -18,9 +18,16 @@ import java.util.Set;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @SuperBuilder
 public class UserAccount extends AuditableEntity {
 
+    /**
+     * PK constraint name: USERS_PK (matches the column name below). Naming the
+     * constraint itself isn't expressible via a JPA annotation on @Id (unlike
+     * @ForeignKey for FKs) — Hibernate's naming-strategy hooks only cover
+     * FOREIGN_KEY/UNIQUE_KEY/INDEX, never PRIMARY_KEY — so the constraint name
+     * is enforced in the live DB by 001_rename_pk_fk_to_standard.sql instead.
+     */
     @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Column(name = "ID_PK")
+  @Column(name = "USERS_PK")
     private Long id;
 
     @Column(name = "USERNAME", nullable=false, length=80)
@@ -44,8 +51,10 @@ public class UserAccount extends AuditableEntity {
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "USER_ROLES",
-      joinColumns = @JoinColumn(name="USER_ID_FK", referencedColumnName = "ID_PK"),
-      inverseJoinColumns = @JoinColumn(name="ROLE_ID_FK", referencedColumnName = "ID_PK"))
+      joinColumns = @JoinColumn(name="USER_ID_FK", referencedColumnName = "USERS_PK",
+          foreignKey = @ForeignKey(name = "FK_UR_USER")),
+      inverseJoinColumns = @JoinColumn(name="ROLE_ID_FK", referencedColumnName = "ROLES_PK",
+          foreignKey = @ForeignKey(name = "FK_UR_ROLE")))
     @Builder.Default
     private Set<Role> roles = new HashSet<>();
 }

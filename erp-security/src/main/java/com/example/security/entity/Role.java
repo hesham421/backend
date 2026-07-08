@@ -30,9 +30,16 @@ import java.util.Set;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @SuperBuilder
 public class Role extends AuditableEntity {
 
+    /**
+     * PK constraint name: ROLES_PK (matches the column name below). Naming the
+     * constraint itself isn't expressible via a JPA annotation on @Id (unlike
+     * @ForeignKey for FKs) — Hibernate's naming-strategy hooks only cover
+     * FOREIGN_KEY/UNIQUE_KEY/INDEX, never PRIMARY_KEY — so the constraint name
+     * is enforced in the live DB by 001_rename_pk_fk_to_standard.sql instead.
+     */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ID_PK")
+    @Column(name = "ROLES_PK")
     private Long id;
 
     /** Role display name */
@@ -60,8 +67,10 @@ public class Role extends AuditableEntity {
     @JsonIgnore  // Prevent lazy loading exception during JSON serialization
     @ManyToMany(fetch = FetchType.LAZY)
         @JoinTable(name = "ROLE_PERMISSIONS",
-            joinColumns = @JoinColumn(name = "ROLE_ID_FK", referencedColumnName = "ID_PK"),
-            inverseJoinColumns = @JoinColumn(name = "PERM_ID_FK", referencedColumnName = "ID_PK"))
+            joinColumns = @JoinColumn(name = "ROLE_ID_FK", referencedColumnName = "ROLES_PK",
+                foreignKey = @ForeignKey(name = "FK_RP_ROLE")),
+            inverseJoinColumns = @JoinColumn(name = "PERM_ID_FK", referencedColumnName = "PERMISSIONS_PK",
+                foreignKey = @ForeignKey(name = "FK_RP_PERM")))
     @Builder.Default
     private Set<Permission> permissions = new HashSet<>();
 
