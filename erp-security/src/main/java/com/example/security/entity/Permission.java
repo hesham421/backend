@@ -29,7 +29,7 @@ public class Permission extends AuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ID")
+    @Column(name = "ID_PK")
     private Long id;
 
     @Column(name = "NAME", nullable = false, length = 150)

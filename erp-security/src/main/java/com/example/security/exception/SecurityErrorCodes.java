@@ -56,6 +56,7 @@ public final class SecurityErrorCodes {
     public static final String NO_REFRESH_COOKIE = "NO_REFRESH_COOKIE";
     public static final String REFRESH_REVOKED = "REFRESH_REVOKED";
     public static final String REFRESH_EXPIRED_OR_REVOKED = "REFRESH_EXPIRED_OR_REVOKED";
+    public static final String RATE_LIMIT_LOGIN_EXCEEDED = "RATE_LIMIT_LOGIN_EXCEEDED";
 
     // ==================== Tenant Errors ====================
 

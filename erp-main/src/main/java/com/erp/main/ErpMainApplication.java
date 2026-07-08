@@ -30,8 +30,6 @@ import java.util.Locale;
 @Import(JpaConfig.class)
 @SpringBootApplication(
         excludeName = {
-                "org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration",
-                "org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration",
                 "org.springframework.boot.data.jpa.autoconfigure.DataJpaRepositoriesAutoConfiguration",
                 "org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration"
         }

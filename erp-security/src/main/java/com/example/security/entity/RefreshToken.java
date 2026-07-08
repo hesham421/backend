@@ -14,14 +14,14 @@ public class RefreshToken {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ID")
+    @Column(name = "ID_PK")
     private Long id;
 
     @Column(name="JTI", nullable=false, unique=true, length=64)
     private String jti;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name="USER_ID", referencedColumnName = "ID", nullable=false)
+    @JoinColumn(name="USER_ID_FK", referencedColumnName = "ID_PK", nullable=false)
     private UserAccount user;
 
     @CreationTimestamp
