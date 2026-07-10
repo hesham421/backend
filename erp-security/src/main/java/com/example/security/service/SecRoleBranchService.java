@@ -24,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,9 +33,8 @@ import java.util.Set;
 /**
  * Service for SEC_ROLE_BRANCH CRUD (API-SEC-036..039, execution-plan-SEC-gaps.md Phase SVC+API).
  *
- * NOTE: no {@code @PreAuthorize} on these methods yet — Phase SEC owns the Permissions Matrix
- * (Section 8.1); this phase only needs the endpoints to exist and enforce their bound RULE-IDs
- * (per 03-PHASE-SVC-API.md Definition of Done, item 5).
+ * {@code @PreAuthorize} per Phase SEC (Section 8.1 Permissions Matrix) reuses the EXISTING
+ * {@code PERM_ROLE_*} permissions — CORE-9, no new SEC_PAGES row/permission set for this sub-tab.
  *
  * Update/delete take (roleId, branchId) rather than a single {id}: SEC_ROLE_BRANCH has no
  * surrogate PK (composite key per execution-plan-SEC-gaps.md Section 3 / db-script-SEC-gaps.md
@@ -56,6 +56,7 @@ public class SecRoleBranchService {
     );
     private static final Set<String> ALLOWED_SEARCH_FIELDS = ALLOWED_SORT_FIELDS;
 
+    @PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).ROLE_CREATE)")
     @Transactional
     public ServiceResult<SecRoleBranchDto> create(CreateSecRoleBranchRequest request) {
         log.info("Creating SEC_ROLE_BRANCH for role {} branch {}", request.getRoleIdFk(), request.getBranchIdFk());
@@ -82,6 +83,7 @@ public class SecRoleBranchService {
         return ServiceResult.success(SecRoleBranchMapper.toDto(saved), Status.CREATED);
     }
 
+    @PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).ROLE_UPDATE)")
     @Transactional
     public ServiceResult<SecRoleBranchDto> update(Long roleId, Long branchId, UpdateSecRoleBranchRequest request) {
         log.info("Updating SEC_ROLE_BRANCH for role {} branch {}", roleId, branchId);
@@ -98,6 +100,7 @@ public class SecRoleBranchService {
         return ServiceResult.success(SecRoleBranchMapper.toDto(saved), Status.UPDATED);
     }
 
+    @PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).ROLE_DELETE)")
     @Transactional
     public void delete(Long roleId, Long branchId) {
         log.info("Deleting SEC_ROLE_BRANCH for role {} branch {}", roleId, branchId);
@@ -107,6 +110,7 @@ public class SecRoleBranchService {
         log.info("Deleted SEC_ROLE_BRANCH for role {} branch {}", roleId, branchId);
     }
 
+    @PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).ROLE_VIEW)")
     @Transactional(readOnly = true)
     public ServiceResult<SecRoleBranchDto> getById(Long roleId, Long branchId) {
         log.debug("Fetching SEC_ROLE_BRANCH for role {} branch {}", roleId, branchId);
@@ -115,6 +119,7 @@ public class SecRoleBranchService {
         return ServiceResult.success(SecRoleBranchMapper.toDto(entity));
     }
 
+    @PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).ROLE_VIEW)")
     @Transactional(readOnly = true)
     public ServiceResult<Page<SecRoleBranchDto>> listRoleBranches(Pageable pageable) {
         log.debug("Listing SEC_ROLE_BRANCH records");
@@ -123,6 +128,7 @@ public class SecRoleBranchService {
         return ServiceResult.success(page.map(SecRoleBranchMapper::toDto));
     }
 
+    @PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).ROLE_VIEW)")
     @Transactional(readOnly = true)
     public ServiceResult<Page<SecRoleBranchDto>> search(SearchRequest request) {
         log.debug("Searching SEC_ROLE_BRANCH records");

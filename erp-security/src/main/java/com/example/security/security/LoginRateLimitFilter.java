@@ -19,25 +19,35 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Locale;
-import java.util.Set;
+import java.util.Map;
 
 /**
  * Brute-force protection for the login endpoint(s).
  *
- * Rate-limit key is IP + username (from the request body), not IP alone, so a
- * single noisy IP cannot lock out every account and a single targeted account
- * cannot be hammered from many rotating IPs without also tripping the per-IP
- * component of the key.
+ * Rate-limit key is IP + an identifier field from the request body (not IP alone), so a
+ * single noisy IP cannot lock out every account and a single targeted account cannot be
+ * hammered from many rotating IPs without also tripping the per-IP component of the key.
  *
- * Generic by design (matches on {@link #PROTECTED_PATHS}) so it also covers
- * POST /api/auth/signup once that endpoint exists.
+ * Generic by design (matches on {@link #PROTECTED_PATH_IDENTIFIER_FIELD}'s keys) — covers
+ * login/signup (username), forgot-password (email, per RULE-SEC-038/execution-plan-SEC-gaps.md
+ * Section 8.3), and reset-password. Reset-password is a deliberate deviation from the plan's
+ * literal "email" instruction: {@link com.example.security.dto.ResetPasswordRequest} has no
+ * email field at all (only token + newPassword) — using the reset token itself as the
+ * identifier instead, since it's the only user-identifying value in that body and still
+ * achieves the goal (rate-limiting scripted token-guessing from a single IP). Flagged in
+ * HANDOFF-PHASE-10-SEC.md.
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class LoginRateLimitFilter extends OncePerRequestFilter {
 
-    private static final Set<String> PROTECTED_PATHS = Set.of("/api/auth/login", "/api/auth/signup");
+    private static final Map<String, String> PROTECTED_PATH_IDENTIFIER_FIELD = Map.of(
+            "/api/auth/login", "username",
+            "/api/auth/signup", "username",
+            "/api/auth/forgot-password", "email",
+            "/api/auth/reset-password", "token"
+    );
 
     private final LoginRateLimiterService rateLimiterService;
     private final LocalizationService localizationService;
@@ -45,7 +55,7 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !("POST".equalsIgnoreCase(request.getMethod()) && PROTECTED_PATHS.contains(request.getRequestURI()));
+        return !("POST".equalsIgnoreCase(request.getMethod()) && PROTECTED_PATH_IDENTIFIER_FIELD.containsKey(request.getRequestURI()));
     }
 
     @Override
@@ -53,13 +63,14 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         CachedBodyHttpServletRequest cachedRequest = new CachedBodyHttpServletRequest(request);
-        String username = extractUsername(cachedRequest);
+        String identifierField = PROTECTED_PATH_IDENTIFIER_FIELD.get(request.getRequestURI());
+        String identifier = extractField(cachedRequest, identifierField);
         String ip = extractClientIp(cachedRequest);
-        String key = ip + "|" + (username == null ? "" : username.toLowerCase(Locale.ROOT));
+        String key = ip + "|" + (identifier == null ? "" : identifier.toLowerCase(Locale.ROOT));
 
         if (!rateLimiterService.tryConsume(key)) {
-            log.warn("Blocked login attempt (rate limit exceeded) — ip={}, username={}, path={}",
-                    ip, username, request.getRequestURI());
+            log.warn("Blocked attempt (rate limit exceeded) — ip={}, {}={}, path={}",
+                    ip, identifierField, identifier, request.getRequestURI());
             writeTooManyRequests(request, response, rateLimiterService.secondsUntilUnblocked(key));
             return;
         }
@@ -67,17 +78,17 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
         filterChain.doFilter(cachedRequest, response);
     }
 
-    private String extractUsername(CachedBodyHttpServletRequest request) {
+    private String extractField(CachedBodyHttpServletRequest request, String fieldName) {
         try {
             byte[] body = request.getCachedBody();
             if (body.length == 0) {
                 return null;
             }
             JsonNode node = objectMapper.readTree(body);
-            JsonNode usernameNode = node.get("username");
-            return usernameNode != null ? usernameNode.asText(null) : null;
+            JsonNode fieldNode = node.get(fieldName);
+            return fieldNode != null ? fieldNode.asText(null) : null;
         } catch (IOException ex) {
-            log.debug("Could not parse login request body for rate limiting", ex);
+            log.debug("Could not parse request body for rate limiting", ex);
             return null;
         }
     }
