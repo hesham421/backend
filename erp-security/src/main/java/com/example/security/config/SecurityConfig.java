@@ -4,6 +4,7 @@ import com.example.security.config.properties.CorsProperties;
 import com.example.security.security.CustomAccessDeniedHandler;
 import com.example.security.security.CustomAuthenticationEntryPoint;
 import com.example.security.security.JwtAuthenticationFilter;
+import com.example.security.security.LoginRateLimitFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -39,6 +40,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtFilter;
+    private final LoginRateLimitFilter loginRateLimitFilter;
     private final UserDetailsService userDetailsService;
     private final PasswordEncoder passwordEncoder;
     private final CustomAuthenticationEntryPoint authenticationEntryPoint;
@@ -85,6 +87,7 @@ public class SecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler)           // 403
                 )
                 .authenticationProvider(authProvider())
+                .addFilterBefore(loginRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }

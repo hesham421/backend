@@ -27,9 +27,17 @@ import lombok.experimental.SuperBuilder;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @SuperBuilder
 public class Permission extends AuditableEntity {
 
+    /**
+     * PK constraint name: PERMISSIONS_PK (matches the column name below).
+     * Naming the constraint itself isn't expressible via a JPA annotation on
+     * @Id (unlike @ForeignKey for FKs) — Hibernate's naming-strategy hooks
+     * only cover FOREIGN_KEY/UNIQUE_KEY/INDEX, never PRIMARY_KEY — so the
+     * constraint name is enforced in the live DB by
+     * 001_rename_pk_fk_to_standard.sql instead.
+     */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ID")
+    @Column(name = "PERMISSIONS_PK")
     private Long id;
 
     @Column(name = "NAME", nullable = false, length = 150)
@@ -40,7 +48,8 @@ public class Permission extends AuditableEntity {
      * Nullable for system permissions that are not page-related
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "PAGE_ID_FK", referencedColumnName = "ID_PK")
+    @JoinColumn(name = "PAGE_ID_FK", referencedColumnName = "SEC_PAGES_PK",
+        foreignKey = @ForeignKey(name = "FK_PERMS_PAGE"))
     private Page page;
 
     /**

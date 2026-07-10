@@ -25,4 +25,9 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, Long>,
     Optional<UserAccount> findByIdWithRoles(@Param("id") Long id);
 
     boolean existsByUsernameIgnoreCase(String username);
+
+    // RULE-SEC-041 — global uniqueness on USERS.EMAIL (self-registration, PLAN-SEC-002 Phase SVC+API)
+    boolean existsByEmailIgnoreCase(String email);
+
+    Optional<UserAccount> findByEmailIgnoreCase(String email);
 }

@@ -4,11 +4,23 @@ import com.example.erp.common.domain.status.Status;
 import com.example.erp.common.exception.LocalizedException;
 import com.example.security.config.properties.CookieProperties;
 import com.example.security.config.properties.JwtProperties;
+import com.example.security.config.properties.SelfServiceTokenProperties;
+import com.example.security.dto.ActivateAccountRequest;
+import com.example.security.dto.ForgotPasswordRequest;
+import com.example.security.dto.ResetPasswordRequest;
+import com.example.security.dto.SignupRequest;
+import com.example.security.dto.SignupResponse;
+import com.example.security.entity.AccountActivationToken;
+import com.example.security.entity.PasswordResetToken;
 import com.example.security.entity.RefreshToken;
 import com.example.security.entity.UserAccount;
 import com.example.erp.common.web.CookieUtils;
 import com.example.erp.common.web.SameSite;
+import com.example.security.event.AccountActivationRequestedEvent;
+import com.example.security.event.PasswordResetRequestedEvent;
 import com.example.security.exception.SecurityErrorCodes;
+import com.example.security.repository.AccountActivationTokenRepository;
+import com.example.security.repository.PasswordResetTokenRepository;
 import com.example.security.repository.RefreshTokenRepository;
 import com.example.security.repository.UserAccountRepository;
 import com.example.security.security.JwtService;
@@ -17,6 +29,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -49,10 +62,14 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepo;
     private final UserAccountRepository userAccountRepo;
     private final PasswordEncoder passwordEncoder;
+    private final AccountActivationTokenRepository accountActivationTokenRepo;
+    private final PasswordResetTokenRepository passwordResetTokenRepo;
+    private final ApplicationEventPublisher eventPublisher;
 
     // Configuration Properties (injected via constructor)
     private final JwtProperties jwtProperties;
     private final CookieProperties cookieProperties;
+    private final SelfServiceTokenProperties selfServiceTokenProperties;
 
     private static final String REFRESH_COOKIE_NAME = "refresh_token";
 
@@ -246,5 +263,137 @@ public class AuthService {
                 jwtProperties.refreshExpirationSeconds(),
                 userDto
         );
+    }
+
+    /**
+     * Self-registration (API-SEC-040, SCR-SEC-008).
+     * RULE-SEC-040/041: username/email must be globally unique. RULE-SEC-030: account MUST
+     * start disabled. RULE-SEC-031: publishes AccountActivationRequestedEvent instead of
+     * calling NotificationService directly.
+     */
+    @Transactional
+    public SignupResponse signup(SignupRequest req) {
+        log.info("Processing self-registration signup for username: {}", req.username());
+
+        if (userAccountRepo.existsByUsernameIgnoreCase(req.username())) {
+            throw new LocalizedException(Status.ALREADY_EXISTS, SecurityErrorCodes.SIGNUP_USERNAME_ALREADY_EXISTS, req.username());
+        }
+        if (userAccountRepo.existsByEmailIgnoreCase(req.email())) {
+            throw new LocalizedException(Status.ALREADY_EXISTS, SecurityErrorCodes.SIGNUP_EMAIL_ALREADY_EXISTS, req.email());
+        }
+
+        UserAccount user = UserAccount.builder()
+                .username(req.username())
+                .email(req.email())
+                .password(passwordEncoder.encode(req.password()))
+                .enabled(false) // RULE-SEC-030 — self-registered accounts MUST start disabled
+                .build();
+        UserAccount saved = userAccountRepo.save(user);
+
+        String token = UUID.randomUUID().toString();
+        Instant expiresAt = Instant.now().plusSeconds(selfServiceTokenProperties.activationExpirationSeconds());
+        accountActivationTokenRepo.save(AccountActivationToken.builder()
+                .token(token)
+                .user(saved)
+                .expiresAt(expiresAt)
+                .usedFl(false)
+                .build());
+
+        // RULE-SEC-031 — publish event instead of calling NotificationService directly
+        eventPublisher.publishEvent(new AccountActivationRequestedEvent(saved.getId(), token, expiresAt));
+
+        log.info("Self-registered new account (disabled, pending activation) username: {}", saved.getUsername());
+        return new SignupResponse(saved.getId(), saved.getUsername(), saved.isEnabled());
+    }
+
+    /**
+     * Account activation (API-SEC-041, SCR-SEC-008).
+     * RULE-SEC-032: requires a valid, unused, non-expired token before flipping ENABLED to 1.
+     * RULE-SEC-033: rejects an already-used/expired token; marks it used immediately on success.
+     */
+    @Transactional
+    public void activateAccount(ActivateAccountRequest req) {
+        log.info("Processing account activation");
+
+        AccountActivationToken token = accountActivationTokenRepo.findByToken(req.token())
+                .orElseThrow(() -> new LocalizedException(Status.BAD_REQUEST, SecurityErrorCodes.ACTIVATION_TOKEN_INVALID_OR_EXPIRED));
+
+        if (token.isUsed()) {
+            throw new LocalizedException(Status.BAD_REQUEST, SecurityErrorCodes.TOKEN_ALREADY_USED);
+        }
+        if (token.getExpiresAt().isBefore(Instant.now())) {
+            throw new LocalizedException(Status.BAD_REQUEST, SecurityErrorCodes.ACTIVATION_TOKEN_INVALID_OR_EXPIRED);
+        }
+
+        token.setUsed(true);
+        accountActivationTokenRepo.save(token);
+
+        UserAccount user = token.getUser();
+        user.setEnabled(true);
+        userAccountRepo.save(user);
+        log.info("Activated account username: {}", user.getUsername());
+    }
+
+    /**
+     * Forgot Password (API-SEC-042, SCR-SEC-009).
+     * RULE-SEC-038 (anti-enumeration): ALWAYS behaves identically to the caller regardless of
+     * whether the email exists — the lookup below only changes internal side effects (token
+     * issuance + event publish), never the method's outcome/response.
+     * RULE-SEC-039: invalidates any prior unexpired token for the same user when issuing a new one.
+     * RULE-SEC-031: publishes PasswordResetRequestedEvent instead of calling NotificationService.
+     */
+    @Transactional
+    public void forgotPassword(ForgotPasswordRequest req) {
+        log.info("Processing forgot-password request");
+
+        userAccountRepo.findByEmailIgnoreCase(req.email()).ifPresent(user -> {
+            List<PasswordResetToken> priorTokens = passwordResetTokenRepo
+                    .findByUser_IdAndUsedFlFalseAndExpiresAtAfter(user.getId(), Instant.now());
+            priorTokens.forEach(t -> t.setUsed(true));
+            passwordResetTokenRepo.saveAll(priorTokens);
+
+            String token = UUID.randomUUID().toString();
+            Instant expiresAt = Instant.now().plusSeconds(selfServiceTokenProperties.resetExpirationSeconds());
+            passwordResetTokenRepo.save(PasswordResetToken.builder()
+                    .token(token)
+                    .user(user)
+                    .expiresAt(expiresAt)
+                    .usedFl(false)
+                    .build());
+
+            eventPublisher.publishEvent(new PasswordResetRequestedEvent(user.getId(), token, expiresAt));
+        });
+
+        // RULE-SEC-038 — response is identical whether or not the email existed; nothing
+        // beyond this point may branch on the Optional above.
+        log.info("Forgot-password request processed");
+    }
+
+    /**
+     * Reset Password (API-SEC-043, SCR-SEC-009).
+     * RULE-SEC-032/033: requires a valid, unused, non-expired token; marks it used immediately
+     * on success.
+     */
+    @Transactional
+    public void resetPassword(ResetPasswordRequest req) {
+        log.info("Processing password reset");
+
+        PasswordResetToken token = passwordResetTokenRepo.findByToken(req.token())
+                .orElseThrow(() -> new LocalizedException(Status.BAD_REQUEST, SecurityErrorCodes.RESET_TOKEN_INVALID_OR_EXPIRED));
+
+        if (token.isUsed()) {
+            throw new LocalizedException(Status.BAD_REQUEST, SecurityErrorCodes.TOKEN_ALREADY_USED);
+        }
+        if (token.getExpiresAt().isBefore(Instant.now())) {
+            throw new LocalizedException(Status.BAD_REQUEST, SecurityErrorCodes.RESET_TOKEN_INVALID_OR_EXPIRED);
+        }
+
+        token.setUsed(true);
+        passwordResetTokenRepo.save(token);
+
+        UserAccount user = token.getUser();
+        user.setPassword(passwordEncoder.encode(req.newPassword()));
+        userAccountRepo.save(user);
+        log.info("Password reset completed for username: {}", user.getUsername());
     }
 }

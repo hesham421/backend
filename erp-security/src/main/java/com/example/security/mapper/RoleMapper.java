@@ -28,7 +28,7 @@ public class RoleMapper {
 
         return RoleDto.builder()
                 .id(entity.getId())
-            .roleCode(entity.getRoleName())
+            .roleCode(entity.getRoleCode())
                 .roleName(entity.getRoleName())
             .description(entity.getDescription())
             .active(entity.getActive())

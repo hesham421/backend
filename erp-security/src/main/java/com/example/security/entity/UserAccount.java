@@ -18,13 +18,25 @@ import java.util.Set;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @SuperBuilder
 public class UserAccount extends AuditableEntity {
 
+    /**
+     * PK constraint name: USERS_PK (matches the column name below). Naming the
+     * constraint itself isn't expressible via a JPA annotation on @Id (unlike
+     * @ForeignKey for FKs) — Hibernate's naming-strategy hooks only cover
+     * FOREIGN_KEY/UNIQUE_KEY/INDEX, never PRIMARY_KEY — so the constraint name
+     * is enforced in the live DB by 001_rename_pk_fk_to_standard.sql instead.
+     */
     @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Column(name = "ID")
+  @Column(name = "USERS_PK")
     private Long id;
 
     @Column(name = "USERNAME", nullable=false, length=80)
     private String username;
+
+    // FIELD-SEC-0032 — nullable (pre-existing rows have no value); UK_USERS_EMAIL
+    // added by 002_datascope_selfservice_auth_schema.sql per RULE-SEC-041.
+    @Column(name = "EMAIL", length = 150)
+    private String email;
 
     @Column(name = "PASSWORD", nullable=false, length=200)
     private String password;
@@ -44,8 +56,10 @@ public class UserAccount extends AuditableEntity {
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "USER_ROLES",
-      joinColumns = @JoinColumn(name="USER_ID", referencedColumnName = "ID"),
-      inverseJoinColumns = @JoinColumn(name="ROLE_ID", referencedColumnName = "ID"))
+      joinColumns = @JoinColumn(name="USER_ID_FK", referencedColumnName = "USERS_PK",
+          foreignKey = @ForeignKey(name = "FK_UR_USER")),
+      inverseJoinColumns = @JoinColumn(name="ROLE_ID_FK", referencedColumnName = "ROLES_PK",
+          foreignKey = @ForeignKey(name = "FK_UR_ROLE")))
     @Builder.Default
     private Set<Role> roles = new HashSet<>();
 }

@@ -70,21 +70,27 @@ public class RoleService {
     @Transactional
     @PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).ROLE_CREATE)")
     public ServiceResult<RoleDto> createRole(CreateRoleRequest req) {
-        // Persisted role identifier in current schema is ROLES.NAME
-        String storedRoleName = req.getRoleCode().toUpperCase().trim();
+        String roleCode = req.getRoleCode().toUpperCase().trim();
 
-        // Validate uniqueness of stored role name
-        roleRepo.findByRoleName(storedRoleName).ifPresent(r -> {
-            throw new LocalizedException(Status.ALREADY_EXISTS, SecurityErrorCodes.DUPLICATE_ROLE_CODE, storedRoleName);
+        // Validate uniqueness of roleCode
+        roleRepo.findByRoleCode(roleCode).ifPresent(r -> {
+            throw new LocalizedException(Status.ALREADY_EXISTS, SecurityErrorCodes.DUPLICATE_ROLE_CODE, roleCode);
+        });
+
+        // Validate uniqueness of roleName
+        roleRepo.findByRoleName(req.getRoleName()).ifPresent(r -> {
+            throw new LocalizedException(Status.ALREADY_EXISTS, SecurityErrorCodes.DUPLICATE_ROLE_NAME, req.getRoleName());
         });
 
         Role role = Role.builder()
-                .roleName(storedRoleName)
+                .roleCode(roleCode)
+                .roleName(req.getRoleName())
+                .description(req.getDescription())
                 .permissions(new HashSet<>())
                 .build();
 
         Role saved = roleRepo.save(role);
-        log.info("Created role '{}'", saved.getRoleName());
+        log.info("Created role '{}' (code: {})", saved.getRoleName(), saved.getRoleCode());
         return ServiceResult.success(RoleMapper.toDto(saved), Status.CREATED);
     }
 
@@ -160,6 +166,7 @@ public class RoleService {
 
         // Update fields (roleCode is immutable)
         role.setRoleName(req.getRoleName());
+        role.setDescription(req.getDescription());
 
         Role saved = roleRepo.save(role);
         log.info("Updated role '{}' (id: {})", saved.getRoleName(), saved.getId());

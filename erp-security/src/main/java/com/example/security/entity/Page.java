@@ -26,10 +26,18 @@ import lombok.experimental.SuperBuilder;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @SuperBuilder
 public class Page extends AuditableEntity {
 
+    /**
+     * PK constraint name: SEC_PAGES_PK (matches the column name below).
+     * Naming the constraint itself isn't expressible via a JPA annotation on
+     * @Id (unlike @ForeignKey for FKs, or @SequenceGenerator's sequenceName
+     * below) — Hibernate's naming-strategy hooks only cover
+     * FOREIGN_KEY/UNIQUE_KEY/INDEX, never PRIMARY_KEY — so the constraint name
+     * is enforced in the live DB by 001_rename_pk_fk_to_standard.sql instead.
+     */
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "page_seq")
     @SequenceGenerator(name = "page_seq", sequenceName = "SEC_PAGES_SEQ", allocationSize = 1)
-    @Column(name = "ID_PK")
+    @Column(name = "SEC_PAGES_PK")
     private Long id;
 
     /** Unique page code (uppercase, e.g., USER, MENU, CONTRACT) */

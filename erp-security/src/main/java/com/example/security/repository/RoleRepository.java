@@ -33,6 +33,9 @@ public interface RoleRepository extends JpaRepository<Role, Long>, JpaSpecificat
     // Find by roleName (unique)
     Optional<Role> findByRoleName(String roleName);
 
+    // Find by roleCode (unique)
+    Optional<Role> findByRoleCode(String roleCode);
+
     // Legacy support - maps to roleName
     @Deprecated
     default Optional<Role> findByName(String name) {

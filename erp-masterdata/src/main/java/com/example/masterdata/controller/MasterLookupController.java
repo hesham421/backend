@@ -258,7 +258,7 @@ public class MasterLookupController {
         description = "جلب خيارات القائمة المنسدلة حسب مفتاح القائمة المرجعية"
     )
     public ResponseEntity<ApiResponse<List<LookupDetailOptionResponse>>> getDetailOptions(
-        @PathVariable 
+        @PathVariable("lookupKey")
         @Parameter(description = "Master lookup key (e.g., COLOR, UOM, COUNTRY)", example = "COLOR")
         String lookupKey,
         

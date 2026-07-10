@@ -4,16 +4,18 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.util.Locale;
 
 /**
  * Security Module Application
- * 
+ *
  * Note: @EnableJpaRepositories is configured in JpaConfig to avoid duplicate bean definitions.
  * This ensures proper entity/repository scanning without bean override warnings.
  */
 @EnableCaching
+@EnableScheduling
 @SpringBootApplication
 @ComponentScan(basePackages = {
     "com.example.security",                      // Security module

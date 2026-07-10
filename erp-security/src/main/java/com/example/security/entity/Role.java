@@ -21,7 +21,8 @@ import java.util.Set;
 @Entity
 @Table(name = "ROLES",
        uniqueConstraints = {
-           @UniqueConstraint(name = "UK_ROLES_NAME", columnNames = {"NAME"})
+           @UniqueConstraint(name = "UK_ROLES_NAME", columnNames = {"NAME"}),
+           @UniqueConstraint(name = "UK_ROLES_ROLE_CODE", columnNames = {"ROLE_CODE"})
        },
        indexes = {
            @Index(name = "IDX_ROLES_IS_ACTIVE", columnList = "IS_ACTIVE")
@@ -29,20 +30,27 @@ import java.util.Set;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @SuperBuilder
 public class Role extends AuditableEntity {
 
+    /**
+     * PK constraint name: ROLES_PK (matches the column name below). Naming the
+     * constraint itself isn't expressible via a JPA annotation on @Id (unlike
+     * @ForeignKey for FKs) — Hibernate's naming-strategy hooks only cover
+     * FOREIGN_KEY/UNIQUE_KEY/INDEX, never PRIMARY_KEY — so the constraint name
+     * is enforced in the live DB by 001_rename_pk_fk_to_standard.sql instead.
+     */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ID")
+    @Column(name = "ROLES_PK")
     private Long id;
 
     /** Role display name */
     @Column(name = "NAME", length = 60, nullable = false)
     private String roleName;
 
-    // Fields present in API/legacy code but not stored in the current ROLES table
-    @Transient
+    /** Unique role code (uppercase, e.g. ADMIN) */
+    @Column(name = "ROLE_CODE", length = 60, nullable = false)
     private String roleCode;
 
-    @Transient
+    @Column(name = "DESCRIPTION", length = 500)
     private String description;
 
     /**
@@ -59,8 +67,10 @@ public class Role extends AuditableEntity {
     @JsonIgnore  // Prevent lazy loading exception during JSON serialization
     @ManyToMany(fetch = FetchType.LAZY)
         @JoinTable(name = "ROLE_PERMISSIONS",
-            joinColumns = @JoinColumn(name = "ROLE_ID", referencedColumnName = "ID"),
-            inverseJoinColumns = @JoinColumn(name = "PERM_ID", referencedColumnName = "ID"))
+            joinColumns = @JoinColumn(name = "ROLE_ID_FK", referencedColumnName = "ROLES_PK",
+                foreignKey = @ForeignKey(name = "FK_RP_ROLE")),
+            inverseJoinColumns = @JoinColumn(name = "PERM_ID_FK", referencedColumnName = "PERMISSIONS_PK",
+                foreignKey = @ForeignKey(name = "FK_RP_PERM")))
     @Builder.Default
     private Set<Permission> permissions = new HashSet<>();
 
