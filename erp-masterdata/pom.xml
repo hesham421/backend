@@ -53,17 +53,6 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- Flyway for Database Migration -->
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-database-postgresql</artifactId>
-        </dependency>
-
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -115,12 +104,6 @@
                         </exclude>
                     </excludes>
                 </configuration>
-            </plugin>
-            
-            <!-- Flyway Maven Plugin -->
-            <plugin>
-                <groupId>org.flywaydb</groupId>
-                <artifactId>flyway-maven-plugin</artifactId>
             </plugin>
         </plugins>
     </build>

@@ -20,7 +20,7 @@ public class UserAccount extends AuditableEntity {
 
     @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Column(name = "ID")
+  @Column(name = "USERS_PK")
     private Long id;
 
     @Column(name = "USERNAME", nullable=false, length=80)
@@ -44,8 +44,8 @@ public class UserAccount extends AuditableEntity {
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "USER_ROLES",
-      joinColumns = @JoinColumn(name="USER_ID", referencedColumnName = "ID"),
-      inverseJoinColumns = @JoinColumn(name="ROLE_ID", referencedColumnName = "ID"))
+      joinColumns = @JoinColumn(name="USER_ID_FK", referencedColumnName = "USERS_PK"),
+      inverseJoinColumns = @JoinColumn(name="ROLE_ID_FK", referencedColumnName = "ROLES_PK"))
     @Builder.Default
     private Set<Role> roles = new HashSet<>();
 }

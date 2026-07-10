@@ -29,7 +29,7 @@ public class Permission extends AuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ID")
+    @Column(name = "PERMISSIONS_PK")
     private Long id;
 
     @Column(name = "NAME", nullable = false, length = 150)
@@ -40,7 +40,7 @@ public class Permission extends AuditableEntity {
      * Nullable for system permissions that are not page-related
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "PAGE_ID_FK", referencedColumnName = "ID_PK")
+    @JoinColumn(name = "PAGE_ID_FK", referencedColumnName = "SEC_PAGES_PK")
     private Page page;
 
     /**

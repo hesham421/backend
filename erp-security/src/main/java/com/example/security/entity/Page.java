@@ -29,7 +29,7 @@ public class Page extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "page_seq")
     @SequenceGenerator(name = "page_seq", sequenceName = "SEC_PAGES_SEQ", allocationSize = 1)
-    @Column(name = "ID_PK")
+    @Column(name = "SEC_PAGES_PK")
     private Long id;
 
     /** Unique page code (uppercase, e.g., USER, MENU, CONTRACT) */

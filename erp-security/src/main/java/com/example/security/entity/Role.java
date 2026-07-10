@@ -31,7 +31,7 @@ public class Role extends AuditableEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ID")
+    @Column(name = "ROLES_PK")
     private Long id;
 
     /** Role display name */
@@ -59,8 +59,8 @@ public class Role extends AuditableEntity {
     @JsonIgnore  // Prevent lazy loading exception during JSON serialization
     @ManyToMany(fetch = FetchType.LAZY)
         @JoinTable(name = "ROLE_PERMISSIONS",
-            joinColumns = @JoinColumn(name = "ROLE_ID", referencedColumnName = "ID"),
-            inverseJoinColumns = @JoinColumn(name = "PERM_ID", referencedColumnName = "ID"))
+            joinColumns = @JoinColumn(name = "ROLE_ID_FK", referencedColumnName = "ROLES_PK"),
+            inverseJoinColumns = @JoinColumn(name = "PERM_ID_FK", referencedColumnName = "PERMISSIONS_PK"))
     @Builder.Default
     private Set<Permission> permissions = new HashSet<>();
 

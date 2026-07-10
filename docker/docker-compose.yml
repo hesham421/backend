@@ -1,5 +1,22 @@
 version: '3.9'
 
+# Credentials default to this repo's application-dev.properties values
+# (DB_USERNAME/DB_PASSWORD match the env vars Spring reads there).
+# Override by placing a .env file next to this compose file, or by running
+# `docker compose --env-file ../.env -f docker-compose.yml up -d`.
+#
+# NOTE on the seed script mount below: docker-entrypoint-initdb.d scripts
+# only run once, on first init of an EMPTY postgres_data volume, and they
+# run before the Spring Boot app ever starts. The seed script inserts into
+# tables (sec_pages, permissions, roles, users, ...) that are now created by
+# Flyway (spring.flyway.enabled=true, migrations in
+# erp-main/src/main/resources/db/migration) when the app boots. On a
+# brand-new volume the seed will therefore fail silently (errors logged,
+# container still starts) because the schema doesn't exist yet. To actually
+# apply it: start postgres, run the app once so Flyway creates the schema,
+# then either re-run the script manually (`docker exec -i postgres-db psql
+# -U <user> -d <db> < ../erp-security_..._seed_security_data.sql`) or drop
+# the volume and restart both in the right order.
 services:
   postgres:
     image: postgres:17
@@ -8,18 +25,20 @@ services:
     restart: unless-stopped
 
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: erp_db
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-erp_db}
 
     ports:
-      - "5432:5432"
+      - "5433:5432"
 
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ../erp-security_src_main_resources_db_scripts_seed_security_data.sql:/docker-entrypoint-initdb.d/01-seed-security-data.sql:ro
 
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d erp_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-erp_db}"]
+      # healthcheck runs inside the container, so it always targets 5432 regardless of the host port mapping above
       interval: 10s
       timeout: 5s
       retries: 5
