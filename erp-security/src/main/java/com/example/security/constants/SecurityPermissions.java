@@ -293,4 +293,17 @@ public final class SecurityPermissions {
 
     /** حذف نوع منطقة */
     public static final String REGION_TYPE_DELETE = "PERM_REGION_TYPE_DELETE";
+
+    // ==================== User Profile / DataScope Permissions (PLAN-SEC-002) ====================
+    // SCR-SEC-006 — no DELETE constant: profiles deactivate via isActiveFl
+    // through UPDATE, never DELETE (Section 8.1 Permissions Matrix).
+
+    /** عرض ملفات تعريف المستخدمين */
+    public static final String USER_PROFILE_VIEW = "PERM_USER_PROFILE_VIEW";
+
+    /** إنشاء ملف تعريف مستخدم */
+    public static final String USER_PROFILE_CREATE = "PERM_USER_PROFILE_CREATE";
+
+    /** تعديل ملف تعريف مستخدم */
+    public static final String USER_PROFILE_UPDATE = "PERM_USER_PROFILE_UPDATE";
 }

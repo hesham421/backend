@@ -13,6 +13,8 @@ import com.example.security.dto.SignupResponse;
 import com.example.security.entity.AccountActivationToken;
 import com.example.security.entity.PasswordResetToken;
 import com.example.security.entity.RefreshToken;
+import com.example.security.entity.Role;
+import com.example.security.entity.SecRoleBranch;
 import com.example.security.entity.UserAccount;
 import com.example.erp.common.web.CookieUtils;
 import com.example.erp.common.web.SameSite;
@@ -22,6 +24,7 @@ import com.example.security.exception.SecurityErrorCodes;
 import com.example.security.repository.AccountActivationTokenRepository;
 import com.example.security.repository.PasswordResetTokenRepository;
 import com.example.security.repository.RefreshTokenRepository;
+import com.example.security.repository.SecRoleBranchRepository;
 import com.example.security.repository.UserAccountRepository;
 import com.example.security.security.JwtService;
 import jakarta.servlet.http.Cookie;
@@ -64,6 +67,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AccountActivationTokenRepository accountActivationTokenRepo;
     private final PasswordResetTokenRepository passwordResetTokenRepo;
+    private final SecRoleBranchRepository secRoleBranchRepo;
     private final ApplicationEventPublisher eventPublisher;
 
     // Configuration Properties (injected via constructor)
@@ -95,12 +99,12 @@ public class AuthService {
         // ابني الـ JWTs
         String jti = UUID.randomUUID().toString();
 
-        // اربط التوكن بكـيان المستخدم
+        // اربط التوكن بكـيان المستخدم (with roles, for RULE-SEC-037's allowedBranches[] claim)
         UserAccount userEntity = userAccountRepo
-            .findByUsernameIgnoreCase(principal.getUsername())
+            .findByUsernameWithRoles(principal.getUsername())
             .orElseThrow(() -> new LocalizedException(Status.NOT_FOUND, SecurityErrorCodes.USER_NOT_FOUND));
 
-        String access = jwt.generateAccess(principal.getUsername(), authorities, userEntity.getId());
+        String access = jwt.generateAccess(principal.getUsername(), authorities, userEntity.getId(), resolveAllowedBranches(userEntity));
         String refresh = jwt.generateRefresh(principal.getUsername(), jti);
 
         refreshTokenRepo.save(RefreshToken.builder()
@@ -132,14 +136,14 @@ public class AuthService {
         refreshTokenRepo.save(db);
 
         var userEntity = userAccountRepo
-            .findByUsernameIgnoreCase(username)
+            .findByUsernameWithRoles(username)
             .orElseThrow(() -> new LocalizedException(Status.NOT_FOUND, SecurityErrorCodes.USER_NOT_FOUND));
 
         var user = userDetailsService.loadUserByUsername(username);
         var authorities = user.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
 
         String newJti = UUID.randomUUID().toString();
-        String access = jwt.generateAccess(username, authorities, userEntity.getId());
+        String access = jwt.generateAccess(username, authorities, userEntity.getId(), resolveAllowedBranches(userEntity));
         String newRefresh = jwt.generateRefresh(username, newJti);
 
         refreshTokenRepo.save(RefreshToken.builder()
@@ -209,6 +213,37 @@ public class AuthService {
     }
 
     /**
+     * RULE-SEC-037 — derives the JWT allowedBranches[] claim from the user's active
+     * SEC_ROLE_BRANCH assignments across their active roles.
+     * <p>
+     * DRV-SEC-004 "ALL" sentinel: if any active assignment has dataAccessLevel = ALL,
+     * the claim is represented as the single element {@code ["ALL"]} instead of
+     * enumerating every branch — an implementation-level optimization (not SRS-mandated,
+     * see execution-plan-SEC-gaps.md Derivation Log), avoiding an unbounded claim size
+     * for users with company-wide access.
+     */
+    private List<String> resolveAllowedBranches(UserAccount userEntity) {
+        List<Long> activeRoleIds = userEntity.getRoles().stream()
+                .filter(r -> Boolean.TRUE.equals(r.getActiveStatus()))
+                .map(Role::getId)
+                .toList();
+        if (activeRoleIds.isEmpty()) {
+            return List.of();
+        }
+
+        List<SecRoleBranch> assignments = secRoleBranchRepo.findByRoleIdFkInAndIsActiveFlTrue(activeRoleIds);
+        boolean hasAllSentinel = assignments.stream().anyMatch(a -> "ALL".equals(a.getDataAccessLevel()));
+        if (hasAllSentinel) {
+            return List.of("ALL");
+        }
+
+        return assignments.stream()
+                .map(a -> String.valueOf(a.getBranchIdFk()))
+                .distinct()
+                .toList();
+    }
+
+    /**
      * Login with full user information
      * @return UserInfo containing tokens and user details
      */
@@ -239,7 +274,7 @@ public class AuthService {
 
         // Generate tokens
         String jti = UUID.randomUUID().toString();
-        String access = jwt.generateAccess(principal.getUsername(), authorities, userEntity.getId());
+        String access = jwt.generateAccess(principal.getUsername(), authorities, userEntity.getId(), resolveAllowedBranches(userEntity));
         String refresh = jwt.generateRefresh(principal.getUsername(), jti);
 
         // Save refresh token

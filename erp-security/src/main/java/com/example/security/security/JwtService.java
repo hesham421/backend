@@ -36,12 +36,23 @@ public class JwtService {
     }
 
     public String generateAccess(String username, List<String> authorities, Long userId) {
+        return generateAccess(username, authorities, userId, List.of());
+    }
+
+    /**
+     * @param allowedBranches RULE-SEC-037 — branch IDs (as strings) the user has active
+     *                        SEC_ROLE_BRANCH scope for, derived by the caller. May be a
+     *                        single-element {@code ["ALL"]} sentinel instead of enumerating
+     *                        every branch — see AuthService#resolveAllowedBranches.
+     */
+    public String generateAccess(String username, List<String> authorities, Long userId, List<String> allowedBranches) {
         Instant now = Instant.now();
         return Jwts.builder()
                 .subject(username)
                 .claims(Map.of(
                     "authorities", authorities,
-                    "userId", userId
+                    "userId", userId,
+                    "allowedBranches", allowedBranches
                 ))
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plusSeconds(accessExpSeconds)))

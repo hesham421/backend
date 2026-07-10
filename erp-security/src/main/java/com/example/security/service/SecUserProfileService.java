@@ -24,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,10 +33,8 @@ import java.util.Set;
 /**
  * Service for SEC_USER_PROFILE CRUD (API-SEC-032..035, execution-plan-SEC-gaps.md Phase SVC+API).
  *
- * NOTE: no {@code @PreAuthorize} on these methods yet — Phase SEC (Section 8.1 Permissions
- * Matrix) owns adding permission gates for the DataScope endpoints; this phase only needs the
- * endpoints to exist and enforce their bound RULE-IDs (per 03-PHASE-SVC-API.md Definition of
- * Done, item 5). Endpoints remain behind the standard JWT filter (authenticated, not public).
+ * {@code @PreAuthorize} per Phase SEC (Section 8.1 Permissions Matrix) — no DELETE method
+ * exists (profiles deactivate via isActiveFl through UPDATE, never DELETE).
  */
 @Service
 @RequiredArgsConstructor
@@ -51,6 +50,7 @@ public class SecUserProfileService {
     );
     private static final Set<String> ALLOWED_SEARCH_FIELDS = ALLOWED_SORT_FIELDS;
 
+    @PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).USER_PROFILE_CREATE)")
     @Transactional
     public ServiceResult<SecUserProfileDto> create(CreateSecUserProfileRequest request) {
         log.info("Creating SEC_USER_PROFILE for user ID: {}", request.getUserIdFk());
@@ -79,6 +79,7 @@ public class SecUserProfileService {
         return ServiceResult.success(SecUserProfileMapper.toDto(saved), Status.CREATED);
     }
 
+    @PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).USER_PROFILE_UPDATE)")
     @Transactional
     public ServiceResult<SecUserProfileDto> update(Long userId, UpdateSecUserProfileRequest request) {
         log.info("Updating SEC_USER_PROFILE for user ID: {}", userId);
@@ -100,6 +101,7 @@ public class SecUserProfileService {
         return ServiceResult.success(SecUserProfileMapper.toDto(saved), Status.UPDATED);
     }
 
+    @PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).USER_PROFILE_VIEW)")
     @Transactional(readOnly = true)
     public ServiceResult<SecUserProfileDto> getById(Long userId) {
         log.debug("Fetching SEC_USER_PROFILE for user ID: {}", userId);
@@ -108,6 +110,7 @@ public class SecUserProfileService {
         return ServiceResult.success(SecUserProfileMapper.toDto(entity));
     }
 
+    @PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).USER_PROFILE_VIEW)")
     @Transactional(readOnly = true)
     public ServiceResult<Page<SecUserProfileDto>> listProfiles(Pageable pageable) {
         log.debug("Listing SEC_USER_PROFILE records");
@@ -116,6 +119,7 @@ public class SecUserProfileService {
         return ServiceResult.success(page.map(SecUserProfileMapper::toDto));
     }
 
+    @PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).USER_PROFILE_VIEW)")
     @Transactional(readOnly = true)
     public ServiceResult<Page<SecUserProfileDto>> search(SearchRequest request) {
         log.debug("Searching SEC_USER_PROFILE records");
