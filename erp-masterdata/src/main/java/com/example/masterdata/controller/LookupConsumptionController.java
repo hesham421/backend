@@ -58,9 +58,9 @@ public class LookupConsumptionController {
         description = "جلب قيم القائمة المرجعية - للاستخدام في جميع الوحدات"
     )
     public ResponseEntity<ApiResponse<List<LookupValueResponse>>> getLookupValues(
-        @PathVariable 
+        @PathVariable("lookupCode")
         @Parameter(
-            description = "Master lookup code (e.g., ACCOUNT_TYPE, STATUS, COUNTRY)", 
+            description = "Master lookup code (e.g., ACCOUNT_TYPE, STATUS, COUNTRY)",
             example = "ACCOUNT_TYPE"
         )
         String lookupCode

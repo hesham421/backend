@@ -62,6 +62,7 @@ DO $$
 DECLARE
     rec RECORD;
     current_pk_name text;
+    actual_table regclass;
 BEGIN
     FOR rec IN
         SELECT * FROM (VALUES
@@ -74,13 +75,21 @@ BEGIN
             ('ROLE_PERMISSIONS', 'ROLE_PERMISSIONS_PK')
         ) AS t(table_name, desired_pk_name)
     LOOP
+        -- Casting text to regclass folds unquoted case (e.g. 'USERS' -> users
+        -- table), but %I on the raw literal below would NOT — it preserves
+        -- the literal's case verbatim, producing a broken quoted identifier
+        -- like "USERS" when the real table is lowercase. Resolve the actual
+        -- object once via regclass and reuse it (via %s, already correctly
+        -- quoted/cased) instead of re-quoting the original literal.
+        actual_table := rec.table_name::regclass;
+
         SELECT conname INTO current_pk_name
         FROM pg_constraint
-        WHERE conrelid = rec.table_name::regclass AND contype = 'p';
+        WHERE conrelid = actual_table AND contype = 'p';
 
         IF current_pk_name IS NOT NULL AND current_pk_name <> rec.desired_pk_name THEN
-            EXECUTE format('ALTER TABLE %I RENAME CONSTRAINT %I TO %I',
-                rec.table_name, current_pk_name, rec.desired_pk_name);
+            EXECUTE format('ALTER TABLE %s RENAME CONSTRAINT %I TO %I',
+                actual_table, current_pk_name, rec.desired_pk_name);
         END IF;
     END LOOP;
 END $$;

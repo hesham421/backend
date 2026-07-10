@@ -183,9 +183,12 @@ public class RoleAccessService {
 
         List<Permission> targetPermissions = new ArrayList<>(targetPermissionSet);
 
-        // Get current page-related permissions for this role (PERM_*_*)
+        // Get current page-related permissions for this role, matched by page FK
+        // (not by name prefix — a page-linked permission isn't guaranteed to
+        // follow the PERM_<CODE>_<TYPE> naming convention, e.g. when created
+        // directly via POST /api/permissions).
         Set<Permission> currentPagePermissions = role.getPermissions().stream()
-                .filter(p -> p.getName().startsWith("PERM_"))
+                .filter(Permission::isPagePermission)
                 .collect(Collectors.toSet());
 
         // Remove all current page permissions
@@ -242,30 +245,33 @@ public class RoleAccessService {
     @PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).ROLE_UPDATE)")
     public void removePageFromRole(Long roleId, String pageCode) {
         // Normalize pageCode
-        pageCode = pageCode.toUpperCase().trim();
+        final String normalizedPageCode = pageCode.toUpperCase().trim();
+        pageCode = normalizedPageCode;
         log.info("Removing page '{}' from role ID: {}", pageCode, roleId);
 
         // Fetch role with permissions
         Role role = roleRepository.findByIdWithPermissions(roleId)
                 .orElseThrow(() -> new LocalizedException(Status.NOT_FOUND, SecurityErrorCodes.ROLE_NOT_FOUND, roleId));
 
-        // Build permission keys to remove (all 4: VIEW + CRUD)
-        Set<String> permKeysToRemove = new HashSet<>();
-        for (PermissionType type : PermissionType.values()) {
-            permKeysToRemove.add(type.buildPermissionKey(pageCode));
-        }
+        // Verify page exists
+        Page page = pageRepository.findByPageCode(normalizedPageCode)
+                .orElseThrow(() -> new LocalizedException(Status.NOT_FOUND, SecurityErrorCodes.PAGE_NOT_FOUND_BY_CODE, normalizedPageCode));
 
-        // Check if page is assigned (has VIEW permission)
-        final String finalPageCode = pageCode;
+        // Check if page is assigned (has VIEW permission) — matched by page FK +
+        // type, same as addPageToRole/resolvePagePermissions, not by name string:
+        // a permission linked to this page can exist under a non-canonical name
+        // (e.g. created directly via POST /api/permissions), and name-matching
+        // would then miss it.
         boolean hasViewForPage = role.getPermissions().stream()
-                .anyMatch(p -> p.getName().equals(PermissionType.VIEW.buildPermissionKey(finalPageCode)));
+                .anyMatch(p -> p.getPage() != null && Objects.equals(p.getPage().getId(), page.getId())
+                        && p.getPermissionType() == PermissionType.VIEW);
         if (!hasViewForPage) {
             throw new LocalizedException(Status.NOT_FOUND, SecurityErrorCodes.PAGE_NOT_ASSIGNED_TO_ROLE, pageCode);
         }
 
-        // Remove matching permissions
+        // Remove all permissions tied to this page (VIEW + CRUD), regardless of name
         int beforeSize = role.getPermissions().size();
-        role.getPermissions().removeIf(p -> permKeysToRemove.contains(p.getName()));
+        role.getPermissions().removeIf(p -> p.getPage() != null && Objects.equals(p.getPage().getId(), page.getId()));
         int afterSize = role.getPermissions().size();
 
         roleRepository.save(role);

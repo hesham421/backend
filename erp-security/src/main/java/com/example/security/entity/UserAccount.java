@@ -33,6 +33,11 @@ public class UserAccount extends AuditableEntity {
     @Column(name = "USERNAME", nullable=false, length=80)
     private String username;
 
+    // FIELD-SEC-0032 — nullable (pre-existing rows have no value); UK_USERS_EMAIL
+    // added by 002_datascope_selfservice_auth_schema.sql per RULE-SEC-041.
+    @Column(name = "EMAIL", length = 150)
+    private String email;
+
     @Column(name = "PASSWORD", nullable=false, length=200)
     private String password;
 

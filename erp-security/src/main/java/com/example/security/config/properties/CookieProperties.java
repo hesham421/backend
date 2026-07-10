@@ -22,8 +22,12 @@ import org.springframework.validation.annotation.Validated;
 public record CookieProperties(
     
     /**
-     * Cookie domain.
-     * Default: localhost
+     * Cookie domain. Leave blank/unset for a host-only cookie (no Domain
+     * attribute) — required for single-label hosts like "localhost": browsers
+     * accept an explicit Domain=localhost, but RFC-2965 cookie jars (Python's
+     * requests/http.cookiejar, Java's CookieManager) reject storing it back
+     * because the value has no embedded dot, so the cookie never gets resent.
+     * Default: none (host-only)
      */
     String domain,
     
@@ -59,9 +63,6 @@ public record CookieProperties(
      * Default constructor with sensible defaults.
      */
     public CookieProperties {
-        if (domain == null || domain.isBlank()) {
-            domain = "localhost";
-        }
         if (path == null || path.isBlank()) {
             path = "/";
         }
