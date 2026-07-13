@@ -26,6 +26,8 @@
         <module>erp-finance-gl</module>
         <module>erp-masterdata</module>
         <module>erp-org</module>
+        <module>erp-file</module>
+        <module>erp-notification</module>
         <module>erp-main</module>
 <!--        <module>erp-rental-engine</module>-->
     </modules>
@@ -74,6 +76,18 @@
             <dependency>
                 <groupId>com.erp</groupId>
                 <artifactId>erp-org</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.erp</groupId>
+                <artifactId>erp-file</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.erp</groupId>
+                <artifactId>erp-notification</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

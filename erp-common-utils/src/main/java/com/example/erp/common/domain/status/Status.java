@@ -48,6 +48,14 @@ public enum Status implements StatusCode {
     ENDPOINT_NOT_FOUND("ENDPOINT_NOT_FOUND", "status.endpoint.not.found", StatusCategory.NOT_FOUND),
     USER_NOT_FOUND("USER_NOT_FOUND", "status.user.not.found", StatusCategory.NOT_FOUND),
 
+    /**
+     * The resource existed but was permanently removed (its content purged, not just its
+     * metadata) — HTTP 410, distinct from NOT_FOUND's 404 (see OperationCodeImpl). First
+     * consumer: FileService API-FILE-003 download of a purged FileDocument (RULE-FILE-006/
+     * DRV-FILE-003).
+     */
+    GONE("GONE", "status.gone", StatusCategory.NOT_FOUND),
+
     // ==================== Business Error Statuses ====================
     
     BUSINESS_RULE_VIOLATION("BUSINESS_RULE_VIOLATION", "status.business.rule.violation", StatusCategory.BUSINESS_ERROR),

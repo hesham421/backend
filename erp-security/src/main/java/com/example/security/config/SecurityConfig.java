@@ -77,8 +77,20 @@ public class SecurityConfig {
                         "/swagger-ui.html",
                         "/v3/api-docs/**",
                         "/api-docs/**",
-                        "/actuator/health"
+                        "/actuator/health",
+                        // File Service Encrypted Token routes (POLICY-CLI-06 / ADAPT-03 —
+                        // no JWT validation for these; FileTokenFilter is the sole auth gate,
+                        // see erp-file's FileTokenFilterConfig)
+                        "/upload/**",
+                        "/download/**"
                     ).permitAll()
+                        // Delete route is a bare single-path-segment root path (no fixed prefix,
+                        // e.g. "/{encryptedToken}") — Ant "/*" matches exactly one segment, so
+                        // this is scoped to DELETE only and won't swallow "/api/..." paths.
+                        // Grep-verified (2026-07-13) no other module defines a root-level
+                        // single-segment mapping for any HTTP method — if one ever does, it must
+                        // not be DELETE, or this rule needs to be narrowed.
+                        .requestMatchers(HttpMethod.DELETE, "/*").permitAll()
                         .anyRequest().authenticated()
                 )
                 // Unified error response format for security exceptions
