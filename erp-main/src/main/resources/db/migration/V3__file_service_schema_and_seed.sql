@@ -30,6 +30,18 @@
 --      (Boolean -> Integer) used by every other boolean flag already live
 --      in this schema (see org_legal_entity.is_active_fl, roles.is_active),
 --      not a new deviation specific to this module.
+--   3. Block 5b seeds ONE FILE_CATEGORY row, which srs.md A3 §"ما لا يشمله
+--      هذا الموديول" explicitly says this module must NOT decide ("لا يقرر
+--      أي موديول يحتاج أي فئة ملفات — كل موديول مستهلك يقرر فئاته بنفسه" —
+--      that's each consuming module's own responsibility). Added anyway,
+--      flagged as a deviation: FileCategory has no Create/Update API
+--      (DRV-FILE-001, reference table, DB-seeded only — see
+--      test-api/test_file_apis.py known-gaps note #1), and no Purchase
+--      Order/PRC module exists yet in this backend to own a real seed.
+--      Without at least one row, every issueUploadToken call 404s and the
+--      File Service API is entirely untestable. DEV/TEST convenience only
+--      — remove or replace once a real consuming module owns its own
+--      FileCategory seed.
 -- ============================================================================
 
 BEGIN;
@@ -136,6 +148,15 @@ WHERE NOT EXISTS (SELECT 1 FROM md_lookup_detail d JOIN md_master_lookup m ON m.
 INSERT INTO md_lookup_detail (id_pk, master_lookup_id_fk, code, name_ar, name_en, sort_order, is_active, created_by, created_at)
 SELECT nextval('md_lookup_detail_seq'), (SELECT id_pk FROM md_master_lookup WHERE lookup_key = 'FILE_STATUS'), 'DELETED', 'محذوف', 'Deleted', 3, 1, 'SYSTEM', now()
 WHERE NOT EXISTS (SELECT 1 FROM md_lookup_detail d JOIN md_master_lookup m ON m.id_pk = d.master_lookup_id_fk WHERE m.lookup_key = 'FILE_STATUS' AND d.code = 'DELETED');
+
+-- ============================================================================
+-- BLOCK 5b: FILE_CATEGORY seed — DEV/TEST convenience row, see Deviation #3
+-- above. module_code/category_code match test-api/test_file_apis.py's
+-- MODULE_CODE="PRC" / OWNER_TYPE="PURCHASE_ORDER" defaults.
+-- ============================================================================
+INSERT INTO file_category (file_category_pk, created_at, created_by, category_code, module_code, name_ar, name_en, is_active_fl)
+SELECT nextval('seq_file_category'), now(), 'SYSTEM', 'PURCHASE_ORDER_DOC', 'PRC', 'مستند أمر الشراء', 'Purchase Order Document', 1
+WHERE NOT EXISTS (SELECT 1 FROM file_category WHERE module_code = 'PRC' AND category_code = 'PURCHASE_ORDER_DOC');
 
 -- ============================================================================
 -- BLOCK 6: SEC_PAGES + PERMISSIONS seed (SCR-FILE-001 — Attachment Panel)

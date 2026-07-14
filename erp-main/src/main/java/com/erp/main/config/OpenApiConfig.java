@@ -181,6 +181,35 @@ public class OpenApiConfig {
     }
 
     /**
+     * 📁 File Module APIs
+     * - File Upload/Download
+     * - File Metadata
+     */
+    @Bean
+    public GroupedOpenApi fileApi() {
+        return GroupedOpenApi.builder()
+            .group("5-file")
+            .displayName("📁 File Management")
+            .packagesToScan("com.example.erp.file.controller")
+            .build();
+    }
+
+    /**
+     * 🔔 Notification Module APIs
+     * - Notification Send/Inbox
+     * - Notification Templates
+     * - Notification Channel Config
+     */
+    @Bean
+    public GroupedOpenApi notificationApi() {
+        return GroupedOpenApi.builder()
+            .group("6-notification")
+            .displayName("🔔 Notification")
+            .packagesToScan("com.example.erp.notification.controller")
+            .build();
+    }
+
+    /**
      * 📊 All APIs (Combined view)
      * Shows all endpoints from all modules
      */
@@ -193,7 +222,9 @@ public class OpenApiConfig {
                 "com.example.security.controller",
                 "com.example.masterdata.controller",
                 "com.example.erp.finance.gl.controller",
-                "com.example.erp.org.controller"
+                "com.example.erp.org.controller",
+                "com.example.erp.file.controller",
+                "com.example.erp.notification.controller"
             )
             .build();
     }
