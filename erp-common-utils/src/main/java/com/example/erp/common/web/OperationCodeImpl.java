@@ -76,6 +76,7 @@ public class OperationCodeImpl implements OperationCode {
         statusMappings.put(Status.RESOURCE_NOT_FOUND, HttpStatus.NOT_FOUND);
         statusMappings.put(Status.ENDPOINT_NOT_FOUND, HttpStatus.NOT_FOUND);
         statusMappings.put(Status.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
+        statusMappings.put(Status.GONE, HttpStatus.GONE);
 
         // Business Errors
         statusMappings.put(Status.BUSINESS_RULE_VIOLATION, HttpStatus.UNPROCESSABLE_ENTITY);

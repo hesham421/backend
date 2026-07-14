@@ -38,6 +38,16 @@
             <artifactId>erp-org</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>com.erp</groupId>
+            <artifactId>erp-file</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.erp</groupId>
+            <artifactId>erp-notification</artifactId>
+        </dependency>
+
         <!-- SpringDoc OpenAPI for unified Swagger -->
         <dependency>
             <groupId>org.springdoc</groupId>

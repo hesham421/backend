@@ -38,7 +38,9 @@ import java.util.Locale;
         "com.example.security.entity",
         "com.example.masterdata.entity",
         "com.example.erp.finance.gl.entity",
-        "com.example.erp.org.entity"
+        "com.example.erp.org.entity",
+        "com.example.erp.file.entity",
+        "com.example.erp.notification.entity"
 })
 @EnableJpaRepositories(
         basePackages = {

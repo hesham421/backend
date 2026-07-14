@@ -306,4 +306,31 @@ public final class SecurityPermissions {
 
     /** تعديل ملف تعريف مستخدم */
     public static final String USER_PROFILE_UPDATE = "PERM_USER_PROFILE_UPDATE";
+
+    // ==================== Notification Permissions (NOTIF, SVCAPI Layer 2) ====================
+    // Seeded by dbs-notif-001.md Block "SECURITY SEED — SEC_PAGES + PERMISSIONS".
+
+    /** عرض صندوق الإشعارات */
+    public static final String NOTIFICATION_INBOX_VIEW = "PERM_NOTIFICATION_INBOX_VIEW";
+
+    /** تحديث صندوق الإشعارات (مثال: تعليم كمقروء) */
+    public static final String NOTIFICATION_INBOX_UPDATE = "PERM_NOTIFICATION_INBOX_UPDATE";
+
+    /** عرض قوالب الإشعارات */
+    public static final String NOTIFICATION_TEMPLATE_VIEW = "PERM_NOTIFICATION_TEMPLATE_VIEW";
+
+    /** إنشاء قالب إشعار */
+    public static final String NOTIFICATION_TEMPLATE_CREATE = "PERM_NOTIFICATION_TEMPLATE_CREATE";
+
+    /** تعديل قالب إشعار */
+    public static final String NOTIFICATION_TEMPLATE_UPDATE = "PERM_NOTIFICATION_TEMPLATE_UPDATE";
+
+    /** إلغاء تفعيل قالب إشعار */
+    public static final String NOTIFICATION_TEMPLATE_DELETE = "PERM_NOTIFICATION_TEMPLATE_DELETE";
+
+    /** عرض إعدادات قنوات الإشعار */
+    public static final String NOTIFICATION_CHANNEL_CONFIG_VIEW = "PERM_NOTIFICATION_CHANNEL_CONFIG_VIEW";
+
+    /** تعديل إعدادات قنوات الإشعار */
+    public static final String NOTIFICATION_CHANNEL_CONFIG_UPDATE = "PERM_NOTIFICATION_CHANNEL_CONFIG_UPDATE";
 }
