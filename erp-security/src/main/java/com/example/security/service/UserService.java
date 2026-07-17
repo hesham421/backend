@@ -66,7 +66,7 @@ public class UserService {
         UserAccount u = UserAccount.builder()
             .username(req.username())
             .password(encoder.encode(req.password()))
-            .enabled(true)
+            .enabled(req.enabled() != null ? req.enabled() : true)
             .build();
 
         // ربط الدور الافتراضي

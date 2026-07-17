@@ -3,6 +3,7 @@ package com.example.erp.file.controller;
 import com.example.erp.common.web.ApiResponse;
 import com.example.erp.common.web.OperationCode;
 import com.example.erp.file.dto.FileAccessTokenResponse;
+import com.example.erp.file.dto.FileCategoryOptionResponse;
 import com.example.erp.file.dto.FileDeleteConfirmation;
 import com.example.erp.file.dto.FileDocumentSummaryResponse;
 import com.example.erp.file.dto.FileDownloadResult;
@@ -12,6 +13,7 @@ import com.example.erp.file.dto.FileUploadTokenResponse;
 import com.example.erp.file.security.FileTokenFilter;
 import com.example.erp.file.security.FileTokenPayload;
 import com.example.erp.file.service.FileAccessTokenService;
+import com.example.erp.file.service.FileCategoryOptionService;
 import com.example.erp.file.service.FileDeleteService;
 import com.example.erp.file.service.FileDownloadService;
 import com.example.erp.file.service.FileListService;
@@ -36,6 +38,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 /**
  * File Service controller. Endpoint paths deliberately do NOT share one {@code @RequestMapping}
  * prefix — API-FILE-002/003/004 use the token-embedded {@code /upload/{token}},
@@ -54,6 +58,7 @@ public class FileController {
     private final FileDownloadService fileDownloadService;
     private final FileDeleteService fileDeleteService;
     private final FileListService fileListService;
+    private final FileCategoryOptionService fileCategoryOptionService;
     private final OperationCode operationCode;
 
     @PostMapping("/api/v1/files/upload-token")
@@ -100,6 +105,13 @@ public class FileController {
             @PathVariable String encryptedToken,
             @RequestAttribute(FileTokenFilter.TOKEN_PAYLOAD_ATTRIBUTE) FileTokenPayload tokenPayload) {
         return operationCode.craftResponse(fileDeleteService.delete(tokenPayload));
+    }
+
+    @GetMapping("/api/v1/files/categories")
+    @Operation(summary = "List File Category Options", description = "قائمة خيارات تصنيفات الملفات")
+    public ResponseEntity<ApiResponse<List<FileCategoryOptionResponse>>> listCategoryOptions(
+            @RequestParam String moduleCode) {
+        return operationCode.craftResponse(fileCategoryOptionService.listOptionsByModule(moduleCode));
     }
 
     @GetMapping("/api/v1/files/{ownerId}")

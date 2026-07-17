@@ -21,6 +21,11 @@ import org.springframework.transaction.annotation.Transactional;
  * (CORE.md), so this is the one exception to the standard create()/find()/save() Service
  * template: it validates {@code FileCategory} existence (QR-FILE-001), then delegates
  * encoding to the module-local {@link FileTokenService} security component.
+ *
+ * {@code @PreAuthorize} uses a string literal, not {@code T(SecurityPermissions)} — erp-file has
+ * no compile dependency on erp-security (module-registry-filesvc.md A7: "no SHARED entity
+ * consumed from another module"), same no-compile-dependency convention as erp-finance-gl's
+ * {@code AccountsChartService} and this module's own {@link FileAccessTokenService}.
  */
 @Service
 @RequiredArgsConstructor
@@ -33,7 +38,7 @@ public class FileUploadTokenService {
     private final FileTokenService fileTokenService;
 
     @Transactional(readOnly = true)
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('PERM_FILE_ATTACHMENT_CREATE')")
     public ServiceResult<FileUploadTokenResponse> issueUploadToken(FileUploadTokenRequest request) {
         log.info("Issuing upload token for ownerType={}, moduleCode={}, fileCategoryFk={}",
             request.getOwnerType(), request.getModuleCode(), request.getFileCategoryFk());

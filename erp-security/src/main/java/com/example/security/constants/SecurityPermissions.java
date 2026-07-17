@@ -333,4 +333,18 @@ public final class SecurityPermissions {
 
     /** تعديل إعدادات قنوات الإشعار */
     public static final String NOTIFICATION_CHANNEL_CONFIG_UPDATE = "PERM_NOTIFICATION_CHANNEL_CONFIG_UPDATE";
+
+    // ==================== File Attachment Permissions (FILESVC, Phase SEC) ====================
+    // SEC.md — no UPDATE constant: PERM_FILE_ATTACHMENT_UPDATE is auto-generated (CORE-9) but
+    // functionally unused, since no Update API exists for FileDocument (SRS B4), same pattern
+    // as USER_PROFILE's deliberately-missing DELETE constant above.
+
+    /** عرض مرفقات الملفات */
+    public static final String FILE_ATTACHMENT_VIEW = "PERM_FILE_ATTACHMENT_VIEW";
+
+    /** رفع مرفق ملف جديد */
+    public static final String FILE_ATTACHMENT_CREATE = "PERM_FILE_ATTACHMENT_CREATE";
+
+    /** حذف مرفق ملف */
+    public static final String FILE_ATTACHMENT_DELETE = "PERM_FILE_ATTACHMENT_DELETE";
 }

@@ -12,6 +12,7 @@ import com.example.erp.file.security.FileTokenIssueResult;
 import com.example.erp.file.security.FileTokenService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,6 +51,13 @@ public class FileAccessTokenService {
      */
     private static final String PERMISSION_SYSTEM_ADMIN = "PERM_SYSTEM_ADMIN";
 
+    // Same string-literal convention as PERMISSION_SYSTEM_ADMIN above (no erp-security compile
+    // dependency) — action-conditional, so held as plain constants for a method-body check
+    // (SEC.md: API-FILE-003/005-equivalent DOWNLOAD needs VIEW, API-FILE-004-equivalent DELETE
+    // needs DELETE) rather than a single static @PreAuthorize SpEL expression.
+    private static final String PERMISSION_FILE_ATTACHMENT_VIEW = "PERM_FILE_ATTACHMENT_VIEW";
+    private static final String PERMISSION_FILE_ATTACHMENT_DELETE = "PERM_FILE_ATTACHMENT_DELETE";
+
     private static final Set<String> ALLOWED_ACTIONS =
         Set.of(FileTokenService.ACTION_DOWNLOAD, FileTokenService.ACTION_DELETE);
 
@@ -65,6 +73,8 @@ public class FileAccessTokenService {
             throw new LocalizedException(
                 Status.VALIDATION_ERROR, FileErrorCodes.FILE_ACCESS_TOKEN_ACTION_INVALID, action);
         }
+
+        assertHasPermissionForAction(action);
 
         FileDocument document = fileDocumentRepository.findById(fileDocumentPk)
             .orElseThrow(() -> new LocalizedException(
@@ -83,6 +93,23 @@ public class FileAccessTokenService {
             .build();
 
         return ServiceResult.success(response, Status.CREATED);
+    }
+
+    /**
+     * SEC.md API-level enforcement — DOWNLOAD requires PERM_FILE_ATTACHMENT_VIEW, DELETE
+     * requires PERM_FILE_ATTACHMENT_DELETE. Checked here (issuance time, real JWT principal),
+     * not at the permitAll'd /download or /{token} DELETE consumption routes — same rationale
+     * as RULE-FILE-007's assertCanDelete() below. Thrown as AccessDeniedException, same as a
+     * failing @PreAuthorize would produce natively (GlobalExceptionHandler already maps it to
+     * 403 FORBIDDEN platform-wide) — not a new module-specific error code.
+     */
+    private void assertHasPermissionForAction(String action) {
+        String requiredPermission = FileTokenService.ACTION_DOWNLOAD.equals(action)
+            ? PERMISSION_FILE_ATTACHMENT_VIEW
+            : PERMISSION_FILE_ATTACHMENT_DELETE;
+        if (!SecurityContextHelper.hasAuthority(requiredPermission)) {
+            throw new AccessDeniedException("Missing required permission: " + requiredPermission);
+        }
     }
 
     /**
