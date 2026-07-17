@@ -135,7 +135,7 @@ Copy `.env.example` to `.env` and fill in values before running locally.
 | `.github/skills/backend/`, `.github/skills/devops/` | `backend/governance/.github/skills/` | `frontend/governance/` |
 | `.github/skills/frontend/` | `frontend/governance/.github/skills/` | `backend/governance/` |
 | `mcp-servers/postgres/` | `backend/governance/mcp-servers/postgres/` only, wired via `backend/.mcp.json` | `frontend/governance/` — not duplicated (no frontend DB access use case) |
-| `mcp-servers/playwright/` | Both: `backend/governance/mcp-servers/playwright/` (wired via `backend/.mcp.json`) AND an independent copy at `frontend/governance/mcp-servers/playwright/` (wired via `frontend/.mcp.json`). This is the one deliberate, established duplication pattern besides `P3_5`. The two copies do not auto-sync. | — |
+| `mcp-servers/playwright/` (server code + vendored `node_modules`) | `backend/governance/mcp-servers/playwright/` only, wired via `backend/.mcp.json` | `frontend/governance/` — frontend does NOT vendor a copy; `frontend/.mcp.json` instead wires its own `playwright` entry via `npx @playwright/mcp@latest`, matching `frontend/package.json`'s own pre-existing `mcp:playwright` script. A vendored copy was tried once and reverted — it only duplicated node_modules alongside frontend's own separate, real `@playwright/test` install with no benefit. |
 | SECURITY module (all of it — "PERMANENT EXCEPTION") | `backend/governance/modules/SECURITY/` | `frontend/governance/` |
 | `api-docs/` (auto-generated) | `backend/governance/modules/<MOD>/api-docs/` | `frontend/governance/` |
 | `project-artifacts/` (backend + shared) | `backend/governance/project-artifacts/` | — |

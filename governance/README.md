@@ -50,12 +50,14 @@ governance/
   mcp-servers/
     postgres/                ← Postgres MCP server; NOT how it's wired in — see below
     playwright/               ← Playwright MCP server; its config was MERGED into backend/.mcp.json.
-                                 A copy of this same server (code + node_modules) was also placed at
-                                 frontend/governance/mcp-servers/playwright/ so frontend/ can run its
-                                 own Playwright MCP without needing this repo open (see frontend/
-                                 governance/README.md). The two copies are independent going forward —
-                                 updating one (e.g. bumping @playwright/mcp's version) does not
-                                 propagate to the other; re-copy manually if they need to stay in sync.
+                                 frontend/ does NOT vendor a copy of this — frontend/.mcp.json instead
+                                 wires its own playwright entry via `npx @playwright/mcp@latest`,
+                                 matching frontend/package.json's own pre-existing `mcp:playwright`
+                                 script (see frontend/governance/README.md). A vendored copy was
+                                 placed there briefly during the frontend-independence work, then
+                                 reverted once it became clear frontend/ already had its own
+                                 npx-based convention for this and vendoring it too would have just
+                                 duplicated node_modules for no benefit.
 
   project-artifacts/       ← non-governance investigation reports / audits, backend + shared
 
@@ -66,7 +68,7 @@ governance/
 
 ## Things that are NOT obvious from the file tree
 
-- **The MCP servers are not wired via a `.mcp.json` inside this folder.** Claude Code reads MCP config from a repo root, not an arbitrary subfolder, so both `governance/mcp-servers/postgres/` and `governance/mcp-servers/playwright/` are referenced from `backend/.mcp.json` (one level up, at the actual repo root) via relative paths like `governance/mcp-servers/postgres/index.js`. `frontend/.mcp.json` now does the same for its own copy of the playwright server (postgres was not duplicated — frontend has no direct DB access use case today).
+- **The MCP servers are not wired via a `.mcp.json` inside this folder.** Claude Code reads MCP config from a repo root, not an arbitrary subfolder, so both `governance/mcp-servers/postgres/` and `governance/mcp-servers/playwright/` are referenced from `backend/.mcp.json` (one level up, at the actual repo root) via relative paths like `governance/mcp-servers/postgres/index.js`. `frontend/.mcp.json` also has its own `playwright` entry, but via `npx @playwright/mcp@latest` rather than a vendored local copy (postgres was not duplicated at all — frontend has no direct DB access use case today).
 - **`execution-state.json` is hand-maintained, not generated.** No script in `governance-tools/` reads or writes it. It's edited directly by whichever AI agent is executing a phase, per the protocol in `CLAUDE.md`. Its schema also isn't uniform across modules — SECURITY's copy (`modules/SECURITY/gaps/execution-state.json`) has a different shape entirely (no `test_phases[]`, a `handoff` field per phase) since SECURITY never went through the standard P0-P4 pipeline. Note also: several modules' `execution-state.json` still has a stale `api_docs_path` value pointing at the old `governance-repo/modules/...` prefix instead of `governance/modules/...` — a leftover from before the migration that nothing validates or auto-fixes.
 - **`WORKSPACE.md` is stale**, and now says so at the top of the file (a one-line banner was added rather than deleting it, since it still has some historical detail). It still describes the pre-split "four independent sibling repositories" model and was deliberately left as-is during the split (only `CLAUDE.md` files were rewritten). Don't trust its layout description — trust this README and `ARCHITECTURE-OVERVIEW.md` at the workspace root instead.
 - **`packages/execution/F1-F4` living here, not in `frontend/`, is deliberate**, not an oversight — the split kept all of `packages/execution/` together with the tooling and slash commands that drive it. `frontend/governance/` only has the split-out PLAYWRIGHT test scenarios, frontend skills, and (as of the Phase 2 follow-up) a reference copy of each module's `P3_5/test-plan.md` plus its own local Playwright MCP server — not the phase specs themselves, and not the splitter tooling. See `frontend/governance/README.md`'s "PLAYWRIGHT re-verification" section for the exact boundary.
