@@ -13,7 +13,7 @@ Before writing a single line of code, assess the execution load.
 
 ### 0.1 — Read state and identify scope
 
-Read `governance-repo/modules/[MODULE]/execution-state.json`
+Read `governance/modules/[MODULE]/execution-state.json`
 Identify all PENDING subs in the requested phase.
 
 ### 0.2 — Look up sub weights from the Weight Map below
@@ -66,7 +66,7 @@ WAIT for user confirmation. Do not execute before confirmation.
 ### Per sub:
 
 1. Read sub file completely:
-   `governance-repo/modules/[MODULE]/packages/execution/[PHASE]/[SUB].md`
+   `governance/modules/[MODULE]/packages/execution/[PHASE]/[SUB].md`
    (if no sub → `[PHASE]/index.md`)
 2. Identify all tasks in the sub
 2.5. **[Frontend phases F1/F2/F3 only] API Contract Resolution** — see STEP 1.5

@@ -3,7 +3,7 @@
 Execute the current phase of **PLAN-SEC-002** (Security module — DataScope
 Extension + Self-Service Auth Gap Package) — with context safety check.
 
-This command is a dedicated variant for `governance-repo/modules/SECURITY/gaps/`,
+This command is a dedicated variant for `governance/modules/SECURITY/gaps/`,
 which does NOT use the standard `packages/execution/[PHASE]/[SUB].md` layout.
 Instead each phase is a single flat file (`01-PHASE-CORE.md` … `11-PHASE-ALIGN.md`)
 that already contains its own SESSION PROMPT, task list, Definition of Done,
@@ -19,7 +19,7 @@ leave it untouched).
 ## STEP 0 — Context Safety Assessment (MANDATORY before any execution)
 
 ### 0.1 — Read state
-Read `governance-repo/modules/SECURITY/gaps/execution-state.json`.
+Read `governance/modules/SECURITY/gaps/execution-state.json`.
 Confirm the requested `[PHASE]` matches `current_phase` (or is a phase the
 user is explicitly re-running).
 
@@ -68,7 +68,7 @@ Action required:
 ══════════════════════════════════════════════════════
 EXECUTION ASSESSMENT: [PHASE] — PLAN-SEC-002 (SECURITY/gaps)
 ══════════════════════════════════════════════════════
-Phase file    : governance-repo/modules/SECURITY/gaps/[NN]-PHASE-[NAME].md
+Phase file    : governance/modules/SECURITY/gaps/[NN]-PHASE-[NAME].md
 Weight        : [LIGHT/MEDIUM/HEAVY/XL]
 Predecessor   : HANDOFF-[PREV].md — Ready for this phase? [yes/no, from file]
 
@@ -84,7 +84,7 @@ WAIT for user confirmation. Do not execute before confirmation.
 
 ## STEP 1 — Execution (after confirmation)
 
-1. Read `governance-repo/modules/SECURITY/gaps/[NN]-PHASE-[NAME].md` completely.
+1. Read `governance/modules/SECURITY/gaps/[NN]-PHASE-[NAME].md` completely.
 2. Follow its "FIRST: read HANDOFF-PHASE-[N-1]..." check yourself — if that
    handoff is missing or says not ready, STOP and report it, do not improvise.
 3. Execute the SESSION PROMPT's TASK list in strict order, per its own rules
@@ -116,7 +116,7 @@ Priority order for any endpoint contract (path, method, fields, types,
 required/optional, validation, enums, error codes, permissions):
 
 ```
-1st — governance-repo/modules/SECURITY/api-docs/endpoints/<group>/<slug>.md
+1st — governance/modules/SECURITY/api-docs/endpoints/<group>/<slug>.md
       (real backend, generated) — also check api-docs for Organization-module
       endpoints this plan consumes (API-ORG-008, API-ORG-012)
 2nd — backend source directly (ONLY if api-docs doesn't have it) — the

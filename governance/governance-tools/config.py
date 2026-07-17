@@ -13,7 +13,7 @@ import json
 # REPO — Single root for everything
 # ─────────────────────────────────────────────
 
-REPO_BASE_PATH = Path("/Users/ezzat/my project/governance-repo")
+REPO_BASE_PATH = Path("/Users/ezzat/my project/backend/governance")
 
 # ─────────────────────────────────────────────
 # MODULES — All known module codes

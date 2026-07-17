@@ -13,8 +13,9 @@ Everything here is derived from real, versioned repository artifacts that
 this platform already depends on for other reasons, not from guessing a
 module's name:
 
-  - the workspace's sibling-repo layout (governance-repo/WORKSPACE.md;
-    the same convention deploy/'s own docker-compose already relies on)
+  - governance's location inside this backend/ checkout (governance/ is a
+    subfolder of backend/ as of the backend/frontend governance split;
+    see backend/governance/governance-tools/README.md)
   - the Maven reactor descriptors (root pom.xml <modules>, each module's own
     <dependencies>) for module source + shared/common source roots
   - erp-main's GroupedOpenApi bean declarations for the springdoc group id,
@@ -32,9 +33,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
-GENERATOR_ROOT = Path(__file__).resolve().parent           # .../governance-repo/governance-tools/api-doc-generator
-GOVERNANCE_ROOT = GENERATOR_ROOT.parent.parent              # .../governance-repo
-WORKSPACE_ROOT = GOVERNANCE_ROOT.parent                     # sibling of backend/frontend/deploy, per WORKSPACE.md
+GENERATOR_ROOT = Path(__file__).resolve().parent           # .../backend/governance/governance-tools/api-doc-generator
+GOVERNANCE_ROOT = GENERATOR_ROOT.parent.parent              # .../backend/governance
+BACKEND_ROOT = GOVERNANCE_ROOT.parent                       # .../backend — governance now lives INSIDE backend/, not as its sibling
 
 
 class DiscoveryError(Exception):
@@ -69,7 +70,7 @@ class RepositoryContext:
 
 
 def default_backend_root() -> Path:
-    return WORKSPACE_ROOT / "backend"
+    return BACKEND_ROOT
 
 
 def default_output_dir(module: str) -> Path:
@@ -268,7 +269,7 @@ def resolve(
     if not backend_root.exists():
         if not openapi_override:
             raise DiscoveryError(
-                f"Backend repository not found at expected sibling path '{backend_root}'. "
+                f"Backend repository not found at expected path '{backend_root}'. "
                 f"Pass --openapi explicitly (and --source, if permission/error-code sections are wanted)."
             )
         return RepositoryContext(module=module, openapi_source=openapi_override, output=output,

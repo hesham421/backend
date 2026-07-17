@@ -41,7 +41,7 @@ def main() -> int:
     overrides.add_argument("--source", type=Path, help="Override: path to the module's own src/main/java")
     overrides.add_argument("--common-source", type=Path, action="append", help="Override: path to a shared/common module's src/main/java (repeatable)")
     overrides.add_argument("--output", type=Path, help="Override: output directory for generated documentation")
-    overrides.add_argument("--backend-root", type=Path, help="Override: path to the backend repository root (default: sibling 'backend/' next to this governance-repo checkout)")
+    overrides.add_argument("--backend-root", type=Path, help="Override: path to the backend repository root (default: the backend/ repo this governance/ checkout now lives inside)")
     args = ap.parse_args()
 
     try:

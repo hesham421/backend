@@ -5,7 +5,7 @@
 Scan the governance repo for the specified module and generate three files:
 1. `.claude/commands/execute.md` — the slash command for implementation phase execution
 2. `.claude/commands/execute-test.md` — the slash command for test phase execution (JUNIT / PLAYWRIGHT), gated on execute.md's phases
-3. `governance-repo/modules/[MODULE]/execution-state.json` — current state tracker for both
+3. `governance/modules/[MODULE]/execution-state.json` — current state tracker for both
 
 Both generated commands reference `TEST-EXECUTION-AGENT.md`
 for MCP boundaries and the failure taxonomy — that file is shared across
@@ -17,7 +17,7 @@ modules, not regenerated per module.
 
 Module name: **$ARGUMENTS**
 
-Governance repo path: `governance-repo/modules/$ARGUMENTS/`
+Governance repo path: `governance/modules/$ARGUMENTS/`
 
 ---
 
@@ -26,8 +26,8 @@ Governance repo path: `governance-repo/modules/$ARGUMENTS/`
 Run the following and capture the output:
 
 ```bash
-find governance-repo/modules/$ARGUMENTS/packages/execution -type f -name "*.md" | sort
-find governance-repo/modules/$ARGUMENTS/packages/test -type f -name "*.md" | sort
+find governance/modules/$ARGUMENTS/packages/execution -type f -name "*.md" | sort
+find governance/modules/$ARGUMENTS/packages/test -type f -name "*.md" | sort
 ```
 
 From the scan results:
@@ -78,7 +78,7 @@ Record the weight and estimated task count for every sub found.
 ## Step 2 — Generate `execution-state.json`
 
 Create the file at:
-`governance-repo/modules/$ARGUMENTS/execution-state.json`
+`governance/modules/$ARGUMENTS/execution-state.json`
 
 ### Rules:
 - `module` = the module name from $ARGUMENTS
@@ -100,7 +100,7 @@ Create the file at:
   "generated_at": "[today's date]",
   "current_phase": "[FIRST_PHASE]",
   "current_sub": "[FIRST_SUB or null]",
-  "api_docs_path": "governance-repo/modules/[MODULE]/api-docs/",
+  "api_docs_path": "governance/modules/[MODULE]/api-docs/",
   "phases": [
     {
       "id": "[PHASE_NAME]",
@@ -194,7 +194,7 @@ Before writing a single line of code, assess the execution load.
 
 ### 0.1 — Read state and identify scope
 
-Read `governance-repo/modules/[MODULE]/execution-state.json`
+Read `governance/modules/[MODULE]/execution-state.json`
 Identify all PENDING subs in the requested phase.
 
 ### 0.2 — Look up sub weights from the Weight Map below
@@ -247,7 +247,7 @@ WAIT for user confirmation. Do not execute before confirmation.
 ### Per sub:
 
 1. Read sub file completely:
-   `governance-repo/modules/[MODULE]/packages/execution/[PHASE]/[SUB].md`
+   `governance/modules/[MODULE]/packages/execution/[PHASE]/[SUB].md`
    (if no sub → `[PHASE]/index.md`)
 2. Identify all tasks in the sub
 2.5. **[Frontend phases F1/F2/F3 only] API Contract Resolution** — see STEP 1.5
@@ -525,14 +525,14 @@ After generating all files (`execution-state.json`, `execute.md`,
 ══════════════════════════════════════════════════════
 MODULE SETUP COMPLETE: [MODULE]
 ══════════════════════════════════════════════════════
-execution-state.json  ✓  governance-repo/modules/[MODULE]/
+execution-state.json  ✓  governance/modules/[MODULE]/
 execute.md            ✓  .claude/commands/
 execute-test.md       ✓  .claude/commands/
 
 Phases detected       : [count]
 Total subs detected   : [count]
 F1/F2/F3 wired to api-docs (STEP 1.5) : ✓
-api_docs_path         : governance-repo/modules/[MODULE]/api-docs/
+api_docs_path         : governance/modules/[MODULE]/api-docs/
   (generated manually beforehand via api-doc-generator's
    `python3 generate.py --module [MODULE] --function generate` —
    this setup script does not check for it; execute.md's STEP 1.5
