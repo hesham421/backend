@@ -32,9 +32,9 @@ from datetime import datetime
 sys.path.insert(0, str(Path(__file__).parent))
 from config import (
     REPO_BASE_PATH,
-    PLAYWRIGHT_OUTPUT_BASE_PATH,
+    FRONTEND_OUTPUT_BASE_PATH,
     get_module_version_path,
-    get_playwright_module_version_path,
+    get_frontend_module_version_path,
     validate_module,
     load_modules_registry,
 )
@@ -317,41 +317,43 @@ def _safe_filename(marker_id: str) -> str:
     return marker_id.strip().replace(" ", "-") + ".md"
 
 
-def _guard_playwright_path(path: Path):
+def _guard_frontend_content_path(path: Path, content_label: str = "frontend-routed content"):
     """
-    Refuse to write PLAYWRIGHT test-phase content anywhere inside
-    backend/governance/ (REPO_BASE_PATH) — forbidden per the STRUCTURAL LAW
-    section in backend/CLAUDE.md and frontend/CLAUDE.md. This is a permanent
-    guardrail: it fires regardless of whether PLAYWRIGHT_OUTPUT_BASE_PATH or
-    a --playwright-output override is ever misconfigured back into
-    backend/governance/, so this specific bug cannot silently recur.
+    Refuse to write frontend-routed content (PLAYWRIGHT test scenarios, F1-F4
+    execution phases) anywhere inside backend/governance/ (REPO_BASE_PATH) —
+    forbidden per the STRUCTURAL LAW section in backend/CLAUDE.md and
+    frontend/CLAUDE.md. This is a permanent guardrail: it fires regardless of
+    whether FRONTEND_OUTPUT_BASE_PATH or a --frontend-output override is ever
+    misconfigured back into backend/governance/, so this specific bug cannot
+    silently recur for either content type.
     """
     resolved = path.resolve()
     forbidden_root = REPO_BASE_PATH.resolve()
     if resolved == forbidden_root or forbidden_root in resolved.parents:
         raise RuntimeError(
-            f"REFUSING TO WRITE PLAYWRIGHT CONTENT — resolved path\n"
+            f"REFUSING TO WRITE {content_label.upper()} — resolved path\n"
             f"    {resolved}\n"
             f"  is inside backend/governance/ ({forbidden_root}).\n"
-            f"  PLAYWRIGHT content must never live in backend/governance/ — see the\n"
+            f"  {content_label} must never live in backend/governance/ — see the\n"
             f"  STRUCTURAL LAW section in backend/CLAUDE.md and frontend/CLAUDE.md.\n"
-            f"  Check config.py's PLAYWRIGHT_OUTPUT_BASE_PATH and/or the\n"
-            f"  --playwright-output CLI argument."
+            f"  Check config.py's FRONTEND_OUTPUT_BASE_PATH and/or the\n"
+            f"  --frontend-output CLI argument."
         )
 
 
-def _display_dest(dest: Path, base: Path, playwright_base: Path) -> str:
+def _display_dest(dest: Path, base: Path, frontend_base: Path) -> str:
     """
     Show a write-plan destination relative to whichever root it actually
-    belongs under, tagging frontend-rooted (PLAYWRIGHT) paths explicitly so
-    a printed plan never silently implies everything lands under one tree.
+    belongs under, tagging frontend-rooted (PLAYWRIGHT / F1-F4) paths
+    explicitly so a printed plan never silently implies everything lands
+    under one tree.
     """
     try:
         return str(dest.relative_to(base))
     except ValueError:
         pass
     try:
-        return f"[frontend/governance] {dest.relative_to(playwright_base)}"
+        return f"[frontend/governance] {dest.relative_to(frontend_base)}"
     except ValueError:
         return str(dest)
 
@@ -398,18 +400,44 @@ PHASE_FOLDER_MAP = {
     "ALIGN":     "ALIGN",
 }
 
+# PHASE marker_ids whose content is frontend-*implementation* work — these
+# route to frontend_pkg_root (frontend/governance/), never pkg_root
+# (backend/governance/), per STRUCTURAL LAW. Everything else (CORE, DATA-DOM,
+# SVC-API, DOC, INT-C, INT-R, SEC, ALIGN) stays backend-routed.
+FRONTEND_PHASE_IDS = {"F1", "F2", "F3", "F4"}
 
-def stage2_split_execution(mod: str, version: int, state: dict, plan: dict | None, base: Path = None, dry_run: bool = False) -> bool:
-    """Split execution-plan.md into PHASE / SUB / API / XM package files."""
+
+def stage2_split_execution(mod: str, version: int, state: dict, plan: dict | None,
+                            base: Path = None, frontend_base: Path = None,
+                            dry_run: bool = False) -> bool:
+    """
+    Split execution-plan.md into PHASE / SUB / API / XM package files.
+
+    CORE/DATA-DOM/SVC-API/DOC/INT-C/INT-R/SEC/ALIGN are written under `base`
+    (backend/governance/), same as always. F1-F4 are written under a SEPARATE
+    root, `frontend_base` — defaults to
+    config.get_frontend_module_version_path(mod, version), i.e.
+    frontend/governance/modules/<MOD>/ — and is NEVER written under `base`.
+    See STRUCTURAL LAW in backend/CLAUDE.md / frontend/CLAUDE.md.
+    """
     if base is None:
         base = get_module_version_path(mod, version)
+    if frontend_base is None:
+        frontend_base = get_frontend_module_version_path(mod, version)
     exec_path = base / "P3" / "execution-plan.md"
     pkg_root = base / "packages" / "execution"
+    frontend_pkg_root = frontend_base / "packages" / "execution"
+
+    # Guard early, before any parsing/printing — refuse to proceed at all if
+    # the F1-F4 destination has been misconfigured back into backend/governance/.
+    _guard_frontend_content_path(frontend_pkg_root, "F1-F4 execution-phase content")
 
     print()
     print("═" * 70)
     print(f"  STAGE 2 — Split execution-plan.md")
     print(f"  Module : {mod}  (v{version})")
+    print(f"  Backend output  (CORE..INT-R, SEC, ALIGN) : {pkg_root}")
+    print(f"  Frontend output (F1-F4)                   : {frontend_pkg_root}")
     print("═" * 70)
     print()
 
@@ -426,8 +454,10 @@ def stage2_split_execution(mod: str, version: int, state: dict, plan: dict | Non
     write_plan = []
 
     for phase in phases:
+        is_frontend_phase = phase.marker_id in FRONTEND_PHASE_IDS
+        phase_pkg_root = frontend_pkg_root if is_frontend_phase else pkg_root
         folder_name = PHASE_FOLDER_MAP.get(phase.marker_id, phase.marker_id)
-        folder = pkg_root / folder_name
+        folder = phase_pkg_root / folder_name
 
         sub_blocks = [c for c in phase.children if c.kind == "sub"]
         api_count = len([a for a in flatten([phase]) if a.kind == "api"])
@@ -480,7 +510,7 @@ def stage2_split_execution(mod: str, version: int, state: dict, plan: dict | Non
     print(f"  Files to write: {len(write_plan)}")
     for w in write_plan[:15]:
         extra = f"  ({w['note']})" if w.get("note") else ""
-        print(f"    {w['dest'].relative_to(base)}{extra}")
+        print(f"    {_display_dest(w['dest'], base, frontend_base)}{extra}")
     if len(write_plan) > 15:
         print(f"    ... and {len(write_plan) - 15} more")
     print()
@@ -493,9 +523,17 @@ def stage2_split_execution(mod: str, version: int, state: dict, plan: dict | Non
         print("\n  Stage 2 cancelled — no files written.\n")
         return False
 
+    # Re-guard immediately before writing, in case anything upstream (a
+    # future code change, a bad --frontend-output value) let an F1-F4
+    # destination slip through — belt-and-suspenders around REPO_BASE_PATH.
+    for w in write_plan:
+        if frontend_pkg_root in w["dest"].parents or w["dest"].parent == frontend_pkg_root:
+            _guard_frontend_content_path(w["dest"], "F1-F4 execution-phase content")
+
     _execute_write_plan(write_plan)
 
-    print(f"\n  ✓ {len(write_plan)} files written to packages/execution/")
+    print(f"\n  ✓ {len(write_plan)} files written "
+          f"({pkg_root} for CORE..INT-R/SEC/ALIGN, {frontend_pkg_root} for F1-F4)")
     mark_stage_complete(state, 2)
     save_state(mod, version, state, base)
     print("  ✓ Stage 2 complete.\n")
@@ -507,29 +545,29 @@ def stage2_split_execution(mod: str, version: int, state: dict, plan: dict | Non
 # ─────────────────────────────────────────────────────────────────────────────
 
 def stage3_split_test(mod: str, version: int, state: dict, plan: dict | None,
-                       base: Path = None, playwright_base: Path = None,
+                       base: Path = None, frontend_base: Path = None,
                        dry_run: bool = False) -> bool:
     """
     Split test-plan.md into MARK / SUB / TC package files.
 
     JUNIT-type MARK content is written under `base` (backend/governance/),
     same as always. PLAYWRIGHT-type MARK content is written under a SEPARATE
-    root, `playwright_base` — defaults to
-    config.get_playwright_module_version_path(mod, version), i.e.
+    root, `frontend_base` — defaults to
+    config.get_frontend_module_version_path(mod, version), i.e.
     frontend/governance/modules/<MOD>/ — and is NEVER written under `base`.
     See STRUCTURAL LAW in backend/CLAUDE.md / frontend/CLAUDE.md.
     """
     if base is None:
         base = get_module_version_path(mod, version)
-    if playwright_base is None:
-        playwright_base = get_playwright_module_version_path(mod, version)
+    if frontend_base is None:
+        frontend_base = get_frontend_module_version_path(mod, version)
     test_path = base / "P3_5" / "test-plan.md"
     pkg_root = base / "packages" / "test"
-    playwright_pkg_root = playwright_base / "packages" / "test"
+    playwright_pkg_root = frontend_base / "packages" / "test"
 
     # Guard early, before any parsing/printing — refuse to proceed at all if
     # the PLAYWRIGHT destination has been misconfigured back into backend/governance/.
-    _guard_playwright_path(playwright_pkg_root)
+    _guard_frontend_content_path(playwright_pkg_root, "PLAYWRIGHT test-phase content")
 
     print()
     print("═" * 70)
@@ -602,7 +640,7 @@ def stage3_split_test(mod: str, version: int, state: dict, plan: dict | None,
     print(f"  Files to write: {len(write_plan)}")
     for w in write_plan[:15]:
         extra = f"  ({w['note']})" if w.get("note") else ""
-        print(f"    {_display_dest(w['dest'], base, playwright_base)}{extra}")
+        print(f"    {_display_dest(w['dest'], base, frontend_base)}{extra}")
     if len(write_plan) > 15:
         print(f"    ... and {len(write_plan) - 15} more")
     print()
@@ -616,11 +654,11 @@ def stage3_split_test(mod: str, version: int, state: dict, plan: dict | None,
         return False
 
     # Re-guard immediately before writing, in case anything upstream (a
-    # future code change, a bad --playwright-output value) let a PLAYWRIGHT
+    # future code change, a bad --frontend-output value) let a PLAYWRIGHT
     # destination slip through — belt-and-suspenders around REPO_BASE_PATH.
     for w in write_plan:
         if playwright_pkg_root in w["dest"].parents or w["dest"].parent == playwright_pkg_root:
-            _guard_playwright_path(w["dest"])
+            _guard_frontend_content_path(w["dest"], "PLAYWRIGHT test-phase content")
 
     _execute_write_plan(write_plan)
 
@@ -844,16 +882,16 @@ def stage5_verify(mod: str, version: int, state: dict, base: Path = None) -> boo
 # ─────────────────────────────────────────────────────────────────────────────
 
 def run_stage(stage: int, mod: str, version: int, state: dict, plan: dict | None,
-              base: Path = None, playwright_base: Path = None, dry_run: bool = False) -> tuple[bool, dict | None]:
+              base: Path = None, frontend_base: Path = None, dry_run: bool = False) -> tuple[bool, dict | None]:
     """Run a single stage. Returns (success, plan_for_next_stage)."""
     if stage == 1:
         result_plan = stage1_parse_and_plan(mod, version, state, base)
         return (result_plan is not None), result_plan
     elif stage == 2:
-        ok = stage2_split_execution(mod, version, state, plan, base, dry_run=dry_run)
+        ok = stage2_split_execution(mod, version, state, plan, base, frontend_base, dry_run=dry_run)
         return ok, plan
     elif stage == 3:
-        ok = stage3_split_test(mod, version, state, plan, base, playwright_base, dry_run=dry_run)
+        ok = stage3_split_test(mod, version, state, plan, base, frontend_base, dry_run=dry_run)
         return ok, plan
     elif stage == 4:
         ok = stage4_generate_index(mod, version, state, base)
@@ -875,13 +913,15 @@ def main():
                         help="Module version (default: current version from registry)")
     parser.add_argument("--output", "-o", default=None,
                         help="Override output base path for the module (e.g. /path/to/modules/ORG). "
-                             "Affects execution/ output and JUNIT test output. Does NOT affect "
-                             "PLAYWRIGHT output — use --playwright-output for that, separately.")
-    parser.add_argument("--playwright-output", default=None,
-                        help="Override output base path specifically for PLAYWRIGHT test-phase "
-                             "content (e.g. /path/to/frontend/governance/modules/ORG). Independent "
-                             "of --output. Defaults to config.PLAYWRIGHT_OUTPUT_BASE_PATH's module "
-                             "path (frontend/governance/modules/<MOD>/) — never backend/governance/.")
+                             "Affects CORE..INT-R/SEC/ALIGN execution output and JUNIT test output. "
+                             "Does NOT affect F1-F4 or PLAYWRIGHT output — use --frontend-output for "
+                             "those, separately.")
+    parser.add_argument("--frontend-output", default=None,
+                        help="Override output base path specifically for frontend-routed content: "
+                             "F1-F4 execution phases AND PLAYWRIGHT test-phase content (e.g. "
+                             "/path/to/frontend/governance/modules/ORG). Independent of --output. "
+                             "Defaults to config.FRONTEND_OUTPUT_BASE_PATH's module path "
+                             "(frontend/governance/modules/<MOD>/) — never backend/governance/.")
     parser.add_argument("--stage", "-s", type=int, choices=[1, 2, 3, 4, 5],
                         help="Run a single stage only.")
     parser.add_argument("--resume", "-r", action="store_true",
@@ -909,7 +949,7 @@ def main():
         version = registry.get("modules", {}).get(mod, {}).get("current_version") or 1
 
     override_base = Path(args.output).resolve() if args.output else None
-    playwright_override_base = Path(args.playwright_output).resolve() if args.playwright_output else None
+    frontend_override_base = Path(args.frontend_output).resolve() if args.frontend_output else None
 
     if args.status:
         print_status(mod, version, override_base)
@@ -935,7 +975,7 @@ def main():
             if not ok:
                 sys.exit(1)
         ok, _ = run_stage(args.stage, mod, version, state, plan, base,
-                           playwright_override_base, dry_run=args.dry_run)
+                           frontend_override_base, dry_run=args.dry_run)
         sys.exit(0 if ok else 1)
 
     # ── Resume mode ───────────────────────────────────────────────────────────
@@ -957,7 +997,7 @@ def main():
     plan = None
     for stage in stages_to_run:
         ok, plan = run_stage(stage, mod, version, state, plan, base,
-                              playwright_override_base, dry_run=args.dry_run)
+                              frontend_override_base, dry_run=args.dry_run)
         if not ok:
             print(f"  Stopped at Stage {stage}. Re-run with --resume to continue once fixed.\n")
             sys.exit(1)

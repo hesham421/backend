@@ -13,8 +13,14 @@ Before writing a single line of code, assess the execution load.
 
 ### 0.1 — Read state and identify scope
 
-Read `governance/modules/FILESVC/execution-state.json`
-Identify all PENDING subs in the requested phase.
+Path depends on the requested PHASE — backend and frontend phases have
+SEPARATE state files (STRUCTURAL LAW):
+- **CORE, DATAOM, SVCAPI, DOC, INTC, INTR, SEC, ALIGN** → read
+  `governance/modules/FILESVC/execution-state.json` (this repo)
+- **F1, F2, F3, F4** → read
+  `../frontend/governance/modules/FILESVC/execution-state.json` (sibling repo)
+
+Identify all PENDING subs in the requested phase, from whichever file owns it.
 
 ### 0.2 — Look up sub weights from the Weight Map below
 
@@ -65,19 +71,31 @@ WAIT for user confirmation. Do not execute before confirmation.
 ### Per sub:
 
 1. Read sub file completely:
-   `governance/modules/FILESVC/packages/execution/[PHASE]/[SUB].md`
+   - **CORE, DATAOM, SVCAPI, DOC, INTC, INTR, SEC, ALIGN** →
+     `governance/modules/FILESVC/packages/execution/[PHASE]/[SUB].md` (this repo)
+   - **F1, F2, F3, F4** →
+     `../frontend/governance/modules/FILESVC/packages/execution/[PHASE]/[SUB].md` (sibling repo)
 2. Identify all tasks in the sub
 2.5. **[Frontend phases F1/F2/F3 only] API Contract Resolution** — see STEP 1.5
    below. Resolve every endpoint contract this sub's tasks depend on BEFORE
-   writing implementation code for those tasks.
+   writing implementation code for those tasks. (F4 is routing/component
+   wiring only — no new API contracts to resolve, per this module's own
+   execution history.)
 3. Map each task to skill routing table in CLAUDE.md
 4. Read required skills from `.github/skills/`
 5. Execute all tasks in strict order
 6. After last task → run `validate-backend-feature` or `validate-frontend-feature`
-7. Update `execution-state.json`:
+7. Update `execution-state.json` — the SAME file read in STEP 0.1 for this
+   phase (backend file for CORE..INTR/SEC/ALIGN, frontend file for F1-F4):
    - Mark sub as COMPLETE
    - Set `current_sub` to next PENDING sub in same phase
    - If no more subs → mark phase COMPLETE, set `current_phase` to next PENDING phase
+     in THAT FILE's own phases[] (or `"COMPLETE"` if that was the last phase
+     this file owns — the OTHER file's own current_phase is untouched)
+   - **If the phase just completed was ALIGN**: also update the mirrored
+     `align_status` field in `../frontend/governance/modules/FILESVC/execution-state.json`
+     to match — the ONE field ALIGN's completion writes into the other
+     repo's file. Never update any other field in the other file.
 
 ### Blocked items — OQ / XM DEFERRED:
 - OQ-blocked → skip, add to `blocked[]` in state

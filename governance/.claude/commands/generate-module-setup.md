@@ -2,10 +2,13 @@
 
 ## Your Task
 
-Scan the governance repo for the specified module and generate three files:
-1. `.claude/commands/execute.md` — the slash command for implementation phase execution
+Scan the governance repo for the specified module and generate four files:
+1. `.claude/commands/execute.md` — the slash command for implementation phase execution (CORE..INT-R, SEC, ALIGN backend-side; F1-F4 frontend-side)
 2. `.claude/commands/execute-test.md` — the slash command for test phase execution (JUNIT / PLAYWRIGHT), gated on execute.md's phases
-3. `governance/modules/[MODULE]/execution-state.json` — current state tracker for both
+3. `governance/modules/[MODULE]/execution-state.json` — state tracker for backend-owned phases (CORE..INT-R, SEC, ALIGN) and JUNIT
+4. `../frontend/governance/modules/[MODULE]/execution-state.json` — state tracker for frontend-owned phases (F1-F4) and PLAYWRIGHT, plus a read-only `align_status` mirrored from file #3
+
+Per STRUCTURAL LAW (see `backend/CLAUDE.md`/`frontend/CLAUDE.md`), F1-F4 execution-phase content and PLAYWRIGHT test-phase content both live in `frontend/governance/`, never `backend/governance/` — everything else stays here. This applies to both the split package files AND `execution-state.json` itself, which is why there are now two state files instead of one.
 
 Both generated commands reference `TEST-EXECUTION-AGENT.md`
 for MCP boundaries and the failure taxonomy — that file is shared across
@@ -23,34 +26,47 @@ Governance repo path: `governance/modules/$ARGUMENTS/`
 
 ## Step 1 — Scan the governance repo structure
 
-Run the following and capture the output. Two SEPARATE scans are required —
-JUNIT and PLAYWRIGHT test content live in different repos post-split
-(STRUCTURAL LAW: `backend/governance/` owns execution phases + JUNIT;
-`frontend/governance/` owns PLAYWRIGHT only) — a single scan rooted in this
-repo will NEVER find PLAYWRIGHT content, even when it genuinely exists:
+Run the following and capture the output. THREE separate scans are required
+— F1-F4 execution phases and PLAYWRIGHT test content both live in
+frontend/governance/ post-split (STRUCTURAL LAW: `backend/governance/` owns
+CORE..INT-R/SEC/ALIGN + JUNIT; `frontend/governance/` owns F1-F4 +
+PLAYWRIGHT only) — scans rooted in this repo will NEVER find either, even
+when they genuinely exist:
 
 ```bash
-# Execution phases + JUNIT test scenarios — this repo (backend/governance/)
-find governance/modules/$ARGUMENTS/packages/execution -type f -name "*.md" | sort
+# CORE..INT-R/SEC/ALIGN execution phases + JUNIT test scenarios — this repo (backend/governance/)
+find governance/modules/$ARGUMENTS/packages/execution -maxdepth 1 -mindepth 1 -type d ! \( -name "F1" -o -name "F2" -o -name "F3" -o -name "F4" \) | sort
+find governance/modules/$ARGUMENTS/packages/execution -type f -name "*.md" | grep -vE "/F[1-4]/" | sort
 find governance/modules/$ARGUMENTS/packages/test/JUNIT -type f -name "*.md" | sort
+
+# F1-F4 execution phases — sibling repo (frontend/governance/), NOT this repo
+find ../frontend/governance/modules/$ARGUMENTS/packages/execution/F1 -type f -name "*.md" 2>/dev/null | sort
+find ../frontend/governance/modules/$ARGUMENTS/packages/execution/F2 -type f -name "*.md" 2>/dev/null | sort
+find ../frontend/governance/modules/$ARGUMENTS/packages/execution/F3 -type f -name "*.md" 2>/dev/null | sort
+find ../frontend/governance/modules/$ARGUMENTS/packages/execution/F4 -type f -name "*.md" 2>/dev/null | sort
 
 # PLAYWRIGHT test scenarios — sibling repo (frontend/governance/), NOT this repo
 find ../frontend/governance/modules/$ARGUMENTS/packages/test/PLAYWRIGHT -type f -name "*.md" | sort
 ```
 
-If the `../frontend/governance/modules/$ARGUMENTS/packages/test/PLAYWRIGHT`
-scan finds nothing, that's a real "no PLAYWRIGHT content for this module yet"
-result — but only if you actually ran that scan. Never infer "no PLAYWRIGHT"
-from the first two (backend-rooted) scans alone; they cannot see it either way.
+If a `../frontend/governance/modules/$ARGUMENTS/...` scan finds nothing,
+that's a real "no F1-F4 / PLAYWRIGHT content for this module yet" result —
+but only if you actually ran that scan. Never infer "no F1-F4" or "no
+PLAYWRIGHT" from the backend-rooted scans alone; they cannot see either one
+either way.
 
 From the scan results:
-- Identify all PHASES (top-level folders under `packages/execution/`)
+- Identify all PHASES (top-level folders under `packages/execution/` in
+  EITHER repo — CORE..INT-R/SEC/ALIGN here, F1-F4 in frontend/governance/)
 - For each PHASE, identify all SUBs (files inside the phase folder, excluding `index.md`)
 - Preserve the exact order from the filesystem sort
 - For each SUB file, read the first 40 lines and count the number of tasks
 
 Expected phases (in strict execution order):
 `CORE → DATA-DOM → SVC-API → DOC → INT-C → INT-R → F1 → F2 → F3 → SEC → ALIGN`
+(F1-F4 physically live in `frontend/governance/`, but still execute in this
+same overall sequence — the phase ORDER is one continuous pipeline even
+though the FILES that implement it are split across two repos.)
 
 Only include phases that actually exist in the scanned structure.
 
@@ -89,30 +105,42 @@ Record the weight and estimated task count for every sub found.
 
 ---
 
-## Step 2 — Generate `execution-state.json`
+## Step 2 — Generate TWO `execution-state.json` files
 
+Per STRUCTURAL LAW, backend-owned phases (CORE..INT-R, SEC, ALIGN) and
+JUNIT get their own state file in this repo; frontend-owned phases (F1-F4)
+and PLAYWRIGHT get a SEPARATE state file in `frontend/governance/`. This
+mirrors the same principle already applied to the package files themselves
+— it is not optional, and it is not a reference copy of one shared file;
+each file owns disjoint fields.
+
+### Shared rules (both files)
+- `module` = the module name from $ARGUMENTS
+- `current_phase` = first non-`COMPLETE` phase in THAT FILE's own `phases[]`
+  (each file only ever names phases it owns); if every phase in the file is
+  `COMPLETE`, use the literal string `"COMPLETE"` with `current_sub: null`
+  (this is an existing convention already used elsewhere in this pipeline,
+  not a new invention)
+- `current_sub` = first sub of `current_phase` (null if that phase has no subs)
+- All phases/subs start as `PENDING`
+- If a phase has only `index.md` and no sub files → `"subs": []`
+- `blocked`, `deferred_xm`, and `api_doc_gaps` entries route by their own
+  `phase` field: an entry whose `phase` names an F1-F4 phase goes in the
+  frontend file; everything else (including entries with no `phase` field
+  at all) goes in the backend file
+- `test_phases` follows the exact same shape as `phases` — JUNIT lives in
+  the backend file, PLAYWRIGHT lives in the frontend file, each with its own
+  `gated_by_phases[]` / `header_file` / `mandatory_file`
+
+### Step 2a — Backend file
 Create the file at:
 `governance/modules/$ARGUMENTS/execution-state.json`
 
-### Rules:
-- `module` = the module name from $ARGUMENTS
-- `current_phase` = first phase found in scan (status will be PENDING or IN_PROGRESS)
-- `current_sub` = first sub of the first phase (null if phase has no subs)
-- All phases start as `PENDING`
-- All subs inside phases start as `PENDING`
-- If a phase has only `index.md` and no sub files → `"subs": []`
-- `blocked`, `deferred_xm`, and `api_doc_gaps` start as empty arrays
-- `test_phases` follows the exact same shape as `phases` — one entry per
-  TEST-PHASE found (JUNIT / PLAYWRIGHT), each starting `PENDING`, each sub
-  starting `PENDING`, plus a `gated_by_phases` list (only phases that
-  actually exist for this module) and `header_file` / `mandatory_file` paths
-
-### Format:
 ```json
 {
   "module": "[MODULE]",
   "generated_at": "[today's date]",
-  "current_phase": "[FIRST_PHASE]",
+  "current_phase": "[FIRST_BACKEND_PHASE]",
   "current_sub": "[FIRST_SUB or null]",
   "api_docs_path": "governance/modules/[MODULE]/api-docs/",
   "phases": [
@@ -135,13 +163,45 @@ Create the file at:
         { "id": "API-SCENARIOS", "status": "PENDING" },
         { "id": "RULE-SCENARIOS", "status": "PENDING" }
       ]
-    },
+    }
+  ],
+  "blocked": [],
+  "deferred_xm": [],
+  "api_doc_gaps": []
+}
+```
+`phases[]` here only ever contains CORE, DATA-DOM, SVC-API, DOC, INT-C,
+INT-R, SEC, ALIGN — never F1-F4.
+
+### Step 2b — Frontend file
+Create the file at:
+`../frontend/governance/modules/$ARGUMENTS/execution-state.json`
+(a NEW file — this repo currently has none)
+
+```json
+{
+  "module": "[MODULE]",
+  "generated_at": "[today's date, same as the backend file]",
+  "current_phase": "[FIRST_FRONTEND_PHASE, e.g. F1 — or \"COMPLETE\" if this module has no F1-F4 at all]",
+  "current_sub": "[FIRST_SUB or null]",
+  "api_docs_path": "../backend/governance/modules/[MODULE]/api-docs/",
+  "align_status": "PENDING",
+  "phases": [
+    {
+      "id": "F1",
+      "status": "PENDING",
+      "subs": [
+        { "id": "[SUB_NAME]", "status": "PENDING" }
+      ]
+    }
+  ],
+  "test_phases": [
     {
       "id": "PLAYWRIGHT",
       "status": "PENDING",
       "gated_by_phases": ["F1", "F2", "F3"],
-      "header_file": "../frontend/governance/modules/[MODULE]/packages/test/PLAYWRIGHT/PLAYWRIGHT-HEADER.md",
-      "mandatory_file": "../frontend/governance/modules/[MODULE]/packages/test/PLAYWRIGHT/MANDATORY-P.md",
+      "header_file": "packages/test/PLAYWRIGHT/PLAYWRIGHT-HEADER.md",
+      "mandatory_file": "packages/test/PLAYWRIGHT/MANDATORY-P.md",
       "subs": [
         { "id": "INT-FLOW", "status": "PENDING" },
         { "id": "UI-FLOWS", "status": "PENDING" }
@@ -153,15 +213,29 @@ Create the file at:
   "api_doc_gaps": []
 }
 ```
+`phases[]` here only ever contains F1, F2, F3, F4 (whichever this module
+actually has — some modules have no F4). PLAYWRIGHT's `header_file` /
+`mandatory_file` are relative to THIS file's own repo root (no
+`../frontend/...` prefix needed here — they already live in this repo).
+
+**`align_status`** is a MIRRORED, READ-ONLY field — copied from the backend
+file's `ALIGN` phase status at generation time (`"PENDING"` for a brand-new
+module, since ALIGN hasn't run yet). It exists so a frontend-only agent can
+confirm ALIGN's gate result without opening `backend/`. Comment this
+explicitly wherever it's set: **"mirrored from backend — do not hand-edit
+here, source of truth is backend/governance/modules/[MODULE]/execution-state.json"**.
+Whichever agent updates the backend file's ALIGN status must also update
+this mirrored copy in the same session — it does not update itself.
 
 ### `test_phases[].gated_by_phases` rule
-Only list phases that actually exist in this module's `phases[]` (e.g. a
+Only list phases that actually exist in this module's OWN `phases[]` (e.g. a
 backend-only module has no F1/F2/F3, so PLAYWRIGHT would have an empty
 `gated_by_phases: []` — treat an empty list as "always gated open", i.e.
 nothing to wait for, since there's no frontend to test).
 
 ### `api_doc_gaps[]` entry format (populated only during F1/F2/F3 execution —
-see execute.md STEP 1.5 — when a needed detail is not in api-docs at all):
+see execute.md STEP 1.5 — when a needed detail is not in api-docs at all).
+Written into whichever file owns the phase named:
 ```json
 {
   "type": "MISSING_IN_DOCS",
@@ -208,8 +282,14 @@ Before writing a single line of code, assess the execution load.
 
 ### 0.1 — Read state and identify scope
 
-Read `governance/modules/[MODULE]/execution-state.json`
-Identify all PENDING subs in the requested phase.
+Path depends on the requested PHASE — backend and frontend phases now have
+SEPARATE state files (STRUCTURAL LAW):
+- **CORE, DATA-DOM, SVC-API, DOC, INT-C, INT-R, SEC, ALIGN** → read
+  `governance/modules/[MODULE]/execution-state.json` (this repo)
+- **F1, F2, F3, F4** → read
+  `../frontend/governance/modules/[MODULE]/execution-state.json` (sibling repo)
+
+Identify all PENDING subs in the requested phase, from whichever file owns it.
 
 ### 0.2 — Look up sub weights from the Weight Map below
 
@@ -261,8 +341,12 @@ WAIT for user confirmation. Do not execute before confirmation.
 ### Per sub:
 
 1. Read sub file completely:
-   `governance/modules/[MODULE]/packages/execution/[PHASE]/[SUB].md`
-   (if no sub → `[PHASE]/index.md`)
+   - **CORE, DATA-DOM, SVC-API, DOC, INT-C, INT-R, SEC, ALIGN** →
+     `governance/modules/[MODULE]/packages/execution/[PHASE]/[SUB].md`
+     (this repo; if no sub → `[PHASE]/index.md`)
+   - **F1, F2, F3, F4** →
+     `../frontend/governance/modules/[MODULE]/packages/execution/[PHASE]/[SUB].md`
+     (sibling repo; if no sub → `[PHASE]/index.md`)
 2. Identify all tasks in the sub
 2.5. **[Frontend phases F1/F2/F3 only] API Contract Resolution** — see STEP 1.5
    below. Resolve every endpoint contract this sub's tasks depend on BEFORE
@@ -271,10 +355,17 @@ WAIT for user confirmation. Do not execute before confirmation.
 4. Read required skills from `.github/skills/`
 5. Execute all tasks in strict order
 6. After last task → run `validate-backend-feature` or `validate-frontend-feature`
-7. Update `execution-state.json`:
+7. Update `execution-state.json` — the SAME file read in STEP 0.1 for this
+   phase (backend file for CORE..INT-R/SEC/ALIGN, frontend file for F1-F4):
    - Mark sub as COMPLETE
    - Set `current_sub` to next PENDING sub in same phase
    - If no more subs → mark phase COMPLETE, set `current_phase` to next PENDING phase
+     in THAT FILE's own phases[] (or `"COMPLETE"` if this was the last phase this
+     file owns — the OTHER file's own current_phase is not touched by this step)
+   - **If the phase just completed was ALIGN**: also update the mirrored
+     `align_status` field in `../frontend/governance/modules/[MODULE]/execution-state.json`
+     to match — this is the ONE field ALIGN's completion writes into the
+     other repo's file. Never update any other field in the other file.
 
 ### Blocked items — OQ / XM DEFERRED:
 - OQ-blocked → skip, add to `blocked[]` in state
@@ -441,8 +532,23 @@ what the implementation has actually completed.
 
 ### 0.1 — Gate Check (MANDATORY, before anything else)
 
-Read `execution-state.json` → find `test_phases[]` entry matching `[JUNIT|PLAYWRIGHT]`.
-For every phase id in its `gated_by_phases[]`, confirm `phases[].status == COMPLETE`.
+`test_phases[]` entries now live in different files per STRUCTURAL LAW —
+read the one that owns the requested TEST-PHASE:
+- **JUNIT** → `governance/modules/[MODULE]/execution-state.json` (this repo)
+- **PLAYWRIGHT** → `../frontend/governance/modules/[MODULE]/execution-state.json` (sibling repo)
+
+Find the `test_phases[]` entry matching `[JUNIT|PLAYWRIGHT]` in that file.
+For every phase id in its `gated_by_phases[]`, confirm `phases[].status ==
+COMPLETE` — but look up each gating phase's status in WHICHEVER file owns
+that phase name, not necessarily the same file you just read: JUNIT's gating
+phases (CORE, DATA-DOM, SVC-API, DOC, INT-C, INT-R) are all in the backend
+file; PLAYWRIGHT's gating phases (F1, F2, F3) are all in the frontend file.
+In practice this means: JUNIT's gate check reads one file throughout;
+PLAYWRIGHT's gate check reads the frontend file for both the TEST-PHASE
+entry itself AND every one of its gating phases (F1-F4 never appear in the
+backend file at all, so there's no cross-file lookup needed for PLAYWRIGHT
+specifically — this note exists so a future TEST-PHASE with mixed gating
+phases doesn't get silently mishandled).
 
 If `gated_by_phases` is empty → gate passes automatically (nothing to wait for).
 
@@ -504,7 +610,8 @@ JUNIT and PLAYWRIGHT content live in different repos (STRUCTURAL LAW):
    - **PLAYWRIGHT** → `playwright-mcp`, per the shared MCP execution order
      (oracle-sql precondition → playwright-mcp execute → oracle-sql confirm → screenshot on failure)
 5. Classify every failure/skip using the shared taxonomy — never invent a new code
-6. Update `execution-state.json`:
+6. Update `execution-state.json` — the SAME file read in STEP 0.1 for this
+   TEST-PHASE (backend file for JUNIT, frontend file for PLAYWRIGHT):
    - Mark sub as COMPLETE (or FAILED if any scenario in it failed and isn't recoverable)
    - Set next PENDING sub in the same TEST-PHASE
    - If no more subs → mark TEST-PHASE COMPLETE
@@ -539,18 +646,21 @@ If any scenario ended `FAIL`, hand the report path to
 
 ## Step 4 — Verify and report
 
-After generating all files (`execution-state.json`, `execute.md`,
+After generating all files (two `execution-state.json` files, `execute.md`,
 `execute-test.md`), print:
 
 ```
 ══════════════════════════════════════════════════════
 MODULE SETUP COMPLETE: [MODULE]
 ══════════════════════════════════════════════════════
-execution-state.json  ✓  governance/modules/[MODULE]/
+execution-state.json (backend)   ✓  governance/modules/[MODULE]/
+                                     — CORE..INT-R, SEC, ALIGN, JUNIT
+execution-state.json (frontend)  ✓  ../frontend/governance/modules/[MODULE]/
+                                     — F1-F4, PLAYWRIGHT, align_status mirror
 execute.md            ✓  .claude/commands/
 execute-test.md       ✓  .claude/commands/
 
-Phases detected       : [count]
+Phases detected       : [count]  (backend: [N], frontend F1-F4: [N])
 Total subs detected   : [count]
 F1/F2/F3 wired to api-docs (STEP 1.5) : ✓
 api_docs_path         : governance/modules/[MODULE]/api-docs/
@@ -558,11 +668,15 @@ api_docs_path         : governance/modules/[MODULE]/api-docs/
    `python3 generate.py --module [MODULE] --function generate` —
    this setup script does not check for it; execute.md's STEP 1.5
    reads it directly during F1/F2/F3, falling back to backend source
-   only when a detail is missing from it)
+   only when a detail is missing from it. The frontend execution-state.json
+   also carries this same api_docs_path, qualified as
+   ../backend/governance/modules/[MODULE]/api-docs/, since api-docs stays
+   backend-generated even though F1-F4 execution now runs from the
+   frontend-owned state file.)
 
 Test phases detected  : [JUNIT ✓ / PLAYWRIGHT ✓ / neither found]
-  JUNIT      gated by : [phases found, e.g. CORE, DATA-DOM, SVC-API...]
-  PLAYWRIGHT gated by : [phases found, e.g. F1, F2, F3]
+  JUNIT      gated by : [phases found, e.g. CORE, DATA-DOM, SVC-API...] (backend file)
+  PLAYWRIGHT gated by : [phases found, e.g. F1, F2, F3] (frontend file)
 
 Weight map:
   [PHASE] / [SUB]  → [LIGHT/MEDIUM/HEAVY/XL]  ([N] tasks)

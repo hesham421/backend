@@ -9,15 +9,24 @@
       "id": "CORE",
       "status": "COMPLETE",
       "subs": [
-        { "id": "CORE", "status": "COMPLETE" }
+        {
+          "id": "CORE",
+          "status": "COMPLETE"
+        }
       ]
     },
     {
       "id": "DATA-DOM",
       "status": "COMPLETE",
       "subs": [
-        { "id": "DATA-DOM-CORE-ENTITIES", "status": "COMPLETE" },
-        { "id": "DATA-DOM-HEADER", "status": "COMPLETE" }
+        {
+          "id": "DATA-DOM-CORE-ENTITIES",
+          "status": "COMPLETE"
+        },
+        {
+          "id": "DATA-DOM-HEADER",
+          "status": "COMPLETE"
+        }
       ]
     },
     {
@@ -56,70 +65,40 @@
       "id": "INT-C",
       "status": "PENDING",
       "subs": [
-        { "id": "INT-C", "status": "PENDING" }
+        {
+          "id": "INT-C",
+          "status": "PENDING"
+        }
       ]
     },
     {
       "id": "INT-R",
       "status": "PENDING",
       "subs": [
-        { "id": "INT-R", "status": "PENDING" }
-      ]
-    },
-    {
-      "id": "F1",
-      "status": "PENDING",
-      "subs": [
-        { "id": "F1-HEADER", "status": "PENDING" },
-        { "id": "F1-SCR-ORG-001", "status": "PENDING" },
-        { "id": "F1-SCR-ORG-002", "status": "PENDING" },
-        { "id": "F1-SCR-ORG-003", "status": "PENDING" },
-        { "id": "F1-SCR-ORG-004", "status": "PENDING" },
-        { "id": "F1-SCR-ORG-005", "status": "PENDING" },
-        { "id": "F1-SCR-ORG-006", "status": "PENDING" },
-        { "id": "F1-SCR-ORG-007", "status": "PENDING" }
-      ]
-    },
-    {
-      "id": "F2",
-      "status": "PENDING",
-      "subs": [
-        { "id": "F2-HEADER", "status": "PENDING" },
-        { "id": "F2-SCR-ORG-001", "status": "PENDING" },
-        { "id": "F2-SCR-ORG-002", "status": "PENDING" },
-        { "id": "F2-SCR-ORG-003", "status": "PENDING" },
-        { "id": "F2-SCR-ORG-004", "status": "PENDING" },
-        { "id": "F2-SCR-ORG-005", "status": "PENDING" },
-        { "id": "F2-SCR-ORG-006", "status": "PENDING" },
-        { "id": "F2-SCR-ORG-007", "status": "PENDING" }
-      ]
-    },
-    {
-      "id": "F3",
-      "status": "PENDING",
-      "subs": [
-        { "id": "F3-HEADER", "status": "PENDING" },
-        { "id": "F3-SCR-ORG-001", "status": "PENDING" },
-        { "id": "F3-SCR-ORG-002", "status": "PENDING" },
-        { "id": "F3-SCR-ORG-003", "status": "PENDING" },
-        { "id": "F3-SCR-ORG-004", "status": "PENDING" },
-        { "id": "F3-SCR-ORG-005", "status": "PENDING" },
-        { "id": "F3-SCR-ORG-006", "status": "PENDING" },
-        { "id": "F3-SCR-ORG-007", "status": "PENDING" }
+        {
+          "id": "INT-R",
+          "status": "PENDING"
+        }
       ]
     },
     {
       "id": "SEC",
       "status": "PENDING",
       "subs": [
-        { "id": "SEC", "status": "PENDING" }
+        {
+          "id": "SEC",
+          "status": "PENDING"
+        }
       ]
     },
     {
       "id": "ALIGN",
       "status": "PENDING",
       "subs": [
-        { "id": "ALIGN", "status": "PENDING" }
+        {
+          "id": "ALIGN",
+          "status": "PENDING"
+        }
       ]
     }
   ],
@@ -127,23 +106,25 @@
     {
       "id": "JUNIT",
       "status": "PENDING",
-      "gated_by_phases": ["CORE", "DATA-DOM", "SVC-API", "DOC", "INT-C", "INT-R"],
+      "gated_by_phases": [
+        "CORE",
+        "DATA-DOM",
+        "SVC-API",
+        "DOC",
+        "INT-C",
+        "INT-R"
+      ],
       "header_file": "packages/test/JUNIT/JUNIT-HEADER.md",
       "mandatory_file": "packages/test/JUNIT/MANDATORY-J.md",
       "subs": [
-        { "id": "API-SCENARIOS", "status": "PENDING" },
-        { "id": "RULE-SCENARIOS", "status": "PENDING" }
-      ]
-    },
-    {
-      "id": "PLAYWRIGHT",
-      "status": "PENDING",
-      "gated_by_phases": ["F1", "F2", "F3"],
-      "header_file": "packages/test/PLAYWRIGHT/PLAYWRIGHT-HEADER.md",
-      "mandatory_file": "packages/test/PLAYWRIGHT/MANDATORY-P.md",
-      "subs": [
-        { "id": "INT-FLOW", "status": "PENDING" },
-        { "id": "UI-FLOWS", "status": "PENDING" }
+        {
+          "id": "API-SCENARIOS",
+          "status": "PENDING"
+        },
+        {
+          "id": "RULE-SCENARIOS",
+          "status": "PENDING"
+        }
       ]
     }
   ],

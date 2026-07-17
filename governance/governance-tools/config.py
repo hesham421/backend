@@ -15,13 +15,14 @@ import json
 
 REPO_BASE_PATH = Path("/Users/ezzat/my project/backend/governance")
 
-# PLAYWRIGHT test-phase content is split out to the frontend repo by design
-# (see the STRUCTURAL LAW section in backend/CLAUDE.md and frontend/CLAUDE.md —
-# PLAYWRIGHT scenarios must never live under REPO_BASE_PATH/backend/governance/).
-# This is a SEPARATE root, not derived from REPO_BASE_PATH, so the two can
-# never accidentally collapse into one. Same hardcoded-absolute-path
-# convention as REPO_BASE_PATH: update by hand if this checkout ever moves.
-PLAYWRIGHT_OUTPUT_BASE_PATH = Path("/Users/ezzat/my project/frontend/governance")
+# PLAYWRIGHT test-phase content AND F1-F4 execution-phase content are both
+# split out to the frontend repo by design (see the STRUCTURAL LAW section in
+# backend/CLAUDE.md and frontend/CLAUDE.md — neither may ever live under
+# REPO_BASE_PATH/backend/governance/). This is a SEPARATE root, not derived
+# from REPO_BASE_PATH, so the two can never accidentally collapse into one.
+# Same hardcoded-absolute-path convention as REPO_BASE_PATH: update by hand
+# if this checkout ever moves.
+FRONTEND_OUTPUT_BASE_PATH = Path("/Users/ezzat/my project/frontend/governance")
 
 # ─────────────────────────────────────────────
 # MODULES — All known module codes
@@ -100,12 +101,14 @@ def get_module_version_path(mod: str, version: "int | None" = None) -> Path:
         return REPO_BASE_PATH / "modules" / mod
     return REPO_BASE_PATH / "modules" / mod / f"v{version}"
 
-def get_playwright_module_version_path(mod: str, version: "int | None" = None) -> Path:
+def get_frontend_module_version_path(mod: str, version: "int | None" = None) -> Path:
     """
     Mirror of get_module_version_path(), but rooted at
-    PLAYWRIGHT_OUTPUT_BASE_PATH (frontend/governance/) instead of
-    REPO_BASE_PATH (backend/governance/). Used ONLY for PLAYWRIGHT
-    test-phase output — see agent3_splitter.py Stage 3.
+    FRONTEND_OUTPUT_BASE_PATH (frontend/governance/) instead of
+    REPO_BASE_PATH (backend/governance/). Used for PLAYWRIGHT test-phase
+    output (agent3_splitter.py Stage 3) AND F1-F4 execution-phase output
+    (Stage 2) — both content types share the same frontend module root,
+    just different subpaths under it.
 
     Still reads the same modules-registry.json (registry stays backend-owned,
     single source of truth for version numbers per STRUCTURAL LAW) — only the
@@ -114,14 +117,14 @@ def get_playwright_module_version_path(mod: str, version: "int | None" = None) -
     registry = load_modules_registry()
     mod_entry = registry.get("modules", {}).get(mod)
     if not mod_entry:
-        return PLAYWRIGHT_OUTPUT_BASE_PATH / "modules" / mod
+        return FRONTEND_OUTPUT_BASE_PATH / "modules" / mod
 
     if version is None:
         version = mod_entry.get("current_version") or 1
 
     if version == 1:
-        return PLAYWRIGHT_OUTPUT_BASE_PATH / "modules" / mod
-    return PLAYWRIGHT_OUTPUT_BASE_PATH / "modules" / mod / f"v{version}"
+        return FRONTEND_OUTPUT_BASE_PATH / "modules" / mod
+    return FRONTEND_OUTPUT_BASE_PATH / "modules" / mod / f"v{version}"
 
 # ─────────────────────────────────────────────
 # MODULE FOLDER STRUCTURE
