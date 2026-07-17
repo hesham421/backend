@@ -32,7 +32,9 @@ from datetime import datetime
 sys.path.insert(0, str(Path(__file__).parent))
 from config import (
     REPO_BASE_PATH,
+    PLAYWRIGHT_OUTPUT_BASE_PATH,
     get_module_version_path,
+    get_playwright_module_version_path,
     validate_module,
     load_modules_registry,
 )
@@ -315,6 +317,45 @@ def _safe_filename(marker_id: str) -> str:
     return marker_id.strip().replace(" ", "-") + ".md"
 
 
+def _guard_playwright_path(path: Path):
+    """
+    Refuse to write PLAYWRIGHT test-phase content anywhere inside
+    backend/governance/ (REPO_BASE_PATH) — forbidden per the STRUCTURAL LAW
+    section in backend/CLAUDE.md and frontend/CLAUDE.md. This is a permanent
+    guardrail: it fires regardless of whether PLAYWRIGHT_OUTPUT_BASE_PATH or
+    a --playwright-output override is ever misconfigured back into
+    backend/governance/, so this specific bug cannot silently recur.
+    """
+    resolved = path.resolve()
+    forbidden_root = REPO_BASE_PATH.resolve()
+    if resolved == forbidden_root or forbidden_root in resolved.parents:
+        raise RuntimeError(
+            f"REFUSING TO WRITE PLAYWRIGHT CONTENT — resolved path\n"
+            f"    {resolved}\n"
+            f"  is inside backend/governance/ ({forbidden_root}).\n"
+            f"  PLAYWRIGHT content must never live in backend/governance/ — see the\n"
+            f"  STRUCTURAL LAW section in backend/CLAUDE.md and frontend/CLAUDE.md.\n"
+            f"  Check config.py's PLAYWRIGHT_OUTPUT_BASE_PATH and/or the\n"
+            f"  --playwright-output CLI argument."
+        )
+
+
+def _display_dest(dest: Path, base: Path, playwright_base: Path) -> str:
+    """
+    Show a write-plan destination relative to whichever root it actually
+    belongs under, tagging frontend-rooted (PLAYWRIGHT) paths explicitly so
+    a printed plan never silently implies everything lands under one tree.
+    """
+    try:
+        return str(dest.relative_to(base))
+    except ValueError:
+        pass
+    try:
+        return f"[frontend/governance] {dest.relative_to(playwright_base)}"
+    except ValueError:
+        return str(dest)
+
+
 def _preamble_content(block: "MarkerBlock", raw_lines: list[str]) -> str:
     """
     Extract content that sits between a container's START marker and its
@@ -358,7 +399,7 @@ PHASE_FOLDER_MAP = {
 }
 
 
-def stage2_split_execution(mod: str, version: int, state: dict, plan: dict | None, base: Path = None) -> bool:
+def stage2_split_execution(mod: str, version: int, state: dict, plan: dict | None, base: Path = None, dry_run: bool = False) -> bool:
     """Split execution-plan.md into PHASE / SUB / API / XM package files."""
     if base is None:
         base = get_module_version_path(mod, version)
@@ -444,6 +485,10 @@ def stage2_split_execution(mod: str, version: int, state: dict, plan: dict | Non
         print(f"    ... and {len(write_plan) - 15} more")
     print()
 
+    if dry_run:
+        print("  — DRY RUN: no files written, no state changed.\n")
+        return True
+
     if not confirm("  Approve Stage 2 — write these files?"):
         print("\n  Stage 2 cancelled — no files written.\n")
         return False
@@ -461,17 +506,37 @@ def stage2_split_execution(mod: str, version: int, state: dict, plan: dict | Non
 # STAGE 3 — Split test-plan.md
 # ─────────────────────────────────────────────────────────────────────────────
 
-def stage3_split_test(mod: str, version: int, state: dict, plan: dict | None, base: Path = None) -> bool:
-    """Split test-plan.md into MARK / SUB / TC package files."""
+def stage3_split_test(mod: str, version: int, state: dict, plan: dict | None,
+                       base: Path = None, playwright_base: Path = None,
+                       dry_run: bool = False) -> bool:
+    """
+    Split test-plan.md into MARK / SUB / TC package files.
+
+    JUNIT-type MARK content is written under `base` (backend/governance/),
+    same as always. PLAYWRIGHT-type MARK content is written under a SEPARATE
+    root, `playwright_base` — defaults to
+    config.get_playwright_module_version_path(mod, version), i.e.
+    frontend/governance/modules/<MOD>/ — and is NEVER written under `base`.
+    See STRUCTURAL LAW in backend/CLAUDE.md / frontend/CLAUDE.md.
+    """
     if base is None:
         base = get_module_version_path(mod, version)
+    if playwright_base is None:
+        playwright_base = get_playwright_module_version_path(mod, version)
     test_path = base / "P3_5" / "test-plan.md"
     pkg_root = base / "packages" / "test"
+    playwright_pkg_root = playwright_base / "packages" / "test"
+
+    # Guard early, before any parsing/printing — refuse to proceed at all if
+    # the PLAYWRIGHT destination has been misconfigured back into backend/governance/.
+    _guard_playwright_path(playwright_pkg_root)
 
     print()
     print("═" * 70)
     print(f"  STAGE 3 — Split test-plan.md")
     print(f"  Module : {mod}  (v{version})")
+    print(f"  JUNIT output      : {pkg_root}")
+    print(f"  PLAYWRIGHT output : {playwright_pkg_root}")
     print("═" * 70)
     print()
 
@@ -488,7 +553,9 @@ def stage3_split_test(mod: str, version: int, state: dict, plan: dict | None, ba
     write_plan = []
 
     for mark in marks:
-        folder = pkg_root / mark.marker_id
+        is_playwright = (mark.marker_id == "PLAYWRIGHT")
+        mark_pkg_root = playwright_pkg_root if is_playwright else pkg_root
+        folder = mark_pkg_root / mark.marker_id
 
         sub_blocks = [c for c in mark.children if c.kind == "sub"]
         tc_count_mark = len([t for t in flatten([mark]) if t.kind == "tc"])
@@ -535,18 +602,30 @@ def stage3_split_test(mod: str, version: int, state: dict, plan: dict | None, ba
     print(f"  Files to write: {len(write_plan)}")
     for w in write_plan[:15]:
         extra = f"  ({w['note']})" if w.get("note") else ""
-        print(f"    {w['dest'].relative_to(base)}{extra}")
+        print(f"    {_display_dest(w['dest'], base, playwright_base)}{extra}")
     if len(write_plan) > 15:
         print(f"    ... and {len(write_plan) - 15} more")
     print()
+
+    if dry_run:
+        print("  — DRY RUN: no files written, no state changed.\n")
+        return True
 
     if not confirm("  Approve Stage 3 — write these files?"):
         print("\n  Stage 3 cancelled — no files written.\n")
         return False
 
+    # Re-guard immediately before writing, in case anything upstream (a
+    # future code change, a bad --playwright-output value) let a PLAYWRIGHT
+    # destination slip through — belt-and-suspenders around REPO_BASE_PATH.
+    for w in write_plan:
+        if playwright_pkg_root in w["dest"].parents or w["dest"].parent == playwright_pkg_root:
+            _guard_playwright_path(w["dest"])
+
     _execute_write_plan(write_plan)
 
-    print(f"\n  ✓ {len(write_plan)} files written to packages/test/")
+    print(f"\n  ✓ {len(write_plan)} files written "
+          f"({pkg_root} for JUNIT, {playwright_pkg_root} for PLAYWRIGHT)")
     mark_stage_complete(state, 3)
     save_state(mod, version, state, base)
     print("  ✓ Stage 3 complete.\n")
@@ -764,16 +843,17 @@ def stage5_verify(mod: str, version: int, state: dict, base: Path = None) -> boo
 # ORCHESTRATION
 # ─────────────────────────────────────────────────────────────────────────────
 
-def run_stage(stage: int, mod: str, version: int, state: dict, plan: dict | None, base: Path = None) -> tuple[bool, dict | None]:
+def run_stage(stage: int, mod: str, version: int, state: dict, plan: dict | None,
+              base: Path = None, playwright_base: Path = None, dry_run: bool = False) -> tuple[bool, dict | None]:
     """Run a single stage. Returns (success, plan_for_next_stage)."""
     if stage == 1:
         result_plan = stage1_parse_and_plan(mod, version, state, base)
         return (result_plan is not None), result_plan
     elif stage == 2:
-        ok = stage2_split_execution(mod, version, state, plan, base)
+        ok = stage2_split_execution(mod, version, state, plan, base, dry_run=dry_run)
         return ok, plan
     elif stage == 3:
-        ok = stage3_split_test(mod, version, state, plan, base)
+        ok = stage3_split_test(mod, version, state, plan, base, playwright_base, dry_run=dry_run)
         return ok, plan
     elif stage == 4:
         ok = stage4_generate_index(mod, version, state, base)
@@ -795,13 +875,23 @@ def main():
                         help="Module version (default: current version from registry)")
     parser.add_argument("--output", "-o", default=None,
                         help="Override output base path for the module (e.g. /path/to/modules/ORG). "
-                             "All packages/ output will be written under this path.")
+                             "Affects execution/ output and JUNIT test output. Does NOT affect "
+                             "PLAYWRIGHT output — use --playwright-output for that, separately.")
+    parser.add_argument("--playwright-output", default=None,
+                        help="Override output base path specifically for PLAYWRIGHT test-phase "
+                             "content (e.g. /path/to/frontend/governance/modules/ORG). Independent "
+                             "of --output. Defaults to config.PLAYWRIGHT_OUTPUT_BASE_PATH's module "
+                             "path (frontend/governance/modules/<MOD>/) — never backend/governance/.")
     parser.add_argument("--stage", "-s", type=int, choices=[1, 2, 3, 4, 5],
                         help="Run a single stage only.")
     parser.add_argument("--resume", "-r", action="store_true",
                         help="Resume from the next incomplete stage.")
     parser.add_argument("--status", action="store_true",
                         help="Show stage completion status and exit.")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="Print the resolved write plan for Stage 2/3 (including which repo "
+                             "root each file would land under) without writing anything, "
+                             "prompting, or marking any stage complete. Safe to run any time.")
 
     args = parser.parse_args()
 
@@ -819,6 +909,7 @@ def main():
         version = registry.get("modules", {}).get(mod, {}).get("current_version") or 1
 
     override_base = Path(args.output).resolve() if args.output else None
+    playwright_override_base = Path(args.playwright_output).resolve() if args.playwright_output else None
 
     if args.status:
         print_status(mod, version, override_base)
@@ -843,7 +934,8 @@ def main():
             ok, plan = run_stage(1, mod, version, state, None, base)
             if not ok:
                 sys.exit(1)
-        ok, _ = run_stage(args.stage, mod, version, state, plan, base)
+        ok, _ = run_stage(args.stage, mod, version, state, plan, base,
+                           playwright_override_base, dry_run=args.dry_run)
         sys.exit(0 if ok else 1)
 
     # ── Resume mode ───────────────────────────────────────────────────────────
@@ -864,7 +956,8 @@ def main():
 
     plan = None
     for stage in stages_to_run:
-        ok, plan = run_stage(stage, mod, version, state, plan, base)
+        ok, plan = run_stage(stage, mod, version, state, plan, base,
+                              playwright_override_base, dry_run=args.dry_run)
         if not ok:
             print(f"  Stopped at Stage {stage}. Re-run with --resume to continue once fixed.\n")
             sys.exit(1)

@@ -61,15 +61,22 @@ Same format as execute-notification.md STEP 0.4. WAIT for user confirmation.
 ## STEP 1 — Execution (after confirmation)
 
 ### 1.0 — Read shared context once per TEST-PHASE run
-Before the first sub: read `header_file` for this TEST-PHASE
-(`packages/test/JUNIT/JUNIT-HEADER.md` or
-`packages/test/PLAYWRIGHT/PLAYWRIGHT-HEADER.md`) — conventions to follow.
+Before the first sub: read `header_file` for this TEST-PHASE — conventions
+to follow. Path depends on TEST-PHASE — JUNIT and PLAYWRIGHT content live
+in different repos (STRUCTURAL LAW):
+- **JUNIT** → `governance/modules/NOTIFICATION/packages/test/JUNIT/JUNIT-HEADER.md`
+  (this repo, backend/governance/ — unchanged)
+- **PLAYWRIGHT** → `../frontend/governance/modules/NOTIFICATION/packages/test/PLAYWRIGHT/PLAYWRIGHT-HEADER.md`
+  (sibling repo, frontend/governance/ — never backend/governance/)
+
 NOTIFICATION has no separate `MANDATORY-*.md` file; mandatory scenarios (if
 any) are embedded directly in each sub file — read the sub itself in full.
 
 ### Per sub:
 
-1. Read the sub file completely: `packages/test/[JUNIT|PLAYWRIGHT]/[SUB].md`
+1. Read the sub file completely:
+   - **JUNIT** → `governance/modules/NOTIFICATION/packages/test/JUNIT/[SUB].md`
+   - **PLAYWRIGHT** → `../frontend/governance/modules/NOTIFICATION/packages/test/PLAYWRIGHT/[SUB].md`
 2. Identify all scenarios in it
 3. Generate test code for each scenario:
    - **JUNIT** → Spring Boot test class (`@SpringBootTest` / `@WebMvcTest` +

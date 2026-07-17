@@ -23,12 +23,25 @@ Governance repo path: `governance/modules/$ARGUMENTS/`
 
 ## Step 1 — Scan the governance repo structure
 
-Run the following and capture the output:
+Run the following and capture the output. Two SEPARATE scans are required —
+JUNIT and PLAYWRIGHT test content live in different repos post-split
+(STRUCTURAL LAW: `backend/governance/` owns execution phases + JUNIT;
+`frontend/governance/` owns PLAYWRIGHT only) — a single scan rooted in this
+repo will NEVER find PLAYWRIGHT content, even when it genuinely exists:
 
 ```bash
+# Execution phases + JUNIT test scenarios — this repo (backend/governance/)
 find governance/modules/$ARGUMENTS/packages/execution -type f -name "*.md" | sort
-find governance/modules/$ARGUMENTS/packages/test -type f -name "*.md" | sort
+find governance/modules/$ARGUMENTS/packages/test/JUNIT -type f -name "*.md" | sort
+
+# PLAYWRIGHT test scenarios — sibling repo (frontend/governance/), NOT this repo
+find ../frontend/governance/modules/$ARGUMENTS/packages/test/PLAYWRIGHT -type f -name "*.md" | sort
 ```
+
+If the `../frontend/governance/modules/$ARGUMENTS/packages/test/PLAYWRIGHT`
+scan finds nothing, that's a real "no PLAYWRIGHT content for this module yet"
+result — but only if you actually ran that scan. Never infer "no PLAYWRIGHT"
+from the first two (backend-rooted) scans alone; they cannot see it either way.
 
 From the scan results:
 - Identify all PHASES (top-level folders under `packages/execution/`)
@@ -41,11 +54,12 @@ Expected phases (in strict execution order):
 
 Only include phases that actually exist in the scanned structure.
 
-### Test phases (packages/test/) — same pattern, separate namespace
+### Test phases (packages/test/) — same pattern, separate namespace, two repos
 
-`packages/test/` has exactly two possible top-level folders: `JUNIT` and
-`PLAYWRIGHT`. Treat each as a TEST-PHASE the same way an execution folder is
-treated as a PHASE:
+`packages/test/` has exactly two possible top-level folders: `JUNIT` (this
+repo, backend/governance/) and `PLAYWRIGHT` (sibling repo,
+frontend/governance/ — see the two-scan note above). Treat each as a
+TEST-PHASE the same way an execution folder is treated as a PHASE:
 - SUBs = every `.md` file inside, excluding `index.md`, `.gitkeep`, any
   `*-HEADER.md`, and any `MANDATORY-*.md`
   (e.g. JUNIT → `API-SCENARIOS`, `RULE-SCENARIOS`; PLAYWRIGHT → `INT-FLOW`, `UI-FLOWS`)
@@ -126,8 +140,8 @@ Create the file at:
       "id": "PLAYWRIGHT",
       "status": "PENDING",
       "gated_by_phases": ["F1", "F2", "F3"],
-      "header_file": "packages/test/PLAYWRIGHT/PLAYWRIGHT-HEADER.md",
-      "mandatory_file": "packages/test/PLAYWRIGHT/MANDATORY-P.md",
+      "header_file": "../frontend/governance/modules/[MODULE]/packages/test/PLAYWRIGHT/PLAYWRIGHT-HEADER.md",
+      "mandatory_file": "../frontend/governance/modules/[MODULE]/packages/test/PLAYWRIGHT/MANDATORY-P.md",
       "subs": [
         { "id": "INT-FLOW", "status": "PENDING" },
         { "id": "UI-FLOWS", "status": "PENDING" }
@@ -465,11 +479,18 @@ Same format as execute.md STEP 0.5. WAIT for user confirmation.
 ### 1.0 — Read shared context once per TEST-PHASE run
 Before the first sub: read `header_file` (conventions to follow) and
 `mandatory_file` (scenarios that are always required, regardless of what
-the scenario subs contain) for this TEST-PHASE.
+the scenario subs contain) for this TEST-PHASE. Path depends on TEST-PHASE —
+JUNIT and PLAYWRIGHT content live in different repos (STRUCTURAL LAW):
+- **JUNIT** → `governance/modules/[MODULE]/packages/test/JUNIT/[FILE]`
+  (this repo, backend/governance/ — unchanged)
+- **PLAYWRIGHT** → `../frontend/governance/modules/[MODULE]/packages/test/PLAYWRIGHT/[FILE]`
+  (sibling repo, frontend/governance/ — never backend/governance/)
 
 ### Per sub:
 
-1. Read the sub file completely: `packages/test/[JUNIT|PLAYWRIGHT]/[SUB].md`
+1. Read the sub file completely:
+   - **JUNIT** → `governance/modules/[MODULE]/packages/test/JUNIT/[SUB].md`
+   - **PLAYWRIGHT** → `../frontend/governance/modules/[MODULE]/packages/test/PLAYWRIGHT/[SUB].md`
 2. Identify all scenarios in it
 3. Generate test code for each scenario:
    - **JUNIT** → Spring Boot test class (`@SpringBootTest` / `@WebMvcTest` +

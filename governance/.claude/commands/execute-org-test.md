@@ -53,11 +53,18 @@ Same format as execute.md STEP 0.5. WAIT for user confirmation.
 ### 1.0 — Read shared context once per TEST-PHASE run
 Before the first sub: read `header_file` (conventions to follow) and
 `mandatory_file` (scenarios that are always required, regardless of what
-the scenario subs contain) for this TEST-PHASE.
+the scenario subs contain) for this TEST-PHASE. Path depends on TEST-PHASE —
+JUNIT and PLAYWRIGHT content live in different repos (STRUCTURAL LAW):
+- **JUNIT** → `governance/modules/[MODULE]/packages/test/JUNIT/[FILE]`
+  (this repo, backend/governance/ — unchanged)
+- **PLAYWRIGHT** → `../frontend/governance/modules/[MODULE]/packages/test/PLAYWRIGHT/[FILE]`
+  (sibling repo, frontend/governance/ — never backend/governance/)
 
 ### Per sub:
 
-1. Read the sub file completely: `packages/test/[JUNIT|PLAYWRIGHT]/[SUB].md`
+1. Read the sub file completely:
+   - **JUNIT** → `governance/modules/[MODULE]/packages/test/JUNIT/[SUB].md`
+   - **PLAYWRIGHT** → `../frontend/governance/modules/[MODULE]/packages/test/PLAYWRIGHT/[SUB].md`
 2. Identify all scenarios in it
 3. Generate test code for each scenario:
    - **JUNIT** → Spring Boot test class (`@SpringBootTest` / `@WebMvcTest` +
