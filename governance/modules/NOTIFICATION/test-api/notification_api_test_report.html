@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8" />
+<title>Notification API Test Report — 2026-07-14 22:15</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;margin:0;padding:20px;background:#f4f6f9;color:#1a1a2e}
+  h1{margin-bottom:4px} .meta{color:#666;font-size:.9rem;margin-bottom:24px}
+  .summary{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:28px}
+  .card{background:#fff;border-radius:10px;padding:18px 24px;box-shadow:0 2px 6px rgba(0,0,0,.08);min-width:140px;text-align:center}
+  .card .num{font-size:2.2rem;font-weight:700;line-height:1} .card .label{font-size:.8rem;color:#888;margin-top:4px}
+  .card.total .num{color:#3a86ff} .card.pass .num{color:#2ec4b6} .card.fail .num{color:#e63946}
+  .suite-table{background:#fff;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.08);margin-bottom:28px;overflow:hidden}
+  table{width:100%;border-collapse:collapse;font-size:.875rem}
+  th{background:#f0f2f5;text-align:left;padding:10px 14px;font-weight:600;color:#555}
+  td{padding:8px 14px;border-top:1px solid #eef0f3;vertical-align:top}
+  tr.pass td{background:#f6fff8} tr.fail td{background:#fff5f5}
+  .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.75rem;font-weight:700}
+  .badge.pass{background:#d4f7ef;color:#1a7a6f} .badge.fail{background:#fde8e8;color:#b91c1c}
+  .badge.observed{background:#fff3cd;color:#8a6314}
+  .method{display:inline-block;padding:2px 6px;border-radius:4px;font-size:.7rem;font-weight:700;color:#fff}
+  .method.get{background:#3a86ff} .method.post{background:#2ec4b6} .method.put{background:#f4a261}
+  .num{text-align:center} .url{font-size:.75rem;color:#666;word-break:break-all;max-width:260px}
+  .test-name{font-weight:500} .note{font-size:.72rem;color:#999;margin-left:6px}
+  .error-msg{color:#b91c1c;font-size:.8rem}
+  details summary{cursor:pointer;color:#3a86ff;font-size:.78rem;margin-top:4px}
+  pre{background:#f8f8f8;padding:8px;border-radius:4px;font-size:.72rem;overflow-x:auto;max-width:400px;white-space:pre-wrap}
+  section{background:#fff;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.08);margin-bottom:28px;overflow:hidden}
+  section h2{padding:14px 20px;margin:0;background:#f0f2f5;font-size:1rem;border-bottom:1px solid #e0e4ea}
+</style></head>
+<body>
+  <h1>Notification API Test Report</h1>
+  <p class="meta">Generated 2026-07-14 22:15:18 &nbsp;·&nbsp;
+     Base URL: http://localhost:7272 &nbsp;·&nbsp; Duration: 0.4s &nbsp;·&nbsp;
+     API-NOTIF-004/005 (unread/markAsRead) skipped — DEFERRED per DRV-NOTIF-003</p>
+  <div class="summary">
+    <div class="card total"><div class="num">18</div><div class="label">Total</div></div>
+    <div class="card pass"><div class="num">18</div><div class="label">Passed</div></div>
+    <div class="card fail"><div class="num">0</div><div class="label">Failed</div></div>
+    <div class="card total"><div class="num">100.0%</div><div class="label">Pass Rate</div></div>
+  </div>
+  <div class="suite-table"><table><thead><tr><th>Suite</th><th>Total</th><th>Pass</th><th>Fail</th><th>Rate</th></tr></thead>
+  <tbody>
+        <tr>
+          <td>Auth</td>
+          <td class="num">1</td>
+          <td class="num pass">1</td>
+          <td class="num fail">0</td>
+          <td class="num">100.0%</td>
+        </tr>
+        <tr>
+          <td>Template</td>
+          <td class="num">8</td>
+          <td class="num pass">8</td>
+          <td class="num fail">0</td>
+          <td class="num">100.0%</td>
+        </tr>
+        <tr>
+          <td>Template Search</td>
+          <td class="num">2</td>
+          <td class="num pass">2</td>
+          <td class="num fail">0</td>
+          <td class="num">100.0%</td>
+        </tr>
+        <tr>
+          <td>Channel Config</td>
+          <td class="num">2</td>
+          <td class="num pass">2</td>
+          <td class="num fail">0</td>
+          <td class="num">100.0%</td>
+        </tr>
+        <tr>
+          <td>Send/Schedule</td>
+          <td class="num">3</td>
+          <td class="num pass">3</td>
+          <td class="num fail">0</td>
+          <td class="num">100.0%</td>
+        </tr>
+        <tr>
+          <td>History Search</td>
+          <td class="num">2</td>
+          <td class="num pass">2</td>
+          <td class="num fail">0</td>
+          <td class="num">100.0%</td>
+        </tr></tbody></table></div>
+  
+        <section>
+          <h2>Auth — 1/1 passed</h2>
+          <table>
+            <thead><tr><th>Status</th><th>Method</th><th>Test</th><th>URL</th>
+              <th>Got</th><th>Expected</th><th>Time</th><th>Details</th></tr></thead>
+            <tbody>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Admin Login </td>
+              <td class="url">http://localhost:7272/api/auth/login</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">145ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "d227e862-5a61-423a-96e9-e84925d6ec16",
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImF1dGhvcml0aWVzIjpbIlBFUk1fQlJBTkNIX1ZJRVciLCJQRVJNX0ZJTEVfQVRUQUNITUVOVF9DUkVBVEUiLCJQRVJNX0ZJTEVfQVRUQUNITUVOVF9ERUxFVEUiLCJQRVJNX0ZJTEVfQVRUQUNITUVOVF9VUERBVEUiLC...</pre></details></td>
+            </tr></tbody>
+          </table>
+        </section>
+        <section>
+          <h2>Template — 8/8 passed</h2>
+          <table>
+            <thead><tr><th>Status</th><th>Method</th><th>Test</th><th>URL</th>
+              <th>Got</th><th>Expected</th><th>Time</th><th>Details</th></tr></thead>
+            <tbody>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create Template </td>
+              <td class="url">http://localhost:7272/api/v1/notifications/templates</td>
+              <td class="num">201</td>
+              <td class="num">200, 201</td>
+              <td class="num">14ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "acb74792-17c8-44c0-a67a-02ddee790ee0",
+  "data": {
+    "id": 9,
+    "templateCode": "TEST_TPL_1784052918",
+    "templateNameAr": "قالب تجريبي",
+    "templateNameEn": "Test Template",
+    "channelTypeId": "EMAIL",
+    "moduleCode": "SECURITY",
+    "templateBodyAr": "مرحباً {{nam...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">Get Template by ID </td>
+              <td class="url">http://localhost:7272/api/v1/notifications/templates/9</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">13ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "d8204faf-d798-4329-a4cf-a6836f68b68f",
+  "data": {
+    "id": 9,
+    "templateCode": "TEST_TPL_1784052918",
+    "templateNameAr": "قالب تجريبي",
+    "templateNameEn": "Test Template",
+    "channelTypeId": "EMAIL",
+    "moduleCode": "SECURITY",
+    "templateBodyAr": "مرحباً {{nam...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">Get Template by ID — Not Found </td>
+              <td class="url">http://localhost:7272/api/v1/notifications/templates/999999999</td>
+              <td class="num">404</td>
+              <td class="num">404</td>
+              <td class="num">9ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "44992f56-b267-4a3a-a1a3-4083b0361906",
+  "error": {
+    "code": "NOTIF_TEMPLATE_NOT_FOUND",
+    "details": "Notification template not found for ID 999,999,999",
+    "path": "/api/v1/notifications/templates/999999999",
+    "timestamp": "2026-07-14T18:15:18.342969Z"
+  },
+  "messa...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method put">PUT</span></td>
+              <td class="test-name">Update Template </td>
+              <td class="url">http://localhost:7272/api/v1/notifications/templates/9</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">16ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "026e89e9-47cf-47ff-baf4-aaa332af6033",
+  "data": {
+    "id": 9,
+    "templateCode": "TEST_TPL_1784052918",
+    "templateNameAr": "قالب محدث",
+    "templateNameEn": "Updated Template",
+    "channelTypeId": "EMAIL",
+    "moduleCode": "SECURITY",
+    "templateBodyAr": "مرحباً محدث...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create Template — missing templateBodyEn (RULE-NOTIF-006 / ERR-NOTIF-0002 / TC-NOTIF-009) </td>
+              <td class="url">http://localhost:7272/api/v1/notifications/templates</td>
+              <td class="num">400</td>
+              <td class="num">400</td>
+              <td class="num">5ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "b8383b7d-a420-49d5-9440-8b60aafcbca5",
+  "error": {
+    "code": "NOTIF_TEMPLATE_BILINGUAL_REQUIRED",
+    "details": "The template body must be provided in both Arabic and English",
+    "path": "/api/v1/notifications/templates",
+    "timestamp": "2026-07-14T18:15:18.364182Z"
+  }...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create Template — duplicate templateCode (RULE-NOTIF-007 / ERR-NOTIF-0003 / TC-NOTIF-012) </td>
+              <td class="url">http://localhost:7272/api/v1/notifications/templates</td>
+              <td class="num">409</td>
+              <td class="num">409</td>
+              <td class="num">7ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "9b742753-2e3c-4cf6-9767-4ac8e5dac629",
+  "error": {
+    "code": "NOTIF_TEMPLATE_CODE_DUPLICATE",
+    "details": "Template code already exists or cannot be modified",
+    "path": "/api/v1/notifications/templates",
+    "timestamp": "2026-07-14T18:15:18.371047Z"
+  },
+  "message": ...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method put">PUT</span></td>
+              <td class="test-name">Update Template — inject templateCode in body (RULE-NOTIF-007 / ERR-NOTIF-0003 / TC-NOTIF-013) </td>
+              <td class="url">http://localhost:7272/api/v1/notifications/templates/9</td>
+              <td class="num">400</td>
+              <td class="num">400</td>
+              <td class="num">4ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "73ed6d63-021f-4416-9370-9908360646d4",
+  "error": {
+    "code": "INVALID_JSON",
+    "details": "Malformed JSON. Please check the request body syntax.",
+    "path": "/api/v1/notifications/templates/9",
+    "timestamp": "2026-07-14T18:15:18.375147Z"
+  },
+  "message": "Invalid req...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method put">PUT</span></td>
+              <td class="test-name">Deactivate Template </td>
+              <td class="url">http://localhost:7272/api/v1/notifications/templates/9/deactivate</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">16ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "d6ec98d5-b736-48c4-8362-1a9fd3429351",
+  "data": {
+    "id": 9,
+    "templateCode": "TEST_TPL_1784052918",
+    "templateNameAr": "قالب محدث",
+    "templateNameEn": "Updated Template",
+    "channelTypeId": "EMAIL",
+    "moduleCode": "SECURITY",
+    "templateBodyAr": "مرحباً محدث...</pre></details></td>
+            </tr></tbody>
+          </table>
+        </section>
+        <section>
+          <h2>Template Search — 2/2 passed</h2>
+          <table>
+            <thead><tr><th>Status</th><th>Method</th><th>Test</th><th>URL</th>
+              <th>Got</th><th>Expected</th><th>Time</th><th>Details</th></tr></thead>
+            <tbody>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Search Templates — by templateCode </td>
+              <td class="url">http://localhost:7272/api/v1/notifications/templates/search</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">15ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "9205ab95-a0e8-41b4-93b8-24c4eb16bb2f",
+  "data": {
+    "content": [
+      {
+        "id": 10,
+        "templateCode": "TEST_TPL_1784052918_BADCHAN",
+        "templateNameAr": "ح",
+        "templateNameEn": "N",
+        "channelTypeId": "CARRIER_PIGEON",
+        "moduleCode": "S...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Search Templates — default paging </td>
+              <td class="url">http://localhost:7272/api/v1/notifications/templates/search</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">38ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "8701cac6-8839-492e-b3e1-0e77280e2232",
+  "data": {
+    "content": [
+      {
+        "id": 2,
+        "templateCode": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+        "templateNameAr": "ح",
+        "templateNameEn": "N",
+        "channelTypeId": "EMAIL",
+        "mo...</pre></details></td>
+            </tr></tbody>
+          </table>
+        </section>
+        <section>
+          <h2>Channel Config — 2/2 passed</h2>
+          <table>
+            <thead><tr><th>Status</th><th>Method</th><th>Test</th><th>URL</th>
+              <th>Got</th><th>Expected</th><th>Time</th><th>Details</th></tr></thead>
+            <tbody>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">List Channel Configs </td>
+              <td class="url">http://localhost:7272/api/v1/notifications/channel-configs</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">5ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "ba217d1b-b421-442f-b638-1557a5702b71",
+  "data": [
+    {
+      "id": 1,
+      "channelTypeId": "EMAIL",
+      "isEnabledFl": true,
+      "createdAt": "2026-07-13T20:06:07.846Z",
+      "createdBy": "SYSTEM",
+      "updatedAt": "2026-07-14T18:14:48.356Z",
+      "updatedBy": "admi...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method put">PUT</span></td>
+              <td class="test-name">Update Channel Config </td>
+              <td class="url">http://localhost:7272/api/v1/notifications/channel-configs/1</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">6ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "8b973624-c69d-4a1d-bd07-fa29d5f196ac",
+  "data": {
+    "id": 1,
+    "channelTypeId": "EMAIL",
+    "isEnabledFl": false,
+    "createdAt": "2026-07-13T20:06:07.846Z",
+    "createdBy": "SYSTEM",
+    "updatedAt": "2026-07-14T18:14:48.356Z",
+    "updatedBy": "admin"
+  },
+  "message"...</pre></details></td>
+            </tr></tbody>
+          </table>
+        </section>
+        <section>
+          <h2>Send/Schedule — 3/3 passed</h2>
+          <table>
+            <thead><tr><th>Status</th><th>Method</th><th>Test</th><th>URL</th>
+              <th>Got</th><th>Expected</th><th>Time</th><th>Details</th></tr></thead>
+            <tbody>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Send Notification — happy path </td>
+              <td class="url">http://localhost:7272/api/v1/notifications/send</td>
+              <td class="num">201</td>
+              <td class="num">200, 201</td>
+              <td class="num">13ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "6412f629-dea3-4d6c-8b3d-962413230c36",
+  "data": {
+    "logEntryIds": [
+      7
+    ]
+  },
+  "message": "OK",
+  "success": true,
+  "timestamp": "2026-07-14T18:15:18.498467Z"
+}</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Schedule Notification — happy path </td>
+              <td class="url">http://localhost:7272/api/v1/notifications/schedule</td>
+              <td class="num">201</td>
+              <td class="num">200, 201</td>
+              <td class="num">12ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "c1f3cb6a-b85d-4146-a596-7945749950a1",
+  "data": {
+    "logEntryIds": [
+      8
+    ]
+  },
+  "message": "OK",
+  "success": true,
+  "timestamp": "2026-07-14T18:15:18.511020Z"
+}</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Send Notification — missing recipientId (RULE-NOTIF-001 / ERR-NOTIF-0001 / TC-NOTIF-002) </td>
+              <td class="url">http://localhost:7272/api/v1/notifications/send</td>
+              <td class="num">400</td>
+              <td class="num">400</td>
+              <td class="num">4ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "41d5ff77-1058-42ee-8dcc-9540b63da5c0",
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "details": "Request validation failed. Please check the field errors.",
+    "fieldErrors": [
+      {
+        "field": "recipientId",
+        "message": "This field is required"
+      }
+    ]...</pre></details></td>
+            </tr></tbody>
+          </table>
+        </section>
+        <section>
+          <h2>History Search — 2/2 passed</h2>
+          <table>
+            <thead><tr><th>Status</th><th>Method</th><th>Test</th><th>URL</th>
+              <th>Got</th><th>Expected</th><th>Time</th><th>Details</th></tr></thead>
+            <tbody>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Search Notification History — default paging </td>
+              <td class="url">http://localhost:7272/api/v1/notifications/history/search</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">14ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "8da8526c-e1ac-4d74-9b1a-ec575feb0874",
+  "data": {
+    "content": [
+      {
+        "id": 8,
+        "recipientId": 4,
+        "notificationTypeId": "EMAIL",
+        "templateCode": "TEST_TPL_1784052918",
+        "subject": "Notification",
+        "bodyPreview": "You have a new...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Search Notification History — by recipientId </td>
+              <td class="url">http://localhost:7272/api/v1/notifications/history/search</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">6ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "06cca653-7d6e-426c-b3bd-0dc44c3df03e",
+  "data": {
+    "content": [
+      {
+        "id": 8,
+        "recipientId": 4,
+        "notificationTypeId": "EMAIL",
+        "templateCode": "TEST_TPL_1784052918",
+        "subject": "Notification",
+        "bodyPreview": "You have a new...</pre></details></td>
+            </tr></tbody>
+          </table>
+        </section>
+  
+        <section>
+          <h2>⚠️ Exploratory Observations — undocumented expected outcomes, not pass/fail</h2>
+          <p style="padding:0 20px;color:#666;font-size:.85rem">
+            These scenarios test documented constraints (Required/maxLength/type/enum) but the
+            API's expected response for violating them isn't specified in execution-plan.md.
+            Review the observed status/body against your intended behavior — do not treat these
+            as failures of the implementation.
+          </p>
+          <table>
+            <thead><tr><th>Status</th><th>Method</th><th>Scenario</th><th>URL</th>
+              <th>Observed</th><th>Source (doc/field)</th><th>Time</th><th>Details</th></tr></thead>
+            <tbody>
+            <tr>
+              <td><span class="badge observed">OBSERVED</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create Template — templateCode at maxLength (50 chars)</td>
+              <td class="url">http://localhost:7272/api/v1/notifications/templates</td>
+              <td class="num">409</td>
+              <td class="url">API-NOTIF-007 templateCode Constraints: maxLength=50</td>
+              <td class="num">7ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "e64f557d-73f2-4cdd-b120-532e359519e0",
+  "error": {
+    "code": "NOTIF_TEMPLATE_CODE_DUPLICATE",
+    "details": "Template code already exists or cannot be modified",
+    "path": "/api/v1/notifications/templates",
+    "timestamp": "2026-07-14T18:15:18.382377Z"
+  },
+  "message": ...</pre></details></td>
+            </tr>
+            <tr>
+              <td><span class="badge observed">OBSERVED</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create Template — templateCode over maxLength (51 chars)</td>
+              <td class="url">http://localhost:7272/api/v1/notifications/templates</td>
+              <td class="num">400</td>
+              <td class="url">API-NOTIF-007 templateCode Constraints: maxLength=50</td>
+              <td class="num">4ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "7c88b8bf-b95c-4ecf-af6d-9e45bd0d742e",
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "details": "Request validation failed. Please check the field errors.",
+    "fieldErrors": [
+      {
+        "field": "templateCode",
+        "message": "Invalid length"
+      }
+    ],
+    "...</pre></details></td>
+            </tr>
+            <tr>
+              <td><span class="badge observed">OBSERVED</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create Template — templateNameEn over maxLength (201 chars)</td>
+              <td class="url">http://localhost:7272/api/v1/notifications/templates</td>
+              <td class="num">400</td>
+              <td class="url">API-NOTIF-007 templateNameEn Constraints: maxLength=200</td>
+              <td class="num">5ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "50ed12d8-7003-4c5b-b189-9d4e0ffa7b84",
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "details": "Request validation failed. Please check the field errors.",
+    "fieldErrors": [
+      {
+        "field": "templateNameEn",
+        "message": "Invalid length"
+      }
+    ],
+   ...</pre></details></td>
+            </tr>
+            <tr>
+              <td><span class="badge observed">OBSERVED</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create Template — channelTypeId undocumented enum value</td>
+              <td class="url">http://localhost:7272/api/v1/notifications/templates</td>
+              <td class="num">201</td>
+              <td class="url">API-NOTIF-007 channelTypeId Required=Yes, example values EMAIL/PUSH only</td>
+              <td class="num">10ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "9726c09c-b219-4b1b-8a41-b04c2b83429c",
+  "data": {
+    "id": 10,
+    "templateCode": "TEST_TPL_1784052918_BADCHAN",
+    "templateNameAr": "ح",
+    "templateNameEn": "N",
+    "channelTypeId": "CARRIER_PIGEON",
+    "moduleCode": "SECURITY",
+    "templateBodyAr": "ح",
+    "templat...</pre></details></td>
+            </tr>
+            <tr>
+              <td><span class="badge observed">OBSERVED</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create Template — omit required moduleCode</td>
+              <td class="url">http://localhost:7272/api/v1/notifications/templates</td>
+              <td class="num">400</td>
+              <td class="url">API-NOTIF-007 moduleCode Required=Yes</td>
+              <td class="num">4ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "feaa13a2-ef1b-45e2-9360-322632360f82",
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "details": "Request validation failed. Please check the field errors.",
+    "fieldErrors": [
+      {
+        "field": "moduleCode",
+        "message": "This field is required"
+      }
+    ],...</pre></details></td>
+            </tr>
+            <tr>
+              <td><span class="badge observed">OBSERVED</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Send Notification — priority outside HIGH|MEDIUM|LOW pattern</td>
+              <td class="url">http://localhost:7272/api/v1/notifications/send</td>
+              <td class="num">400</td>
+              <td class="url">API-NOTIF-001 priority Constraints: pattern HIGH|MEDIUM|LOW</td>
+              <td class="num">5ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "e2e3f074-daa3-4424-8045-a39d6feaeb14",
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "details": "Request validation failed. Please check the field errors.",
+    "fieldErrors": [
+      {
+        "field": "priority",
+        "message": "Invalid format"
+      }
+    ],
+    "path...</pre></details></td>
+            </tr>
+            <tr>
+              <td><span class="badge observed">OBSERVED</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Send Notification — recipientId as string instead of int64</td>
+              <td class="url">http://localhost:7272/api/v1/notifications/send</td>
+              <td class="num">400</td>
+              <td class="url">API-NOTIF-001 recipientId Type: integer (int64)</td>
+              <td class="num">4ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "d053eb4a-5eea-4921-92fd-7ebbbf718453",
+  "error": {
+    "code": "INVALID_JSON",
+    "details": "Malformed JSON. Please check the request body syntax.",
+    "path": "/api/v1/notifications/send",
+    "timestamp": "2026-07-14T18:15:18.524174Z"
+  },
+  "message": "Invalid request bo...</pre></details></td>
+            </tr></tbody>
+          </table>
+        </section>
+</body></html>

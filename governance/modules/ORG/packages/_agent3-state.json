@@ -1,0 +1,14 @@
+{
+  "module": "ORG",
+  "version": 1,
+  "stages_completed": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "last_run": "2026-07-02T11:22:23.536956",
+  "exec_plan_path": "C:\\sources\\nots\\s\\System-main-main-main\\System-main-main\\governance-repo\\modules\\ORG\\P3\\execution-plan.md",
+  "test_plan_path": "C:\\sources\\nots\\s\\System-main-main-main\\System-main-main\\governance-repo\\modules\\ORG\\P3_5\\test-plan.md"
+}

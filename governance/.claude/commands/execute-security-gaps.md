@@ -94,7 +94,7 @@ WAIT for user confirmation. Do not execute before confirmation.
 4. **[F1/F2/F3 only] API Contract Resolution** — see STEP 1.5 below, for any
    task that calls a backend endpoint (own or Organization-module).
 5. Run `validate-backend-feature` or `validate-frontend-feature` as applicable.
-6. Write `HANDOFF-PHASE-[N]-[NAME].md` at the governance-repo root, using the
+6. Write `HANDOFF-PHASE-[N]-[NAME].md` at `governance/modules/SECURITY/`, using the
    template embedded in the phase file itself.
 7. Update `execution-state.json`:
    - Mark the phase (and its single sub) COMPLETE

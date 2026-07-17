@@ -1,0 +1,10 @@
+{
+  "name": "erp-playwright-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local MCP server exposing Playwright browser automation to Claude Code",
+  "dependencies": {
+    "@playwright/mcp": "^0.0.78"
+  }
+}
