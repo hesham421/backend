@@ -15,6 +15,14 @@ import json
 
 REPO_BASE_PATH = Path("/Users/ezzat/my project/backend/governance")
 
+# PLAYWRIGHT test-phase content is split out to the frontend repo by design
+# (see the STRUCTURAL LAW section in backend/CLAUDE.md and frontend/CLAUDE.md —
+# PLAYWRIGHT scenarios must never live under REPO_BASE_PATH/backend/governance/).
+# This is a SEPARATE root, not derived from REPO_BASE_PATH, so the two can
+# never accidentally collapse into one. Same hardcoded-absolute-path
+# convention as REPO_BASE_PATH: update by hand if this checkout ever moves.
+PLAYWRIGHT_OUTPUT_BASE_PATH = Path("/Users/ezzat/my project/frontend/governance")
+
 # ─────────────────────────────────────────────
 # MODULES — All known module codes
 # Add new modules here — agents pick them up automatically
@@ -91,6 +99,29 @@ def get_module_version_path(mod: str, version: "int | None" = None) -> Path:
     if version == 1:
         return REPO_BASE_PATH / "modules" / mod
     return REPO_BASE_PATH / "modules" / mod / f"v{version}"
+
+def get_playwright_module_version_path(mod: str, version: "int | None" = None) -> Path:
+    """
+    Mirror of get_module_version_path(), but rooted at
+    PLAYWRIGHT_OUTPUT_BASE_PATH (frontend/governance/) instead of
+    REPO_BASE_PATH (backend/governance/). Used ONLY for PLAYWRIGHT
+    test-phase output — see agent3_splitter.py Stage 3.
+
+    Still reads the same modules-registry.json (registry stays backend-owned,
+    single source of truth for version numbers per STRUCTURAL LAW) — only the
+    destination root differs.
+    """
+    registry = load_modules_registry()
+    mod_entry = registry.get("modules", {}).get(mod)
+    if not mod_entry:
+        return PLAYWRIGHT_OUTPUT_BASE_PATH / "modules" / mod
+
+    if version is None:
+        version = mod_entry.get("current_version") or 1
+
+    if version == 1:
+        return PLAYWRIGHT_OUTPUT_BASE_PATH / "modules" / mod
+    return PLAYWRIGHT_OUTPUT_BASE_PATH / "modules" / mod / f"v{version}"
 
 # ─────────────────────────────────────────────
 # MODULE FOLDER STRUCTURE

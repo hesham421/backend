@@ -63,12 +63,18 @@ Same format as execute-filesvc.md STEP 0.4. WAIT for user confirmation.
 
 ### 1.0 — Read shared context once per TEST-PHASE run
 Before the first sub: read `header_file` for JUNIT
-(`packages/test/JUNIT/JUNIT-HEADER.md`). PLAYWRIGHT has no separate header
-file for FILESVC — read the single `PLAYWRIGHT.md` sub in full instead.
+(`governance/modules/FILESVC/packages/test/JUNIT/JUNIT-HEADER.md`, this
+repo — backend/governance/). PLAYWRIGHT has no separate header file for
+FILESVC — read the single `PLAYWRIGHT.md` sub in full instead, from
+`../frontend/governance/modules/FILESVC/packages/test/PLAYWRIGHT/PLAYWRIGHT.md`
+(sibling repo, frontend/governance/ — PLAYWRIGHT content lives there per
+STRUCTURAL LAW, never under backend/governance/).
 
 ### Per sub:
 
-1. Read the sub file completely: `packages/test/[JUNIT|PLAYWRIGHT]/[SUB].md`
+1. Read the sub file completely:
+   - **JUNIT** → `governance/modules/FILESVC/packages/test/JUNIT/[SUB].md`
+   - **PLAYWRIGHT** → `../frontend/governance/modules/FILESVC/packages/test/PLAYWRIGHT/[SUB].md`
 2. Identify all scenarios in it
 3. Generate test code for each scenario:
    - **JUNIT** → Spring Boot test class (`@SpringBootTest` / `@WebMvcTest` +
