@@ -1,0 +1,1548 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8" />
+<title>Security Module API Test Report — 2026-07-10 13:50</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;margin:0;padding:20px;background:#f4f6f9;color:#1a1a2e}
+  h1{margin-bottom:4px} .meta{color:#666;font-size:.9rem;margin-bottom:24px}
+  .override-banner{background:#fff3cd;color:#8a6314;border-radius:10px;padding:14px 20px;margin-bottom:20px;font-size:.85rem;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+  .summary{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:28px}
+  .card{background:#fff;border-radius:10px;padding:18px 24px;box-shadow:0 2px 6px rgba(0,0,0,.08);min-width:140px;text-align:center}
+  .card .num{font-size:2.2rem;font-weight:700;line-height:1} .card .label{font-size:.8rem;color:#888;margin-top:4px}
+  .card.total .num{color:#3a86ff} .card.pass .num{color:#2ec4b6} .card.fail .num{color:#e63946}
+  .suite-table{background:#fff;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.08);margin-bottom:28px;overflow:hidden}
+  table{width:100%;border-collapse:collapse;font-size:.875rem}
+  th{background:#f0f2f5;text-align:left;padding:10px 14px;font-weight:600;color:#555}
+  td{padding:8px 14px;border-top:1px solid #eef0f3;vertical-align:top}
+  tr.pass td{background:#f6fff8} tr.fail td{background:#fff5f5}
+  .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.75rem;font-weight:700}
+  .badge.pass{background:#d4f7ef;color:#1a7a6f} .badge.fail{background:#fde8e8;color:#b91c1c}
+  .badge.observed{background:#fff3cd;color:#8a6314}
+  .method{display:inline-block;padding:2px 6px;border-radius:4px;font-size:.7rem;font-weight:700;color:#fff}
+  .method.get{background:#3a86ff} .method.post{background:#2ec4b6} .method.put{background:#f4a261} .method.delete{background:#e63946}
+  .num{text-align:center} .url{font-size:.75rem;color:#666;word-break:break-all;max-width:260px}
+  .test-name{font-weight:500} .note{font-size:.72rem;color:#999;margin-left:6px}
+  .error-msg{color:#b91c1c;font-size:.8rem}
+  details summary{cursor:pointer;color:#3a86ff;font-size:.78rem;margin-top:4px}
+  pre{background:#f8f8f8;padding:8px;border-radius:4px;font-size:.72rem;overflow-x:auto;max-width:400px;white-space:pre-wrap}
+  section{background:#fff;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.08);margin-bottom:28px;overflow:hidden}
+  section h2{padding:14px 20px;margin:0;background:#f0f2f5;font-size:1rem;border-bottom:1px solid #e0e4ea}
+</style></head>
+<body>
+  <h1>Security Module API Test Report</h1>
+  <p class="meta">Generated 2026-07-10 13:50:21 &nbsp;·&nbsp;
+     Base URL: http://localhost:7272 &nbsp;·&nbsp; Duration: 1.2s</p>
+  <div class="override-banner">
+    ⚠ <strong>Governance override in effect:</strong> execution-plan-SEC-gaps.md marks the 12
+    SEC-002 gap-package APIs (Self-Service Auth, User Profiles, Role Branches suites below) as
+    MODE 3 EXECUTION BLOCKED pending Conflict #19 architecture sign-off. This run was explicitly
+    authorized to proceed anyway by the requester, who accepted responsibility for the override.
+  </div>
+  <div class="summary">
+    <div class="card total"><div class="num">58</div><div class="label">Total</div></div>
+    <div class="card pass"><div class="num">58</div><div class="label">Passed</div></div>
+    <div class="card fail"><div class="num">0</div><div class="label">Failed</div></div>
+    <div class="card total"><div class="num">100.0%</div><div class="label">Pass Rate</div></div>
+  </div>
+  <div class="suite-table"><table><thead><tr><th>Suite</th><th>Total</th><th>Pass</th><th>Fail</th><th>Rate</th></tr></thead>
+  <tbody>
+        <tr>
+          <td>Auth</td>
+          <td class="num">4</td>
+          <td class="num pass">4</td>
+          <td class="num fail">0</td>
+          <td class="num">100.0%</td>
+        </tr>
+        <tr>
+          <td>Page Management</td>
+          <td class="num">8</td>
+          <td class="num pass">8</td>
+          <td class="num fail">0</td>
+          <td class="num">100.0%</td>
+        </tr>
+        <tr>
+          <td>Permission Management</td>
+          <td class="num">3</td>
+          <td class="num pass">3</td>
+          <td class="num fail">0</td>
+          <td class="num">100.0%</td>
+        </tr>
+        <tr>
+          <td>Role Access Control</td>
+          <td class="num">14</td>
+          <td class="num pass">14</td>
+          <td class="num fail">0</td>
+          <td class="num">100.0%</td>
+        </tr>
+        <tr>
+          <td>User Management</td>
+          <td class="num">6</td>
+          <td class="num pass">6</td>
+          <td class="num fail">0</td>
+          <td class="num">100.0%</td>
+        </tr>
+        <tr>
+          <td>Menu Management</td>
+          <td class="num">2</td>
+          <td class="num pass">2</td>
+          <td class="num fail">0</td>
+          <td class="num">100.0%</td>
+        </tr>
+        <tr>
+          <td>Security DataScope - User Profiles</td>
+          <td class="num">7</td>
+          <td class="num pass">7</td>
+          <td class="num fail">0</td>
+          <td class="num">100.0%</td>
+        </tr>
+        <tr>
+          <td>Security DataScope - Role Branches</td>
+          <td class="num">7</td>
+          <td class="num pass">7</td>
+          <td class="num fail">0</td>
+          <td class="num">100.0%</td>
+        </tr>
+        <tr>
+          <td>Self-Service Auth</td>
+          <td class="num">7</td>
+          <td class="num pass">7</td>
+          <td class="num fail">0</td>
+          <td class="num">100.0%</td>
+        </tr></tbody></table></div>
+  
+        <section>
+          <h2>Auth — 4/4 passed</h2>
+          <table>
+            <thead><tr><th>Status</th><th>Method</th><th>Test</th><th>URL</th>
+              <th>Got</th><th>Expected</th><th>Time</th><th>Details</th></tr></thead>
+            <tbody>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Admin Login </td>
+              <td class="url">http://localhost:7272/api/auth/login</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">160ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "0098a140-6312-43f4-8be3-221076e14a0d",
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsInVzZXJJZCI6NCwiYXV0aG9yaXRpZXMiOlsiUEVSTV9CUkFOQ0hfVklFVyIsIlBFUk1fR0xfQUNDT1VOVF9WSUVXIiwiUEVSTV9NQVNURVJfTE9PS1VQX0NSRUFURSIsIlBFUk1fTUFTVEVSX0xPT0tVUF9ERUxFVEUiLC...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Login With Token (full UserInfo) </td>
+              <td class="url">http://localhost:7272/api/auth/login-token</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">148ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "cdf009c6-2cf7-46d6-9e57-135f0fd43aaa",
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsInVzZXJJZCI6NCwiYXV0aG9yaXRpZXMiOlsiUEVSTV9CUkFOQ0hfVklFVyIsIlBFUk1fR0xfQUNDT1VOVF9WSUVXIiwiUEVSTV9NQVNURVJfTE9PS1VQX0NSRUFURSIsIlBFUk1fTUFTVEVSX0xPT0tVUF9ERUxFVEUiLC...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Refresh Access Token </td>
+              <td class="url">http://localhost:7272/api/auth/refresh</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">12ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "997acf16-8c89-4a66-8581-4350a18a50b8",
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsInVzZXJJZCI6NCwiYXV0aG9yaXRpZXMiOlsiUEVSTV9CUkFOQ0hfVklFVyIsIlBFUk1fR0xfQUNDT1VOVF9WSUVXIiwiUEVSTV9NQVNURVJfTE9PS1VQX0NSRUFURSIsIlBFUk1fTUFTVEVSX0xPT0tVUF9ERUxFVEUiLC...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Login — malformed JSON body (structural, login.md) </td>
+              <td class="url">http://localhost:7272/api/auth/login</td>
+              <td class="num">400</td>
+              <td class="num">400</td>
+              <td class="num">2ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "ac5f44ae-5742-4514-b680-e7dbe9b01cc5",
+  "error": {
+    "code": "INVALID_JSON",
+    "details": "Malformed JSON. Please check the request body syntax.",
+    "path": "/api/auth/login",
+    "timestamp": "2026-07-10T09:50:20.191081Z"
+  },
+  "message": "Invalid request body",
+  "suc...</pre></details></td>
+            </tr></tbody>
+          </table>
+        </section>
+        <section>
+          <h2>Page Management — 8/8 passed</h2>
+          <table>
+            <thead><tr><th>Status</th><th>Method</th><th>Test</th><th>URL</th>
+              <th>Got</th><th>Expected</th><th>Time</th><th>Details</th></tr></thead>
+            <tbody>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create Page </td>
+              <td class="url">http://localhost:7272/api/pages</td>
+              <td class="num">201</td>
+              <td class="num">200, 201</td>
+              <td class="num">20ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "a22585f6-9919-42ef-a93a-95a173802ea9",
+  "data": {
+    "id": 92,
+    "pageCode": "TPDA7D34",
+    "nameAr": "صفحة تجريبية",
+    "nameEn": "Test Page",
+    "route": "/test/tpda7d34",
+    "module": "SECURITY",
+    "displayOrder": 999,
+    "active": true,
+    "permissionKeys": {
+  ...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">Get Page by ID </td>
+              <td class="url">http://localhost:7272/api/pages/92</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">9ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "2c484a51-dbf8-4c3c-8f44-b37c319109ce",
+  "data": {
+    "id": 92,
+    "pageCode": "TPDA7D34",
+    "nameAr": "صفحة تجريبية",
+    "nameEn": "Test Page",
+    "route": "/test/tpda7d34",
+    "module": "SECURITY",
+    "displayOrder": 999,
+    "active": true,
+    "permissionKeys": {
+  ...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">Get Page by ID — Not Found </td>
+              <td class="url">http://localhost:7272/api/pages/999999999</td>
+              <td class="num">404</td>
+              <td class="num">404</td>
+              <td class="num">7ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "433cb079-8b5b-49de-9f55-a9695b218f53",
+  "error": {
+    "code": "PAGE_NOT_FOUND",
+    "details": "Page not found with ID: 999,999,999",
+    "path": "/api/pages/999999999",
+    "timestamp": "2026-07-10T09:50:20.227039Z"
+  },
+  "message": "Page not found with ID: 999,999,999",
+  ...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method put">PUT</span></td>
+              <td class="test-name">Update Page </td>
+              <td class="url">http://localhost:7272/api/pages/92</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">12ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "1200db8b-6f5d-4a22-89eb-fa8a65db3b24",
+  "data": {
+    "id": 92,
+    "pageCode": "TPDA7D34",
+    "nameAr": "صفحة محدثة",
+    "nameEn": "Updated Test Page",
+    "route": "/test/tpda7d34",
+    "active": true,
+    "permissionKeys": {
+      "VIEW": "PERM_TPDA7D34_VIEW",
+      "CREA...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Search Pages </td>
+              <td class="url">http://localhost:7272/api/pages/search</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">8ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "c7f5a20b-9ac5-4306-8f58-2bd48b28702e",
+  "data": {
+    "content": [
+      {
+        "id": 92,
+        "pageCode": "TPDA7D34",
+        "nameAr": "صفحة محدثة",
+        "nameEn": "Updated Test Page",
+        "route": "/test/tpda7d34",
+        "active": true,
+        "permissionKey...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">Get Active Pages </td>
+              <td class="url">http://localhost:7272/api/pages/active</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">8ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "b0893f6a-9e21-4ddf-ac2e-59b5933e429c",
+  "data": [
+    {
+      "id": 66,
+      "pageCode": "MASTER_LOOKUP",
+      "nameAr": "قوائم البحث الرئيسية",
+      "nameEn": "Master Lookups",
+      "route": "/master-data/master-lookups",
+      "icon": "database",
+      "module": "MASTERD...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method put">PUT</span></td>
+              <td class="test-name">Deactivate Page </td>
+              <td class="url">http://localhost:7272/api/pages/92/deactivate</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">10ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "ca652d2f-b983-472c-83f6-e902d3a349a1",
+  "data": {
+    "id": 92,
+    "pageCode": "TPDA7D34",
+    "nameAr": "صفحة محدثة",
+    "nameEn": "Updated Test Page",
+    "route": "/test/tpda7d34",
+    "active": false,
+    "permissionKeys": {
+      "VIEW": "PERM_TPDA7D34_VIEW",
+      "CRE...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method put">PUT</span></td>
+              <td class="test-name">Reactivate Page </td>
+              <td class="url">http://localhost:7272/api/pages/92/reactivate</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">10ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "6dfa33ab-0db3-4450-8156-bae780b5b05e",
+  "data": {
+    "id": 92,
+    "pageCode": "TPDA7D34",
+    "nameAr": "صفحة محدثة",
+    "nameEn": "Updated Test Page",
+    "route": "/test/tpda7d34",
+    "active": true,
+    "permissionKeys": {
+      "VIEW": "PERM_TPDA7D34_VIEW",
+      "CREA...</pre></details></td>
+            </tr></tbody>
+          </table>
+        </section>
+        <section>
+          <h2>Permission Management — 3/3 passed</h2>
+          <table>
+            <thead><tr><th>Status</th><th>Method</th><th>Test</th><th>URL</th>
+              <th>Got</th><th>Expected</th><th>Time</th><th>Details</th></tr></thead>
+            <tbody>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create Permission </td>
+              <td class="url">http://localhost:7272/api/permissions</td>
+              <td class="num">201</td>
+              <td class="num">200, 201</td>
+              <td class="num">12ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "34a5e4d1-bc11-415d-905f-d44edbc5cc4c",
+  "data": {
+    "id": 202,
+    "name": "PERM_TEST_6e251fb0",
+    "pageId": 92,
+    "pageCode": "TPDA7D34",
+    "permissionType": "VIEW"
+  },
+  "message": "OK",
+  "success": true,
+  "timestamp": "2026-07-10T09:50:20.300167Z"
+}</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method put">PUT</span></td>
+              <td class="test-name">Update Permission </td>
+              <td class="url">http://localhost:7272/api/permissions/202</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">12ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "7e9f5b97-0e9f-4289-be12-86223fc8866b",
+  "data": {
+    "id": 202,
+    "name": "PERM_TEST_UPDATED_808ad34e",
+    "pageId": 92,
+    "pageCode": "TPDA7D34",
+    "permissionType": "VIEW"
+  },
+  "message": "OK",
+  "success": true,
+  "timestamp": "2026-07-10T09:50:20.311723Z"
+}</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Search Permissions </td>
+              <td class="url">http://localhost:7272/api/permissions/search</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">12ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "bdc704ce-e851-4f8f-8fa1-86046ee8623e",
+  "data": {
+    "content": [
+      {
+        "id": 202,
+        "name": "PERM_TEST_UPDATED_808ad34e",
+        "pageId": 92,
+        "pageCode": "TPDA7D34",
+        "permissionType": "VIEW"
+      },
+      {
+        "id": 201,
+        "name"...</pre></details></td>
+            </tr></tbody>
+          </table>
+        </section>
+        <section>
+          <h2>Role Access Control — 14/14 passed</h2>
+          <table>
+            <thead><tr><th>Status</th><th>Method</th><th>Test</th><th>URL</th>
+              <th>Got</th><th>Expected</th><th>Time</th><th>Details</th></tr></thead>
+            <tbody>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create Role </td>
+              <td class="url">http://localhost:7272/api/roles</td>
+              <td class="num">201</td>
+              <td class="num">200, 201</td>
+              <td class="num">10ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "954f210c-1685-44cd-8226-4f0353ca3a6c",
+  "data": {
+    "id": 35,
+    "roleCode": "TESTROLE_4CEBDC78",
+    "roleName": "Test Role",
+    "description": "Generated by test script",
+    "active": true,
+    "createdAt": "2026-07-10T09:50:20.335553Z",
+    "createdBy": "admin"
+  },
+  ...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create Role (source, for copyFromRole) </td>
+              <td class="url">http://localhost:7272/api/roles</td>
+              <td class="num">201</td>
+              <td class="num">200, 201</td>
+              <td class="num">10ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "6d40a933-4d1a-4bb2-bdfe-7ba8ca3fcc10",
+  "data": {
+    "id": 36,
+    "roleCode": "TESTROLE2_C8403E00",
+    "roleName": "Test Source Role",
+    "active": true,
+    "createdAt": "2026-07-10T09:50:20.345490Z",
+    "createdBy": "admin"
+  },
+  "message": "OK",
+  "success": true,
+  "...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">Get Role by ID </td>
+              <td class="url">http://localhost:7272/api/roles/35</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">8ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "f781135e-4f10-422f-b683-4dc9de73ccaf",
+  "data": {
+    "id": 35,
+    "roleCode": "TESTROLE_4CEBDC78",
+    "roleName": "Test Role",
+    "description": "Generated by test script",
+    "active": true,
+    "createdAt": "2026-07-10T09:50:20.335553Z",
+    "createdBy": "admin"
+  },
+  ...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">Get Role by ID — Not Found </td>
+              <td class="url">http://localhost:7272/api/roles/999999999</td>
+              <td class="num">404</td>
+              <td class="num">404</td>
+              <td class="num">8ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "6699188b-d6e9-47b5-9efb-d93abbcc823d",
+  "error": {
+    "code": "ROLE_NOT_FOUND",
+    "details": "Role not found in current tenant: 999,999,999",
+    "path": "/api/roles/999999999",
+    "timestamp": "2026-07-10T09:50:20.364265Z"
+  },
+  "message": "Role not found in current tena...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method put">PUT</span></td>
+              <td class="test-name">Update Role </td>
+              <td class="url">http://localhost:7272/api/roles/35</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">11ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "dcda9b64-38c2-4bc2-961b-cc1a6a1d302c",
+  "data": {
+    "id": 35,
+    "roleCode": "TESTROLE_4CEBDC78",
+    "roleName": "Test Role Updated",
+    "active": true,
+    "createdAt": "2026-07-10T09:50:20.335553Z",
+    "createdBy": "admin"
+  },
+  "message": "OK",
+  "success": true,
+  "...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method put">PUT</span></td>
+              <td class="test-name">Toggle Role Active (deactivate) </td>
+              <td class="url">http://localhost:7272/api/roles/35/toggle-active</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">9ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "91bab23e-9163-4032-bfa2-68ec0ea63936",
+  "data": {
+    "id": 35,
+    "roleCode": "TESTROLE_4CEBDC78",
+    "roleName": "Test Role Updated",
+    "active": false,
+    "createdAt": "2026-07-10T09:50:20.335553Z",
+    "createdBy": "admin",
+    "updatedAt": "2026-07-10T09:50:20.372623...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method put">PUT</span></td>
+              <td class="test-name">Toggle Role Active (reactivate) </td>
+              <td class="url">http://localhost:7272/api/roles/35/toggle-active</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">9ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "ceafb35a-134d-4d04-be1f-0a0c3e2eca43",
+  "data": {
+    "id": 35,
+    "roleCode": "TESTROLE_4CEBDC78",
+    "roleName": "Test Role Updated",
+    "active": true,
+    "createdAt": "2026-07-10T09:50:20.335553Z",
+    "createdBy": "admin",
+    "updatedAt": "2026-07-10T09:50:20.381639Z...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Search Roles </td>
+              <td class="url">http://localhost:7272/api/roles/search</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">7ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "d9e26d77-4fea-4de8-a97e-01e56357bdad",
+  "data": {
+    "content": [
+      {
+        "id": 36,
+        "roleCode": "TESTROLE2_C8403E00",
+        "roleName": "Test Source Role",
+        "active": true,
+        "createdAt": "2026-07-10T09:50:20.345490Z",
+        "createdBy": "admi...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Add Page to Role </td>
+              <td class="url">http://localhost:7272/api/roles/35/pages</td>
+              <td class="num">201</td>
+              <td class="num">200, 201</td>
+              <td class="num">15ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "0b6a227a-2408-4af0-886a-36519d9146dc",
+  "data": {
+    "pageCode": "TPDA7D34",
+    "pageName": "Updated Test Page",
+    "pageNameAr": "صفحة محدثة",
+    "permissions": [
+      "CREATE",
+      "UPDATE"
+    ]
+  },
+  "message": "OK",
+  "success": true,
+  "timestamp": "2026-07-10T09...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">Get Role Pages Matrix </td>
+              <td class="url">http://localhost:7272/api/roles/35/pages</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">8ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "ea6ee9f6-2e69-428e-a3a2-667dd8860ace",
+  "data": {
+    "roleId": 35,
+    "roleName": "Test Role Updated",
+    "assignments": [
+      {
+        "pageCode": "TPDA7D34",
+        "pageName": "Updated Test Page",
+        "pageNameAr": "صفحة محدثة",
+        "permissions": [
+         ...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method put">PUT</span></td>
+              <td class="test-name">Bulk Sync Role Pages </td>
+              <td class="url">http://localhost:7272/api/roles/35/pages</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">12ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "8fb77d9f-7b83-48b4-9318-d920b972df0f",
+  "data": {
+    "roleId": 35,
+    "roleName": "Test Role Updated",
+    "assignments": [
+      {
+        "pageCode": "TPDA7D34",
+        "pageName": "Updated Test Page",
+        "pageNameAr": "صفحة محدثة",
+        "permissions": [
+         ...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Add Page to Role (source, for copyFromRole) </td>
+              <td class="url">http://localhost:7272/api/roles/36/pages</td>
+              <td class="num">201</td>
+              <td class="num">200, 201</td>
+              <td class="num">12ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "f6a74580-bea8-42e3-bf11-1d232d74659d",
+  "data": {
+    "pageCode": "TPDA7D34",
+    "pageName": "Updated Test Page",
+    "pageNameAr": "صفحة محدثة",
+    "permissions": [
+      "CREATE"
+    ]
+  },
+  "message": "OK",
+  "success": true,
+  "timestamp": "2026-07-10T09:50:20.447774Z"
+...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Copy Permissions From Role </td>
+              <td class="url">http://localhost:7272/api/roles/35/copy-from/36</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">8ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "872ee972-4242-44b7-8f8b-68da4852e6b8",
+  "data": {
+    "roleId": 35,
+    "roleName": "Test Role Updated",
+    "copiedFrom": {
+      "roleId": 36,
+      "roleName": "Test Source Role"
+    },
+    "assignments": [
+      {
+        "pageCode": "TPDA7D34",
+        "pageName": "Update...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method delete">DELETE</span></td>
+              <td class="test-name">Remove Page From Role </td>
+              <td class="url">http://localhost:7272/api/roles/35/pages/TPDA7D34</td>
+              <td class="num">204</td>
+              <td class="num">204, 200, 404</td>
+              <td class="num">8ms</td>
+              <td></td>
+            </tr></tbody>
+          </table>
+        </section>
+        <section>
+          <h2>User Management — 6/6 passed</h2>
+          <table>
+            <thead><tr><th>Status</th><th>Method</th><th>Test</th><th>URL</th>
+              <th>Got</th><th>Expected</th><th>Time</th><th>Details</th></tr></thead>
+            <tbody>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create User </td>
+              <td class="url">http://localhost:7272/api/users</td>
+              <td class="num">201</td>
+              <td class="num">200, 201</td>
+              <td class="num">80ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "4533ccce-076a-4f35-8188-b25a2912c73b",
+  "data": {
+    "id": 37,
+    "username": "testuser_1dc69899",
+    "enabled": true,
+    "roles": [],
+    "permissions": [],
+    "createdAt": "2026-07-10T09:50:20.551779Z",
+    "createdBy": "admin"
+  },
+  "message": "OK",
+  "success": true,...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">List All Users </td>
+              <td class="url">http://localhost:7272/api/users?page=0&size=20</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">17ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "a0c6afca-3716-4267-b30b-e39ffc5f7f5b",
+  "data": {
+    "content": [
+      {
+        "id": 4,
+        "username": "admin",
+        "enabled": true,
+        "roles": [
+          "SUPER_ADMIN"
+        ],
+        "permissions": [
+          "PERM_USER_VIEW",
+          "PERM_BRANCH_V...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Search Users </td>
+              <td class="url">http://localhost:7272/api/users/search</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">16ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "399c7fd9-9114-482f-8e8d-a6d0e634d039",
+  "data": {
+    "content": [
+      {
+        "id": 37,
+        "username": "testuser_1dc69899",
+        "enabled": true,
+        "roles": [],
+        "permissions": [],
+        "createdAt": "2026-07-10T09:50:20.551779Z",
+        "createdBy...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method put">PUT</span></td>
+              <td class="test-name">Update User </td>
+              <td class="url">http://localhost:7272/api/users/37</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">6ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "ec43941e-6e91-4f68-8d90-45357b28f1ba",
+  "data": {
+    "id": 37,
+    "username": "testuser_1dc69899",
+    "enabled": true,
+    "roles": [],
+    "permissions": [],
+    "createdAt": "2026-07-10T09:50:20.551779Z",
+    "createdBy": "admin"
+  },
+  "message": "OK",
+  "success": true,...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">Get User Roles </td>
+              <td class="url">http://localhost:7272/api/users/37/roles</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">6ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "cc924c1d-844e-4e55-8564-bae9eb7b1975",
+  "data": [],
+  "message": "OK",
+  "success": true,
+  "timestamp": "2026-07-10T09:50:20.599894Z"
+}</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method put">PUT</span></td>
+              <td class="test-name">Assign Roles to User (post-hoc, role now available) </td>
+              <td class="url">http://localhost:7272/api/users/37/roles</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">10ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "759f112a-48a5-42f9-8ded-383927b336dc",
+  "data": {
+    "id": 37,
+    "username": "testuser_1dc69899",
+    "enabled": true,
+    "roles": [
+      "Test Role Updated"
+    ],
+    "permissions": [],
+    "createdAt": "2026-07-10T09:50:20.551779Z",
+    "createdBy": "admin"
+  },
+  "mes...</pre></details></td>
+            </tr></tbody>
+          </table>
+        </section>
+        <section>
+          <h2>Menu Management — 2/2 passed</h2>
+          <table>
+            <thead><tr><th>Status</th><th>Method</th><th>Test</th><th>URL</th>
+              <th>Got</th><th>Expected</th><th>Time</th><th>Details</th></tr></thead>
+            <tbody>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">Get Current User Menu </td>
+              <td class="url">http://localhost:7272/api/menu/user-menu</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">9ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "476acfa7-2d96-42fa-a563-e5eda5fad054",
+  "data": [
+    {
+      "id": 63,
+      "pageCode": "USER",
+      "nameAr": "إدارة المستخدمين",
+      "nameEn": "User Management",
+      "routePath": "/security/users",
+      "module": "SECURITY",
+      "displayOrder": 1,
+      "icon": "us...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">Get Menu For Specific User (Admin) </td>
+              <td class="url">http://localhost:7272/api/menu/user-menu/37</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">6ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "11753ad6-b325-42ed-a140-740bd9c791af",
+  "data": [],
+  "message": "OK",
+  "success": true,
+  "timestamp": "2026-07-10T09:50:20.638976Z"
+}</pre></details></td>
+            </tr></tbody>
+          </table>
+        </section>
+        <section>
+          <h2>Security DataScope - User Profiles — 7/7 passed</h2>
+          <table>
+            <thead><tr><th>Status</th><th>Method</th><th>Test</th><th>URL</th>
+              <th>Got</th><th>Expected</th><th>Time</th><th>Details</th></tr></thead>
+            <tbody>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create User Profile </td>
+              <td class="url">http://localhost:7272/api/v1/security/user-profiles</td>
+              <td class="num">201</td>
+              <td class="num">200, 201</td>
+              <td class="num">14ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "5baf04e9-c636-41a2-b49e-c14b1bc86636",
+  "data": {
+    "userIdFk": 37,
+    "branchIdFk": 1,
+    "isActiveFl": true,
+    "createdAt": "2026-07-10T09:50:20.651171Z",
+    "createdBy": "admin"
+  },
+  "message": "OK",
+  "success": true,
+  "timestamp": "2026-07-10T09:50:20.653220Z"
+}</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">Get User Profile by ID </td>
+              <td class="url">http://localhost:7272/api/v1/security/user-profiles/37</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">5ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "c6430bd9-b43e-4110-ac36-5e68b8cdd7bb",
+  "data": {
+    "userIdFk": 37,
+    "branchIdFk": 1,
+    "isActiveFl": true,
+    "createdAt": "2026-07-10T09:50:20.651171Z",
+    "createdBy": "admin"
+  },
+  "message": "OK",
+  "success": true,
+  "timestamp": "2026-07-10T09:50:20.658243Z"
+}</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">Get User Profile by ID — Not Found </td>
+              <td class="url">http://localhost:7272/api/v1/security/user-profiles/999999999</td>
+              <td class="num">404</td>
+              <td class="num">404</td>
+              <td class="num">5ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "ecd0fb79-f304-4a7a-a1c1-74fecb608018",
+  "error": {
+    "code": "SEC_USER_PROFILE_NOT_FOUND",
+    "details": "User profile not found for user ID 999,999,999",
+    "path": "/api/v1/security/user-profiles/999999999",
+    "timestamp": "2026-07-10T09:50:20.663051Z"
+  },
+  "message"...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method put">PUT</span></td>
+              <td class="test-name">Update User Profile </td>
+              <td class="url">http://localhost:7272/api/v1/security/user-profiles/37</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">16ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "71d4a8db-7f6a-48ec-8896-72afe25c3a29",
+  "data": {
+    "userIdFk": 37,
+    "branchIdFk": 1,
+    "fullNameEn": "Test User Updated",
+    "isActiveFl": true,
+    "createdAt": "2026-07-10T09:50:20.651171Z",
+    "createdBy": "admin"
+  },
+  "message": "OK",
+  "success": true,
+  "time...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">List User Profiles </td>
+              <td class="url">http://localhost:7272/api/v1/security/user-profiles?pageable=userIdFk,asc</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">7ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "55751e89-0198-49b4-9caf-bd9dfa3edbea",
+  "data": {
+    "content": [
+      {
+        "userIdFk": 35,
+        "branchIdFk": 1,
+        "fullNameEn": "Test User Updated",
+        "isActiveFl": true,
+        "createdAt": "2026-07-10T09:49:32.292311Z",
+        "createdBy": "admin",
+...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Search User Profiles </td>
+              <td class="url">http://localhost:7272/api/v1/security/user-profiles/search</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">6ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "c8a27c8e-b378-412d-8620-ef01b03fc89e",
+  "data": {
+    "content": [
+      {
+        "userIdFk": 37,
+        "branchIdFk": 1,
+        "fullNameEn": "Test User Updated",
+        "isActiveFl": true,
+        "createdAt": "2026-07-10T09:50:20.651171Z",
+        "createdBy": "admin",
+...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create User Profile — nonexistent branchIdFk (RULE-SEC-034) </td>
+              <td class="url">http://localhost:7272/api/v1/security/user-profiles</td>
+              <td class="num">400</td>
+              <td class="num">400</td>
+              <td class="num">19ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "e9f75ba4-6617-4113-9ff5-b6ed6b599bbb",
+  "error": {
+    "code": "SEC_USER_PROFILE_BRANCH_INACTIVE",
+    "details": "An active branch is required for the user profile",
+    "path": "/api/v1/security/user-profiles",
+    "timestamp": "2026-07-10T09:50:20.790205Z"
+  },
+  "message":...</pre></details></td>
+            </tr></tbody>
+          </table>
+        </section>
+        <section>
+          <h2>Security DataScope - Role Branches — 7/7 passed</h2>
+          <table>
+            <thead><tr><th>Status</th><th>Method</th><th>Test</th><th>URL</th>
+              <th>Got</th><th>Expected</th><th>Time</th><th>Details</th></tr></thead>
+            <tbody>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Assign Branch Scope to Role </td>
+              <td class="url">http://localhost:7272/api/v1/security/role-branches</td>
+              <td class="num">201</td>
+              <td class="num">200, 201</td>
+              <td class="num">17ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "858d0148-7998-4e8d-ad05-a6f1eb7f8959",
+  "data": {
+    "roleIdFk": 35,
+    "branchIdFk": 1,
+    "dataAccessLevel": "BRANCH_ONLY",
+    "isActiveFl": true,
+    "createdAt": "2026-07-10T09:50:20.810905Z",
+    "createdBy": "admin"
+  },
+  "message": "OK",
+  "success": true,
+  "times...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">Get Role-Branch Assignment </td>
+              <td class="url">http://localhost:7272/api/v1/security/role-branches/35/1</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">5ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "ff4baa5e-9b40-4f4d-9eea-4f8696577dba",
+  "data": {
+    "roleIdFk": 35,
+    "branchIdFk": 1,
+    "dataAccessLevel": "BRANCH_ONLY",
+    "isActiveFl": true,
+    "createdAt": "2026-07-10T09:50:20.810905Z",
+    "createdBy": "admin"
+  },
+  "message": "OK",
+  "success": true,
+  "times...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method put">PUT</span></td>
+              <td class="test-name">Update Role-Branch Assignment </td>
+              <td class="url">http://localhost:7272/api/v1/security/role-branches/35/1</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">16ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "a64a9021-e324-41e4-8fe4-7054ec7c0bd3",
+  "data": {
+    "roleIdFk": 35,
+    "branchIdFk": 1,
+    "dataAccessLevel": "BRANCH_AND_CHILDREN",
+    "isActiveFl": true,
+    "createdAt": "2026-07-10T09:50:20.810905Z",
+    "createdBy": "admin"
+  },
+  "message": "OK",
+  "success": true,
+...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method get">GET</span></td>
+              <td class="test-name">List Role-Branch Assignments </td>
+              <td class="url">http://localhost:7272/api/v1/security/role-branches?pageable=roleIdFk,asc</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">6ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "8d4349eb-a314-4fae-bf0b-290bc7683b99",
+  "data": {
+    "content": [
+      {
+        "roleIdFk": 35,
+        "branchIdFk": 1,
+        "dataAccessLevel": "BRANCH_AND_CHILDREN",
+        "isActiveFl": true,
+        "createdAt": "2026-07-10T09:50:20.810905Z",
+        "createdBy": "a...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Search Role-Branch Assignments </td>
+              <td class="url">http://localhost:7272/api/v1/security/role-branches/search</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">6ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "c16ea7e7-5110-4944-8ce6-c41a31815a6a",
+  "data": {
+    "content": [
+      {
+        "roleIdFk": 35,
+        "branchIdFk": 1,
+        "dataAccessLevel": "BRANCH_AND_CHILDREN",
+        "isActiveFl": true,
+        "createdAt": "2026-07-10T09:50:20.810905Z",
+        "createdBy": "a...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Assign Branch Scope — duplicate (role,branch) (RULE-SEC-036) </td>
+              <td class="url">http://localhost:7272/api/v1/security/role-branches</td>
+              <td class="num">409</td>
+              <td class="num">409</td>
+              <td class="num">7ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "9dc70760-7ec8-4ad9-be18-1722bc0b3eb6",
+  "error": {
+    "code": "SEC_ROLE_BRANCH_DUPLICATE_ASSIGNMENT",
+    "details": "This branch is already assigned to this role",
+    "path": "/api/v1/security/role-branches",
+    "timestamp": "2026-07-10T09:50:20.854995Z"
+  },
+  "message": ...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Assign Branch Scope — omit required dataAccessLevel (RULE-SEC-035) </td>
+              <td class="url">http://localhost:7272/api/v1/security/role-branches</td>
+              <td class="num">400</td>
+              <td class="num">400</td>
+              <td class="num">9ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "c81d7e39-900b-4586-b555-88e4ddde18a7",
+  "error": {
+    "code": "SEC_ROLE_BRANCH_DATA_ACCESS_LEVEL_REQUIRED",
+    "details": "Data access level is required",
+    "path": "/api/v1/security/role-branches",
+    "timestamp": "2026-07-10T09:50:20.863995Z"
+  },
+  "message": "Data acc...</pre></details></td>
+            </tr></tbody>
+          </table>
+        </section>
+        <section>
+          <h2>Self-Service Auth — 7/7 passed</h2>
+          <table>
+            <thead><tr><th>Status</th><th>Method</th><th>Test</th><th>URL</th>
+              <th>Got</th><th>Expected</th><th>Time</th><th>Details</th></tr></thead>
+            <tbody>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Signup (self-registration) </td>
+              <td class="url">http://localhost:7272/api/auth/signup</td>
+              <td class="num">200</td>
+              <td class="num">200, 201</td>
+              <td class="num">80ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "75d881ec-3636-4152-93b8-6c4dd9bb4660",
+  "data": {
+    "userId": 39,
+    "username": "selfreg_222a1a5f",
+    "enabled": false
+  },
+  "message": "OK",
+  "success": true,
+  "timestamp": "2026-07-10T09:50:20.944134Z"
+}</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Signup — duplicate username (RULE-SEC-040) </td>
+              <td class="url">http://localhost:7272/api/auth/signup</td>
+              <td class="num">409</td>
+              <td class="num">409</td>
+              <td class="num">12ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "5ea02862-3c22-45d9-8eaf-9c93b1629ef7",
+  "error": {
+    "code": "SIGNUP_USERNAME_ALREADY_EXISTS",
+    "details": "Username already in use",
+    "path": "/api/auth/signup",
+    "timestamp": "2026-07-10T09:50:20.955974Z"
+  },
+  "message": "Username already in use",
+  "success": f...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Signup — duplicate email (RULE-SEC-041) </td>
+              <td class="url">http://localhost:7272/api/auth/signup</td>
+              <td class="num">409</td>
+              <td class="num">409</td>
+              <td class="num">6ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "ca59ec39-0c7d-4508-a2aa-9e3d65a31689",
+  "error": {
+    "code": "SIGNUP_EMAIL_ALREADY_EXISTS",
+    "details": "Email address already in use",
+    "path": "/api/auth/signup",
+    "timestamp": "2026-07-10T09:50:20.961837Z"
+  },
+  "message": "Email address already in use",
+  "succ...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Activate — invalid/unknown token (RULE-SEC-032) </td>
+              <td class="url">http://localhost:7272/api/auth/signup/activate</td>
+              <td class="num">400</td>
+              <td class="num">400</td>
+              <td class="num">8ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "695ce793-481f-40ec-ba5c-b1515346cc6a",
+  "error": {
+    "code": "ACTIVATION_TOKEN_INVALID_OR_EXPIRED",
+    "details": "Activation token is invalid or expired",
+    "path": "/api/auth/signup/activate",
+    "timestamp": "2026-07-10T09:50:20.969369Z"
+  },
+  "message": "Activation ...</pre></details></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Forgot Password — existing email (RULE-SEC-038) </td>
+              <td class="url">http://localhost:7272/api/auth/forgot-password</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">10ms</td>
+              <td></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Forgot Password — nonexistent email (RULE-SEC-038, anti-enumeration) </td>
+              <td class="url">http://localhost:7272/api/auth/forgot-password</td>
+              <td class="num">200</td>
+              <td class="num">200</td>
+              <td class="num">3ms</td>
+              <td></td>
+            </tr>
+            <tr class="pass">
+              <td><span class="badge pass">PASS</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Reset Password — invalid/unknown token (RULE-SEC-032) </td>
+              <td class="url">http://localhost:7272/api/auth/reset-password</td>
+              <td class="num">400</td>
+              <td class="num">400</td>
+              <td class="num">3ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "deb0b69c-04c9-451a-bcfd-444b62276148",
+  "error": {
+    "code": "RESET_TOKEN_INVALID_OR_EXPIRED",
+    "details": "Reset token is invalid or expired",
+    "path": "/api/auth/reset-password",
+    "timestamp": "2026-07-10T09:50:20.987049Z"
+  },
+  "message": "Reset token is invalid...</pre></details></td>
+            </tr></tbody>
+          </table>
+        </section>
+  
+        <section>
+          <h2>⚠️ Exploratory Observations — undocumented expected outcomes, not pass/fail</h2>
+          <p style="padding:0 20px;color:#666;font-size:.85rem">
+            These scenarios test documented constraints (Required/maxLength/type) but the API's
+            expected response for violating them isn't specified in any governance document.
+            Review the observed status/body against your intended behavior — do not treat these
+            as failures of the implementation.
+          </p>
+          <table>
+            <thead><tr><th>Status</th><th>Method</th><th>Scenario</th><th>URL</th>
+              <th>Observed</th><th>Source (doc/field)</th><th>Time</th><th>Details</th></tr></thead>
+            <tbody>
+            <tr>
+              <td><span class="badge observed">OBSERVED</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create Page — pageCode over maxLength (51 chars)</td>
+              <td class="url">http://localhost:7272/api/pages</td>
+              <td class="num">400</td>
+              <td class="url">createPage.md pageCode Constraints: maxLength=50</td>
+              <td class="num">6ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "e6d994b0-896f-4a9e-b53c-dd22314743e3",
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "details": "Request validation failed. Please check the field errors.",
+    "fieldErrors": [
+      {
+        "field": "pageCode",
+        "message": "Invalid length"
+      }
+    ],
+    "path...</pre></details></td>
+            </tr>
+            <tr>
+              <td><span class="badge observed">OBSERVED</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create Page — omit required nameEn</td>
+              <td class="url">http://localhost:7272/api/pages</td>
+              <td class="num">400</td>
+              <td class="url">createPage.md nameEn Required=Yes</td>
+              <td class="num">6ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "4ef3f375-3035-4ad5-b743-aa56307483c4",
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "details": "Request validation failed. Please check the field errors.",
+    "fieldErrors": [
+      {
+        "field": "nameEn",
+        "message": "This field is required"
+      }
+    ],
+   ...</pre></details></td>
+            </tr>
+            <tr>
+              <td><span class="badge observed">OBSERVED</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create Permission — omit required name</td>
+              <td class="url">http://localhost:7272/api/permissions</td>
+              <td class="num">400</td>
+              <td class="url">create_3.md name Required=Yes</td>
+              <td class="num">4ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "06d9f179-95d1-4766-96d5-eda969cacb48",
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "details": "Request validation failed. Please check the field errors.",
+    "fieldErrors": [
+      {
+        "field": "name",
+        "message": "This field is required"
+      }
+    ],
+    "...</pre></details></td>
+            </tr>
+            <tr>
+              <td><span class="badge observed">OBSERVED</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create Role — roleCode violates pattern (lowercase)</td>
+              <td class="url">http://localhost:7272/api/roles</td>
+              <td class="num">400</td>
+              <td class="url">createRole.md roleCode Constraints: pattern=^[A-Z][A-Z0-9_]*$</td>
+              <td class="num">5ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "097e6363-8f83-4fb3-91bb-75ee4da96572",
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "details": "Request validation failed. Please check the field errors.",
+    "fieldErrors": [
+      {
+        "field": "roleCode",
+        "message": "Invalid format"
+      }
+    ],
+    "path...</pre></details></td>
+            </tr>
+            <tr>
+              <td><span class="badge observed">OBSERVED</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create Role — omit required roleName</td>
+              <td class="url">http://localhost:7272/api/roles</td>
+              <td class="num">400</td>
+              <td class="url">createRole.md roleName Required=Yes</td>
+              <td class="num">6ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "fabed775-2fcb-48c1-97aa-9ddf25c83e58",
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "details": "Request validation failed. Please check the field errors.",
+    "fieldErrors": [
+      {
+        "field": "roleName",
+        "message": "This field is required"
+      }
+    ],
+ ...</pre></details></td>
+            </tr>
+            <tr>
+              <td><span class="badge observed">OBSERVED</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create User — username under minLength (2 chars)</td>
+              <td class="url">http://localhost:7272/api/users</td>
+              <td class="num">400</td>
+              <td class="url">create_2.md username Constraints: minLength=3</td>
+              <td class="num">4ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "f667a0ce-2115-4260-aaa5-3f2625287d8f",
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "details": "Request validation failed. Please check the field errors.",
+    "fieldErrors": [
+      {
+        "field": "username",
+        "message": "Invalid length"
+      }
+    ],
+    "path...</pre></details></td>
+            </tr>
+            <tr>
+              <td><span class="badge observed">OBSERVED</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Create User — password under minLength (3 chars)</td>
+              <td class="url">http://localhost:7272/api/users</td>
+              <td class="num">400</td>
+              <td class="url">create_2.md password Constraints: minLength=6</td>
+              <td class="num">4ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "f5fd8847-d11d-4d91-a265-0e73b93787eb",
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "details": "Request validation failed. Please check the field errors.",
+    "fieldErrors": [
+      {
+        "field": "password",
+        "message": "Invalid length"
+      }
+    ],
+    "path...</pre></details></td>
+            </tr>
+            <tr>
+              <td><span class="badge observed">OBSERVED</span></td>
+              <td><span class="method put">PUT</span></td>
+              <td class="test-name">Update User Profile — fullNameEn over maxLength (101 chars)</td>
+              <td class="url">http://localhost:7272/api/v1/security/user-profiles/37</td>
+              <td class="num">400</td>
+              <td class="url">update.md fullNameEn Constraints: maxLength=100</td>
+              <td class="num">7ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "0267bb83-bd56-4842-9c32-d47f464e8a2c",
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "details": "Request validation failed. Please check the field errors.",
+    "fieldErrors": [
+      {
+        "field": "fullNameEn",
+        "message": "Invalid length"
+      }
+    ],
+    "pa...</pre></details></td>
+            </tr>
+            <tr>
+              <td><span class="badge observed">OBSERVED</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Signup — username under minLength (2 chars)</td>
+              <td class="url">http://localhost:7272/api/auth/signup</td>
+              <td class="num">400</td>
+              <td class="url">signup.md username Constraints: minLength=3</td>
+              <td class="num">2ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "ae90a825-5869-4cd8-b10e-07fc3c167283",
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "details": "Request validation failed. Please check the field errors.",
+    "fieldErrors": [
+      {
+        "field": "username",
+        "message": "Invalid length"
+      }
+    ],
+    "path...</pre></details></td>
+            </tr>
+            <tr>
+              <td><span class="badge observed">OBSERVED</span></td>
+              <td><span class="method post">POST</span></td>
+              <td class="test-name">Signup — password under minLength (3 chars)</td>
+              <td class="url">http://localhost:7272/api/auth/signup</td>
+              <td class="num">400</td>
+              <td class="url">signup.md password Constraints: minLength=6</td>
+              <td class="num">2ms</td>
+              <td><details><summary>Response body</summary><pre>{
+  "correlationId": "a501b330-914d-4f35-b9b9-0bc2b0969bda",
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "details": "Request validation failed. Please check the field errors.",
+    "fieldErrors": [
+      {
+        "field": "password",
+        "message": "Invalid length"
+      }
+    ],
+    "path...</pre></details></td>
+            </tr></tbody>
+          </table>
+        </section>
+</body></html>
