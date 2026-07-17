@@ -1,0 +1,221 @@
+{
+  "module": "FILESVC",
+  "generated_at": "2026-07-12",
+  "current_phase": "COMPLETE",
+  "current_sub": null,
+  "api_docs_path": "governance-repo/modules/FILESVC/api-docs/",
+  "phases": [
+    {
+      "id": "CORE",
+      "status": "COMPLETE",
+      "subs": [
+        {
+          "id": "CORE",
+          "status": "COMPLETE"
+        }
+      ]
+    },
+    {
+      "id": "DATAOM",
+      "status": "COMPLETE",
+      "subs": [
+        {
+          "id": "DATAOM",
+          "status": "COMPLETE"
+        }
+      ]
+    },
+    {
+      "id": "SVCAPI",
+      "status": "COMPLETE",
+      "subs": [
+        {
+          "id": "SVCAPI",
+          "status": "COMPLETE"
+        }
+      ]
+    },
+    {
+      "id": "DOC",
+      "status": "COMPLETE",
+      "subs": [
+        {
+          "id": "DOC",
+          "status": "COMPLETE",
+          "note": "Contract Stabilization audit against the built erp-file module (not a code-writing sub). (1) API contracts \u2014 FileController's 6 mappings match API-FILE-001..005 exactly (access-token is GAP-FILE-001, tracked separately). Found and corrected a DOC-1 table inaccuracy: API-FILE-005's Request DTO column named a non-existent 'FileListSearchRequest' class \u2014 listByOwner is actually a plain @RequestParam/@PathVariable GET (A.6.6) building the shared platform SearchRequest internally; table corrected to '\u2014 (path/query params)'. (2) DTOs \u2014 fileTypeId/fileStatusId confirmed String (never ENUM) across all 4 DTOs + entity; no Business Code field; isActiveFl confined to FileCategory only (FileDocument uses fileStatusId lifecycle by design). (3) Error Catalog \u2014 all 7 runtime-relevant ERR-FILE-IDs (0001-0004, 0007-0009) have matching FileErrorCodes.java constants and bilingual messages.properties/messages_ar.properties keys (13/13 code keys present in both files, 0 gaps); ERR-FILE-0005/0006 correctly have no throw site (informational/client-confirm only, not runtime-checkable). Gate marked PASSED \u2014 full detail in packages/execution/DOC/DOC.md."
+        }
+      ]
+    },
+    {
+      "id": "INTC",
+      "status": "COMPLETE",
+      "subs": [
+        {
+          "id": "INTC",
+          "status": "COMPLETE",
+          "note": "Gate-check-only sub (0 outbound XM-IDs) \u2014 verified against actual code, not just re-affirmed as written. (1) FileDocument entity confirmed to have exactly one FK (FILE_CATEGORY_FK, intra-module to FileCategory); ownerId/ownerType is explicitly a no-physical-FK polymorphic reference per its own DBF-0014 comment \u2014 matches the '0 outbound XM-IDs' claim. (2) Cross-checked NOTIFICATION module's live execution-state.json/registries: XM-NOTIF-001 (NotifTemplate.fileFk \u2192 FileDocument) still status DEFERRED, matching the inbound stub note here exactly. No discrepancies found \u2014 INTC.md required no correction (unlike DOC). Gate marked PASSED."
+        }
+      ]
+    },
+    {
+      "id": "INTR",
+      "status": "COMPLETE",
+      "subs": [
+        {
+          "id": "INTR",
+          "status": "COMPLETE",
+          "note": "N/A \u2014 no outbound XM-IDs (confirmed at INTC), so no runtime workaround/mock strategy needed. Gate marked PASSED."
+        }
+      ]
+    },
+    {
+      "id": "F1",
+      "status": "COMPLETE",
+      "subs": [
+        {
+          "id": "F1",
+          "status": "COMPLETE",
+          "note": "F1 executed 2026-07-15 \u2014 models only (create-models skill), per this plan's F1=model-spec/F2=service+facade/F4=components split (F2/F4 own facade/service/routing, not built here). Output: frontend/src/app/shared/components/file-attachment/models/ (file-attachment.model.ts + file-attachment-form.model.ts) \u2014 matches execution-plan.md F4's 'Module path: app/shared/components/file-attachment/' (SCR-FILE-001 is a shared embedded component, not a routed module screen, so DOMAIN_DIR/FEATURE_DIR from create-models don't apply verbatim; adapted to shared/components/<feature>/models/). DTOs (FileDocumentSummaryResponse, FileUploadResponse, FileUploadTokenRequest/Response, FileAccessTokenResponse, FileDeleteConfirmation) mirror api-docs exactly \u2014 deliberately narrower than F1.md's conceptual FileDocument entity model, which lists fields (ownerId, ownerType, moduleCode, mimeType, updatedBy, updatedAt) that no actual endpoint returns; per execute-filesvc.md STEP 1.5 'never invent a field... regardless of what execution-plan.md implies', api-docs took precedence over F1.md's entity-level spec for wire-shape fields. FileCategoryOptionResponse has no backing endpoint at all (see api_doc_gaps GAP-FILE-003) \u2014 shape derived from the FileCategory entity + F1.md's own dropdown model, not invented. FormMapper (FileUploadFormMapper) omits toUpdateRequest() \u2014 documented deviation, module has no update capability (SVCAPI's 5 APIs are upload/download/delete/list/issue-token only, no PUT/PATCH). Verified via isolated `npx tsc --noEmit --strict` \u2014 clean."
+        }
+      ]
+    },
+    {
+      "id": "F2",
+      "status": "COMPLETE",
+      "subs": [
+        {
+          "id": "F2",
+          "status": "COMPLETE",
+          "note": "F2 executed 2026-07-15 \u2014 service+facade layer (create-api-service + create-facade skills), building on F1's models in the same shared/components/file-attachment/ location. Output: services/file-attachment-api.service.ts, facades/file-attachment.facade.ts. Also registered the 12 FILE_* Error Catalog codes (backend/erp-main/i18n/messages.properties) into shared/services/erp-error-mapper.service.ts + en.json/ar.json ERRORS.* keys \u2014 required for B.3.7's extractBackendErrorCode()->ErpErrorMapperService flow to resolve anything for this module; without it every FILE_* error would silently fall through to ERRORS.OPERATION_FAILED. Several adaptations from the generic CRUD templates, all load-bearing given this module's shape (Engine/Foundation, no update, no plain search): (1) ONE consolidated FileAttachmentApiService instead of F2.md's 3 conceptual service names (FileTokenService/FileDocumentService/FileCategoryService) \u2014 matches create-api-service's one-service-per-feature convention; F2.md's names kept as method groupings in comments/order, not separate classes. (2) upload/download/delete/list use TWO base URLs, not one: root-level permitAll token routes (POLICY-CLI-06, no /api prefix) vs authenticated /api/v1/files/* routes for issue-token/access-token/list \u2014 documented in the service, easy to get wrong. (3) downloadFile() bypasses doGet<T>() \u2014 binary Blob body with filename/mime in headers, not a JSON ApiResponse envelope; uses the inherited protected `http` directly (still BaseApiService-derived, not a HttpClient-injection bypass). (4) Facade has no currentEntitySignal/clearCurrentEntity() (B.3.8) \u2014 no 'current entity' concept exists (upload-only, no edit); clearState() resets panel state instead. Per-row download/delete loading uses Set<fileDocumentPk> signals (isDownloading()/isDeleting()) instead of a single saving flag, matching F2.md's explicit 'LOCAL, scoped to the row' requirement. (5) Upload and delete success both call refetchCurrentPage() (full list refetch) rather than the skill's local array splice/append pattern \u2014 this is what F2.md itself specifies ('triggers a files-list refetch (cache-busting) on success'), followed literally over the generic skill template. (6) listCategoryOptions()/loadCategoryOptions() call a GUESSED endpoint (GET /api/v1/files/categories?moduleCode=) that does not exist on the backend yet (GAP-FILE-003, logged in F1) \u2014 will 404 until SVCAPI adds it; failure is caught non-fatally (empty dropdown, not a panel-blocking error) so F1/F2 aren't blocked waiting on that backend work. Verified via full-project `npx tsc -p tsconfig.app.json --noEmit` \u2014 clean, no errors anywhere in the app."
+        }
+      ]
+    },
+    {
+      "id": "F3",
+      "status": "COMPLETE",
+      "subs": [
+        {
+          "id": "F3",
+          "status": "COMPLETE",
+          "note": "F3 executed 2026-07-15 \u2014 validation rule specifications (RULE-FILE-001..007 + F3-SEC-RULE-1), reconciled against what's already real vs what genuinely needs new code vs what can only be wired once F4's component/FormGroup exists. This plan has no dedicated create-validation skill \u2014 validators are normally wired inline into a component's FormGroup (create-components skill, Validators.required/.maxLength pattern) \u2014 so most of F3 is disposition-tracking, not a from-scratch build: (1) RULE-FILE-002 (Token TTL, ERR-FILE-0002), RULE-FILE-003 (tampered/mismatched token, ERR-FILE-0003), RULE-FILE-007 (ownership/Admin restriction, ERR-FILE-0007) are all server-enforced and already fully satisfied \u2014 their error codes were registered into erp-error-mapper.service.ts + en.json/ar.json in F2, nothing further needed here. (2) RULE-FILE-001 (5MB content size limit, ERR-FILE-0001) is the one rule that's genuinely standalone, reusable client-side logic independent of any component \u2014 built as fileSizeValidator() in a new validators/ subfolder alongside models/services/facades (file-attachment/validators/file-size.validator.ts), exporting FILE_DEFAULT_MAX_SIZE_BYTES=5_242_880 mirroring FileCategory.DEFAULT_MAX_SIZE_BYTES (backend entity) \u2014 F4 wires this into the upload FormGroup, passing the selected FileCategory's maxSizeBytesOverride when set. (3) RULE-FILE-006 (permanent-deletion confirmation dialog) needed new user-facing strings that don't depend on the component existing \u2014 added FILE_ATTACHMENT.DELETE_CONFIRM_TITLE/MESSAGE to en.json/ar.json; F4 wires these into ErpDialogService at the delete() call site. (4) RULE-FILE-005 (MIME auto-detection, informational-only, ERR-FILE-0005 has no throw site) and F3-SEC-RULE-1 (canCreate/canDelete-gated field/button visibility) are genuinely F4-only \u2014 the former is template display copy, the latter needs permission signals that don't exist until Phase SEC runs; both explicitly deferred, not silently dropped. Verified via full-project `npx tsc -p tsconfig.app.json --noEmit` \u2014 clean."
+        }
+      ]
+    },
+    {
+      "id": "F4",
+      "status": "COMPLETE",
+      "subs": [
+        {
+          "id": "F4",
+          "status": "COMPLETE",
+          "note": "F4 executed 2026-07-15 \u2014 FileAttachmentComponent, the actual SCR-FILE-001 embedded panel (F4.md: COMPOSITE/PATTERN-2, no route, no Search/Entry split). Output: file-attachment.component.ts/.html/.scss + index.ts, directly under shared/components/file-attachment/ (not a components/ subfolder) \u2014 matches execution-plan.md's literal 'Path: app/shared/components/file-attachment/file-attachment.component.ts'. Wires together everything from F1-F3: uploadForm (FormGroup, fileSizeValidator() from F3, FileUploadFormModel shape from F1), the F2 facade for list/upload/download/delete, and RULE-FILE-006's confirm dialog via ErpDialogService before delete. Composed from existing shared primitives (erp-section, erp-empty-state, avl-pagination, avl-button) \u2014 no new generic UI primitives invented. Added the remaining FILE_ATTACHMENT.* display strings (TITLE, column headers, button labels, empty-state) to en.json/ar.json alongside F3's confirm-dialog keys. Known, explicitly-deferred gaps (not silent): (1) F3-SEC-RULE-1 permission-gated visibility is NOT wired \u2014 canCreate/canDelete signals don't exist until Phase SEC (still PENDING) runs; upload control and delete buttons render unconditionally for now. (2) Category dropdown will render empty until GAP-FILE-003's backend endpoint exists (F1/F2 gap, still open). (3) RULE-FILE-001's client-side size check uses only the platform default (5MB) \u2014 FileCategoryOptionResponse's dropdown-only DTO doesn't carry maxSizeBytesOverride, so true per-category limits are only enforced server-side (authoritative anyway per F3.md). Verification: this component has no route yet (by design), so a normal `tsc -p tsconfig.app.json --noEmit` (files: [main.ts] only) would silently skip its template entirely \u2014 caught this and re-verified properly by temporarily wiring <app-file-attachment> into app.component.ts/html, running a full `ng build --configuration=development` (real Ivy template compilation, not just tsc), confirming zero errors and the component's own strings present in the compiled main.js bundle, then reverting app.component.ts/html back to their original content. No Playwright/browser visual check was done (not available in this environment, same limitation noted in HANDOFF-PHASE-7-F1.md for a different module) \u2014 compile-time verification only."
+        }
+      ]
+    },
+    {
+      "id": "SEC",
+      "status": "COMPLETE",
+      "subs": [
+        {
+          "id": "SEC",
+          "status": "COMPLETE",
+          "note": "SEC executed 2026-07-15 \u2014 backend API-level enforcement (SEC.md) + frontend permission-gated visibility (F3-SEC-RULE-1), closing GAP-FILE-002. Backend: added PERM_FILE_ATTACHMENT_VIEW/CREATE/DELETE to erp-security's SecurityPermissions.java (no UPDATE constant \u2014 auto-generated but functionally unused, no Update API exists, same pattern as USER_PROFILE's missing DELETE constant). Verified user's explicit reminder ('don't write @PreAuthorize inside the controller') is already fully honored \u2014 erp-file has zero @PreAuthorize usage on FileController; every check was already correctly on the service layer (FileUploadTokenService, FileListService, FileAccessTokenService, FileUploadService, FileDownloadService, FileDeleteService) before this session touched anything. Changes: FileUploadTokenService.issueUploadToken and FileListService.listByOwner upgraded from isAuthenticated() to hasAuthority('PERM_FILE_ATTACHMENT_CREATE'/'_VIEW') \u2014 string literals, not T(SecurityPermissions), since erp-file has no compile dependency on erp-security (matches this module's own established convention, e.g. the existing PERM_SYSTEM_ADMIN check in FileAccessTokenService). FileAccessTokenService.issueAccessToken gained a new assertHasPermissionForAction() method-body check (action=DOWNLOAD needs VIEW, action=DELETE needs DELETE \u2014 an action-conditional composite that a single static @PreAuthorize SpEL can't express cleanly), positioned after the existing ALLOWED_ACTIONS validation so an invalid action still gets FILE_ACCESS_TOKEN_ACTION_INVALID (400) rather than being masked by a 403; throws AccessDeniedException on failure (same as a native @PreAuthorize failure, GlobalExceptionHandler already maps it to 403 \u2014 no new error code invented). This is layered with the existing RULE-FILE-007 assertCanDelete() Admin-only check for the DELETE action \u2014 SEC.md explicitly calls this 'composite, not permission-alone'. upload/download/delete CONSUMPTION endpoints (FileUploadService/FileDownloadService/FileDeleteService, all permitAll'd/token-only per POLICY-CLI-06) correctly keep @PreAuthorize(\"true\") unchanged \u2014 GAP-FILE-002's structural conflict (no JWT principal exists there to check a permission against) resolves by enforcing PERM_FILE_ATTACHMENT_CREATE/DELETE at token-ISSUANCE time instead (already-JWT-authenticated /api/v1/files/upload-token and .../access-token endpoints) \u2014 exact same precedent RULE-FILE-007 itself already established for the Admin check. GAP-FILE-002 is now resolved, not just flagged. Verified against the LIVE Postgres DB (not the referenced-but-nonexistent dbs-file-001.md \u2014 that file doesn't actually exist in the repo, a doc-reference gap worth noting, but the seed work itself was already done): SEC_PAGES row (page_code=FILE_ATTACHMENT, pk=101) and all 4 PERMISSIONS rows already exist and are FK'd correctly, AND all 4 are already granted to role SUPER_ADMIN in ROLE_PERMISSIONS (PERM_SYSTEM_ADMIN too) \u2014 unlike PLAN-SEC-002's precedent, there is NO pending manual SQL grant needed here; the new @PreAuthorize checks are immediately functional for existing SUPER_ADMIN accounts. Frontend: FileAttachmentComponent now injects PermissionService \u2014 canView (PERM_FILE_ATTACHMENT_VIEW) gates the whole panel AND skips facade.init() entirely when false (B.4.13, not just a hidden-after-the-fact panel); *erpPermission structural directive hides the upload form (PERM_FILE_ATTACHMENT_CREATE) and each row's delete button (PERM_FILE_ATTACHMENT_DELETE) \u2014 using the existing shared PermissionService/ErpPermissionDirective, no new permission-checking code invented. Verification: `mvn -o -pl erp-file,erp-security -am clean compile` \u2014 BUILD SUCCESS. Frontend re-verified the same way as F4 (temporary app.component wiring + `ng build`, then reverted) since the component still has no route \u2014 clean, zero errors."
+        }
+      ]
+    },
+    {
+      "id": "ALIGN",
+      "status": "COMPLETE",
+      "subs": [
+        {
+          "id": "ALIGN",
+          "status": "COMPLETE",
+          "note": "ALIGN executed 2026-07-15 \u2014 audited ALIGN.md's pre-written gate-coverage claims against what F1-SEC (this session) + earlier CORE-INTR sessions actually built, rather than rubber-stamping its 'PASSED' verdict (same audit discipline as DOC/INTC). Table 2's 5 operations (issue-token/upload/download/delete/list) all confirmed working end-to-end through the real FileAttachmentComponent built in F4. SEC's permission matrix (PERM_FILE_ATTACHMENT_VIEW/CREATE/DELETE) now enforced both backend (service-layer @PreAuthorize) and frontend (canView/canCreate/canDelete) \u2014 'SECURITY CHECKS' line is now genuinely true, not just asserted. XM Dependency Gate (0 outbound) reconfirmed, matching INTC's own finding. Found two things ALIGN.md's static text does NOT capture, since it predates this session's F1-SEC work discovering them \u2014 flagging rather than silently passing: (1) GAP-FILE-001 (the access-token endpoint, POST /api/v1/files/{pk}/access-token) is functionally resolved and working \u2014 but ALIGN.md's own Table 2 has no operation row for it (only issue-upload-token/upload/download/delete/list), and it was never formally registered as an API-ID in execution-plan.md's Plan Index per GAP-FILE-001's own 'Flag for Phase ALIGN' instruction. This is a documentation-completeness gap, not a functional one \u2014 the endpoint works correctly (verified in F2/SEC). Marking RESOLVED (functional) here since a code-only session can't edit execution-plan.md's formal ID registry; a future plan-doc update should still add the API-ID label. (2) GAP-FILE-003 (FileCategory dropdown options) is a GENUINE, still-open functional gap \u2014 no backend endpoint exists anywhere (confirmed again this session: no FileCategoryController in erp-file), so FileAttachmentFacade.loadCategoryOptions() will 404 in any real environment and the upload form's category dropdown will always render empty. This is the one concrete remaining action item before FILESVC's F1-SEC work is genuinely 100% functional end-to-end: a small SVCAPI follow-up to add GET /api/v1/files/categories?moduleCode={code} (or similar) is needed. Not blocking ALIGN structurally (ALIGN's traceability/ID-coverage checks are about the ORIGINAL plan's own IDs, which don't include this \u2014 it was discovered during implementation, same category as GAP-FILE-001 originally was), but real and should not be reported as 'fully done' without this caveat. Also verified this session's DB claims (SEC's own note) against Flyway: V3__file_service_schema_and_seed.sql (applied 2026-07-13, before this session even started) already contains the full FILE_ATTACHMENT SEC_PAGES/PERMISSIONS/ROLE_PERMISSIONS seed \u2014 confirmed via flyway_schema_history, not an ad-hoc insert. No new migration needed for anything done in F1-SEC (application code only)."
+        }
+      ]
+    }
+  ],
+  "test_phases": [
+    {
+      "id": "JUNIT",
+      "status": "PENDING",
+      "gated_by_phases": [
+        "CORE",
+        "DATAOM",
+        "SVCAPI",
+        "DOC",
+        "INTC",
+        "INTR"
+      ],
+      "header_file": "packages/test/JUNIT/JUNIT-HEADER.md",
+      "mandatory_file": null,
+      "subs": [
+        {
+          "id": "RULE-SCENARIOS",
+          "status": "PENDING"
+        },
+        {
+          "id": "API-SCENARIOS",
+          "status": "PENDING"
+        }
+      ]
+    },
+    {
+      "id": "PLAYWRIGHT",
+      "status": "PENDING",
+      "gated_by_phases": [
+        "F1",
+        "F2",
+        "F3",
+        "F4"
+      ],
+      "header_file": null,
+      "mandatory_file": null,
+      "subs": [
+        {
+          "id": "PLAYWRIGHT",
+          "status": "PENDING"
+        }
+      ]
+    }
+  ],
+  "blocked": [
+    {
+      "id": "OQ-FILE-001",
+      "phase": "SVCAPI",
+      "description": "RULE-FILE-007's \"owning entity's authorized actor\" half (the non-Admin half of the owner-or-Admin delete restriction) has no resolvable signal with what exists today: FileDocument.ownerId/ownerType address a business record in another module (no FK, no data dependency, by design), and the only user-identity trail on the entity (createdBy) is always \"system\" because upload happens on the permitAll'd, token-only /upload/{token} route with no JWT principal to record. Answering \"is this user authorized on the owning record\" would require a cross-module authorization callback this plan never defines. User-approved resolution (2026-07-13): enforce the Admin half only (SecurityPermissions.SYSTEM_ADMIN, checked in FileAccessTokenService.assertCanDelete()) \u2014 marked with // TODO: OQ-FILE-001 at the throw site. Net effect: only Admins can obtain a DELETE access token until this is designed and resolved; a file's own uploader (a non-Admin) currently cannot delete their own file. Needs a real design decision \u2014 likely either (a) a generic cross-module 'does this user have manage-permission on ownerType/ownerId' callback API, or (b) requiring upload itself to carry a JWT so a real uploader identity can be recorded (a bigger architecture change, contradicts POLICY-CLI-02's token-only statement for upload)."
+    }
+  ],
+  "deferred_xm": [],
+  "api_doc_gaps": [
+    {
+      "id": "GAP-FILE-001",
+      "phase": "SVCAPI",
+      "description": "API-FILE-003/004 both require a token whose payload carries fileDocumentPk, but the plan's only defined token-issuing endpoint (API-FILE-001) is scoped to pre-upload fileCategoryFk tokens and structurally cannot address an existing file. No 'Issue Download/Delete Token' API-ID was ever allocated in Part B, though srs.md's own narrative (line 71-73) assumes one exists ('Encrypted Download Token' / 'Encrypted Delete Token'). Resolved in Session 2 (user-approved) by adding a new endpoint: POST /api/v1/files/{fileDocumentPk}/access-token?action=DOWNLOAD|DELETE (FileAccessTokenService/FileAccessTokenResponse). Same precedent as API-FILE-001 itself being an explicit addition over the reference architecture per POLICY-CLI-03. Flag for Phase ALIGN / a future plan update to formally register this as an API-ID."
+    },
+    {
+      "id": "GAP-FILE-002",
+      "phase": "SVCAPI",
+      "description": "SVCAPI.md's SECURITY lines for API-FILE-002/004 call for a PERM_FILE_ATTACHMENT_CREATE/_DELETE permission check 'in addition to token validity', but CORE.md/business-policies-filesvc.md POLICY-CLI-06/srs.md A2 explicitly and deliberately declare /upload/{token}, /download/{token}, /{token} as authenticated SOLELY via the Encrypted Token \u2014 no JWT/Authorization header at all on these routes (permitAll'd in erp-security's SecurityConfig as of Session 2). There is structurally no authenticated principal for a permission check to run against on these 3 routes. FileUploadService/FileDownloadService use @PreAuthorize(\"true\") with an explanatory comment rather than a check that could never pass. User-approved resolution (2026-07-13): proceed with token-only auth, flag the SVCAPI.md permission line as unreconciled. Phase SEC (permission matrix, still PENDING) or Phase ALIGN must decide: drop the permission line from SVCAPI.md, or introduce a different enforcement point (e.g. re-deriving a JWT principal from the token's ownerId for a supplementary check) \u2014 not silently resolved either way here.",
+      "status": "RESOLVED",
+      "resolution": "Resolved in Phase SEC (2026-07-15): permission checks (PERM_FILE_ATTACHMENT_CREATE/DELETE) moved to token-ISSUANCE time (FileUploadTokenService.issueUploadToken, FileAccessTokenService.issueAccessToken) where a real JWT principal exists, not the permitAll'd consumption endpoints (FileUploadService/FileDeleteService, which correctly keep @PreAuthorize(\"true\")) \u2014 same precedent RULE-FILE-007 already used. See phases[].SEC.subs[0].note for full detail."
+    },
+    {
+      "id": "GAP-FILE-003",
+      "phase": "F1",
+      "description": "FileCategory dropdown options (needed by SCR-FILE-001's upload form, F1.md ENTITY-FILE-002 / F2.md's FileCategoryService.listOptionsByModule) have no endpoint anywhere: not in api-docs, and not in backend source either (no FileCategoryController/DTO exists \u2014 only the FileCategory JPA entity does, in erp-file/entity/FileCategory.java). This is a real gap in SVCAPI, not just a doc gap: the 5 APIs marked COMPLETE there (API-FILE-001..005) don't include a category-options endpoint, same pattern as GAP-FILE-001 (access-token) being an unallocated-but-needed API-ID. FileCategoryOptionResponse was modeled in F1 (file-attachment.model.ts) directly from the entity's fields (fileCategoryPk, categoryCode, nameAr, nameEn, moduleCode) so F1 isn't blocked, but F2 cannot wire a real FileCategoryService.listOptionsByModule() call until this endpoint is built. Flag for Phase F2 (or a SVCAPI follow-up) to add the missing GET endpoint before F2 facade work starts.",
+      "status": "RESOLVED",
+      "resolution": "Resolved 2026-07-15 (post-ALIGN follow-up). Added the missing backend endpoint: GET /api/v1/files/categories?moduleCode={code} \u2014 FileCategoryOptionResponse DTO, FileCategoryOptionService.listOptionsByModule() (@PreAuthorize hasAuthority 'PERM_FILE_ATTACHMENT_VIEW', service layer per governance), new FileCategoryRepository.findByModuleCodeAndIsActiveFlTrueOrderByNameEnAsc() derived query, wired into FileController alongside the existing /api/v1/files/{ownerId} route (confirmed no routing collision \u2014 Spring MVC correctly prefers the literal 'categories' segment over the {ownerId} path variable). Verified live, not just compiled: mvn BUILD SUCCESS (erp-file/erp-common-utils/erp-main reactor), then a real server restart (user-approved \u2014 an existing dev instance on :7272 was already running) and curl-tested end-to-end as admin: moduleCode=PRC returns the seeded PURCHASE_ORDER_DOC category with exact field-for-field match to the frontend's FileCategoryOptionResponse; moduleCode=NONEXISTENT returns []; GET /api/v1/files/1 (the pre-existing {ownerId} route) still returns 200, confirming zero regression from adding the new literal route. Frontend TODO/gap comments removed from file-attachment.model.ts, file-attachment-api.service.ts, and file-attachment.facade.ts (they now describe the real, working endpoint instead of a known gap) \u2014 no functional frontend changes needed since the guessed contract (path, query param, response shape) turned out to match exactly."
+    }
+  ],
+  "notes": {
+    "TEST_phase_excluded": "packages/execution/TEST/TEST.md is a TC Coverage Matrix Summary (execution-plan.md SECTION D) \u2014 informational only, not a code-generating phase. Excluded from phases[], matching ORG's precedent of excluding its equivalent SECTION-D from its own Phase Map.",
+    "xm_inbound": "This module is the TARGET of XM-NOTIF-001 (NotificationTemplate.fileFk \u2192 FileService.FileDocument), not a consumer \u2014 no outbound XM-ID of its own.",
+    "playwright_no_sub_split": "FILESVC test-plan.md had only 6 PLAYWRIGHT TCs (below the >8 SUB-split threshold), so Agent 3 wrote a single packages/test/PLAYWRIGHT/PLAYWRIGHT.md with no HEADER or SUB breakdown \u2014 unlike NOTIFICATION which has UI-FLOWS/INT-FLOW subs.",
+    "svcapi_session_progress": "SVCAPI is one bundled XL sub (5 APIs) \u2014 chunked across 3 sessions per execute-filesvc.md STEP 0.4. Session 1/3 COMPLETE 2026-07-13: API-FILE-001 (Issue Upload Token). Session 2/3 COMPLETE 2026-07-13: API-FILE-002 (Upload) + API-FILE-003 (Download) + the new access-token endpoint (GAP-FILE-001). Session 3/3 COMPLETE 2026-07-13: API-FILE-004 (Delete) + API-FILE-005 (List) \u2014 the original Session-3 scope was Delete+List together; List was initially missed mid-session, caught via self-review before finalizing, and completed in the same session. SVCAPI phase now genuinely COMPLETE (all 5 APIs + the access-token gap-fix endpoint exist and compile/test clean), current_phase advanced to DOC per the Phase Execution Protocol exit steps (bookkeeping only \u2014 DOC itself has NOT been started, awaiting explicit instruction). Session 3 additions: (1) Delete \u2014 FileDeleteConfirmation DTO + FileDeleteService (finds FileDocument by tokenPayload.targetId(), calls FileDocument.purgeContent(), saves \u2014 RULE-FILE-006); RULE-FILE-007 (owner-or-Admin) enforced in FileAccessTokenService.issueAccessToken() at DELETE-token issuance time, not at the DELETE /{token} consumption endpoint (permitAll'd/token-only, no JWT principal there) \u2014 Admin half only (SecurityPermissions.SYSTEM_ADMIN via string-literal, same no-compile-dependency convention erp-finance-gl uses via @PreAuthorize SpEL), owner half is OQ-FILE-001-blocked (see blocked[]); FileTokenFilter widened to also gate DELETE /{token} (bare single-path-segment root, HTTP-method + exactly-one-slash check, registered on Servlet /* since Servlet patterns can't express \"any single segment\" \u2014 narrowing happens in shouldNotFilter); erp-security's SecurityConfig gained requestMatchers(HttpMethod.DELETE, \"/*\").permitAll() (grep-verified: no other controller defines any root-level single-segment mapping today \u2014 a future module must not add a DELETE one without narrowing this rule). (2) List \u2014 FileDocumentSummaryResponse DTO (fileContent never included) + FileListService: plain GET with @PathVariable/@RequestParam (create-controller A.6.6 \u2014 no GET+@ModelAttribute), but still builds a plain SearchRequest manually and runs it through SpecBuilder+PageableBuilder (A.5.7) rather than hand-rolling pagination; uses @PreAuthorize(\"isAuthenticated()\") like API-FILE-001, deferring PERM_FILE_ATTACHMENT_VIEW to Phase SEC (constant doesn't exist yet). Caught and fixed a real bug via its own unit test before this note was written: SpecBuilder's allowedFields validation was initially reusing ALLOWED_SORT_FIELDS (createdAt/fileNameOriginal/fileSizeBytes) for filter-field validation too, rejecting the ownerId/ownerType filters this endpoint actually applies \u2014 fixed by adding a separate ALLOWED_FILTER_FIELDS whitelist. 4 new unit test classes total this session (FileDeleteServiceTest, FileTokenFilterTest, FileListServiceTest, plus FileAccessTokenServiceTest gained 2 admin/non-admin tests) \u2014 37 tests total in erp-file, all green; full erp-security+erp-file+erp-main reactor test run (64 tests) also green.",
+    "doc_phase_complete": "DOC phase executed and marked COMPLETE 2026-07-15 after explicit user confirmation (see phases[].DOC.subs[0].note for the audit detail).",
+    "intc_phase_complete": "INTC phase executed and marked COMPLETE 2026-07-15 after explicit user confirmation (see phases[].INTC.subs[0].note).",
+    "intr_phase_complete": "INTR phase executed and marked COMPLETE 2026-07-15 (trivial N/A \u2014 no outbound XM-IDs, confirmed at INTC). current_phase advanced to F1 \u2014 CORE/DATAOM/SVCAPI/DOC/INTC/INTR (all backend-audit/gate phases) are now fully COMPLETE. F1 is the first FRONTEND phase and a genuine code-writing sub (SCR-FILE-001, LIGHT) \u2014 unlike DOC/INTC/INTR it is NOT an audit-only sub, it requires STEP 1.5 API Contract Resolution (api-docs first, already generated) before writing implementation code. Still needs explicit user instruction before starting \u2014 do not auto-start it on a bare 'next'/'yes', confirm the STEP 0 assessment first per execute-filesvc.md.",
+    "post_align_menu_route_fix": "2026-07-16 \u2014 user reported clicking a screen item did nothing ('not routing to page'). Root cause: V3's SEC_PAGES seed set route='/shared/file-attachment' for FILE_ATTACHMENT, but SCR-FILE-001 deliberately has no Angular route (F4/DRV-FILE-011, embedded component only). MenuService.buildUserMenuFromPermissions() has no exclusion for 'shared component' pages \u2014 any user with PERM_FILE_ATTACHMENT_VIEW (SUPER_ADMIN, since V3) got a real sidebar entry pointing at a route that never existed. Fixed via V7__file_attachment_page_route_fix.sql \u2014 sets route='' (NOT NULL column, so empty string not NULL; falsy in NavItemComponent's '@if (item().url && !item().external)' guard, so the item now renders nothing, matching the documented 'no independent navigation' intent). Verified live: Flyway applied V7 successfully, GET /api/menu/user-menu now returns FILE_ATTACHMENT with routePath='' (confirmed via curl as admin). Also fixed an unrelated, more severe bug discovered while restarting for this: refresh_tokens' IDENTITY sequence was stuck at 26 while the table already had rows to 74, causing 409 DB_CONSTRAINT_VIOLATION on every login \u2014 resynced via setval() (user-approved, not FILESVC-scoped, no migration needed since sequence state isn't schema)."
+  }
+}

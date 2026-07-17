@@ -1,0 +1,169 @@
+{
+  "module": "ORG",
+  "generated_at": "2026-07-02",
+  "current_phase": "INT-C",
+  "current_sub": "INT-C",
+  "api_docs_path": "governance-repo/modules/ORG/api-docs/",
+  "phases": [
+    {
+      "id": "CORE",
+      "status": "COMPLETE",
+      "subs": [
+        { "id": "CORE", "status": "COMPLETE" }
+      ]
+    },
+    {
+      "id": "DATA-DOM",
+      "status": "COMPLETE",
+      "subs": [
+        { "id": "DATA-DOM-CORE-ENTITIES", "status": "COMPLETE" },
+        { "id": "DATA-DOM-HEADER", "status": "COMPLETE" }
+      ]
+    },
+    {
+      "id": "SVC-API",
+      "status": "COMPLETE",
+      "subs": [
+        {
+          "id": "SVC-API-CRUD",
+          "status": "COMPLETE",
+          "note": "XL sub, executed across 3 chunked sessions per execute.md STEP 0. Session 1: LegalEntity (API-ORG-001..006), Branch (API-ORG-007..012), Region (API-ORG-013..018). Session 2: Department (API-ORG-019,021..025), CostCenter (API-ORG-026,028..032) flat CRUD, incl. ancestor-chain walk in the Service for RULE-ORG-007/008 cycle prevention (Domain never touches the Repository). Session 3: ProfitCenter (API-ORG-033..038 — no OrgProfitCenterDomain exists, no RULE-ID requires one; no parent-active create guard, no deactivation guard) and LocationSite (API-ORG-039..044 — RULE-ORG-019 parent-active create guard via OrgLocationSiteDomain, no deactivation guard of its own — RULE-ORG-005 is the Branch-side guard already enforced in BranchService). All 7 entities' repository/dto/mapper/service/controller layers now complete for flat CRUD. No delete()/UsageResponse/OptionResponse anywhere in this sub — not present in the documented API registry for any of the 7 entities (Create/Search/Update/Deactivate/Activate/GetById only). Department/CostCenter tree endpoints (API-ORG-020/027, GET .../tree) intentionally deferred to the SVC-API-TREE sub."
+        },
+        {
+          "id": "SVC-API-HEADER",
+          "status": "COMPLETE",
+          "note": "HEADER carries no separate task list beyond its intro + the 44-row per-API repository/transaction/fetch/bulk strategy table — its content was applied inline while building SVC-API-CRUD (Transaction Boundary via @Transactional/@Transactional(readOnly=true), Fetch Strategy LAZY per the DATA-DOM entity FK declarations, Bulk Op NO everywhere). This session ran it as an audit-and-fix pass against the 42 non-tree rows (the 2 tree rows, API-ORG-020/027, are SVC-API-TREE's responsibility) and found + fixed 2 real gaps: (1) A.2.7 — 5 reference-check count methods (BranchRepository/ProfitCenterRepository .countByLegalEntity_IdAndIsActiveFlTrue, DepartmentRepository/CostCenterRepository/LocationSiteRepository .countByBranch_IdAndIsActiveFlTrue) were derived-query methods, not JPQL @Query as the skill requires for reference/guard checks — converted all 5 to explicit @Query, method names unchanged so callers needed no edits. (2) A.2.6 — BranchRepository/RegionRepository/ProfitCenterRepository/LocationSiteRepository search() relied on lazy-loaded parent associations for Response name resolution (legalEntityCode/legalEntityNameEn, branchCode/branchNameEn, regionTypeNameEn), which is an N+1 read per search-result page; added @EntityGraph-annotated overrides of findAll(Specification, Pageable) on those 4 repos to eager-fetch exactly the parent(s) the HEADER table's join-strategy column calls for (LegalEntity; LegalEntity+RegionType; LegalEntity; Branch respectively). LegalEntityRepository/DepartmentRepository/CostCenterRepository needed no EntityGraph — their HEADER join strategy is NONE. Verified with a real compile this session (found IntelliJ's bundled Maven at /Applications/IntelliJ IDEA CE.app/Contents/plugins/maven/lib/maven3/bin/mvn, offline against the cached ~/.m2) — `mvn -o -pl erp-org -am clean compile` → BUILD SUCCESS, 81 source files, zero errors."
+        },
+        {
+          "id": "SVC-API-TREE",
+          "status": "COMPLETE",
+          "note": "API-ORG-020 (Department tree) and API-ORG-027 (CostCenter tree, mirrors 020). Repository: native PostgreSQL WITH RECURSIVE CTE per QR-ORG-012/015 (BRANCH_FK-scoped anchor + PARENT_*_FK self-join), nullable isActiveFl filter applied at both the anchor and every recursive step via CAST(:isActiveFl AS INTEGER) IS NULL OR ... (Boolean→Integer via BooleanNumberConverter.toDbValue(), since native queries bypass the JPA @Convert). Service: flat row list → nested DTO assembly in Java (LinkedHashMap by id, single pass to link children, nodes whose parent got filtered out or is null surface as roots of the returned forest) — matches 'map flat result set to nested tree DTO in service layer, not DB-returned nesting' from SVC-API-TREE.md. DTOs deliberately minimal (id, code, nameAr, nameEn, nodeTypeId, isActive, children[]) per the sub file's documented shape — no costCenterTypeId on the CostCenter tree node, since API-ORG-027 'mirrors API-ORG-020' exactly. Endpoints added to the existing DepartmentController/CostCenterController (GET /tree?branchFk&isActiveFl) per A.6.9. Verified with `mvn -o -pl erp-org -am clean compile` → BUILD SUCCESS, 83 source files, zero errors."
+        }
+      ]
+    },
+    {
+      "id": "DOC",
+      "status": "COMPLETE",
+      "subs": [
+        {
+          "id": "DOC",
+          "status": "COMPLETE",
+          "note": "Contract Stabilization audit against the built erp-org module (not a code-writing sub). Verified all 3 gate items against actual source: (1) 44 API contracts — 7 controllers sum to exactly 44 endpoints (6 flat CRUD × 5 entities + 7 each for Department/CostCenter with Tree), matching API-ORG-001..044. (2) DTOs — all 14 Create/Update DTOs read and confirmed clean of id/business-code/isActiveFl/audit fields, with immutable fields (nodeTypeId, parent FK where applicable) correctly omitted per RULE-ORG-011/014/020. (3) Error Catalog — every ERR-ORG-ID thrown in code (12 of 18) resolves to a SECTION-A entry with bilingual message keys (18/18 present in messages.properties/messages_ar.properties). Found and documented one non-blocking gap: ERR-ORG-0003/0013/0017 (Business Code/audit-field rejection, Business Code immutability, node-type immutability) have no throw site — enforced structurally via DTO field omission instead of a runtime check, so a client force-injecting these fields gets GlobalExceptionHandler's generic INVALID_JSON rather than the catalog's localized message. Write is still correctly blocked either way. Gate marked PASSED — full detail in packages/execution/DOC/DOC.md."
+        }
+      ]
+    },
+    {
+      "id": "INT-C",
+      "status": "PENDING",
+      "subs": [
+        { "id": "INT-C", "status": "PENDING" }
+      ]
+    },
+    {
+      "id": "INT-R",
+      "status": "PENDING",
+      "subs": [
+        { "id": "INT-R", "status": "PENDING" }
+      ]
+    },
+    {
+      "id": "F1",
+      "status": "PENDING",
+      "subs": [
+        { "id": "F1-HEADER", "status": "PENDING" },
+        { "id": "F1-SCR-ORG-001", "status": "PENDING" },
+        { "id": "F1-SCR-ORG-002", "status": "PENDING" },
+        { "id": "F1-SCR-ORG-003", "status": "PENDING" },
+        { "id": "F1-SCR-ORG-004", "status": "PENDING" },
+        { "id": "F1-SCR-ORG-005", "status": "PENDING" },
+        { "id": "F1-SCR-ORG-006", "status": "PENDING" },
+        { "id": "F1-SCR-ORG-007", "status": "PENDING" }
+      ]
+    },
+    {
+      "id": "F2",
+      "status": "PENDING",
+      "subs": [
+        { "id": "F2-HEADER", "status": "PENDING" },
+        { "id": "F2-SCR-ORG-001", "status": "PENDING" },
+        { "id": "F2-SCR-ORG-002", "status": "PENDING" },
+        { "id": "F2-SCR-ORG-003", "status": "PENDING" },
+        { "id": "F2-SCR-ORG-004", "status": "PENDING" },
+        { "id": "F2-SCR-ORG-005", "status": "PENDING" },
+        { "id": "F2-SCR-ORG-006", "status": "PENDING" },
+        { "id": "F2-SCR-ORG-007", "status": "PENDING" }
+      ]
+    },
+    {
+      "id": "F3",
+      "status": "PENDING",
+      "subs": [
+        { "id": "F3-HEADER", "status": "PENDING" },
+        { "id": "F3-SCR-ORG-001", "status": "PENDING" },
+        { "id": "F3-SCR-ORG-002", "status": "PENDING" },
+        { "id": "F3-SCR-ORG-003", "status": "PENDING" },
+        { "id": "F3-SCR-ORG-004", "status": "PENDING" },
+        { "id": "F3-SCR-ORG-005", "status": "PENDING" },
+        { "id": "F3-SCR-ORG-006", "status": "PENDING" },
+        { "id": "F3-SCR-ORG-007", "status": "PENDING" }
+      ]
+    },
+    {
+      "id": "SEC",
+      "status": "PENDING",
+      "subs": [
+        { "id": "SEC", "status": "PENDING" }
+      ]
+    },
+    {
+      "id": "ALIGN",
+      "status": "PENDING",
+      "subs": [
+        { "id": "ALIGN", "status": "PENDING" }
+      ]
+    }
+  ],
+  "test_phases": [
+    {
+      "id": "JUNIT",
+      "status": "PENDING",
+      "gated_by_phases": ["CORE", "DATA-DOM", "SVC-API", "DOC", "INT-C", "INT-R"],
+      "header_file": "packages/test/JUNIT/JUNIT-HEADER.md",
+      "mandatory_file": "packages/test/JUNIT/MANDATORY-J.md",
+      "subs": [
+        { "id": "API-SCENARIOS", "status": "PENDING" },
+        { "id": "RULE-SCENARIOS", "status": "PENDING" }
+      ]
+    },
+    {
+      "id": "PLAYWRIGHT",
+      "status": "PENDING",
+      "gated_by_phases": ["F1", "F2", "F3"],
+      "header_file": "packages/test/PLAYWRIGHT/PLAYWRIGHT-HEADER.md",
+      "mandatory_file": "packages/test/PLAYWRIGHT/MANDATORY-P.md",
+      "subs": [
+        { "id": "INT-FLOW", "status": "PENDING" },
+        { "id": "UI-FLOWS", "status": "PENDING" }
+      ]
+    }
+  ],
+  "blocked": [
+    {
+      "id": "OQ-001",
+      "entity": "ENTITY-ORG-003 (Region)",
+      "rule": "RULE-ORG-006",
+      "reason": "Deactivation guard requires checking active Branches referencing the Region, but db-script.md's DBF matrix has no REGION_FK column on ORG_BRANCH — no FK linkage exists in the governed schema to query. Marked in code: OrgRegion.java, OrgRegionDomain.java (// TODO: OQ-001).",
+      "status": "DEFERRED — non-blocking, per SRS/DBS carry-forward"
+    }
+  ],
+  "deferred_xm": [
+    {
+      "id": "XM-ORG-1",
+      "dependency": "NumberingEngine",
+      "rule": "RULE-ORG-013 / DRV-ORG-008",
+      "reason": "DRV-ORG-008 requires calling NumberingEngine's POST /api/numbering/generate synchronously inside the Create transaction, but master-registry.md (row 822, L1-4) confirms NumberingEngine is NOT STARTED anywhere in the workspace — no such endpoint exists to call. Implemented a local functional-equivalent mock instead: com.example.erp.org.service.support.OrgNumberGenerator (sequential, zero-padded, collision-checked against the repository, scoped per entity's documented code format e.g. LE-NNNNN / BR-[LE_CODE]-NNNNN). Marked in code: OrgNumberGenerator.java (// TODO: XM-ORG-1 DEFERRED).",
+      "status": "DEFERRED — non-blocking, replace call site in OrgNumberGenerator.next() when NumberingEngine module ships"
+    }
+  ],
+  "api_doc_gaps": []
+}

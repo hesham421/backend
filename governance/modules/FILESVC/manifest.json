@@ -1,0 +1,46 @@
+{
+  "module": "FILESVC",
+  "version": 1,
+  "status": {
+    "archived": true,
+    "split": false,
+    "audited": false
+  },
+  "artifacts": {
+    "p0": "/Users/ezzat/my project/governance-repo/modules/FILESVC/P0",
+    "p1": "/Users/ezzat/my project/governance-repo/modules/FILESVC/P1",
+    "p2": "/Users/ezzat/my project/governance-repo/modules/FILESVC/P2",
+    "p3": "/Users/ezzat/my project/governance-repo/modules/FILESVC/P3",
+    "p3_5": "/Users/ezzat/my project/governance-repo/modules/FILESVC/P3_5",
+    "p4": "/Users/ezzat/my project/governance-repo/modules/FILESVC/P4"
+  },
+  "registries": {
+    "srs": "/Users/ezzat/my project/governance-repo/modules/FILESVC/P1/registry-srs-filesvc.md",
+    "db": "/Users/ezzat/my project/governance-repo/modules/FILESVC/P2/registry-db-filesvc.md",
+    "exec": "/Users/ezzat/my project/governance-repo/modules/FILESVC/P3/registry-exec-filesvc.md",
+    "test": "/Users/ezzat/my project/governance-repo/modules/FILESVC/P3_5/registry-test-filesvc.md"
+  },
+  "packages": {
+    "execution": "/Users/ezzat/my project/governance-repo/modules/FILESVC/packages/execution",
+    "test": "/Users/ezzat/my project/governance-repo/modules/FILESVC/packages/test"
+  },
+  "created_at": "2026-07-12T22:41:58.038186",
+  "archived_at": "2026-07-12T22:50:29.205052",
+  "archived_files": [
+    "registry-srs-filesvc.md",
+    "registry-db-filesvc.md",
+    "registry-exec-filesvc.md",
+    "registry-test-filesvc.md"
+  ],
+  "skipped_files": [
+    "platform-summary.md",
+    "module-registry-filesvc.md",
+    "business-policies-filesvc.md",
+    "srs.md",
+    "db-script.md",
+    "execution-plan.md",
+    "test-plan.md",
+    "audit-report.md",
+    "master-registry.md"
+  ]
+}
