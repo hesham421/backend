@@ -31,6 +31,7 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(SpringExtension.class)
@@ -122,5 +123,33 @@ class PermissionControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{}"))
             .andExpect(status().isForbidden());
+    }
+
+    // ─── PUT /api/permissions/{id} ───────────────────────────────────────────
+
+    @Test
+    @WithMockUser(authorities = "PERM_PERMISSION_UPDATE")
+    void updatePermission_withUpdateAuthority_returns200() throws Exception {
+        mockMvc.perform(put("/api/permissions/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(VALID_BODY))
+            .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(authorities = "PERM_WRONG")
+    void updatePermission_withoutUpdateAuthority_returns403() throws Exception {
+        mockMvc.perform(put("/api/permissions/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(VALID_BODY))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void updatePermission_unauthenticated_returns401() throws Exception {
+        mockMvc.perform(put("/api/permissions/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(VALID_BODY))
+            .andExpect(status().isUnauthorized());
     }
 }

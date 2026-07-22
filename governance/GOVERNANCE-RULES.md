@@ -82,8 +82,24 @@ Skill files are at `.github/skills/<category>/<skill-name>/SKILL.md`.
 > Domain companion object (business rules) per `.github/context/domain-layer.md`. This does not
 > add a step to the sequence above.
 
-**Frontend (strict):**
+**Frontend — v1 modules (ORG, NOTIFICATION, FILESVC — unchanged, single pass):**
 `create-models` → `create-api-service` → `create-facade` → `create-routing` → `create-components` → `validate-frontend-feature`
+
+**Frontend — v2 modules (any module registered from now on — TWO passes, v2.1):**
+
+> Pass A (UI Shell — presentational/structural only, before F1-F4 exist):
+> `create-routing` → `create-components` (using approved mockups as the
+> spec; static/dummy data only — no `create-api-service`/`create-facade`
+> yet). Stop for human sign-off (`GATE: UI SHELL COMPLETE`) before Pass B.
+>
+> Pass B (Integration — after F1-F4 are generated against the real Shell):
+> `create-models` (CONFIRM against real API Docs, not fresh design) →
+> `create-api-service` → `create-facade` → wire into the existing
+> Pass-A components/routing → `validate-frontend-feature`
+>
+> See `CLAUDE.md`'s "UI Shell Implementation Protocol" section for the
+> full step-by-step; see `CONTRACT-12` (shared-artifact-contracts.md)
+> for the governance rationale.
 
 ---
 
@@ -96,6 +112,10 @@ Skill files are at `.github/skills/<category>/<skill-name>/SKILL.md`.
 - After completing a feature, run the validation skill to verify compliance
 - Reference existing implementations in the codebase as canonical examples
 - `master-registry.md` is the single source of truth for all entities and rules
+- (v2.1, v2-model modules) `create-components`/`create-routing` (UI Shell,
+  Pass A) NEVER call `create-api-service`/`create-facade` in the same
+  pass — real integration is deliberately deferred to Pass B, after
+  F1-F4 exist and `GATE: UI SHELL COMPLETE` is confirmed
 - Business-rule conditions (anything answering "is this operation allowed?") must be
   implemented on a dedicated Domain object created via `create()`/`from()` factory methods —
   never inlined in Service, Repository, Controller, Mapper, or the Entity. See

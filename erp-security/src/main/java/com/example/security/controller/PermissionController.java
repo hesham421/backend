@@ -46,6 +46,7 @@ public class PermissionController {
         return operationCode.craftResponse(permissionService.searchPermissions(searchRequest.toCommonSearchRequest()));
     }
 
+    @PreAuthorize("hasAuthority('" + SecurityPermissions.PERMISSION_UPDATE + "')")
     @PutMapping("/{id}")
     @Operation(summary = "Update permission", description = "Updates an existing system permission")
     public ResponseEntity<ApiResponse<PermissionDto>> update(
