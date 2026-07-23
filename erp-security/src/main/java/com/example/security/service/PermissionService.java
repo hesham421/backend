@@ -39,9 +39,12 @@ public class PermissionService {
         "id", "name", "module", "createdAt", "updatedAt"
     );
 
-    // Whitelist of allowed search fields for dynamic filtering
+    // Whitelist of allowed search fields for dynamic filtering.
+    // "module" and "pageId"/"pageCode" live on the related Page entity, not on
+    // Permission itself, so they're remapped to their joined path ("page.xxx")
+    // in searchPermissions() before being validated/applied here.
     private static final Set<String> ALLOWED_PERMISSION_SEARCH_FIELDS = Set.of(
-        "name", "module"
+        "name", "page.module", "page.id", "page.pageCode"
     );
 
     @Transactional
@@ -92,6 +95,24 @@ public class PermissionService {
     @Transactional(readOnly = true)
     @PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).PERMISSION_VIEW)")
     public ServiceResult<Page<PermissionDto>> searchPermissions(SearchRequest request) {
+        // "module"/"pageId"/"pageCode" are permission-search-contract field names that
+        // actually live on the related Page entity (Permission has no "module" column,
+        // and only "name" is a real attribute of its own) — remap to the joined path
+        // so SpecBuilder can resolve them via Permission.page.
+        if (request != null && request.getFilters() != null) {
+            for (com.erp.common.search.SearchFilter filter : request.getFilters()) {
+                if (filter == null || filter.getField() == null) {
+                    continue;
+                }
+                switch (filter.getField()) {
+                    case "module" -> filter.setField("page.module");
+                    case "pageId" -> filter.setField("page.id");
+                    case "pageCode" -> filter.setField("page.pageCode");
+                    default -> { /* no remapping needed */ }
+                }
+            }
+        }
+
         // Build JPA Specification from filters
         Specification<Permission> spec = SpecBuilder.build(
             request,

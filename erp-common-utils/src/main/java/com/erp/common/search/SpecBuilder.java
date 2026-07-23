@@ -403,11 +403,17 @@ public class SpecBuilder {
         for (int i = 0; i < parts.length - 1; i++) {
             String part = parts[i];
 
-            // Try as a regular property first (ManyToOne, OneToOne, Embedded)
+            // Try as a regular property first (ManyToOne, OneToOne, Embedded).
+            // Note: on this Hibernate version, a singular-association Path (e.g. a
+            // ManyToOne) does NOT implement From/Join, so navigating further via
+            // .get() on it throws ClassCastException here rather than succeeding —
+            // that case falls through to the join-based approach below same as
+            // collection associations do.
             try {
                 from = (From<?, ?>) from.get(part);
-            } catch (IllegalArgumentException | IllegalStateException e) {
-                // If that fails, try as a join (OneToMany, ManyToMany)
+            } catch (IllegalArgumentException | IllegalStateException | ClassCastException e) {
+                // If that fails, try as a join (OneToMany, ManyToMany, or a
+                // singular association navigated via dot-notation)
                 from = getOrCreateJoin(from, part);
             }
         }

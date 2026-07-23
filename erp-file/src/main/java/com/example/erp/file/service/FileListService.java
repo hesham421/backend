@@ -27,9 +27,11 @@ import java.util.Set;
 /**
  * Orchestrates API-FILE-005 (List Files for Owner Record) — {@code GET /api/v1/files/{ownerId}}.
  * A standard, non-token, JWT-authenticated route (unlike upload/download/delete), so
- * {@code @PreAuthorize("isAuthenticated()")} reflects a real principal here — same posture as
- * API-FILE-001, deferring the fine-grained PERM_FILE_ATTACHMENT_VIEW check to Phase SEC (not yet
- * run for this module; the permission constant doesn't exist in SecurityPermissions yet).
+ * {@code @PreAuthorize("hasAuthority('PERM_FILE_ATTACHMENT_VIEW')")} reflects a real principal
+ * and Phase SEC's permission matrix (SEC.md — added the PERM_FILE_ATTACHMENT_VIEW constant to
+ * SecurityPermissions, previously deferred here as just {@code isAuthenticated()}). String
+ * literal, not {@code T(SecurityPermissions)} — see {@link FileUploadTokenService}'s class-level
+ * javadoc for why erp-file avoids that compile dependency.
  *
  * The endpoint is a plain GET with path/query params (create-controller A.6.6: no GET +
  * @ModelAttribute) — {@link SearchRequest} (the plain internal DTO SpecBuilder/PageableBuilder
@@ -52,7 +54,7 @@ public class FileListService {
     private final FileDocumentRepository fileDocumentRepository;
 
     @Transactional(readOnly = true)
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('PERM_FILE_ATTACHMENT_VIEW')")
     public ServiceResult<Page<FileDocumentSummaryResponse>> listByOwner(
             Long ownerId, String ownerType, int page, int size, String sortBy, String sortDir) {
         log.debug("Listing files for ownerId={}, ownerType={}", ownerId, ownerType);

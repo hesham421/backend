@@ -45,6 +45,13 @@ public class NotificationLogQueryService {
     // QR-NOTIF-004 ALLOWED_SORT_FIELDS, per SVCAPI.md
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("createdAt", "sentAt");
 
+    // Filter allowlist for SpecBuilder — distinct from ALLOWED_SORT_FIELDS above (QR-NOTIF-004
+    // only governs sortable fields). Must include every field NotificationHistorySearchRequest
+    // can add to SearchRequest.filters: recipientId (always injected server-side by
+    // resolveEffectiveRecipientId, see below) plus the two optional DTO filters.
+    private static final Set<String> ALLOWED_FILTER_FIELDS =
+        Set.of("recipientId", "notificationTypeId", "notificationStatusId");
+
     private final NotificationLogRepository logRepository;
     private final NotificationLogMapper logMapper;
     private final SecurityUserClient securityUserClient;
@@ -61,7 +68,7 @@ public class NotificationLogQueryService {
         filters.add(new SearchFilter("recipientId", Op.EQ, effectiveRecipientId));
         commonRequest.setFilters(filters);
 
-        SetAllowedFields allowedFields = new SetAllowedFields(ALLOWED_SORT_FIELDS);
+        SetAllowedFields allowedFields = new SetAllowedFields(ALLOWED_FILTER_FIELDS);
         Specification<NotificationLog> spec = SpecBuilder.build(commonRequest, allowedFields, DefaultFieldValueConverter.INSTANCE);
         Pageable pageable = PageableBuilder.from(commonRequest, ALLOWED_SORT_FIELDS, "createdAt");
 
