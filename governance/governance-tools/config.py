@@ -4,6 +4,26 @@ ERP Governance Tools — Shared Configuration
 Single source of truth for all agents.
 To add a new module: add its code to KNOWN_MODULES.
 To change the repo path: update REPO_BASE_PATH.
+
+=====================================================================
+Clean-slate baseline — single governance model, no legacy compatibility
+layer. Every module uses the same folder/artifact/package structure:
+
+  Backend  (this repo)      : P0, P0_5, P1, P2, P2_5, P3_1, P3_5_BE, P4_1
+  Frontend (sibling repo)   : P3_2, P3_5_FE, P4_2
+
+  backend-execution-plan.md and frontend-execution-plan.md are two
+  separate artifacts, generated at two different times — frontend is
+  gated on real, implemented API Docs (GATE: BACKEND MODULE COMPLETE)
+  and a real, implemented UI Shell (GATE: UI SHELL COMPLETE), never on
+  a planned/pre-implementation contract. See CONTRACT-12 in
+  shared-artifact-contracts.md.
+
+  backend-test-plan.md and frontend-test-plan.md are two separate
+  files (JUnit-only and Playwright-only respectively, by construction)
+  — there is no MARK-level marker distinguishing tool sections inside
+  one combined file; the file itself is the tool boundary.
+=====================================================================
 """
 
 from pathlib import Path
@@ -15,13 +35,11 @@ import json
 
 REPO_BASE_PATH = Path("/Users/ezzat/my project/backend/governance")
 
-# PLAYWRIGHT test-phase content is split out to the frontend repo by design
-# (see the STRUCTURAL LAW section in backend/CLAUDE.md and frontend/CLAUDE.md —
-# PLAYWRIGHT scenarios must never live under REPO_BASE_PATH/backend/governance/).
-# This is a SEPARATE root, not derived from REPO_BASE_PATH, so the two can
-# never accidentally collapse into one. Same hardcoded-absolute-path
-# convention as REPO_BASE_PATH: update by hand if this checkout ever moves.
-PLAYWRIGHT_OUTPUT_BASE_PATH = Path("/Users/ezzat/my project/frontend/governance")
+# Frontend-native content (P3_2, P3_5_FE, P4_2, and their packages/) is a
+# SEPARATE root, not derived from REPO_BASE_PATH, so the two repos can
+# never accidentally collapse into one. Update by hand if this checkout
+# ever moves.
+FRONTEND_OUTPUT_BASE_PATH = Path("/Users/ezzat/my project/frontend/governance")
 
 # ─────────────────────────────────────────────
 # MODULES — All known module codes
@@ -29,15 +47,7 @@ PLAYWRIGHT_OUTPUT_BASE_PATH = Path("/Users/ezzat/my project/frontend/governance"
 # ─────────────────────────────────────────────
 
 KNOWN_MODULES = [
-    "ORG",   # Organization
-    "FIN",   # Finance
-    "HR",    # Human Resources
-    "PRC",   # Procurement
-    "INV",   # Inventory
-    "LGL",   # Legal
-    "AST",   # Assets
-    "BDG",   # Budget
-    # Add more here as needed
+    # Add modules here as they're registered, e.g. "ORG", "FIN", "HR"
 ]
 
 # ─────────────────────────────────────────────
@@ -83,9 +93,9 @@ def register_module(mod: str, description: str = "") -> dict:
 
 def get_module_version_path(mod: str, version: "int | None" = None) -> Path:
     """
-    Get path for a specific version of a module.
+    Get path for a specific version of a module (backend-owned content).
     If version is None → returns current (latest) version path.
-    Version 1 = modules/ORG/v1/ , Version 2 = modules/ORG/v2/ etc.
+    Version 1 = modules/ORG/ (no suffix), version 2 = modules/ORG/v2/, etc.
     """
     registry = load_modules_registry()
     mod_entry = registry.get("modules", {}).get(mod)
@@ -95,47 +105,58 @@ def get_module_version_path(mod: str, version: "int | None" = None) -> Path:
     if version is None:
         version = mod_entry.get("current_version") or 1
 
-    # v1 lives at modules/ORG/ (no suffix) for backward compat
     if version == 1:
         return REPO_BASE_PATH / "modules" / mod
     return REPO_BASE_PATH / "modules" / mod / f"v{version}"
 
-def get_playwright_module_version_path(mod: str, version: "int | None" = None) -> Path:
-    """
-    Mirror of get_module_version_path(), but rooted at
-    PLAYWRIGHT_OUTPUT_BASE_PATH (frontend/governance/) instead of
-    REPO_BASE_PATH (backend/governance/). Used ONLY for PLAYWRIGHT
-    test-phase output — see agent3_splitter.py Stage 3.
 
-    Still reads the same modules-registry.json (registry stays backend-owned,
-    single source of truth for version numbers per STRUCTURAL LAW) — only the
-    destination root differs.
+def get_frontend_module_version_path(mod: str, version: "int | None" = None) -> Path:
+    """
+    Mirror of get_module_version_path(), rooted at
+    FRONTEND_OUTPUT_BASE_PATH (frontend/governance/) instead of
+    REPO_BASE_PATH (backend/governance/). Used for all frontend-native
+    output — P3_2/P3_5_FE/P4_2 content and frontend-test-plan.md.
+
+    Still reads the same modules-registry.json (registry stays
+    backend-owned, single source of truth for version numbers) — only
+    the destination root differs.
     """
     registry = load_modules_registry()
     mod_entry = registry.get("modules", {}).get(mod)
     if not mod_entry:
-        return PLAYWRIGHT_OUTPUT_BASE_PATH / "modules" / mod
+        return FRONTEND_OUTPUT_BASE_PATH / "modules" / mod
 
     if version is None:
         version = mod_entry.get("current_version") or 1
 
     if version == 1:
-        return PLAYWRIGHT_OUTPUT_BASE_PATH / "modules" / mod
-    return PLAYWRIGHT_OUTPUT_BASE_PATH / "modules" / mod / f"v{version}"
+        return FRONTEND_OUTPUT_BASE_PATH / "modules" / mod
+    return FRONTEND_OUTPUT_BASE_PATH / "modules" / mod / f"v{version}"
 
 # ─────────────────────────────────────────────
 # MODULE FOLDER STRUCTURE
-# Same for every module — no exceptions
 # ─────────────────────────────────────────────
 
 MODULE_STRUCTURE = {
     "P0":       "P0",        # Platform Inception outputs
+    "P0_5":     "P0_5",      # PRD Engine output: prd-{mod}.md
     "P1":       "P1",        # SRS outputs
     "P2":       "P2",        # DB Script outputs
-    "P3":       "P3",        # Execution Plan outputs
-    "P3_5":     "P3_5",      # Test Plan outputs
-    "P4":       "P4",        # Audit Report outputs
-    "packages": "packages",  # Split artifacts (Agent 3 output)
+    "P2_5":     "P2_5",      # UI/UX Design Engine: flow-diagram.md, ui-ux-spec.md
+                              # (visual-mockups/ lives in the frontend repo instead)
+    "P3_1":     "P3_1",      # Backend Execution Plan outputs
+    "P3_5_BE":  "P3_5_BE",   # Backend Test Plan + test-execution-manifest.md
+    "P4_1":     "P4_1",      # Backend Audit Report
+    "P3_2":     "P3_2",      # Frontend Execution Plan outputs — NOTE:
+                              # natively generated in the FRONTEND repo.
+                              # Listed here for path-resolution
+                              # completeness only — get_stage_path()
+                              # routes P3_2/P3_5_FE/P4_2 reads to
+                              # FRONTEND_OUTPUT_BASE_PATH automatically.
+    "P3_5_FE":  "P3_5_FE",   # Frontend Test Plan outputs — frontend repo
+    "P4_2":     "P4_2",      # Frontend Audit Report — frontend repo
+    "packages": "packages",  # Split artifacts (Agent 3 output) — backend
+                              # repo for backend-*, frontend repo for frontend-*
 }
 
 # ─────────────────────────────────────────────
@@ -148,24 +169,45 @@ ARTIFACT_FILES = {
         "module-registry-{mod}.md",
         "business-policies-{mod}.md",
     ],
+    "P0_5": [
+        "prd-{mod}.md",
+    ],
     "P1": [
         "srs.md",
-        "registry-srs-{mod}.md",     # P-REG output
+        "registry-srs-{mod}.md",       # P-REG output
     ],
     "P2": [
         "db-script.md",
-        "registry-db-{mod}.md",      # P-REG output
+        "registry-db-{mod}.md",        # P-REG output
     ],
-    "P3": [
-        "execution-plan.md",
-        "registry-exec-{mod}.md",    # P-REG output
+    "P2_5": [
+        "flow-diagram.md",
+        "ui-ux-spec.md",
+        # visual-mockups/ is a directory, not a file — lives in the
+        # frontend repo
     ],
-    "P3_5": [
-        "test-plan.md",
-        "registry-test-{mod}.md",    # P-REG output
+    "P3_1": [
+        "backend-execution-plan.md",
+        "registry-exec-be-{mod}.md",   # P-REG output
     ],
-    "P4": [
-        "audit-report.md",
+    "P3_5_BE": [
+        "backend-test-plan.md",
+        "test-execution-manifest.md",
+        "registry-test-be-{mod}.md",   # P-REG output
+    ],
+    "P4_1": [
+        "P4.1-audit-report.md",
+    ],
+    "P3_2": [
+        "frontend-execution-plan.md",
+        "registry-exec-fe-{mod}.md",   # P-REG output
+    ],
+    "P3_5_FE": [
+        "frontend-test-plan.md",
+        "registry-test-fe-{mod}.md",   # P-REG output
+    ],
+    "P4_2": [
+        "P4.2-audit-report.md",
     ],
 }
 
@@ -179,30 +221,47 @@ SHARED_FILES = [
 # ─────────────────────────────────────────────
 
 PACKAGES_STRUCTURE = {
-    # execution-plan.md splits
-    "execution": [
+    # backend-execution-plan.md splits — backend repo
+    "backend-execution": [
         "CORE",
         "DATA-DOM",
         "SVC-API",
         "DOC",
         "INT-C",
         "INT-R",
+        "SEC-BE",
+        "ALIGN-BE",
+        "SECTIONS",   # SECTION A/B/C/D
+    ],
+    # frontend-execution-plan.md splits — frontend repo (natively
+    # generated there — this splitter output stays in the same repo
+    # the source file lives in, no cross-repo routing needed)
+    "frontend-execution": [
         "F1",
         "F2",
         "F3",
-        "SEC",
-        "ALIGN",
-        "SECTIONS",   # SECTION A/B/C/D
+        "F4",
+        "SEC-FE",
+        "ALIGN-FE",
     ],
-    # test-plan.md splits
-    "test": [
-        "JUNIT",
-        "PLAYWRIGHT",
+    # backend-test-plan.md splits — backend repo, no MARK subfolder
+    "backend-test": [
+        "RULE-SCENARIOS",
+        "API-SCENARIOS",
+    ],
+    # frontend-test-plan.md splits — frontend repo, no MARK subfolder
+    "frontend-test": [
+        "UI-FLOWS",
+        "INT-FLOW",
     ],
 }
 
 # ─────────────────────────────────────────────
 # MARKER PATTERNS — Used by Agent 3
+# No MARK level — each test-plan file is single-tool by construction
+# (backend-test-plan.md is JUnit-only, frontend-test-plan.md is
+# Playwright-only), so there is nothing to distinguish via marker
+# inside either file. TC blocks nest directly under PHASE or SUB.
 # ─────────────────────────────────────────────
 
 import re
@@ -210,10 +269,20 @@ import re
 MARKERS = {
     "phase":  re.compile(r"<!--\s*PHASE:(\w[\w-]*):(START|END)\s*-->"),
     "sub":    re.compile(r"<!--\s*SUB:([\w-]+):(START|END)\s*-->"),
-    "mark":   re.compile(r"<!--\s*MARK:(JUNIT|PLAYWRIGHT):(START|END)\s*-->"),
     "api":    re.compile(r"<!--\s*API:(API-[\w-]+):(START|END)\s*-->"),
     "xm":     re.compile(r"<!--\s*XM:(XM-[\w-]+):(START|END)\s*-->"),
     "tc":     re.compile(r"<!--\s*TC:(TC-[\w-]+):(START|END)\s*-->"),
+}
+
+# Allowed nesting hierarchy: PHASE → [SUB] → ATOM, for every file type.
+# TC atomic markers nest directly under PHASE or SUB — same rule as
+# API/XM, no separate tool-boundary level.
+ALLOWED_PARENTS = {
+    "phase": [None],                  # top level only
+    "sub":   ["phase"],               # SUB inside PHASE only
+    "api":   ["phase", "sub"],        # API inside PHASE or SUB
+    "xm":    ["phase", "sub"],        # XM inside PHASE or SUB
+    "tc":    ["phase", "sub"],        # TC inside PHASE or SUB directly
 }
 
 # ─────────────────────────────────────────────
@@ -221,7 +290,7 @@ MARKERS = {
 # ─────────────────────────────────────────────
 
 def get_module_path(mod: str) -> Path:
-    """Return the root path for a module."""
+    """Return the root path for a module (backend-owned content)."""
     mod = mod.upper()
     if mod not in KNOWN_MODULES:
         registry = load_modules_registry()
@@ -231,14 +300,36 @@ def get_module_path(mod: str) -> Path:
 
 
 def get_stage_path(mod: str, stage: str) -> Path:
-    """Return the path for a specific stage inside a module."""
+    """
+    Return the path for a specific stage inside a module.
+    P3_2/P3_5_FE/P4_2 resolve under FRONTEND_OUTPUT_BASE_PATH (frontend
+    repo) automatically, since those stages are natively frontend-
+    generated — not a backend-repo folder like the rest.
+    """
     if stage not in MODULE_STRUCTURE:
-        raise ValueError(f"Unknown stage: {stage}. Valid: {list(MODULE_STRUCTURE.keys())}")
+        raise ValueError(f"Unknown stage: {stage}. Valid stages: {list(MODULE_STRUCTURE.keys())}")
+
+    frontend_native_stages = {"P3_2", "P3_5_FE", "P4_2"}
+    if stage in frontend_native_stages:
+        mod_upper = mod.upper()
+        return FRONTEND_OUTPUT_BASE_PATH / "modules" / mod_upper / MODULE_STRUCTURE[stage]
+
     return get_module_path(mod) / MODULE_STRUCTURE[stage]
 
 
 def get_packages_path(mod: str, artifact: str, sub: str = "") -> Path:
-    """Return the packages path for a split artifact."""
+    """
+    Return the packages path for a split artifact.
+    "frontend-execution" and "frontend-test" artifacts resolve under
+    FRONTEND_OUTPUT_BASE_PATH (frontend repo); "backend-execution" and
+    "backend-test" stay in this repo.
+    """
+    frontend_native_artifacts = {"frontend-execution", "frontend-test"}
+    if artifact in frontend_native_artifacts:
+        mod_upper = mod.upper()
+        base = FRONTEND_OUTPUT_BASE_PATH / "modules" / mod_upper / "packages" / artifact
+        return base / sub if sub else base
+
     base = get_module_path(mod) / "packages" / artifact
     return base / sub if sub else base
 
@@ -272,7 +363,7 @@ def validate_module(mod: str, auto_register: bool = False, description: str = ""
 
     raise ValueError(
         f"Module '{mod}' is not registered.\n"
-        f"Static modules : {', '.join(KNOWN_MODULES)}\n"
+        f"Static modules : {', '.join(KNOWN_MODULES) or '(none yet)'}\n"
         f"To register a new module automatically, use --auto-register flag.\n"
         f"Or add '{mod}' to KNOWN_MODULES in config.py."
     )
@@ -285,31 +376,48 @@ def validate_module(mod: str, auto_register: bool = False, description: str = ""
 def build_manifest(mod: str, version: int = 1) -> dict:
     """Build empty manifest structure for a module version."""
     base = get_module_version_path(mod, version)
+    frontend_base = get_frontend_module_version_path(mod, version)
+
     return {
         "module":  mod,
         "version": version,
         "status": {
-            "archived": False,
-            "split":    False,
-            "audited":  False,
+            "archived_backend":  False,
+            "split_backend":     False,
+            "audited_backend":   False,   # P4.1
+            "backend_module_complete": False,  # CONTRACT-12 gate
+            "ui_shell_complete": False,   # CONTRACT-12 gate (v2.1)
+            "archived_frontend": False,
+            "split_frontend":    False,
+            "audited_frontend":  False,   # P4.2
         },
         "artifacts": {
-            "p0":   str(base / MODULE_STRUCTURE["P0"]),
-            "p1":   str(base / MODULE_STRUCTURE["P1"]),
-            "p2":   str(base / MODULE_STRUCTURE["P2"]),
-            "p3":   str(base / MODULE_STRUCTURE["P3"]),
-            "p3_5": str(base / MODULE_STRUCTURE["P3_5"]),
-            "p4":   str(base / MODULE_STRUCTURE["P4"]),
+            "p0":      str(base / MODULE_STRUCTURE["P0"]),
+            "p0_5":    str(base / MODULE_STRUCTURE["P0_5"]),
+            "p1":      str(base / MODULE_STRUCTURE["P1"]),
+            "p2":      str(base / MODULE_STRUCTURE["P2"]),
+            "p2_5":    str(base / MODULE_STRUCTURE["P2_5"]),
+            "p3_1":    str(base / MODULE_STRUCTURE["P3_1"]),
+            "p3_5_be": str(base / MODULE_STRUCTURE["P3_5_BE"]),
+            "p4_1":    str(base / MODULE_STRUCTURE["P4_1"]),
+            # Frontend-native stages resolve in the FRONTEND repo, not here:
+            "p3_2":    str(frontend_base / MODULE_STRUCTURE["P3_2"]),
+            "p3_5_fe": str(frontend_base / MODULE_STRUCTURE["P3_5_FE"]),
+            "p4_2":    str(frontend_base / MODULE_STRUCTURE["P4_2"]),
         },
         "registries": {
-            "srs":  str(base / MODULE_STRUCTURE["P1"]  / f"registry-srs-{mod.lower()}.md"),
-            "db":   str(base / MODULE_STRUCTURE["P2"]  / f"registry-db-{mod.lower()}.md"),
-            "exec": str(base / MODULE_STRUCTURE["P3"]  / f"registry-exec-{mod.lower()}.md"),
-            "test": str(base / MODULE_STRUCTURE["P3_5"] / f"registry-test-{mod.lower()}.md"),
+            "srs":       str(base / MODULE_STRUCTURE["P1"] / f"registry-srs-{mod.lower()}.md"),
+            "db":        str(base / MODULE_STRUCTURE["P2"] / f"registry-db-{mod.lower()}.md"),
+            "exec_be":   str(base / MODULE_STRUCTURE["P3_1"] / f"registry-exec-be-{mod.lower()}.md"),
+            "test_be":   str(base / MODULE_STRUCTURE["P3_5_BE"] / f"registry-test-be-{mod.lower()}.md"),
+            "exec_fe":   str(frontend_base / MODULE_STRUCTURE["P3_2"] / f"registry-exec-fe-{mod.lower()}.md"),
+            "test_fe":   str(frontend_base / MODULE_STRUCTURE["P3_5_FE"] / f"registry-test-fe-{mod.lower()}.md"),
         },
         "packages": {
-            "execution": str(base / "packages" / "execution"),
-            "test":      str(base / "packages" / "test"),
+            "backend_execution":  str(base / "packages" / "backend-execution"),
+            "backend_test":       str(base / "packages" / "backend-test"),
+            "frontend_execution": str(frontend_base / "packages" / "frontend-execution"),
+            "frontend_test":      str(frontend_base / "packages" / "frontend-test"),
         },
     }
 

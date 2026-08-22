@@ -1,25 +1,52 @@
 """
 ERP Governance Tools — Agent 3: Artifact Splitter
 ====================================================
-Reads Marker Protocol (Section 6.7 of P3) from execution-plan.md
-and test-plan.md, then splits them into addressable package files.
+Reads Marker Protocol (PROJECT-3-REGISTRY.md Section 5.7) from
+backend-execution-plan.md / frontend-execution-plan.md and
+backend-test-plan.md / frontend-test-plan.md, then splits them into
+addressable package files.
 
 Staged execution — each stage requires explicit approval before proceeding.
 Stages are independently resumable: if Stage 3 fails, Stage 1/2 results
 are preserved and Stage 3 alone can be re-run.
 
 Usage:
-    python agent3_splitter.py --module ORG
-    python agent3_splitter.py --module ORG --stage 1
-    python agent3_splitter.py --module ORG --resume
-    python agent3_splitter.py --module ORG --status
+    python agent3_splitter.py --module FIN --track backend
+    python agent3_splitter.py --module FIN --track backend --stage 1
+    python agent3_splitter.py --module FIN --track backend --resume
+    python agent3_splitter.py --module FIN --track backend --status
+
+    (run again later, from the frontend repo's own copy, after real
+    implementation + API docs + GATE: BACKEND MODULE COMPLETE +
+    GATE: UI SHELL COMPLETE)
+    python agent3_splitter.py --module FIN --track frontend
+
+--track is always required — it picks WHICH artifact pair Stage 2/3
+split:
+  backend  : backend-execution-plan.md (P3_1/) + backend-test-plan.md
+             (P3_5_BE/) — output stays entirely in this repo
+             (packages/backend-execution/, packages/backend-test/)
+  frontend : frontend-execution-plan.md (P3_2/) + frontend-test-plan.md
+             (P3_5_FE/) — these source files are natively frontend-
+             generated (they live in the frontend repo's own P3_2/
+             P3_5_FE folders) — this track is normally invoked with
+             THIS SCRIPT'S COPY living in the frontend repo, not this one.
+
+This is a separate flag from --stage (which means 1-5, the five
+internal pipeline steps). --track picks WHICH artifact pair gets
+split; --stage picks WHICH step of that split to run. The two compose:
+--track backend --stage 2 means "run just the split-execution step,
+for the backend track."
 
 Stages:
     1. Parse & Plan          — read markers, validate structure, show plan
     2. Split execution-plan  — write PHASE/SUB/API/XM package files
-    3. Split test-plan       — write MARK/SUB/TC package files
+    3. Split test-plan       — write PHASE/SUB/TC package files (no
+                                MARK level — each test-plan file is
+                                single-tool by construction)
     4. Generate Index Files  — index.md per package folder
-    5. Verify Completeness   — line-count + marker-count cross-check
+    5. Verify Completeness   — content-hash cross-check against the
+                                archived source artifact
 """
 
 import argparse
@@ -32,9 +59,9 @@ from datetime import datetime
 sys.path.insert(0, str(Path(__file__).parent))
 from config import (
     REPO_BASE_PATH,
-    PLAYWRIGHT_OUTPUT_BASE_PATH,
+    FRONTEND_OUTPUT_BASE_PATH,
     get_module_version_path,
-    get_playwright_module_version_path,
+    get_frontend_module_version_path,
     validate_module,
     load_modules_registry,
 )
@@ -44,8 +71,8 @@ from marker_parser import (
 
 STAGE_NAMES = {
     1: "Parse & Plan",
-    2: "Split execution-plan.md",
-    3: "Split test-plan.md",
+    2: "Split execution-plan",
+    3: "Split test-plan",
     4: "Generate Index Files",
     5: "Verify Completeness",
 }
@@ -61,227 +88,46 @@ def _state_path(mod: str, version: int, base: Path = None) -> Path:
 
 
 def load_state(mod: str, version: int, base: Path = None) -> dict:
-    path = _state_path(mod, version, base)
-    if path.exists():
-        with open(path, "r", encoding="utf-8") as fh:
+    p = _state_path(mod, version, base)
+    if p.exists():
+        with open(p, "r", encoding="utf-8") as fh:
             return json.load(fh)
-    return {
-        "module": mod,
-        "version": version,
-        "stages_completed": [],
-        "last_run": None,
-        "exec_plan_path": None,
-        "test_plan_path": None,
-    }
+    return {"stages_completed": [], "stages": {}}
 
 
 def save_state(mod: str, version: int, state: dict, base: Path = None):
-    path = _state_path(mod, version, base)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    state["last_run"] = datetime.now().isoformat()
-    with open(path, "w", encoding="utf-8") as fh:
+    p = _state_path(mod, version, base)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with open(p, "w", encoding="utf-8") as fh:
         json.dump(state, fh, indent=2, ensure_ascii=False)
 
 
 def mark_stage_complete(state: dict, stage: int):
     if stage not in state["stages_completed"]:
         state["stages_completed"].append(stage)
-        state["stages_completed"].sort()
+    state["stages"][str(stage)] = {"completed_at": datetime.now().isoformat()}
 
 
-def print_status(mod: str, version: int, base: Path = None):
+def print_status(mod: str, version: int, base: Path = None, track: str = None):
     state = load_state(mod, version, base)
     print()
-    print("═" * 60)
+    print("═" * 62)
     print(f"  AGENT 3 — Status")
-    print(f"  Module  : {mod}  (v{version})")
-    print("═" * 60)
-    for s in range(1, 6):
-        done = s in state["stages_completed"]
-        mark = "✓ DONE" if done else "— pending"
-        print(f"  Stage {s} — {STAGE_NAMES[s]:<28} {mark}")
-    if state["last_run"]:
+    print(f"  Module  : {mod}  (v{version})" + (f"  Track: {track}" if track else ""))
+    print("═" * 62)
+    for stage_num, name in STAGE_NAMES.items():
+        done = stage_num in state.get("stages_completed", [])
+        status = "✓ DONE" if done else "— pending"
+        print(f"  Stage {stage_num} — {name:<25} {status}")
+    if state.get("stages", {}).get("5"):
         print()
-        print(f"  Last run: {state['last_run']}")
+        print(f"  Last run: {state['stages']['5']['completed_at']}")
     print()
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# APPROVAL GATE
-# ─────────────────────────────────────────────────────────────────────────────
 
 def confirm(prompt: str = "  Proceed?") -> bool:
     answer = input(f"{prompt} [y/N]: ").strip().lower()
     return answer == "y"
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# STAGE 1 — Parse & Plan
-# ─────────────────────────────────────────────────────────────────────────────
-
-def stage1_parse_and_plan(mod: str, version: int, state: dict, base: Path = None) -> dict | None:
-    """
-    Parse execution-plan.md and test-plan.md.
-    Validate marker structure.
-    Show a plan of what Stage 2/3 will produce.
-    Returns a plan dict if approved, None if cancelled or blocked by errors.
-    """
-    if base is None:
-        base = get_module_version_path(mod, version)
-    exec_path = base / "P3" / "execution-plan.md"
-    test_path = base / "P3_5" / "test-plan.md"
-
-    print()
-    print("═" * 70)
-    print(f"  STAGE 1 — Parse & Plan")
-    print(f"  Module : {mod}  (v{version})")
-    print("═" * 70)
-    print()
-
-    exec_result: ParseResult | None = None
-    test_result: ParseResult | None = None
-
-    # ── Parse execution-plan.md ───────────────────────────────────────────────
-    if exec_path.exists():
-        exec_result = parse_file(exec_path)
-        print(f"  ✓ Read execution-plan.md  ({exec_result.total_lines} lines)")
-    else:
-        print(f"  ⚠ execution-plan.md not found at {exec_path}")
-        print(f"    Run agent2_archive.py first to populate P3/.")
-
-    # ── Parse test-plan.md ────────────────────────────────────────────────────
-    if test_path.exists():
-        test_result = parse_file(test_path)
-        print(f"  ✓ Read test-plan.md      ({test_result.total_lines} lines)")
-    else:
-        print(f"  — test-plan.md not found — will skip Stage 3 (acceptable if not generated yet)")
-
-    if not exec_result and not test_result:
-        print()
-        print("  ERROR: Neither execution-plan.md nor test-plan.md found. Nothing to split.")
-        return None
-
-    # ── Report structural errors ──────────────────────────────────────────────
-    all_errors = []
-    if exec_result:
-        all_errors += [("execution-plan.md", e) for e in exec_result.errors]
-    if test_result:
-        all_errors += [("test-plan.md", e) for e in test_result.errors]
-
-    if all_errors:
-        print()
-        print("  ✗ STRUCTURAL ERRORS FOUND — splitting blocked until fixed:")
-        print()
-        for fname, err in all_errors:
-            print(f"    [{err.severity}] {fname} line {err.line}: {err.message}")
-        print()
-        print("  Fix the marker structure in the source artifact and re-run Stage 1.")
-        return None
-
-    print()
-    print("  ✓ No structural errors — marker hierarchy is valid.")
-
-    # ── Build plan summary ────────────────────────────────────────────────────
-    plan = {
-        "exec_path": str(exec_path) if exec_result else None,
-        "test_path": str(test_path) if test_result else None,
-        "exec_summary": {},
-        "test_summary": {},
-    }
-
-    if exec_result:
-        phases = find_by_kind(exec_result.root_blocks, "phase")
-        apis = find_by_kind(exec_result.root_blocks, "api")
-        xms = find_by_kind(exec_result.root_blocks, "xm")
-        subs = find_by_kind(exec_result.root_blocks, "sub")
-
-        print()
-        print("  ── execution-plan.md plan ──────────────────────────────────")
-        print(f"    PHASE blocks : {len(phases)}")
-        for p in phases:
-            sub_count = len([s for s in p.children if s.kind == "sub"])
-            api_count = len([a for a in flatten([p]) if a.kind == "api"])
-            xm_count  = len([x for x in flatten([p]) if x.kind == "xm"])
-            extra = ""
-            if sub_count:
-                extra += f", {sub_count} sub-phase(s)"
-            if api_count:
-                extra += f", {api_count} API(s)"
-            if xm_count:
-                extra += f", {xm_count} XM(s)"
-            print(f"      - PHASE:{p.marker_id:<14} → 1 file{extra}")
-        print(f"    Total API atomic files : {len(apis)}")
-        print(f"    Total XM atomic files  : {len(xms)}")
-
-        plan["exec_summary"] = {
-            "phases": len(phases), "apis": len(apis),
-            "xms": len(xms), "subs": len(subs),
-        }
-
-    if test_result:
-        marks = find_by_kind(test_result.root_blocks, "mark")
-        tcs = find_by_kind(test_result.root_blocks, "tc")
-        subs_t = find_by_kind(test_result.root_blocks, "sub")
-
-        print()
-        print("  ── test-plan.md plan ───────────────────────────────────────")
-        for m in marks:
-            sub_count = len([s for s in m.children if s.kind == "sub"])
-            tc_count = len([t for t in flatten([m]) if t.kind == "tc"])
-            extra = f", {sub_count} sub-section(s)" if sub_count else " (no SUB — below threshold)"
-            print(f"      - MARK:{m.marker_id:<12} → {tc_count} TC(s){extra}")
-        print(f"    Total TC atomic files : {len(tcs)}")
-
-        # Detect orphan TCs: inside a MARK that HAS subs, but not inside any sub
-        orphan_warnings = []
-        for m in marks:
-            sub_blocks = [c for c in m.children if c.kind == "sub"]
-            if not sub_blocks:
-                continue  # no SUBs -> all TCs go directly under MARK (acceptable)
-            tcs_in_subs = {t.marker_id for sub in sub_blocks for t in flatten([sub]) if t.kind == "tc"}
-            all_tcs_in_mark = [t for t in flatten([m]) if t.kind == "tc"]
-            orphans = [t for t in all_tcs_in_mark if t.marker_id not in tcs_in_subs]
-            if orphans:
-                orphan_warnings.append((m.marker_id, orphans))
-
-        if orphan_warnings:
-            print()
-            print("  ⚠ WARNING — Orphan TCs (inside MARK but outside any SUB block):")
-            print("    Stage 3 will NOT write these TCs to any package file.")
-            print("    Wrap them in <!-- SUB:...:START/END --> before continuing.")
-            for mark_id, orphans in orphan_warnings:
-                ids = ", ".join(t.marker_id for t in orphans)
-                print(f"    MARK:{mark_id} → {len(orphans)} orphan TC(s): {ids}")
-            print()
-
-        plan["test_summary"] = {
-            "marks": len(marks), "tcs": len(tcs), "subs": len(subs_t),
-        }
-
-    total_files = (
-        plan["exec_summary"].get("apis", 0)
-        + plan["exec_summary"].get("xms", 0)
-        + plan["exec_summary"].get("phases", 0)
-        + plan["test_summary"].get("tcs", 0)
-        + plan["test_summary"].get("marks", 0)
-    )
-    print()
-    print(f"  Estimated package files to generate: ~{total_files}")
-    print()
-
-    if not confirm("  Approve Stage 1 plan and proceed?"):
-        print("\n  Stage 1 cancelled — no files written.\n")
-        return None
-
-    # Persist parsed results for stage 2/3 to reuse (re-parse is cheap, but
-    # we store paths so stage 2/3 can run independently if resumed later)
-    state["exec_plan_path"] = plan["exec_path"]
-    state["test_plan_path"] = plan["test_path"]
-    mark_stage_complete(state, 1)
-    save_state(mod, version, state, base)
-
-    print("  ✓ Stage 1 complete.\n")
-    return plan
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -290,6 +136,7 @@ def stage1_parse_and_plan(mod: str, version: int, state: dict, base: Path = None
 
 def _write_block(path: Path, block: "MarkerBlock", header: str = ""):
     """Write a single MarkerBlock's content to a file — copy/paste only."""
+    _guard_frontend_content_path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     text = (header + "\n\n") if header else ""
     text += block.content
@@ -298,6 +145,7 @@ def _write_block(path: Path, block: "MarkerBlock", header: str = ""):
 
 def _write_content(path: Path, content: str, header: str = ""):
     """Write raw text content to a file (used for preamble/header files)."""
+    _guard_frontend_content_path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     text = (header + "\n\n") if header else ""
     text += content
@@ -317,41 +165,42 @@ def _safe_filename(marker_id: str) -> str:
     return marker_id.strip().replace(" ", "-") + ".md"
 
 
-def _guard_playwright_path(path: Path):
+def _guard_frontend_content_path(path: Path):
     """
-    Refuse to write PLAYWRIGHT test-phase content anywhere inside
-    backend/governance/ (REPO_BASE_PATH) — forbidden per the STRUCTURAL LAW
-    section in backend/CLAUDE.md and frontend/CLAUDE.md. This is a permanent
-    guardrail: it fires regardless of whether PLAYWRIGHT_OUTPUT_BASE_PATH or
-    a --playwright-output override is ever misconfigured back into
+    Refuse to write frontend-track content (frontend-execution/
+    frontend-test package output) anywhere inside backend/governance/
+    (REPO_BASE_PATH) — forbidden per the STRUCTURAL LAW section in
+    backend/CLAUDE.md and frontend/CLAUDE.md. This is a permanent
+    guardrail: it fires regardless of whether FRONTEND_OUTPUT_BASE_PATH
+    or a --frontend-output override is ever misconfigured back into
     backend/governance/, so this specific bug cannot silently recur.
     """
     resolved = path.resolve()
     forbidden_root = REPO_BASE_PATH.resolve()
-    if resolved == forbidden_root or forbidden_root in resolved.parents:
+    is_frontend_content = "frontend-execution" in str(path) or "frontend-test" in str(path)
+    if is_frontend_content and (resolved == forbidden_root or forbidden_root in resolved.parents):
         raise RuntimeError(
-            f"REFUSING TO WRITE PLAYWRIGHT CONTENT — resolved path\n"
+            f"REFUSING TO WRITE FRONTEND CONTENT — resolved path\n"
             f"    {resolved}\n"
             f"  is inside backend/governance/ ({forbidden_root}).\n"
-            f"  PLAYWRIGHT content must never live in backend/governance/ — see the\n"
+            f"  Frontend content must never live in backend/governance/ — see the\n"
             f"  STRUCTURAL LAW section in backend/CLAUDE.md and frontend/CLAUDE.md.\n"
-            f"  Check config.py's PLAYWRIGHT_OUTPUT_BASE_PATH and/or the\n"
-            f"  --playwright-output CLI argument."
+            f"  Check config.py's FRONTEND_OUTPUT_BASE_PATH."
         )
 
 
-def _display_dest(dest: Path, base: Path, playwright_base: Path) -> str:
+def _display_dest(dest: Path, base: Path, frontend_base: Path) -> str:
     """
     Show a write-plan destination relative to whichever root it actually
-    belongs under, tagging frontend-rooted (PLAYWRIGHT) paths explicitly so
-    a printed plan never silently implies everything lands under one tree.
+    belongs under, tagging frontend-rooted paths explicitly so a printed
+    plan never silently implies everything lands under one tree.
     """
     try:
         return str(dest.relative_to(base))
     except ValueError:
         pass
     try:
-        return f"[frontend/governance] {dest.relative_to(playwright_base)}"
+        return f"[frontend/governance] {dest.relative_to(frontend_base)}"
     except ValueError:
         return str(dest)
 
@@ -383,50 +232,294 @@ def _preamble_content(block: "MarkerBlock", raw_lines: list[str]) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Maps PHASE marker_id → packages/execution/<folder>
-PHASE_FOLDER_MAP = {
+# v1 — legacy, unchanged. Combined backend+frontend phase keys.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE FOLDER MAPS
+# ─────────────────────────────────────────────────────────────────────────────
+
+PHASE_FOLDER_MAP_BACKEND = {
     "CORE":      "CORE",
     "DATA-DOM":  "DATA-DOM",
     "SVC-API":   "SVC-API",
     "DOC":       "DOC",
     "INT-C":     "INT-C",
     "INT-R":     "INT-R",
+    "SEC-BE":    "SEC-BE",
+    "ALIGN-BE":  "ALIGN-BE",
+}
+
+PHASE_FOLDER_MAP_FRONTEND = {
     "F1":        "F1",
     "F2":        "F2",
     "F3":        "F3",
     "F4":        "F4",
-    "SEC":       "SEC",
-    "ALIGN":     "ALIGN",
+    "SEC-FE":    "SEC-FE",
+    "ALIGN-FE":  "ALIGN-FE",
 }
 
 
-def stage2_split_execution(mod: str, version: int, state: dict, plan: dict | None, base: Path = None, dry_run: bool = False) -> bool:
-    """Split execution-plan.md into PHASE / SUB / API / XM package files."""
+# ─────────────────────────────────────────────────────────────────────────────
+# STAGE 1 — Parse & Plan
+# ─────────────────────────────────────────────────────────────────────────────
+
+def stage1_parse_and_plan(mod: str, version: int, state: dict, track: str,
+                               base: Path = None, frontend_base: Path = None) -> dict | None:
+    """
+    Parses backend-execution-plan.md + backend-test-plan.md
+    (track="backend") or frontend-execution-plan.md +
+    frontend-test-plan.md (track="frontend"), validates marker
+    structure, and shows a generation plan before anything is written.
+
+    Reports coverage counts (PHASE/SUB/API/XM/TC) for both source
+    artifacts, orphan-TC warnings, and asks for approval before Stage 1
+    is marked complete. TC blocks nest directly under PHASE/SUB — no
+    MARK level.
+    """
     if base is None:
         base = get_module_version_path(mod, version)
-    exec_path = base / "P3" / "execution-plan.md"
-    pkg_root = base / "packages" / "execution"
+    if frontend_base is None:
+        frontend_base = get_frontend_module_version_path(mod, version)
+
+    if track == "backend":
+        exec_path = base / "P3_1" / "backend-execution-plan.md"
+        test_path = base / "P3_5_BE" / "backend-test-plan.md"
+        exec_label, test_label = "backend-execution-plan.md", "backend-test-plan.md"
+    elif track == "frontend":
+        exec_path = frontend_base / "P3_2" / "frontend-execution-plan.md"
+        test_path = frontend_base / "P3_5_FE" / "frontend-test-plan.md"
+        exec_label, test_label = "frontend-execution-plan.md", "frontend-test-plan.md"
+    else:
+        print(f"  ERROR: unknown track '{track}' — must be 'backend' or 'frontend'.")
+        return None
 
     print()
     print("═" * 70)
-    print(f"  STAGE 2 — Split execution-plan.md")
-    print(f"  Module : {mod}  (v{version})")
+    print(f"  STAGE 1 — Parse & Plan")
+    print(f"  Module : {mod}  (v{version})   Track: {track}")
     print("═" * 70)
     print()
 
-    if not exec_path.exists():
-        print("  — execution-plan.md not found. Skipping Stage 2.\n")
-        return True  # not a failure — just nothing to do
+    exec_result: ParseResult | None = None
+    test_result: ParseResult | None = None
 
-    result = parse_file(exec_path)
+    if exec_path.exists():
+        exec_result = parse_file(exec_path)
+        print(f"  ✓ Read {exec_label}  ({exec_result.total_lines} lines)")
+    else:
+        print(f"  ⚠ {exec_label} not found at {exec_path}")
+        print(f"    Run agent2_archive.py --track {track} first.")
+
+    if test_path.exists():
+        test_result = parse_file(test_path)
+        print(f"  ✓ Read {test_label}      ({test_result.total_lines} lines)")
+    else:
+        print(f"  — {test_label} not found — will skip Stage 3 (acceptable if not generated yet)")
+
+    if not exec_result and not test_result:
+        print()
+        print(f"  ERROR: Neither {exec_label} nor {test_label} found. Nothing to split.")
+        return None
+
+    all_errors = []
+    if exec_result:
+        all_errors += [(exec_label, e) for e in exec_result.errors]
+    if test_result:
+        all_errors += [(test_label, e) for e in test_result.errors]
+
+    if all_errors:
+        print()
+        print("  ✗ STRUCTURAL ERRORS FOUND — splitting blocked until fixed:")
+        print()
+        for fname, err in all_errors:
+            print(f"    [{err.severity}] {fname} line {err.line}: {err.message}")
+        print()
+        print("  Fix the marker structure in the source artifact and re-run Stage 1.")
+        return None
+
+    print()
+    print("  ✓ No structural errors — marker hierarchy is valid.")
+
+    plan = {
+        "exec_path": str(exec_path) if exec_result else None,
+        "test_path": str(test_path) if test_result else None,
+        "track": track,
+        "exec_summary": {},
+        "test_summary": {},
+    }
+
+    if exec_result:
+        phases = find_by_kind(exec_result.root_blocks, "phase")
+        apis = find_by_kind(exec_result.root_blocks, "api")
+        xms = find_by_kind(exec_result.root_blocks, "xm")
+        subs = find_by_kind(exec_result.root_blocks, "sub")
+
+        print()
+        print(f"  ── {exec_label} plan ──────────────────────────────────")
+        print(f"    PHASE blocks : {len(phases)}")
+        for p in phases:
+            sub_count = len([s for s in p.children if s.kind == "sub"])
+            api_count = len([a for a in flatten([p]) if a.kind == "api"])
+            xm_count  = len([x for x in flatten([p]) if x.kind == "xm"])
+            extra = ""
+            if sub_count:
+                extra += f", {sub_count} sub-phase(s)"
+            if api_count:
+                extra += f", {api_count} API(s)"
+            if xm_count:
+                extra += f", {xm_count} XM(s)"
+            print(f"      - PHASE:{p.marker_id:<14} → 1 file{extra}")
+        print(f"    Total API atomic files : {len(apis)}")
+        print(f"    Total XM atomic files  : {len(xms)}" + (" (backend track only)" if track == "frontend" and xms else ""))
+
+        plan["exec_summary"] = {
+            "phases": len(phases), "apis": len(apis),
+            "xms": len(xms), "subs": len(subs),
+        }
+
+    if test_result:
+        # TCs sit directly under PHASE or SUB — no MARK level.
+        tcs = find_by_kind(test_result.root_blocks, "tc")
+        subs_t = find_by_kind(test_result.root_blocks, "sub")
+        phases_t = find_by_kind(test_result.root_blocks, "phase")
+
+        print()
+        print(f"  ── {test_label} plan ───────────────────────────────────────")
+        for p in phases_t:
+            sub_count = len([s for s in p.children if s.kind == "sub"])
+            tc_count = len([t for t in flatten([p]) if t.kind == "tc"])
+            extra = f", {sub_count} sub-section(s)" if sub_count else " (no SUB — below threshold)"
+            print(f"      - PHASE:{p.marker_id:<12} → {tc_count} TC(s){extra}")
+        print(f"    Total TC atomic files : {len(tcs)}")
+
+        # Orphan TC detection — same principle as v1, just PHASE instead of MARK
+        orphan_warnings = []
+        for p in phases_t:
+            sub_blocks = [c for c in p.children if c.kind == "sub"]
+            if not sub_blocks:
+                continue
+            tcs_in_subs = {t.marker_id for sub in sub_blocks for t in flatten([sub]) if t.kind == "tc"}
+            all_tcs_in_phase = [t for t in flatten([p]) if t.kind == "tc"]
+            orphans = [t for t in all_tcs_in_phase if t.marker_id not in tcs_in_subs]
+            if orphans:
+                orphan_warnings.append((p.marker_id, orphans))
+
+        if orphan_warnings:
+            print()
+            print("  ⚠ WARNING — Orphan TCs (inside PHASE but outside any SUB block):")
+            print("    Stage 3 will NOT write these TCs to any package file.")
+            print("    Wrap them in <!-- SUB:...:START/END --> before continuing.")
+            for phase_id, orphans in orphan_warnings:
+                ids = ", ".join(t.marker_id for t in orphans)
+                print(f"    PHASE:{phase_id} → {len(orphans)} orphan TC(s): {ids}")
+            print()
+
+        plan["test_summary"] = {
+            "phases": len(phases_t), "tcs": len(tcs), "subs": len(subs_t),
+        }
+
+    total_files = (
+        plan["exec_summary"].get("apis", 0)
+        + plan["exec_summary"].get("xms", 0)
+        + plan["exec_summary"].get("phases", 0)
+        + plan["test_summary"].get("tcs", 0)
+        + plan["test_summary"].get("phases", 0)
+    )
+    print()
+    print(f"  Estimated package files to generate: ~{total_files}")
+    print()
+
+    if not confirm("  Approve Stage 1 plan and proceed?"):
+        print("\n  Stage 1 cancelled — no files written.\n")
+        return None
+
+    state["exec_plan_path"] = plan["exec_path"]
+    state["test_plan_path"] = plan["test_path"]
+    state["track"] = track
+    mark_stage_complete(state, 1)
+    save_state(mod, version, state, base)
+
+    print("  ✓ Stage 1 complete.\n")
+    return plan
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FILE WRITER HELPERS
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STAGE 2 — Split backend-/frontend-execution-plan.md
+# ─────────────────────────────────────────────────────────────────────────────
+
+def stage2_split_execution(mod: str, version: int, state: dict, plan: dict | None,
+                                track: str, base: Path = None,
+                                frontend_base: Path = None, dry_run: bool = False) -> bool:
+    """
+    Splits
+    backend-execution-plan.md (track="backend") or
+    frontend-execution-plan.md (track="frontend") into PHASE/SUB/API/XM
+    package files.
+
+    track="backend"  → reads P3_1/backend-execution-plan.md (this repo)
+                        writes packages/backend-execution/ (this repo)
+    track="frontend" → reads P3_2/frontend-execution-plan.md
+                        (frontend_base — natively frontend-generated,
+                        see WORKSPACE-ARCHITECTURE-REFERENCE.md 11.3)
+                        writes packages/frontend-execution/
+                        (frontend_base, same repo as the source)
+    """
+    if base is None:
+        base = get_module_version_path(mod, version)
+    if frontend_base is None:
+        frontend_base = get_frontend_module_version_path(mod, version)
+
+    if track == "backend":
+        src_path = base / "P3_1" / "backend-execution-plan.md"
+        pkg_root = base / "packages" / "backend-execution"
+        phase_map = PHASE_FOLDER_MAP_BACKEND
+        artifact_label = "backend-execution-plan.md"
+    elif track == "frontend":
+        src_path = frontend_base / "P3_2" / "frontend-execution-plan.md"
+        pkg_root = frontend_base / "packages" / "frontend-execution"
+        phase_map = PHASE_FOLDER_MAP_FRONTEND
+        artifact_label = "frontend-execution-plan.md"
+    else:
+        print(f"  ERROR: unknown track '{track}' — must be 'backend' or 'frontend'.")
+        return False
+
+    print()
+    print("═" * 70)
+    print(f"  STAGE 2 — Split {artifact_label}")
+    print(f"  Module : {mod}  (v{version})   Track: {track}")
+    print("═" * 70)
+    print()
+
+    if not src_path.exists():
+        print(f"  — {artifact_label} not found at {src_path}. Skipping Stage 2.\n")
+        return True  # not a failure — just nothing to do yet
+
+    result = parse_file(src_path)
     if result.errors:
-        print("  ✗ Structural errors present. Re-run Stage 1 to see details.\n")
+        print("  ✗ Structural errors present:")
+        for e in result.errors[:10]:
+            print(f"    [{e.severity}] line {e.line}: {e.message}")
+        if len(result.errors) > 10:
+            print(f"    ... and {len(result.errors) - 10} more")
+        print()
         return False
 
     phases = find_by_kind(result.root_blocks, "phase")
     write_plan = []
 
     for phase in phases:
-        folder_name = PHASE_FOLDER_MAP.get(phase.marker_id, phase.marker_id)
+        folder_name = phase_map.get(phase.marker_id)
+        if folder_name is None:
+            print(f"  ⚠ PHASE:{phase.marker_id} not in the {track} phase map — "
+                  f"skipped. (Expected keys: {list(phase_map.keys())}. If this phase "
+                  f"legitimately belongs to the OTHER track, that's a generation-time "
+                  f"bug in the source file, not a splitter bug.)")
+            continue
         folder = pkg_root / folder_name
 
         sub_blocks = [c for c in phase.children if c.kind == "sub"]
@@ -434,9 +527,6 @@ def stage2_split_execution(mod: str, version: int, state: dict, plan: dict | Non
         xm_count  = len([x for x in flatten([phase]) if x.kind == "xm"])
 
         if sub_blocks:
-            # ── Preamble: content between PHASE:START and first SUB:START ──
-            # This content (intro text, tables, strategy notes) belongs to
-            # the Phase but sits outside any SUB — must NOT be lost.
             preamble = _preamble_content(phase, result.raw_lines)
             header_filename = _safe_filename(f"{phase.marker_id}-HEADER") if preamble else None
 
@@ -448,7 +538,6 @@ def stage2_split_execution(mod: str, version: int, state: dict, plan: dict | Non
                     "note": "phase-level content (tables, strategy, intro)",
                 })
 
-            # ── One file per SUB — with context reference to HEADER ──
             for sub in sub_blocks:
                 fname = _safe_filename(f"{phase.marker_id}-{sub.marker_id}")
                 sub_api_count = len([a for a in flatten([sub]) if a.kind == "api"])
@@ -468,7 +557,6 @@ def stage2_split_execution(mod: str, version: int, state: dict, plan: dict | Non
                     "note": f"{sub_api_count} API(s), {sub_xm_count} XM(s) embedded" if (sub_api_count or sub_xm_count) else "",
                 })
         else:
-            # Whole phase as one file — no SUBs present
             fname = _safe_filename(phase.marker_id)
             write_plan.append({
                 "dest": folder / fname,
@@ -480,7 +568,8 @@ def stage2_split_execution(mod: str, version: int, state: dict, plan: dict | Non
     print(f"  Files to write: {len(write_plan)}")
     for w in write_plan[:15]:
         extra = f"  ({w['note']})" if w.get("note") else ""
-        print(f"    {w['dest'].relative_to(base)}{extra}")
+        rel_base = frontend_base if track == "frontend" else base
+        print(f"    {w['dest'].relative_to(rel_base)}{extra}")
     if len(write_plan) > 15:
         print(f"    ... and {len(write_plan) - 15} more")
     print()
@@ -495,93 +584,107 @@ def stage2_split_execution(mod: str, version: int, state: dict, plan: dict | Non
 
     _execute_write_plan(write_plan)
 
-    print(f"\n  ✓ {len(write_plan)} files written to packages/execution/")
+    print(f"\n  ✓ {len(write_plan)} files written to packages/{track}-execution/")
     mark_stage_complete(state, 2)
     save_state(mod, version, state, base)
     print("  ✓ Stage 2 complete.\n")
     return True
 
 
+
 # ─────────────────────────────────────────────────────────────────────────────
-# STAGE 3 — Split test-plan.md
+# STAGE 3 — Split backend-/frontend-test-plan.md
 # ─────────────────────────────────────────────────────────────────────────────
 
 def stage3_split_test(mod: str, version: int, state: dict, plan: dict | None,
-                       base: Path = None, playwright_base: Path = None,
-                       dry_run: bool = False) -> bool:
+                           track: str, base: Path = None,
+                           frontend_base: Path = None, dry_run: bool = False) -> bool:
     """
-    Split test-plan.md into MARK / SUB / TC package files.
+    Splits
+    backend-test-plan.md (track="backend") or frontend-test-plan.md
+    (track="frontend") into PHASE/SUB/TC package files.
 
-    JUNIT-type MARK content is written under `base` (backend/governance/),
-    same as always. PLAYWRIGHT-type MARK content is written under a SEPARATE
-    root, `playwright_base` — defaults to
-    config.get_playwright_module_version_path(mod, version), i.e.
-    frontend/governance/modules/<MOD>/ — and is NEVER written under `base`.
-    See STRUCTURAL LAW in backend/CLAUDE.md / frontend/CLAUDE.md.
+    NO MARK LEVEL — this is the key structural difference from v1's
+    stage3_split_test. Each file is single-tool by construction
+    (backend-test-plan.md is JUnit-only, frontend-test-plan.md is
+    Playwright-only), so there is nothing to distinguish via MARK
+    inside the file — see PROJECT-3-REGISTRY.md Section 5.7.4
+    "v2.0 SIMPLIFICATION". TC blocks nest directly under PHASE or SUB.
     """
     if base is None:
         base = get_module_version_path(mod, version)
-    if playwright_base is None:
-        playwright_base = get_playwright_module_version_path(mod, version)
-    test_path = base / "P3_5" / "test-plan.md"
-    pkg_root = base / "packages" / "test"
-    playwright_pkg_root = playwright_base / "packages" / "test"
+    if frontend_base is None:
+        frontend_base = get_frontend_module_version_path(mod, version)
 
-    # Guard early, before any parsing/printing — refuse to proceed at all if
-    # the PLAYWRIGHT destination has been misconfigured back into backend/governance/.
-    _guard_playwright_path(playwright_pkg_root)
-
-    print()
-    print("═" * 70)
-    print(f"  STAGE 3 — Split test-plan.md")
-    print(f"  Module : {mod}  (v{version})")
-    print(f"  JUNIT output      : {pkg_root}")
-    print(f"  PLAYWRIGHT output : {playwright_pkg_root}")
-    print("═" * 70)
-    print()
-
-    if not test_path.exists():
-        print("  — test-plan.md not found. Skipping Stage 3.\n")
-        return True
-
-    result = parse_file(test_path)
-    if result.errors:
-        print("  ✗ Structural errors present. Re-run Stage 1 to see details.\n")
+    if track == "backend":
+        src_path = base / "P3_5_BE" / "backend-test-plan.md"
+        pkg_root = base / "packages" / "backend-test"
+        expected_phase_key = "TEST-PLAN-BE"
+        artifact_label = "backend-test-plan.md"
+    elif track == "frontend":
+        src_path = frontend_base / "P3_5_FE" / "frontend-test-plan.md"
+        pkg_root = frontend_base / "packages" / "frontend-test"
+        expected_phase_key = "TEST-PLAN-FE"
+        artifact_label = "frontend-test-plan.md"
+    else:
+        print(f"  ERROR: unknown track '{track}' — must be 'backend' or 'frontend'.")
         return False
 
-    marks = find_by_kind(result.root_blocks, "mark")
+    print()
+    print("═" * 70)
+    print(f"  STAGE 3 — Split {artifact_label}")
+    print(f"  Module : {mod}  (v{version})   Track: {track}")
+    print("═" * 70)
+    print()
+
+    if not src_path.exists():
+        print(f"  — {artifact_label} not found at {src_path}. Skipping Stage 3.\n")
+        return True
+
+    result = parse_file(src_path)
+    if result.errors:
+        print("  ✗ Structural errors present:")
+        for e in result.errors[:10]:
+            print(f"    [{e.severity}] line {e.line}: {e.message}")
+        if len(result.errors) > 10:
+            print(f"    ... and {len(result.errors) - 10} more")
+        print()
+        return False
+
+    phases = find_by_kind(result.root_blocks, "phase")
     write_plan = []
 
-    for mark in marks:
-        is_playwright = (mark.marker_id == "PLAYWRIGHT")
-        mark_pkg_root = playwright_pkg_root if is_playwright else pkg_root
-        folder = mark_pkg_root / mark.marker_id
+    for phase in phases:
+        if phase.marker_id != expected_phase_key:
+            print(f"  ⚠ PHASE:{phase.marker_id} does not match the expected "
+                  f"'{expected_phase_key}' for {artifact_label} — processing "
+                  f"anyway, but this may indicate a generation-time naming bug.")
+        folder = pkg_root  # each test-plan file has exactly one top-level PHASE
 
-        sub_blocks = [c for c in mark.children if c.kind == "sub"]
-        tc_count_mark = len([t for t in flatten([mark]) if t.kind == "tc"])
+        sub_blocks = [c for c in phase.children if c.kind == "sub"]
+        tc_count = len([t for t in flatten([phase]) if t.kind == "tc"])
 
         if sub_blocks:
-            # ── Preamble: any content before first SUB inside this MARK ──
-            preamble = _preamble_content(mark, result.raw_lines)
-            header_filename = _safe_filename(f"{mark.marker_id}-HEADER") if preamble else None
+            preamble = _preamble_content(phase, result.raw_lines)
+            header_filename = _safe_filename(f"{phase.marker_id}-HEADER") if preamble else None
 
             if preamble:
                 write_plan.append({
                     "dest": folder / header_filename,
                     "content": preamble,
-                    "header": f"<!-- Source: MARK:{mark.marker_id} / PREAMBLE (before first SUB) -->",
-                    "note": "mark-level content before first SUB",
+                    "header": f"<!-- Source: PHASE:{phase.marker_id} / PREAMBLE (before first SUB) -->",
+                    "note": "phase-level content (mandatory scenarios, intro)",
                 })
 
             for sub in sub_blocks:
                 fname = _safe_filename(sub.marker_id)
                 sub_tc_count = len([t for t in flatten([sub]) if t.kind == "tc"])
                 context_ref = (
-                    f"<!-- Context: see {header_filename} for mark-level "
+                    f"<!-- Context: see {header_filename} for phase-level "
                     f"intro and mandatory scenarios -->"
                     if header_filename else ""
                 )
-                header_line = f"<!-- Source: MARK:{mark.marker_id} / SUB:{sub.marker_id} -->"
+                header_line = f"<!-- Source: PHASE:{phase.marker_id} / SUB:{sub.marker_id} -->"
                 if context_ref:
                     header_line += f"\n{context_ref}"
                 write_plan.append({
@@ -591,18 +694,21 @@ def stage3_split_test(mod: str, version: int, state: dict, plan: dict | None,
                     "note": f"{sub_tc_count} TC(s) embedded",
                 })
         else:
-            fname = _safe_filename(mark.marker_id)
+            # Below the SUB-threshold (PROJECT-3-REGISTRY.md 5.7.4) — all
+            # TCs sit directly under PHASE, one combined file.
+            fname = _safe_filename(phase.marker_id)
             write_plan.append({
                 "dest": folder / fname,
-                "block": mark,
-                "header": f"<!-- Source: MARK:{mark.marker_id} -->",
-                "note": f"{tc_count_mark} TC(s) embedded",
+                "block": phase,
+                "header": f"<!-- Source: PHASE:{phase.marker_id} -->",
+                "note": f"{tc_count} TC(s) embedded",
             })
 
     print(f"  Files to write: {len(write_plan)}")
     for w in write_plan[:15]:
         extra = f"  ({w['note']})" if w.get("note") else ""
-        print(f"    {_display_dest(w['dest'], base, playwright_base)}{extra}")
+        rel_base = frontend_base if track == "frontend" else base
+        print(f"    {w['dest'].relative_to(rel_base)}{extra}")
     if len(write_plan) > 15:
         print(f"    ... and {len(write_plan) - 15} more")
     print()
@@ -615,17 +721,9 @@ def stage3_split_test(mod: str, version: int, state: dict, plan: dict | None,
         print("\n  Stage 3 cancelled — no files written.\n")
         return False
 
-    # Re-guard immediately before writing, in case anything upstream (a
-    # future code change, a bad --playwright-output value) let a PLAYWRIGHT
-    # destination slip through — belt-and-suspenders around REPO_BASE_PATH.
-    for w in write_plan:
-        if playwright_pkg_root in w["dest"].parents or w["dest"].parent == playwright_pkg_root:
-            _guard_playwright_path(w["dest"])
-
     _execute_write_plan(write_plan)
 
-    print(f"\n  ✓ {len(write_plan)} files written "
-          f"({pkg_root} for JUNIT, {playwright_pkg_root} for PLAYWRIGHT)")
+    print(f"\n  ✓ {len(write_plan)} files written to packages/{track}-test/")
     mark_stage_complete(state, 3)
     save_state(mod, version, state, base)
     print("  ✓ Stage 3 complete.\n")
@@ -636,16 +734,34 @@ def stage3_split_test(mod: str, version: int, state: dict, plan: dict | None,
 # STAGE 4 — Generate Index Files
 # ─────────────────────────────────────────────────────────────────────────────
 
-def stage4_generate_index(mod: str, version: int, state: dict, base: Path = None) -> bool:
-    """Generate index.md in every package folder listing its contents."""
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STAGE 4 — Generate Index Files
+# ─────────────────────────────────────────────────────────────────────────────
+
+def stage4_generate_index(mod: str, version: int, state: dict, track: str,
+                           base: Path = None, frontend_base: Path = None) -> bool:
+    """
+    Generate index.md in every package folder listing its contents.
+
+    track-aware (fixed): for track="frontend", indexes
+    frontend_base/packages/ (the frontend repo) — NOT base/packages/
+    (the backend repo). An earlier version of this function always
+    indexed the backend path regardless of track, which silently
+    produced empty/wrong index files for the frontend track. Fixed here.
+    """
     if base is None:
         base = get_module_version_path(mod, version)
-    pkg_root = base / "packages"
+    if frontend_base is None:
+        frontend_base = get_frontend_module_version_path(mod, version)
+
+    active_base = frontend_base if track == "frontend" else base
+    pkg_root = active_base / "packages"
 
     print()
     print("═" * 70)
     print(f"  STAGE 4 — Generate Index Files")
-    print(f"  Module : {mod}  (v{version})")
+    print(f"  Module : {mod}  (v{version})   Track: {track}")
     print("═" * 70)
     print()
 
@@ -664,7 +780,7 @@ def stage4_generate_index(mod: str, version: int, state: dict, base: Path = None
 
     print(f"  Folders to index: {len(index_targets)}")
     for folder, files in index_targets:
-        print(f"    {folder.relative_to(base)}  ({len(files)} file(s))")
+        print(f"    {folder.relative_to(active_base)}  ({len(files)} file(s))")
     print()
 
     if not confirm("  Approve Stage 4 — write index.md files?"):
@@ -703,7 +819,6 @@ def _extract_body(file_text: str) -> str:
     """
     lines = file_text.split("\n")
     if lines and lines[0].strip().startswith("<!-- Source:"):
-        # header line + following blank line
         rest = lines[1:]
         if rest and rest[0].strip() == "":
             rest = rest[1:]
@@ -711,26 +826,48 @@ def _extract_body(file_text: str) -> str:
     return file_text
 
 
-def stage5_verify(mod: str, version: int, state: dict, base: Path = None) -> bool:
+def stage5_verify(mod: str, version: int, state: dict, track: str,
+                   base: Path = None, frontend_base: Path = None) -> bool:
     """
-    Cross-check completeness AND content integrity:
-      1. Every atomic marker (API/XM/TC) in source is found EMBEDDED inside
-         some package file (grouped at SUB/PHASE/MARK level — not a 1:1
-         file mapping, per Section 6.7.5).
-      2. Every atomic block's content, as it appears inside its package
-         file, hashes identically to the same block in the archived source
-         — guarantees copy/paste only, zero drift, even after grouping.
+    Same completeness + content-hash
+    integrity check, scoped to one track's artifact pair.
+
+    track="backend"  → backend-execution-plan.md + backend-test-plan.md,
+                        checked against packages/backend-execution/ and
+                        packages/backend-test/ (this repo)
+    track="frontend" → frontend-execution-plan.md + frontend-test-plan.md,
+                        checked against packages/frontend-execution/ and
+                        packages/frontend-test/ (frontend repo — natively
+                        generated there, see WORKSPACE-ARCHITECTURE-
+                        REFERENCE.md Section 11.3)
     """
     if base is None:
         base = get_module_version_path(mod, version)
-    exec_path = base / "P3" / "execution-plan.md"
-    test_path = base / "P3_5" / "test-plan.md"
-    pkg_root = base / "packages"
+    if frontend_base is None:
+        frontend_base = get_frontend_module_version_path(mod, version)
+
+    if track == "backend":
+        exec_path = base / "P3_1" / "backend-execution-plan.md"
+        test_path = base / "P3_5_BE" / "backend-test-plan.md"
+        pkg_root = base / "packages"
+        exec_label, test_label = "backend-execution-plan.md", "backend-test-plan.md"
+        exec_pkg_dir, test_pkg_dir = "backend-execution", "backend-test"
+        display_base = base
+    elif track == "frontend":
+        exec_path = frontend_base / "P3_2" / "frontend-execution-plan.md"
+        test_path = frontend_base / "P3_5_FE" / "frontend-test-plan.md"
+        pkg_root = frontend_base / "packages"
+        exec_label, test_label = "frontend-execution-plan.md", "frontend-test-plan.md"
+        exec_pkg_dir, test_pkg_dir = "frontend-execution", "frontend-test"
+        display_base = frontend_base
+    else:
+        print(f"  ERROR: unknown track '{track}' — must be 'backend' or 'frontend'.")
+        return False
 
     print()
     print("═" * 70)
     print(f"  STAGE 5 — Verify Completeness & Integrity")
-    print(f"  Module : {mod}  (v{version})")
+    print(f"  Module : {mod}  (v{version})   Track: {track}")
     print("═" * 70)
     print()
 
@@ -739,21 +876,13 @@ def stage5_verify(mod: str, version: int, state: dict, base: Path = None) -> boo
     checked_count = 0
 
     def _find_marker_in_files(kind: str, marker_id: str, pkg_subroot: Path):
-        """
-        Search all package .md files under pkg_subroot for a given
-        atomic marker, and re-parse that file to extract the matching
-        block's content for hash comparison. Returns (file, block) or
-        (None, None) if not found in any package file.
-        """
-        from config import MARKERS
         pattern_start = f"<!-- {kind.upper()}:{marker_id}:START -->"
         for f in pkg_subroot.rglob("*.md"):
             if f.name == "index.md":
                 continue
             text = f.read_text(encoding="utf-8")
             if pattern_start in text:
-                # Re-parse this package file to extract the exact block content
-                sub_result = parse_file(f)
+                sub_result = parse_file(f,  )
                 matches = [
                     b for b in flatten(sub_result.root_blocks)
                     if b.kind == kind and b.marker_id == marker_id
@@ -781,30 +910,28 @@ def stage5_verify(mod: str, version: int, state: dict, base: Path = None) -> boo
             if source_hash != pkg_hash:
                 hash_issues.append(
                     f"{block.kind.upper()}:{block.marker_id} ({file_label}) — "
-                    f"content MISMATCH inside {pkg_file.relative_to(base)}\n"
+                    f"content MISMATCH inside {pkg_file.relative_to(display_base)}\n"
                     f"      source hash : {source_hash[:16]}...\n"
                     f"      package hash: {pkg_hash[:16]}..."
                 )
 
-    # ── Verify execution-plan.md ──────────────────────────────────────────────
     if exec_path.exists():
         result = parse_file(exec_path)
         apis = find_by_kind(result.root_blocks, "api")
         xms = find_by_kind(result.root_blocks, "xm")
 
-        _verify_blocks(apis, "execution-plan.md", pkg_root / "execution")
-        _verify_blocks(xms, "execution-plan.md", pkg_root / "execution")
+        _verify_blocks(apis, exec_label, pkg_root / exec_pkg_dir)
+        _verify_blocks(xms, exec_label, pkg_root / exec_pkg_dir)
 
-        print(f"  execution-plan.md : {len(apis)} APIs, {len(xms)} XMs checked")
+        print(f"  {exec_label} : {len(apis)} APIs, {len(xms)} XMs checked")
 
-    # ── Verify test-plan.md ───────────────────────────────────────────────────
     if test_path.exists():
         result = parse_file(test_path)
         tcs = find_by_kind(result.root_blocks, "tc")
 
-        _verify_blocks(tcs, "test-plan.md", pkg_root / "test")
+        _verify_blocks(tcs, test_label, pkg_root / test_pkg_dir)
 
-        print(f"  test-plan.md       : {len(tcs)} TCs checked")
+        print(f"  {test_label}       : {len(tcs)} TCs checked")
 
     print(f"  Total atomic elements checked : {checked_count}")
     print()
@@ -822,7 +949,7 @@ def stage5_verify(mod: str, version: int, state: dict, base: Path = None) -> boo
             print()
         print("  This means a package file's content does NOT exactly match")
         print("  the corresponding block in the archived source artifact.")
-        print("  Re-run Stage 2/3 to regenerate, then Stage 5 again.")
+        print(f"  Re-run Stage 2/3 (--track {track}) to regenerate, then Stage 5 again.")
         return False
 
     print("  ✓ All atomic elements (API/XM/TC) have matching package files.")
@@ -831,10 +958,10 @@ def stage5_verify(mod: str, version: int, state: dict, base: Path = None) -> boo
     mark_stage_complete(state, 5)
     save_state(mod, version, state, base)
     print()
-    print("  ✓ Stage 5 complete — splitting verified.")
+    print(f"  ✓ Stage 5 complete — {track} splitting verified.")
     print()
-    print(f"  Module [{mod}] v{version} fully packaged. Ready for downstream agents")
-    print(f"  (Claude Code / Copilot / Codex) to consume individual package files.")
+    print(f"  Module [{mod}] v{version} ({track} track) fully packaged.")
+    print(f"  Ready for downstream agents (Claude Code / Copilot / Codex).")
     print()
     return True
 
@@ -843,23 +970,34 @@ def stage5_verify(mod: str, version: int, state: dict, base: Path = None) -> boo
 # ORCHESTRATION
 # ─────────────────────────────────────────────────────────────────────────────
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ORCHESTRATION
+# ─────────────────────────────────────────────────────────────────────────────
+
 def run_stage(stage: int, mod: str, version: int, state: dict, plan: dict | None,
-              base: Path = None, playwright_base: Path = None, dry_run: bool = False) -> tuple[bool, dict | None]:
-    """Run a single stage. Returns (success, plan_for_next_stage)."""
+              base: Path = None, frontend_base: Path = None, dry_run: bool = False,
+              track: str = None) -> tuple[bool, dict | None]:
+    """
+    Run a single stage. Returns (success, plan_for_next_stage).
+    track: "backend" or "frontend" — required for every call (Stage 2/3
+    need to know which artifact pair to split; Stage 4/5 need to know
+    which repo's packages/ to operate on).
+    """
     if stage == 1:
-        result_plan = stage1_parse_and_plan(mod, version, state, base)
+        result_plan = stage1_parse_and_plan(mod, version, state, track, base, frontend_base)
         return (result_plan is not None), result_plan
     elif stage == 2:
-        ok = stage2_split_execution(mod, version, state, plan, base, dry_run=dry_run)
+        ok = stage2_split_execution(mod, version, state, plan, track, base, frontend_base, dry_run=dry_run)
         return ok, plan
     elif stage == 3:
-        ok = stage3_split_test(mod, version, state, plan, base, playwright_base, dry_run=dry_run)
+        ok = stage3_split_test(mod, version, state, plan, track, base, frontend_base, dry_run=dry_run)
         return ok, plan
     elif stage == 4:
-        ok = stage4_generate_index(mod, version, state, base)
+        ok = stage4_generate_index(mod, version, state, track, base, frontend_base)
         return ok, plan
     elif stage == 5:
-        ok = stage5_verify(mod, version, state, base)
+        ok = stage5_verify(mod, version, state, track, base, frontend_base)
         return ok, plan
     else:
         print(f"  Unknown stage: {stage}")
@@ -867,21 +1005,12 @@ def run_stage(stage: int, mod: str, version: int, state: dict, plan: dict | None
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Agent 3 — Split governance artifacts using Marker Protocol (staged, approve-gated)."
-    )
-    parser.add_argument("--module", "-m", required=True, help="Module code (e.g. ORG)")
-    parser.add_argument("--version", "-v", type=int, default=None,
-                        help="Module version (default: current version from registry)")
-    parser.add_argument("--output", "-o", default=None,
-                        help="Override output base path for the module (e.g. /path/to/modules/ORG). "
-                             "Affects execution/ output and JUNIT test output. Does NOT affect "
-                             "PLAYWRIGHT output — use --playwright-output for that, separately.")
-    parser.add_argument("--playwright-output", default=None,
-                        help="Override output base path specifically for PLAYWRIGHT test-phase "
-                             "content (e.g. /path/to/frontend/governance/modules/ORG). Independent "
-                             "of --output. Defaults to config.PLAYWRIGHT_OUTPUT_BASE_PATH's module "
-                             "path (frontend/governance/modules/<MOD>/) — never backend/governance/.")
+    parser = argparse.ArgumentParser(description="Split execution-plan/test-plan artifacts into package files.")
+    parser.add_argument("--module", "-m", required=True, help="Module code (e.g. ORG, FIN).")
+    parser.add_argument("--track", choices=["backend", "frontend"], required=True,
+                        help="Which artifact pair to split: 'backend' "
+                             "(backend-execution-plan.md + backend-test-plan.md) or "
+                             "'frontend' (frontend-execution-plan.md + frontend-test-plan.md).")
     parser.add_argument("--stage", "-s", type=int, choices=[1, 2, 3, 4, 5],
                         help="Run a single stage only.")
     parser.add_argument("--resume", "-r", action="store_true",
@@ -889,9 +1018,8 @@ def main():
     parser.add_argument("--status", action="store_true",
                         help="Show stage completion status and exit.")
     parser.add_argument("--dry-run", action="store_true",
-                        help="Print the resolved write plan for Stage 2/3 (including which repo "
-                             "root each file would land under) without writing anything, "
-                             "prompting, or marking any stage complete. Safe to run any time.")
+                        help="Show what would be written without writing anything.")
+    parser.add_argument("--output", "-o", help="Override the module's base path (advanced/testing use).")
 
     args = parser.parse_args()
 
@@ -902,70 +1030,48 @@ def main():
         sys.exit(1)
 
     # Determine version
-    if args.version:
-        version = args.version
-    else:
-        registry = load_modules_registry()
-        version = registry.get("modules", {}).get(mod, {}).get("current_version") or 1
+    registry = load_modules_registry()
+    entry = registry.get("modules", {}).get(mod)
+    version = (entry.get("current_version") if entry else None) or 1
 
-    override_base = Path(args.output).resolve() if args.output else None
-    playwright_override_base = Path(args.playwright_output).resolve() if args.playwright_output else None
+    base = Path(args.output) if args.output else get_module_version_path(mod, version)
+    frontend_base = get_frontend_module_version_path(mod, version)
 
     if args.status:
-        print_status(mod, version, override_base)
+        print_status(mod, version, base, track=args.track)
         sys.exit(0)
-
-    base = override_base if override_base else get_module_version_path(mod, version)
-    if not base.exists():
-        print(f"\n  ERROR: Module structure not found: {base}")
-        print(f"  Run agent1_create_structure.py --module {mod} first, or check --output path.\n")
-        sys.exit(1)
 
     state = load_state(mod, version, base)
 
-    # ── Single stage mode ─────────────────────────────────────────────────────
     if args.stage:
         plan = None
-        if args.stage > 1 and 1 not in state["stages_completed"]:
-            print(f"\n  WARNING: Stage 1 has not been completed yet for this module.")
-            if not confirm("  Run Stage 1 first?"):
-                print("\n  Cancelled.\n")
-                sys.exit(0)
-            ok, plan = run_stage(1, mod, version, state, None, base)
+        if args.stage > 1 and (args.stage - 1) not in state.get("stages_completed", []):
+            # Need Stage 1's plan for stages 2/3 — re-run it silently first
+            ok, plan = run_stage(1, mod, version, state, None, base, frontend_base, track=args.track)
             if not ok:
                 sys.exit(1)
         ok, _ = run_stage(args.stage, mod, version, state, plan, base,
-                           playwright_override_base, dry_run=args.dry_run)
+                           frontend_base, dry_run=args.dry_run, track=args.track)
         sys.exit(0 if ok else 1)
 
-    # ── Resume mode ───────────────────────────────────────────────────────────
+    # Full run or resume
     if args.resume:
-        start_stage = 1
-        for s in range(1, 6):
-            if s in state["stages_completed"]:
-                start_stage = s + 1
-        if start_stage > 5:
-            print(f"\n  All stages already complete for [{mod}] v{version}.")
-            print_status(mod, version, base)
+        stages_to_run = [s for s in range(1, 6) if s not in state.get("stages_completed", [])]
+        if not stages_to_run:
+            print("\n  All stages already complete. Nothing to resume.\n")
             sys.exit(0)
-        print(f"\n  Resuming from Stage {start_stage}.\n")
-        stages_to_run = range(start_stage, 6)
     else:
-        # ── Full run mode — all 5 stages in sequence ──────────────────────────
-        stages_to_run = range(1, 6)
+        stages_to_run = list(range(1, 6))
 
     plan = None
     for stage in stages_to_run:
         ok, plan = run_stage(stage, mod, version, state, plan, base,
-                              playwright_override_base, dry_run=args.dry_run)
+                              frontend_base, dry_run=args.dry_run, track=args.track)
         if not ok:
-            print(f"  Stopped at Stage {stage}. Re-run with --resume to continue once fixed.\n")
+            print(f"\n  Stopped at Stage {stage}. Fix the issue and re-run with --resume.\n")
             sys.exit(1)
 
-    print("═" * 70)
-    print(f"  ALL STAGES COMPLETE — Module [{mod}] v{version}")
-    print("═" * 70)
-    print()
+    print("\n  ✓ All 5 stages complete.\n")
 
 
 if __name__ == "__main__":

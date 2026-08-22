@@ -1,6 +1,6 @@
 ---
 name: validate-backend-feature
-description: "MASTER VALIDATION — runs ALL enforcement checks across a completed backend feature. Verifies execution order, file inventory, 85 layer-by-layer contract rules (including the Domain layer), cross-cutting validations (error handling, caching, security, immutability), and unit tests."
+description: "MASTER VALIDATION — runs ALL enforcement checks across a completed backend feature. Verifies execution order, file inventory, 85 layer-by-layer contract rules (including the Domain layer), and cross-cutting validations (error handling, caching, security, immutability)."
 ---
 
 # Skill: validate-backend-feature
@@ -26,11 +26,10 @@ description: "MASTER VALIDATION — runs ALL enforcement checks across a complet
 
 ## Responsibilities
 
-- Verify ALL phases were executed in correct order (entity → repository → DTO → mapper → service → controller → tests)
+- Verify ALL phases were executed in correct order (entity → repository → DTO → mapper → service → controller)
 - Run file inventory check to confirm all required files exist
 - Execute all layer-by-layer contract checks (85 rules, including the Domain layer)
 - Validate cross-cutting concerns: error handling, caching, security, immutability
-- Verify unit test coverage for all service method scenarios
 
 ## Constraints
 
@@ -46,7 +45,6 @@ description: "MASTER VALIDATION — runs ALL enforcement checks across a complet
   - File inventory (present/missing per artifact)
   - Layer-by-layer contract compliance (77 checks)
   - Cross-cutting validation results
-  - Unit test coverage assessment
   - Final verdict: APPROVED or REJECTED with reasons
 
 ---
@@ -72,7 +70,6 @@ Verify that ALL phases were executed in the correct order:
 [ ] Step 1.6 Permissions  — 4 permissions in SecurityPermissions.java
 [ ] Step 1.7 Service      — File exists, @Service annotated
 [ ] Step 1.8 Controller   — File exists, @RestController annotated
-[ ] Step 1.9 Unit Tests   — File exists, @ExtendWith(MockitoExtension.class)
 ```
 
 > **If ANY step is missing → REJECT immediately. No partial features.**
@@ -101,10 +98,6 @@ erp-<module>/src/main/java/com/example/<module>/
 ├── exception/<Module>ErrorCodes.java (updated)      [ ]
 ├── service/<Entity>Service.java                     [ ]
 └── controller/<Entity>Controller.java               [ ]
-
-erp-<module>/src/test/java/com/example/<module>/
-├── domain/<Entity>DomainTest.java (if <Entity>Domain exists) [ ]
-└── service/<Entity>ServiceTest.java                 [ ]
 
 erp-security/src/main/java/.../
 └── constants/SecurityPermissions.java (updated)     [ ]
@@ -219,39 +212,10 @@ Run each enforcement skill's full checklist:
 
 ---
 
-### STAGE 4: Unit Test Validation
-
-```
-[ ] <Entity>DomainTest exists (only when a <Entity>Domain class is required) —
-     plain unit test, NO mocks needed since Domain has no dependencies;
-     asserts each guard method throws LocalizedException on violation and
-     succeeds otherwise; asserts create()/from() reject invalid input
-[ ] Test file exists at correct location
-[ ] @ExtendWith(MockitoExtension.class) class annotation
-[ ] @Mock on repository and mapper
-[ ] @InjectMocks on service
-[ ] Test: create_Success → asserts ServiceResult.isSuccess(), .getData(), .getStatusCode() == CREATED
-[ ] Test: create_ShouldThrow_WhenDuplicate → asserts LocalizedException.class
-[ ] Test: update_Success → asserts .getStatusCode() == UPDATED
-[ ] Test: update_ShouldThrow_WhenNotFound → asserts LocalizedException.class
-[ ] Test: getById_Success → asserts .isSuccess()
-[ ] Test: getById_ShouldThrow_WhenNotFound → asserts LocalizedException.class
-[ ] Test: activate_Success
-[ ] Test: deactivate_Success
-[ ] Test: deactivate_ShouldFail_WhenConstraints (if parent)
-[ ] Test: delete_Success
-[ ] Test: delete_ShouldFail_WhenHasChildren (if parent)
-[ ] Test: delete_ShouldFail_WhenReferenced (if applicable)
-[ ] ALL tests pass: mvn test -pl erp-<module>
-```
-
----
-
-### STAGE 5: Compilation & Test Execution
+### STAGE 4: Compilation
 
 ```
 [ ] mvn clean compile -pl erp-<module> -am → SUCCESS (no errors)
-[ ] mvn test -pl erp-<module> → ALL TESTS PASS
 [ ] No compilation warnings related to the feature
 ```
 
@@ -265,11 +229,10 @@ Run each enforcement skill's full checklist:
 |-------|--------|-----------|
 | Stage 0: Execution Order | 10% | 10 points |
 | Stage 1: File Inventory | 10% | 15 points |
-| Stage 2: Layer Contracts | 40% | 85 points |
-| Stage 3: Cross-Cutting | 25% | 22 points |
-| Stage 4: Unit Tests | 10% | 15 points |
-| Stage 5: Build/Test | 5% | 2 points |
-| **TOTAL** | **100%** | **149 points** |
+| Stage 2: Layer Contracts | 45% | 85 points |
+| Stage 3: Cross-Cutting | 30% | 22 points |
+| Stage 4: Compilation | 5% | 2 points |
+| **TOTAL** | **100%** | **134 points** |
 
 > Stage 0/1/2 totals include the Domain layer (1 execution-order step, 1 file, 7 contract
 > checks) added by the Domain Layer Guideline — see `domain-layer.md`.
@@ -278,10 +241,10 @@ Run each enforcement skill's full checklist:
 
 | Score | Verdict | Action |
 |-------|---------|--------|
-| 149/149 (100%) | ✅ **APPROVED** | Proceed to frontend |
-| 142-148 (95%+) | ⚠️ **APPROVED WITH NOTES** | Minor issues, document and proceed |
-| 119-141 (80%+) | 🔶 **CONDITIONAL** | Fix issues before proceeding |
-| < 119 (< 80%) | ❌ **REJECTED** | Major rework required |
+| 134/134 (100%) | ✅ **APPROVED** | Proceed to frontend |
+| 127-133 (95%+) | ⚠️ **APPROVED WITH NOTES** | Minor issues, document and proceed |
+| 107-126 (80%+) | 🔶 **CONDITIONAL** | Fix issues before proceeding |
+| < 107 (< 80%) | ❌ **REJECTED** | Major rework required |
 
 ### Automatic Rejection (regardless of score)
 
@@ -328,7 +291,6 @@ The feature is **IMMEDIATELY REJECTED** if any of these are found:
 | 1.6 | Permissions | ✅/❌ |
 | 1.7 | Service | ✅/❌ |
 | 1.8 | Controller | ✅/❌ |
-| 1.9 | Unit Tests | ✅/❌ |
 
 ## STAGE 1: File Inventory
 [x/15] files present
@@ -354,19 +316,15 @@ The feature is **IMMEDIATELY REJECTED** if any of these are found:
 | Response Envelope | 8 | ? | ? |
 | Common-Utils Reuse | 8 | ? | ? |
 
-## STAGE 4: Unit Tests
-[x/15] test cases verified
-
-## STAGE 5: Build
+## STAGE 4: Compilation
 - Compile: ✅/❌
-- Tests: ✅/❌ ([x] passed, [y] failed)
 
 ---
 
 ## VIOLATIONS FOUND
 1. [Rule ID] — [Description] — [Location] — [Severity]
 
-## SCORE: [X] / 149 ([Y]%)
+## SCORE: [X] / 134 ([Y]%)
 
 ## VERDICT: APPROVED / APPROVED WITH NOTES / CONDITIONAL / REJECTED
 

@@ -1,6 +1,6 @@
 ---
 name: create-controller
-description: "Generates a thin @RestController delegating ALL logic to the service. Phase 1, Step 1.8 — LAST step before tests. Enforces OperationCode.craftResponse, @Valid, @Operation, zero business logic, 204 for delete. Search uses POST /search + @RequestBody. Activation uses separate activate/deactivate endpoints."
+description: "Generates a thin @RestController delegating ALL logic to the service. Phase 1, Step 1.8 — the final implementation step. Enforces OperationCode.craftResponse, @Valid, @Operation, zero business logic, 204 for delete. Search uses POST /search + @RequestBody. Activation uses separate activate/deactivate endpoints."
 ---
 
 # Skill: create-controller
@@ -9,12 +9,11 @@ description: "Generates a thin @RestController delegating ALL logic to the servi
 `create-controller`
 
 ## Description
-Generates a thin REST controller that delegates ALL logic to the service layer. This is **Phase 1, Step 1.8** of the execution template — the LAST implementation step before tests.
+Generates a thin REST controller that delegates ALL logic to the service layer. This is **Phase 1, Step 1.8** of the execution template — the final implementation step.
 
 ## When to Use
 - After `create-service` is complete (Step 1.7)
 - When Phase 1, Step 1.8 of the execution template is being executed
-- This is the final layer before unit tests
 
 ## When NOT to Use
 - Before the service is complete — controller depends on service's method signatures

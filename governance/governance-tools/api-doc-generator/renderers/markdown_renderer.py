@@ -1,8 +1,11 @@
 """
 Markdown renderer: one index.md (module overview + shared sections) plus one
-file per endpoint under endpoints/<group>/<slug>.md. Every subsection is
-conditional on data actually being present — nothing here invents content;
-absent data just means the subsection doesn't get written.
+file per GROUP under endpoints/<group-slug>.md, containing every endpoint in
+that group as its own "## {METHOD} {path}" section. That heading text is the
+stable key sync.py diffs endpoint sections by — see sync.py's module
+docstring. Every subsection is conditional on data actually being present —
+nothing here invents content; absent data just means the subsection doesn't
+get written.
 """
 
 import json
@@ -25,6 +28,21 @@ from renderers.base import Renderer
 def _slugify(text: str) -> str:
     text = re.sub(r"[^A-Za-z0-9]+", "-", text.strip()).strip("-").lower()
     return text or "root"
+
+
+def _anchor_slug(method: str, path: str) -> str:
+    """Reproduces the GitHub-flavored-markdown anchor a '## {method} {path}'
+    heading resolves to: lowercase, strip everything but word chars/spaces/
+    hyphens (this drops '/', '{', '}', backticks, etc. with NO replacement
+    character, matching GitHub's own slugger — adjacent path segments run
+    together, e.g. '/widgets/{id}' -> 'widgetsid'), then turn the remaining
+    run of spaces into a single hyphen. Anchor rules differ from _slugify's
+    filename rules (which do insert a hyphen for stripped punctuation), so
+    this is intentionally a separate function, not a _slugify reuse."""
+    heading = f"{method} {path}".lower()
+    heading = re.sub(r"[^\w\- ]", "", heading)
+    heading = re.sub(r"\s+", "-", heading.strip())
+    return heading
 
 
 def _flatten_fields(fields: list[FieldSpec], prefix: str = "") -> list[FieldSpec]:
@@ -231,7 +249,12 @@ def _auth_section(ep: Endpoint) -> str:
 
 
 def _endpoint_markdown(ep: Endpoint) -> str:
-    parts = [f"# {ep.method} {ep.path}", ""]
+    """Renders one endpoint as a single '## {METHOD} {path}' section — that
+    heading is the stable key sync.py splits group files on (see
+    sync._split_sections / sync.compare), so every subsection below it uses
+    '###' or lower. Never emit a bare '## ' line anywhere else in this
+    function — sync.py would mistake it for a second endpoint boundary."""
+    parts = [f"## {ep.method} {ep.path}", ""]
     if ep.summary:
         parts.append(f"**{ep.summary}**")
         parts.append("")
@@ -246,18 +269,18 @@ def _endpoint_markdown(ep: Endpoint) -> str:
 
     path_table = _param_table(ep.path_params)
     if path_table:
-        parts += ["## Path Parameters", "", path_table, ""]
+        parts += ["### Path Parameters", "", path_table, ""]
 
     query_table = _param_table(ep.query_params)
     if query_table:
-        parts += ["## Query Parameters", "", query_table, ""]
+        parts += ["### Query Parameters", "", query_table, ""]
 
     header_table = _param_table(ep.header_params)
     if header_table:
-        parts += ["## Headers", "", header_table, ""]
+        parts += ["### Headers", "", header_table, ""]
 
     if ep.request_body:
-        parts.append("## Request Body")
+        parts.append("### Request Body")
         parts.append("")
         if ep.request_body.schema_name:
             parts.append(f"Schema: `{ep.request_body.schema_name}` ({ep.request_body.content_type})")
@@ -274,7 +297,7 @@ def _endpoint_markdown(ep: Endpoint) -> str:
             parts.append("")
 
     for resp in ep.responses:
-        parts.append(f"## Response `{resp.status_code}`" + (f" — {resp.description}" if resp.description else ""))
+        parts.append(f"### Response `{resp.status_code}`" + (f" — {resp.description}" if resp.description else ""))
         parts.append("")
         if resp.schema_name:
             shape = resp.schema_name
@@ -296,7 +319,7 @@ def _endpoint_markdown(ep: Endpoint) -> str:
             parts.append("")
 
     if ep.possible_errors:
-        parts.append("## Other Possible Responses")
+        parts.append("### Other Possible Responses")
         parts.append("")
         parts.append("Structurally guaranteed by this endpoint's own shape (auth requirement, "
                       "permission check, request body) combined with the shared framework's "
@@ -316,9 +339,27 @@ def _catalog_table(endpoints: list[Endpoint], group: str) -> str:
     for ep in endpoints:
         if (ep.group or "Ungrouped") != group:
             continue
-        link = f"endpoints/{_slugify(group)}/{ep.slug()}.md"
+        link = f"endpoints/{_slugify(group)}.md#{_anchor_slug(ep.method, ep.path)}"
         lines.append(f"| {ep.method} | `{ep.path}` | {ep.summary or ''} | [{ep.slug()}]({link}) |")
     return "\n".join(lines)
+
+
+def _group_markdown(group: str, endpoints: list[Endpoint]) -> str:
+    """One file per group (= controller, since each controller declares one
+    @Tag). Every endpoint becomes a '## {METHOD} {path}' section within this
+    single H1 — see _endpoint_markdown's docstring for why nothing inside an
+    endpoint's own markdown may use '## '. Endpoints are emitted in the same
+    order `document.endpoints` already provides them; not re-sorted."""
+    parts = [f"# {group}", ""]
+    if len(endpoints) > 1:
+        parts.append("**Endpoints in this file:**")
+        parts.append("")
+        for ep in endpoints:
+            parts.append(f"- [{ep.method} {ep.path}](#{_anchor_slug(ep.method, ep.path)})")
+        parts.append("")
+    for ep in endpoints:
+        parts.append(_endpoint_markdown(ep))
+    return "\n".join(parts).rstrip() + "\n"
 
 
 def _index_markdown(doc: ApiDocument) -> str:
@@ -372,7 +413,9 @@ class MarkdownRenderer(Renderer):
 
     def render(self, document: ApiDocument) -> dict[str, str]:
         files: dict[str, str] = {"index.md": _index_markdown(document)}
-        for ep in document.endpoints:
-            group_slug = _slugify(ep.group or "Ungrouped")
-            files[f"endpoints/{group_slug}/{ep.slug()}.md"] = _endpoint_markdown(ep)
+        for group in document.groups():
+            group_endpoints = [ep for ep in document.endpoints
+                                if (ep.group or "Ungrouped") == group]
+            group_slug = _slugify(group)
+            files[f"endpoints/{group_slug}.md"] = _group_markdown(group, group_endpoints)
         return files

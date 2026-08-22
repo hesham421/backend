@@ -9,9 +9,26 @@ and never formats markdown — it only compares an already-rendered
 Rendering is deterministic (same backend state -> same rendered text), so
 this layer never needs to diff DTOs/permissions/validations/error-codes
 individually: any backend change already shows up as a content difference
-in the relevant rendered file. Endpoint-level granularity falls out of the
-existing one-file-per-endpoint layout; shared-doc granularity falls out of
-diffing index.md's own "## " sections.
+in the relevant rendered file. Shared-doc granularity falls out of diffing
+index.md's own "## " sections via _split_sections/_diff_sections.
+
+Endpoint-level granularity works the SAME way, one level down: every group
+(= controller) lives in one file, endpoints/<group-slug>.md, and every
+endpoint inside it is its own "## {METHOD} {path}" section (see
+markdown_renderer._endpoint_markdown). _split_sections() doesn't care
+whether it's splitting index.md's shared sections or a group file's
+endpoint sections — the same "^## " boundary applies either way, so
+compare() reuses it for both, just building different change-record types
+from the resulting {heading: body} dicts.
+
+Because multiple endpoints now share one file, `file_path` on an
+EndpointChange is no longer 1:1 with the endpoint — several changes can
+point at the same group file. That's fine for reporting (format_report
+notes when this happens), but it means apply()'s deletion pass must NOT key
+off individual "removed" EndpointChanges (a group file that still has
+surviving endpoints must never be deleted just because one endpoint inside
+it went away) — it deletes a managed group file only when that whole group
+is entirely absent from the current render. See apply()'s comment.
 
 Every file this layer writes is stamped with MARKER as its first line. A
 file only counts as "ours to manage" if it already starts with that exact
@@ -43,11 +60,18 @@ def _stamp(content: str) -> str:
     return MARKER + "\n" + content
 
 
-def endpoint_path(ep: Endpoint) -> str:
-    """Same path a Endpoint's file gets from MarkdownRenderer.render() — kept
-    in one place here so the sync layer can label changes without the
-    renderer needing to expose anything extra."""
-    return f"endpoints/{_slugify(ep.group or 'Ungrouped')}/{ep.slug()}.md"
+def group_path(group: str) -> str:
+    """The one file this group's endpoints all live in — same path
+    MarkdownRenderer.render() writes to."""
+    return f"endpoints/{_slugify(group)}.md"
+
+
+def endpoint_section_key(ep: Endpoint) -> str:
+    """The '## ' heading text sync diffs this endpoint by within its group
+    file — must exactly match _endpoint_markdown()'s H2 heading. Unique
+    within a group file because Spring won't allow two operations with the
+    same method+path in one app."""
+    return f"{ep.method} {ep.path}"
 
 
 def is_managed_output(output: Path) -> bool:
@@ -141,8 +165,10 @@ def _diff_sections(old_text: str, new_text: str) -> list[SharedSectionChange]:
     return changes
 
 
-def _label_from_removed_path(path: str) -> str:
-    return f"{Path(path).stem} (no longer present in the backend)"
+def _removed_change(key: str, path: str) -> "EndpointChange":
+    method, _, ep_path = key.partition(" ")
+    label = f"{key} (no longer present in the backend)"
+    return EndpointChange(method, ep_path, label, path, "removed")
 
 
 def compare(
@@ -155,32 +181,54 @@ def compare(
     unmanaged = {p for p, c in existing.items() if not _is_managed(c)}
 
     report = SyncReport(mode=mode)
-    seen_paths: set[str] = set()
 
+    groups: dict[str, list[Endpoint]] = {}
     for ep in endpoints:
-        path = endpoint_path(ep)
-        seen_paths.add(path)
-        label = f"{ep.method} {ep.path}"
+        groups.setdefault(ep.group or "Ungrouped", []).append(ep)
+
+    for group, group_endpoints in groups.items():
+        path = group_path(group)
         if path in unmanaged:
+            # Whole group is a conflict — matches how an unmanaged index.md
+            # is handled below: report once, touch nothing.
             report.conflicts.append(
-                Conflict(path, f"unmanaged file already exists at this path; {label} left undocumented here")
+                Conflict(path, f"unmanaged file already exists at this path; "
+                                f"{len(group_endpoints)} endpoint(s) left undocumented here")
             )
             continue
-        old = managed.get(path)
-        new = new_files.get(path)
-        if old is None:
-            status = "added"
-        elif old == new:
-            status = "unchanged"
-        else:
-            status = "updated"
-        report.endpoint_changes.append(EndpointChange(ep.method, ep.path, label, path, status))
 
-    for path in managed:
-        if path.startswith("endpoints/") and path not in seen_paths:
-            report.endpoint_changes.append(
-                EndpointChange("", "", _label_from_removed_path(path), path, "removed")
-            )
+        old_sections = _split_sections(managed.get(path, ""))
+        new_sections = _split_sections(new_files.get(path, ""))
+        by_key = {endpoint_section_key(ep): ep for ep in group_endpoints}
+
+        for key, ep in by_key.items():
+            old = old_sections.get(key)
+            new = new_sections.get(key)
+            if old is None:
+                status = "added"
+            elif old == new:
+                status = "unchanged"
+            else:
+                status = "updated"
+            report.endpoint_changes.append(EndpointChange(ep.method, ep.path, key, path, status))
+
+        # Endpoint-level removal: heading existed in this group's old
+        # rendered sections but the group survives with other endpoints.
+        for key in old_sections:
+            if key == "Overview" or key in by_key:
+                continue
+            report.endpoint_changes.append(_removed_change(key, path))
+
+    # Group-level removal: a previously-managed group file whose group has
+    # zero endpoints left in the current render at all (file itself is gone).
+    new_group_paths = {group_path(g) for g in groups}
+    for path, old_text in managed.items():
+        if not path.startswith("endpoints/") or path in new_group_paths:
+            continue
+        for key in _split_sections(old_text):
+            if key == "Overview":
+                continue
+            report.endpoint_changes.append(_removed_change(key, path))
 
     if "index.md" in unmanaged:
         report.conflicts.append(Conflict("index.md", "unmanaged index.md already exists; shared docs left untouched"))
@@ -196,8 +244,18 @@ def apply(
     new_files: dict[str, str],
     report: SyncReport,
 ) -> tuple[list[str], list[str]]:
-    """Writes only added/updated files, deletes only files this run knows to
-    be removed endpoints, and never touches unmanaged (conflicting) paths."""
+    """Writes only added/updated files, deletes only group files this run
+    knows to be entirely gone, and never touches unmanaged (conflicting)
+    paths.
+
+    Deletion is intentionally NOT driven by report.by_status("removed"):
+    since several endpoints can share one group file, a "removed"
+    EndpointChange's file_path may be a group file that other, surviving
+    endpoints still live in (and that this same apply() call just
+    rewrote via the write loop above). Deleting it would destroy those
+    survivors. So deletion instead compares the managed path set against
+    new_files directly — a group file is deleted only when its path is
+    entirely absent from the fresh render, i.e. the whole group is gone."""
     managed = {p: _unstamp(c) for p, c in existing.items() if _is_managed(c)}
     unmanaged = {p for p, c in existing.items() if not _is_managed(c)}
 
@@ -213,13 +271,13 @@ def apply(
         written.append(path)
 
     deleted: list[str] = []
-    for change in report.by_status("removed"):
-        if change.file_path in unmanaged:
+    for path in managed:
+        if not path.startswith("endpoints/") or path in unmanaged or path in new_files:
             continue
-        target = output / change.file_path
+        target = output / path
         if target.exists():
             target.unlink()
-            deleted.append(change.file_path)
+            deleted.append(path)
 
     return written, deleted
 
@@ -230,6 +288,23 @@ def write_all(output: Path, new_files: dict[str, str]) -> None:
         target = output / path
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(_stamp(content), encoding="utf-8")
+
+
+def _shared_file_note(entries: list[EndpointChange]) -> list[str]:
+    """After a status group's per-endpoint lines, note once per group file
+    when 2+ of those changes landed in the same file — grouping storage
+    (endpoints/<group-slug>.md) must never collapse the existing granular
+    added/removed/updated/unchanged listing, just make the shared file
+    visible alongside it."""
+    counts: dict[str, int] = {}
+    for c in entries:
+        counts[c.file_path] = counts.get(c.file_path, 0) + 1
+    notes = []
+    for path, count in counts.items():
+        if count > 1:
+            word = "both" if count == 2 else f"all {count}"
+            notes.append(f"  ({word} in {path})")
+    return notes
 
 
 def format_report(report: SyncReport) -> str:
@@ -243,12 +318,15 @@ def format_report(report: SyncReport) -> str:
     lines.append(f"Added       : {len(added)}")
     for c in added:
         lines.append(f"  + {c.label}")
+    lines += _shared_file_note(added)
     lines.append(f"Removed     : {len(removed)}")
     for c in removed:
         lines.append(f"  - {c.label}")
+    lines += _shared_file_note(removed)
     lines.append(f"Updated     : {len(updated)}")
     for c in updated:
         lines.append(f"  ~ {c.label}")
+    lines += _shared_file_note(updated)
     lines.append(f"Unchanged   : {len(unchanged)}")
 
     changed_sections = [s for s in report.shared_changes if s.status != "unchanged"]

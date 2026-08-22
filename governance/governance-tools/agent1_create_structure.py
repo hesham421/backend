@@ -10,12 +10,25 @@ Usage:
     python agent1_create_structure.py --module ORG --new-version
     python agent1_create_structure.py --list-modules
 
+    Frontend-native folders (run from the frontend repo's own copy of
+    this script, once GATE: BACKEND MODULE COMPLETE + GATE: UI SHELL
+    COMPLETE are confirmed for the module):
+    python agent1_create_structure.py --module ORG --frontend-only
+
 Handles:
-    - New known module        → creates v1 structure
+    - New known module        → creates its full folder structure
+                                  (backend-repo run: P0, P0_5, P1, P2,
+                                  P2_5, P3_1, P3_5_BE, P4_1 — frontend-
+                                  native folders are NOT created by a
+                                  backend-repo run; see --frontend-only)
     - Unknown module          → rejects unless --auto-register
-    - --auto-register         → registers module and creates v1
+    - --auto-register         → registers module and creates its structure
     - --new-version           → creates v2/v3/... alongside existing
     - Existing module (same v)→ skips safely (idempotent)
+    - --frontend-only         → creates ONLY the frontend-native subset
+                                  (P3_2, P3_5_FE, P4_2) — run this from
+                                  the frontend repo's own copy of the
+                                  script, never from the backend repo
 """
 
 import argparse
@@ -27,10 +40,12 @@ from datetime import datetime
 sys.path.insert(0, str(Path(__file__).parent))
 from config import (
     REPO_BASE_PATH,
+    FRONTEND_OUTPUT_BASE_PATH,
     KNOWN_MODULES,
     MODULE_STRUCTURE,
     PACKAGES_STRUCTURE,
     get_module_version_path,
+    get_frontend_module_version_path,
     validate_module,
     build_manifest,
     get_next_version,
@@ -39,29 +54,46 @@ from config import (
     load_modules_registry,
 )
 
-# ─────────────────────────────────────────────────────────────────────────────
-# STRUCTURE BUILDER
-# ─────────────────────────────────────────────────────────────────────────────
+# Stages created by a normal (backend-repo) run
+BACKEND_STAGES = ("P0", "P0_5", "P1", "P2", "P2_5", "P3_1", "P3_5_BE", "P4_1")
+# Stages created by a --frontend-only (frontend-repo) run
+FRONTEND_STAGES = ("P3_2", "P3_5_FE", "P4_2")
 
-def plan_structure(mod: str, version: int) -> list[dict]:
-    """Build a plan of all folders to create for a module version."""
-    base = get_module_version_path(mod, version)
+
+def plan_structure(mod: str, version: int, frontend_only: bool = False) -> list[dict]:
+    """
+    Build a plan of all folders to create for a module version.
+
+    frontend_only: when True, plans ONLY the frontend-native folders
+      (P3_2, P3_5_FE, P4_2, packages/frontend-execution/*,
+      packages/frontend-test/*) rooted under FRONTEND_OUTPUT_BASE_PATH —
+      meant to be run from the frontend repo's own copy of this script.
+      When False (default), plans the backend-repo subset.
+    """
     folders = []
 
-    # Stage folders
-    for stage, name in MODULE_STRUCTURE.items():
-        p = base / name
-        folders.append({"path": p, "label": stage})
-
-    # Packages — execution splits
-    for sub in PACKAGES_STRUCTURE["execution"]:
-        p = base / "packages" / "execution" / sub
-        folders.append({"path": p, "label": f"packages/execution/{sub}"})
-
-    # Packages — test splits
-    for sub in PACKAGES_STRUCTURE["test"]:
-        p = base / "packages" / "test" / sub
-        folders.append({"path": p, "label": f"packages/test/{sub}"})
+    if frontend_only:
+        frontend_base = get_frontend_module_version_path(mod, version)
+        for stage in FRONTEND_STAGES:
+            p = frontend_base / MODULE_STRUCTURE[stage]
+            folders.append({"path": p, "label": stage})
+        for sub in PACKAGES_STRUCTURE.get("frontend-execution", []):
+            p = frontend_base / "packages" / "frontend-execution" / sub
+            folders.append({"path": p, "label": f"packages/frontend-execution/{sub}"})
+        for sub in PACKAGES_STRUCTURE.get("frontend-test", []):
+            p = frontend_base / "packages" / "frontend-test" / sub
+            folders.append({"path": p, "label": f"packages/frontend-test/{sub}"})
+    else:
+        base = get_module_version_path(mod, version)
+        for stage in BACKEND_STAGES:
+            p = base / MODULE_STRUCTURE[stage]
+            folders.append({"path": p, "label": stage})
+        for sub in PACKAGES_STRUCTURE.get("backend-execution", []):
+            p = base / "packages" / "backend-execution" / sub
+            folders.append({"path": p, "label": f"packages/backend-execution/{sub}"})
+        for sub in PACKAGES_STRUCTURE.get("backend-test", []):
+            p = base / "packages" / "backend-test" / sub
+            folders.append({"path": p, "label": f"packages/backend-test/{sub}"})
 
     for f in folders:
         f["exists"] = f["path"].exists()
@@ -69,9 +101,14 @@ def plan_structure(mod: str, version: int) -> list[dict]:
     return folders
 
 
-def print_plan(mod: str, version: int, folders: list[dict], dry_run: bool):
+def print_plan(mod: str, version: int, folders: list[dict], dry_run: bool, frontend_only: bool = False):
     """Print the creation plan."""
-    base = get_module_version_path(mod, version)
+    if frontend_only:
+        base = get_frontend_module_version_path(mod, version)
+        rel_root = FRONTEND_OUTPUT_BASE_PATH
+    else:
+        base = get_module_version_path(mod, version)
+        rel_root = REPO_BASE_PATH
     new_count  = sum(1 for f in folders if not f["exists"])
     skip_count = sum(1 for f in folders if f["exists"])
 
@@ -79,8 +116,12 @@ def print_plan(mod: str, version: int, folders: list[dict], dry_run: bool):
     print("═" * 62)
     print(f"  AGENT 1 — Structure Creator")
     print(f"  Module  : {mod}")
+    print(f"  Scope   : {'frontend-native folders' if frontend_only else 'backend folders'}")
     print(f"  Version : v{version}")
-    print(f"  Path    : {base.relative_to(REPO_BASE_PATH)}")
+    try:
+        print(f"  Path    : {base.relative_to(rel_root)}")
+    except ValueError:
+        print(f"  Path    : {base}")
     print(f"  Mode    : {'DRY RUN (no changes)' if dry_run else 'LIVE'}")
     print("═" * 62)
     print()
@@ -88,7 +129,7 @@ def print_plan(mod: str, version: int, folders: list[dict], dry_run: bool):
     for f in folders:
         status = "EXISTS  ⚠ skip" if f["exists"] else "CREATE  ✓"
         try:
-            rel = f["path"].relative_to(REPO_BASE_PATH)
+            rel = f["path"].relative_to(rel_root)
         except ValueError:
             rel = f["path"]
         print(f"  [{status}]  {rel}")
@@ -98,8 +139,16 @@ def print_plan(mod: str, version: int, folders: list[dict], dry_run: bool):
     print()
 
 
-def create_structure(mod: str, version: int, folders: list[dict], dry_run: bool):
-    """Create folders, manifest, and update modules registry."""
+def create_structure(mod: str, version: int, folders: list[dict], dry_run: bool, frontend_only: bool = False):
+    """
+    Create folders, manifest, and update modules registry.
+
+    frontend_only: when True, only creates folders — does NOT write
+      manifest.json or touch modules-registry.json. The registry and
+      manifest stay backend-owned always. Run the backend (non-
+      frontend-only) pass first; it writes the manifest/registry
+      entries that already point at the frontend paths.
+    """
     if dry_run:
         print("  DRY RUN — no folders created.")
         return
@@ -115,6 +164,19 @@ def create_structure(mod: str, version: int, folders: list[dict], dry_run: bool)
             (f["path"] / ".gitkeep").touch()
             created.append(f["path"])
 
+    print("─" * 62)
+    print(f"  ✓ Created  : {len(created)} folders")
+    print(f"  ⚠ Skipped  : {len(skipped)} (already exist)")
+
+    if frontend_only:
+        print(f"  — Manifest/registry NOT touched (frontend-only run — those")
+        print(f"    stay backend-owned; run the backend pass to write them).")
+        print("─" * 62)
+        print()
+        print(f"  Frontend-native structure ready: [{mod}] v{version}")
+        print()
+        return
+
     # Write manifest.json at version root
     base = get_module_version_path(mod, version)
     manifest_path = base / "manifest.json"
@@ -127,59 +189,68 @@ def create_structure(mod: str, version: int, folders: list[dict], dry_run: bool)
     # Update modules registry
     set_current_version(mod, version)
 
-    print("─" * 62)
-    print(f"  ✓ Created  : {len(created)} folders")
-    print(f"  ⚠ Skipped  : {len(skipped)} (already exist)")
     print(f"  ✓ Manifest : {manifest_path.relative_to(REPO_BASE_PATH)}")
     print(f"  ✓ Registry : modules-registry.json updated (v{version})")
     print("─" * 62)
     print()
     print(f"  Structure ready: [{mod}] v{version}")
-    print(f"  Next step : python agent2_archive.py --module {mod}")
+    print(f"  Next step (backend)  : python agent2_archive.py --module {mod}")
+    print(f"  Next step (frontend) : run this script with --frontend-only from")
+    print(f"                         the frontend repo's copy, once GATE: BACKEND")
+    print(f"                         MODULE COMPLETE + GATE: UI SHELL COMPLETE")
+    print(f"                         are confirmed for this module")
     print()
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ENTRY POINT
-# ─────────────────────────────────────────────────────────────────────────────
+def list_modules():
+    """List all known + registered modules."""
+    registry = load_modules_registry()
+    all_mods = set(KNOWN_MODULES) | set(registry.get("modules", {}).keys())
+
+    print()
+    print("═" * 62)
+    print("  KNOWN MODULES")
+    print("═" * 62)
+    if not all_mods:
+        print("  (none registered yet)")
+    for mod in sorted(all_mods):
+        entry = registry.get("modules", {}).get(mod, {})
+        version = entry.get("current_version", "—")
+        desc = entry.get("description", "")
+        static_tag = " [static]" if mod in KNOWN_MODULES else ""
+        print(f"  {mod:<12} v{version}{static_tag}  {desc}")
+    print("═" * 62)
+    print()
+
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Agent 1 — Create governance folder structure for a module."
-    )
-    parser.add_argument("--module", "-m", required=False, default=None,
-                        help="Module code (e.g. ORG, FIN, HR)")
-    parser.add_argument("--dry-run", "-d", action="store_true",
-                        help="Preview without making changes.")
-    parser.add_argument("--new-version", "-n", action="store_true",
-                        help="Create a new version alongside existing (v2, v3...).")
-    parser.add_argument("--auto-register", "-a", action="store_true",
-                        help="Register unknown module automatically.")
-    parser.add_argument("--description", default="",
-                        help="Description for new module (used with --auto-register).")
+    parser = argparse.ArgumentParser(description="Create governance folder structure for a module.")
+    parser.add_argument("--module", "-m", help="Module code (e.g. ORG, FIN).")
+    parser.add_argument("--dry-run", action="store_true", help="Show plan without creating anything.")
+    parser.add_argument("--auto-register", action="store_true",
+                        help="Automatically register an unknown module.")
+    parser.add_argument("--description", default="", help="Description for --auto-register.")
+    parser.add_argument("--new-version", action="store_true",
+                        help="Create the next version for an existing module.")
     parser.add_argument("--list-modules", action="store_true",
                         help="List all known modules and exit.")
+    parser.add_argument("--frontend-only", action="store_true",
+                        help="Create ONLY the frontend-native folders (P3_2, P3_5_FE, "
+                             "P4_2, packages/frontend-execution/*, packages/frontend-test/*) "
+                             "rooted in the frontend repo. Run this from the frontend "
+                             "repo's own governance-tools/ copy. Does NOT write "
+                             "manifest.json or modules-registry.json (those stay "
+                             "backend-owned — run the normal backend pass first).")
 
     args = parser.parse_args()
 
-    # ── Manual required-check: --module is required UNLESS --list-modules ─────
-    if not args.list_modules and not args.module:
-        parser.error("the following arguments are required: --module/-m")
-
-    # ── List modules ──────────────────────────────────────────────────────────
     if args.list_modules:
-        registry = load_modules_registry()
-        dyn = registry.get("modules", {})
-        all_mods = list(dict.fromkeys(KNOWN_MODULES + list(dyn.keys())))
-        print("\nRegistered modules:")
-        for m in all_mods:
-            base = get_module_version_path(m)
-            status = "exists" if base.exists() else "not created"
-            ver = dyn.get(m, {}).get("current_version", "—")
-            desc = dyn.get(m, {}).get("description", "")
-            print(f"  {m:<8} v{ver:<4} {status:<14} {desc}")
-        print()
+        list_modules()
         sys.exit(0)
+
+    if not args.module:
+        print("\n  ERROR: --module is required (or use --list-modules).\n")
+        sys.exit(1)
 
     # ── Validate / register module ────────────────────────────────────────────
     try:
@@ -192,21 +263,17 @@ def main():
         print(f"\n  ERROR: {e}\n")
         sys.exit(1)
 
-    if args.auto_register and args.module.upper() not in KNOWN_MODULES:
-        print(f"\n  INFO: Module [{mod}] registered automatically.")
-
     # ── Determine version ─────────────────────────────────────────────────────
     if args.new_version:
         version = get_next_version(mod)
-        print(f"\n  INFO: Creating new version v{version} for module [{mod}].")
     else:
         registry = load_modules_registry()
-        existing = registry.get("modules", {}).get(mod, {}).get("current_version")
-        version = existing if existing else 1
+        entry = registry.get("modules", {}).get(mod)
+        version = (entry.get("current_version") if entry else None) or 1
 
     # ── Build and show plan ───────────────────────────────────────────────────
-    folders = plan_structure(mod, version)
-    print_plan(mod, version, folders, args.dry_run)
+    folders = plan_structure(mod, version, frontend_only=args.frontend_only)
+    print_plan(mod, version, folders, args.dry_run, frontend_only=args.frontend_only)
 
     # ── Confirm if live run ───────────────────────────────────────────────────
     if not args.dry_run:
@@ -216,7 +283,7 @@ def main():
             sys.exit(0)
         print()
 
-    create_structure(mod, version, folders, args.dry_run)
+    create_structure(mod, version, folders, args.dry_run, frontend_only=args.frontend_only)
 
 
 if __name__ == "__main__":

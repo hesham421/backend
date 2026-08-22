@@ -60,6 +60,30 @@ Changelog:
     would violate Section 6 Safety Rules; see the Stage H comment block below
     for exactly what's needed to enable it.
 
+  - 2026-08-22: investigated the 3 🔴 real-bug entries in org_problems_report.md
+    (2026-07-04 run) against erp-org source — all 3 were test-script defects,
+    not backend defects; RegionService/BranchService behaved correctly in every
+    case:
+      1. Create Region 404 ERR_ORG_0004 — regionTypeIdFk=1 (API-ORG-013's Example
+         value) does not exist in this environment; V1__inital_schema.sql only
+         seeds org_region_type PKs 4/5/6. Fixed: use 4 (GEOGRAPHIC).
+      2. Deactivate Branch 409 ERR_ORG_0007 / 3. Deactivate LegalEntity 409
+         ERR_ORG_0005 — every test_<entity>() function creates MORE than one live
+         record under the same parent (RULE-ORG-007/008 cycle-test children, plus
+         Stage E boundary scenarios like "nameEn at maxLength" that also return
+         200/201), but test_deactivation_rules() only ever deactivated the single
+         "id" this script happens to track per entity. BranchService.deactivate()
+         and LegalEntityService.deactivate() correctly count ALL active children
+         under the parent (countByBranch_IdAndIsActiveFlTrue /
+         countByLegalEntity_IdAndIsActiveFlTrue), correctly found the leftover
+         active strays, and correctly blocked with 409 — cascading into the
+         LegalEntity block too. Confirmed via a live local run (fresh Postgres +
+         erp-main on JDK 21) after an initial fix that only handled the two
+         cycle-test children still left 2/72 failing for exactly this reason.
+         Fixed properly: added sweep_deactivate(), a best-effort helper that
+         deactivates every id this run tracked for an entity type (not just the
+         one named "id") before each happy-path assertion.
+
 Usage:
     python3 test_org_apis.py
     python3 test_org_apis.py --base-url http://localhost:7272
@@ -557,13 +581,17 @@ def test_region(client: APIClient, token: Optional[str], observations: list,
         return suite, ids
 
     # regionTypeIdFk: RegionType is an Admin-managed reference table with no
-    # dedicated Create API (execution-plan.md ENTITY-ORG-008). Using the Example
-    # value (1) from API-ORG-013 verbatim — assumes seeded reference data exists.
+    # dedicated Create API (execution-plan.md ENTITY-ORG-008). API-ORG-013's Example
+    # value (1) does NOT exist in this environment's seed data — V1__inital_schema.sql
+    # seeds org_region_type with PKs 4 (GEOGRAPHIC), 5 (SALES), 6 (OPERATIONAL) only.
+    # A real-server run confirmed regionTypeIdFk=1 gets 404 ERR_ORG_0004 (Record not
+    # found) — using 4 (GEOGRAPHIC), the confirmed-seeded id closest to this scenario's
+    # intent ("Greater Cairo Region").
     r = run(suite, "Create Region", client.post(
         "api/v1/org/regions", token=token, expected=[200, 201],
-        json={"legalEntityFk": legal_entity_id, "regionTypeIdFk": 1, "nameAr": "منطقة القاهرة الكبرى",
+        json={"legalEntityFk": legal_entity_id, "regionTypeIdFk": 4, "nameAr": "منطقة القاهرة الكبرى",
               "nameEn": "Greater Cairo Region", "notes": "Covers all Cairo branches"},
-    ), note="regionTypeIdFk=1 assumes seeded RegionType reference data (no Create API for RegionType)")
+    ), note="regionTypeIdFk=4 (GEOGRAPHIC) — confirmed seeded in V1__inital_schema.sql, not API-ORG-013's stale Example=1")
     region_id = extract_id(r)
     ids["id"] = region_id
     track(created_ids, "Region", region_id)
@@ -590,13 +618,13 @@ def test_region(client: APIClient, token: Optional[str], observations: list,
 
     # ── Stage E — exploratory scenarios
     r_bound = client.post("api/v1/org/regions", token=token, expected=[200, 201],
-        json={"legalEntityFk": legal_entity_id, "regionTypeIdFk": 1, "nameAr": "منطقة الحد الأقصى", "nameEn": "X" * 100})
+        json={"legalEntityFk": legal_entity_id, "regionTypeIdFk": 4, "nameAr": "منطقة الحد الأقصى", "nameEn": "X" * 100})
     track(created_ids, "Region", extract_id(r_bound))
     run_observation(observations, "Create Region — nameEn at maxLength (100 chars)",
         source="API-ORG-013 nameEn Constraints: maxLength=100", result=r_bound)
 
     r_over = client.post("api/v1/org/regions", token=token, expected=[200, 201, 400],
-        json={"legalEntityFk": legal_entity_id, "regionTypeIdFk": 1, "nameAr": "منطقة فوق الحد", "nameEn": "X" * 101})
+        json={"legalEntityFk": legal_entity_id, "regionTypeIdFk": 4, "nameAr": "منطقة فوق الحد", "nameEn": "X" * 101})
     track(created_ids, "Region", extract_id(r_over))
     run_observation(observations, "Create Region — nameEn over maxLength (101 chars)",
         source="API-ORG-013 nameEn Constraints: maxLength=100", result=r_over)
@@ -965,7 +993,24 @@ def test_location_site(client: APIClient, token: Optional[str], observations: li
 #           RULE-ORG-003/ERR-ORG-0007/TC-ORG-005,006 · RULE-ORG-004/ERR-ORG-0008/TC-ORG-007,008
 #           RULE-ORG-005/ERR-ORG-0009/TC-ORG-009,010
 
-def test_deactivation_rules(client: APIClient, token: Optional[str], ids: dict) -> TestSuite:
+def sweep_deactivate(client: APIClient, token: Optional[str], path: str, entity_ids: list, skip_id) -> None:
+    """
+    Best-effort: deactivate every OTHER id of this entity type that this run has
+    created (Stage E boundary scenarios like "nameEn at maxLength" also create
+    real, still-ACTIVE records under the same parent — e.g. test_department()'s
+    own maxLength Department under `branch_id`). BranchService/LegalEntityService
+    deactivate() count ALL active children under the parent, not just the one
+    "id" this suite happens to track, so any of these strays left active would
+    wrongly block the happy-path deactivate below. Not asserted pass/fail —
+    same rationale as cleanup()'s best-effort teardown.
+    """
+    for _id in entity_ids:
+        if _id is None or _id == skip_id:
+            continue
+        client.put(f"{path}/{_id}/deactivate", token=token, expected=[200, 404, 409])
+
+
+def test_deactivation_rules(client: APIClient, token: Optional[str], ids: dict, created_ids: dict) -> TestSuite:
     suite = TestSuite("Deactivation Rules (RULE-ORG-001..005)")
     print("\n[Deactivation Rules — RULE-ORG-001..005]")
 
@@ -1000,6 +1045,7 @@ def test_deactivation_rules(client: APIClient, token: Optional[str], ids: dict) 
     if dept_id:
         run(suite, "Deactivate Department (RULE-ORG-003 happy / TC-ORG-005)",
             client.put(f"api/v1/org/departments/{dept_id}/deactivate", token=token, expected=[200]))
+    sweep_deactivate(client, token, "api/v1/org/departments", created_ids.get("Department", []), dept_id)
 
     # RULE-ORG-004 — Branch deactivate blocked while an active CostCenter exists.
     if branch_id:
@@ -1012,6 +1058,7 @@ def test_deactivation_rules(client: APIClient, token: Optional[str], ids: dict) 
     if cc_id:
         run(suite, "Deactivate CostCenter (RULE-ORG-004 happy / TC-ORG-007)",
             client.put(f"api/v1/org/cost-centers/{cc_id}/deactivate", token=token, expected=[200]))
+    sweep_deactivate(client, token, "api/v1/org/cost-centers", created_ids.get("CostCenter", []), cc_id)
 
     # RULE-ORG-005 — Branch deactivate blocked while an active LocationSite exists.
     if branch_id:
@@ -1024,11 +1071,15 @@ def test_deactivation_rules(client: APIClient, token: Optional[str], ids: dict) 
     if ls_id:
         run(suite, "Deactivate LocationSite (RULE-ORG-005 happy / TC-ORG-009)",
             client.put(f"api/v1/org/location-sites/{ls_id}/deactivate", token=token, expected=[200]))
+    sweep_deactivate(client, token, "api/v1/org/location-sites", created_ids.get("LocationSite", []), ls_id)
 
     # All Branch children now inactive — Branch deactivate should succeed.
     if branch_id:
         run(suite, "Deactivate Branch (happy path, API-ORG-010)",
             client.put(f"api/v1/org/branches/{branch_id}/deactivate", token=token, expected=[200]))
+    # Stage E in test_branch() also creates extra active Branches under le_id (e.g. the
+    # nameEn-at-maxLength scenario) — sweep those too or they'll block LE deactivate below.
+    sweep_deactivate(client, token, "api/v1/org/branches", created_ids.get("Branch", []), branch_id)
 
     # RULE-ORG-002 — LegalEntity deactivate blocked while an active ProfitCenter
     # exists (Branch is now inactive, so RULE-ORG-001's blocker is cleared —
@@ -1043,6 +1094,7 @@ def test_deactivation_rules(client: APIClient, token: Optional[str], ids: dict) 
     if pc_id:
         run(suite, "Deactivate ProfitCenter (RULE-ORG-002 happy / TC-ORG-003)",
             client.put(f"api/v1/org/profit-centers/{pc_id}/deactivate", token=token, expected=[200]))
+    sweep_deactivate(client, token, "api/v1/org/profit-centers", created_ids.get("ProfitCenter", []), pc_id)
 
     # All LegalEntity blockers cleared — LegalEntity deactivate should succeed.
     if le_id:
@@ -1438,7 +1490,7 @@ def main():
             "ProfitCenter": pc_ids.get("id"), "Department": dept_id, "CostCenter": cc_id,
             "LocationSite": ls_id,
         }
-        deact_suite = test_deactivation_rules(client, token, entity_ids)
+        deact_suite = test_deactivation_rules(client, token, entity_ids, created_ids)
     finally:
         # Always runs, even if a test above raised partway through.
         cleanup(client, token, created_ids)

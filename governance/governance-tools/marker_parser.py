@@ -2,10 +2,18 @@
 ERP Governance Tools — Marker Parser Engine
 =============================================
 Shared parsing engine used by Agent 3.
-Reads HTML comment markers (Section 6.7 of P3) and builds
-a structured tree representing the artifact's addressable elements.
+Reads HTML comment markers (PROJECT-3-REGISTRY.md Section 5.7) and
+builds a structured tree representing the artifact's addressable
+elements.
 
 This module does NOT modify any content — it only reads and indexes.
+
+Hierarchy: PHASE → [SUB] → ATOM (API/XM/TC) — the same shape for every
+artifact type (backend-execution-plan.md, frontend-execution-plan.md,
+backend-test-plan.md, frontend-test-plan.md). There is no MARK level —
+each test-plan file is single-tool by construction (backend-test-plan.md
+is JUnit-only, frontend-test-plan.md is Playwright-only), so the file
+itself is the tool boundary; TC blocks nest directly under PHASE or SUB.
 """
 
 import re
@@ -17,80 +25,53 @@ sys.path.insert(0, str(Path(__file__).parent))
 from config import MARKERS
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# DATA STRUCTURES
-# ─────────────────────────────────────────────────────────────────────────────
-
 @dataclass
 class MarkerBlock:
-    """Represents one START/END marker pair and its content."""
-    kind: str            # phase | mark | sub | api | xm | tc
-    marker_id: str        # e.g. CORE, JUNIT, SCR-ORG-001, API-ORG-001
-    start_line: int        # 1-indexed line of START marker
-    end_line: int           # 1-indexed line of END marker
-    content: str             # raw text BETWEEN start and end (markers excluded)
-    children: list = field(default_factory=list)   # nested MarkerBlocks
+    kind: str            # "phase" | "sub" | "api" | "xm" | "tc"
+    marker_id: str
+    start_line: int       # 1-indexed line number of the START marker
+    end_line: int = 0     # 1-indexed line number of the END marker
+    content: str = ""     # raw text between START and END (exclusive of marker lines)
+    children: list = field(default_factory=list)
     parent: "MarkerBlock" = None
 
 
 @dataclass
 class ParseError:
-    severity: str   # CRITICAL | WARNING
+    severity: str          # "CRITICAL" | "MAJOR" | "MINOR"
     message: str
     line: int = 0
 
 
 @dataclass
 class ParseResult:
-    root_blocks: list           # top-level blocks (usually PHASE blocks)
-    errors: list                # ParseError list
-    raw_lines: list             # original file lines (for content extraction)
-    total_lines: int = 0
+    root_blocks: list[MarkerBlock]
+    errors: list[ParseError]
+    raw_lines: list[str]
+    total_lines: int
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# TOKENIZER — find all marker occurrences in order
-# ─────────────────────────────────────────────────────────────────────────────
+# Allowed nesting hierarchy per PROJECT-3-REGISTRY.md Section 5.7.2/5.7.6
+ALLOWED_PARENTS = {
+    "phase": [None],                  # top level only
+    "sub":   ["phase"],               # SUB inside PHASE only
+    "api":   ["phase", "sub"],        # API inside PHASE or SUB
+    "xm":    ["phase", "sub"],        # XM inside PHASE or SUB
+    "tc":    ["phase", "sub"],        # TC inside PHASE or SUB directly
+}
+
 
 def _tokenize(lines: list[str]) -> list[dict]:
-    """
-    Scan all lines and return a flat ordered list of marker tokens:
-    {kind, marker_id, type: START|END, line}
-    """
+    """Scan every line for marker patterns, return ordered token list."""
     tokens = []
-    for idx, line in enumerate(lines, start=1):
+    for i, line in enumerate(lines, start=1):
         for kind, pattern in MARKERS.items():
             m = pattern.search(line)
             if m:
                 marker_id, action = m.group(1), m.group(2)
-                tokens.append({
-                    "kind": kind,
-                    "marker_id": marker_id,
-                    "type": action,
-                    "line": idx,
-                })
+                tokens.append({"kind": kind, "marker_id": marker_id, "type": action, "line": i})
     return tokens
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# STRUCTURE VALIDATOR — Rule 1 (every START has END), Rule 2 (no cross-nesting)
-# ─────────────────────────────────────────────────────────────────────────────
-
-# Allowed nesting hierarchy per Section 6.7.2
-ALLOWED_PARENTS = {
-    "phase": [None],                  # top level only
-    "mark":  ["phase"],               # MARK only inside PHASE (test-plan)
-    "sub":   ["phase", "mark"],       # SUB inside PHASE or MARK
-    "api":   ["phase", "sub"],        # API inside PHASE or SUB
-    "xm":    ["phase", "sub"],        # XM inside PHASE or SUB
-    "tc":    ["mark", "sub"],         # TC inside MARK or SUB
-}
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# TREE BUILDER — opens block at START, closes at matching END
-# Validates: Rule 1 (every START has END), Rule 2 (no cross-nesting)
-# ─────────────────────────────────────────────────────────────────────────────
 
 def _build_tree(tokens: list[dict], lines: list[str]) -> tuple[list[MarkerBlock], list[ParseError]]:
     """
@@ -114,15 +95,12 @@ def _build_tree(tokens: list[dict], lines: list[str]) -> tuple[list[MarkerBlock]
                     message=(
                         f"Illegal nesting: <{kind.upper()}:{marker_id}:START> at line {line} "
                         f"found inside '{parent_kind or 'document root'}' — "
-                        f"not permitted by Section 6.7.6 Rule 2."
+                        f"not permitted by PROJECT-3-REGISTRY.md Section 5.7.6 Rule 2."
                     ),
                     line=line,
                 ))
 
-            block = MarkerBlock(
-                kind=kind, marker_id=marker_id,
-                start_line=line, end_line=-1, content="",
-            )
+            block = MarkerBlock(kind=kind, marker_id=marker_id, start_line=line)
             if stack:
                 stack[-1].children.append(block)
                 block.parent = stack[-1]
@@ -134,79 +112,68 @@ def _build_tree(tokens: list[dict], lines: list[str]) -> tuple[list[MarkerBlock]
             if not stack:
                 errors.append(ParseError(
                     severity="CRITICAL",
-                    message=f"Unmatched END marker: <{kind.upper()}:{marker_id}:END> at line {line} — no open START.",
+                    message=f"Unmatched END marker: <{kind.upper()}:{marker_id}:END> at line {line} "
+                            f"— no corresponding START marker is open.",
                     line=line,
                 ))
                 continue
 
-            top = stack[-1]
-            if top.kind != kind or top.marker_id != marker_id:
+            open_block = stack[-1]
+            if open_block.kind != kind or open_block.marker_id != marker_id:
                 errors.append(ParseError(
                     severity="CRITICAL",
                     message=(
-                        f"Mismatched END at line {line}: expected END for "
-                        f"<{top.kind.upper()}:{top.marker_id}> (opened line {top.start_line}) "
-                        f"but found <{kind.upper()}:{marker_id}:END>."
+                        f"Mismatched END marker at line {line}: expected "
+                        f"</{open_block.kind.upper()}:{open_block.marker_id}> but found "
+                        f"</{kind.upper()}:{marker_id}>."
                     ),
                     line=line,
                 ))
-                stack.pop()
                 continue
 
-            top.end_line = line
-            top.content = "".join(lines[top.start_line: line - 1])
+            open_block.end_line = line
+            content_lines = lines[open_block.start_line: line - 1]
+            open_block.content = "".join(content_lines)
             stack.pop()
 
-    # anything left open = missing END
     for unclosed in stack:
         errors.append(ParseError(
             severity="CRITICAL",
-            message=(
-                f"Unclosed marker: <{unclosed.kind.upper()}:{unclosed.marker_id}:START> "
-                f"at line {unclosed.start_line} has no matching END."
-            ),
+            message=f"Unclosed marker: <{unclosed.kind.upper()}:{unclosed.marker_id}:START> "
+                    f"at line {unclosed.start_line} — no matching END marker found.",
             line=unclosed.start_line,
         ))
 
     return roots, errors
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# UNIQUENESS VALIDATOR — Rule 3 (every ID is unique)
-# ─────────────────────────────────────────────────────────────────────────────
-
 def _check_uniqueness(roots: list[MarkerBlock]) -> list[ParseError]:
-    """Verify every atomic ID (api/xm/tc) appears exactly once."""
+    """Every marker_id within the same kind must be unique across the whole document."""
     errors = []
-    seen = {}
+    seen: dict[str, list[MarkerBlock]] = {}
 
-    def walk(block: MarkerBlock):
-        if block.kind in ("api", "xm", "tc"):
-            key = (block.kind, block.marker_id)
-            if key in seen:
-                errors.append(ParseError(
-                    severity="CRITICAL",
-                    message=(
-                        f"Duplicate ID: {block.kind.upper()}:{block.marker_id} "
-                        f"appears at line {block.start_line} and was already "
-                        f"defined at line {seen[key]}."
-                    ),
-                    line=block.start_line,
-                ))
-            else:
-                seen[key] = block.start_line
-        for c in block.children:
-            walk(c)
+    def _walk(block: MarkerBlock):
+        key = f"{block.kind}:{block.marker_id}"
+        seen.setdefault(key, []).append(block)
+        for child in block.children:
+            _walk(child)
 
-    for r in roots:
-        walk(r)
+    for root in roots:
+        _walk(root)
+
+    for key, blocks in seen.items():
+        if len(blocks) > 1:
+            kind, marker_id = key.split(":", 1)
+            lines = ", ".join(str(b.start_line) for b in blocks)
+            errors.append(ParseError(
+                severity="CRITICAL",
+                message=f"Duplicate {kind.upper()}:{marker_id} — appears {len(blocks)} times "
+                        f"(lines {lines}). Every marker_id must be unique within its kind.",
+                line=blocks[0].start_line,
+            ))
 
     return errors
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# PUBLIC API
-# ─────────────────────────────────────────────────────────────────────────────
 
 def parse_file(filepath: Path) -> ParseResult:
     """
@@ -228,29 +195,15 @@ def parse_file(filepath: Path) -> ParseResult:
     )
 
 
-def flatten(roots: list[MarkerBlock]) -> list[MarkerBlock]:
-    """Return all blocks (at every depth) as a flat list."""
+def flatten(blocks: list[MarkerBlock]) -> list[MarkerBlock]:
+    """Return every block in the tree (depth-first), including nested children."""
     result = []
-
-    def walk(block):
-        result.append(block)
-        for c in block.children:
-            walk(c)
-
-    for r in roots:
-        walk(r)
+    for b in blocks:
+        result.append(b)
+        result.extend(flatten(b.children))
     return result
 
 
-def find_by_kind(roots: list[MarkerBlock], kind: str) -> list[MarkerBlock]:
-    """Find all blocks of a given kind (phase/mark/sub/api/xm/tc)."""
-    return [b for b in flatten(roots) if b.kind == kind]
-
-
-def print_tree(roots: list[MarkerBlock], indent: int = 0):
-    """Debug helper: print the marker tree structure."""
-    for b in roots:
-        line_count = (b.end_line - b.start_line - 1) if b.end_line > 0 else 0
-        print("  " * indent + f"{b.kind.upper()}:{b.marker_id}  "
-              f"(lines {b.start_line}-{b.end_line}, {line_count} content lines)")
-        print_tree(b.children, indent + 1)
+def find_by_kind(blocks: list[MarkerBlock], kind: str) -> list[MarkerBlock]:
+    """Return every block of a given kind, anywhere in the tree."""
+    return [b for b in flatten(blocks) if b.kind == kind]

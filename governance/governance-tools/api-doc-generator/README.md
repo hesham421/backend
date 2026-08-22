@@ -123,7 +123,9 @@ renderers/
                          A renderer only renders — it must never call an
                          extractor or infer missing data itself.
   markdown_renderer.py   index.md (module overview + shared sections) +
-                         endpoints/<group>/<slug>.md per endpoint. Flattens
+                         endpoints/<group-slug>.md per group (= controller,
+                         one file per @Tag), with every endpoint inside it as
+                         its own "## {METHOD} {path}" section. Flattens
                          FieldSpec.nested into dotted-path rows (parent.child,
                          parent[].child) recursively, so nested DTOs render as
                          real fields instead of an opaque type name.
@@ -131,8 +133,10 @@ sync.py                  Documentation synchronization layer. Runs strictly
                          AFTER rendering — compares the freshly rendered
                          {path: text} against what's already under the output
                          directory, classifies each endpoint as
-                         added/removed/updated/unchanged, diffs index.md's
-                         shared sections, and decides what to write/delete.
+                         added/removed/updated/unchanged by diffing each
+                         group file's "## " endpoint sections (the same
+                         mechanism it already uses for index.md's shared
+                         sections), and decides what to write/delete.
                          Never calls an extractor, never formats markdown.
 ```
 
@@ -272,14 +276,20 @@ Mode        : Update
 Added       : 1
   + POST /widgets/{id}/archive
 Removed     : 1
-  - deleteLegacyWidget (no longer present in the backend)
+  - DELETE /widgets/{legacyId} (no longer present in the backend)
 Updated     : 2
   ~ GET /widgets
   ~ POST /widgets
+  (both in endpoints/widgets.md)
 Unchanged   : 0
 Shared docs : API Catalog (changed)
 Files written: 4, deleted: 1
 ```
+
+Endpoint changes are still reported one line per endpoint — grouping several
+endpoints into one file on disk is a storage/sync-diffing detail, not a loss
+of report granularity. When 2+ changes in the same status land in the same
+group file, a `(both in ...)` / `(all N in ...)` note follows the list.
 
 Output layout (one `api-docs/` per module, alongside its other governance
 packages, not a shared `output/` under the tool itself):
@@ -291,8 +301,9 @@ modules/ORG/api-docs/
 │                                      known error codes (+ Status/HTTP status
 │                                      where discoverable), API catalog
 └── endpoints/
-    └── <group-slug>/
-        └── <operationId-or-method-path-slug>.md
+    └── <group-slug>.md               one file per group (= controller),
+                                       every endpoint a "## {METHOD} {path}"
+                                       section within it
 ```
 
 ## Supported Spring Boot features
