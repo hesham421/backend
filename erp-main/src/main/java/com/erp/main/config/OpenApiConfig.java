@@ -181,6 +181,19 @@ public class OpenApiConfig {
     }
 
     /**
+     * 📁 File Service Module APIs
+     * - Upload tokens, uploads, downloads, access tokens, deletion
+     */
+    @Bean
+    public GroupedOpenApi fileServiceApi() {
+        return GroupedOpenApi.builder()
+            .group("5-file-service")
+            .displayName("📁 File Service")
+            .packagesToScan("com.example.erp.file.controller")
+            .build();
+    }
+
+    /**
      * 📊 All APIs (Combined view)
      * Shows all endpoints from all modules
      */
@@ -193,7 +206,8 @@ public class OpenApiConfig {
                 "com.example.security.controller",
                 "com.example.masterdata.controller",
                 "com.example.erp.finance.gl.controller",
-                "com.example.erp.org.controller"
+                "com.example.erp.org.controller",
+                "com.example.erp.file.controller"
             )
             .build();
     }
