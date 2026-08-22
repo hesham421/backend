@@ -77,12 +77,12 @@ Schema: `PageSecUserProfileDto`
 
 | Field | Type | Required | Constraints | Description |
 |---|---|---|---|---|
-| totalElements | integer (int64) | No |  |  |
 | totalPages | integer (int32) | No |  |  |
-| numberOfElements | integer (int32) | No |  |  |
+| totalElements | integer (int64) | No |  |  |
+| pageable | Pageable | No |  |  |
 | first | boolean | No |  |  |
 | last | boolean | No |  |  |
-| pageable | Pageable | No |  |  |
+| numberOfElements | integer (int32) | No |  |  |
 | size | integer (int32) | No |  |  |
 | number | integer (int32) | No |  |  |
 | sort | Sortnull | No |  |  |
@@ -184,6 +184,7 @@ Shared, module-independent mapping every business error code's `Status` resolves
 | DUPLICATE | CONFLICT |  |
 | ENDPOINT_NOT_FOUND | NOT_FOUND |  |
 | FORBIDDEN | FORBIDDEN |  |
+| GONE | GONE |  |
 | INTERNAL_ERROR | INTERNAL_SERVER_ERROR |  |
 | INVALID_CREDENTIALS | UNAUTHORIZED |  |
 | INVALID_FORMAT | BAD_REQUEST |  |
@@ -216,87 +217,87 @@ Shared, module-independent mapping every business error code's `Status` resolves
 
 | Method | Path | Summary | Doc |
 |---|---|---|---|
-| GET | `/api/v1/security/user-profiles/{userId}` | Get user profile by user ID | [getById](endpoints/security-datascope-user-profiles/getById.md) |
-| PUT | `/api/v1/security/user-profiles/{userId}` | Update user profile | [update](endpoints/security-datascope-user-profiles/update.md) |
-| GET | `/api/v1/security/user-profiles` | List user profiles | [list](endpoints/security-datascope-user-profiles/list.md) |
-| POST | `/api/v1/security/user-profiles` | Create user profile | [create](endpoints/security-datascope-user-profiles/create.md) |
-| POST | `/api/v1/security/user-profiles/search` | Search user profiles | [search](endpoints/security-datascope-user-profiles/search.md) |
+| GET | `/api/v1/security/user-profiles/{userId}` | Get user profile by user ID | [getById](endpoints/security-datascope-user-profiles.md#get-apiv1securityuser-profilesuserid) |
+| PUT | `/api/v1/security/user-profiles/{userId}` | Update user profile | [update](endpoints/security-datascope-user-profiles.md#put-apiv1securityuser-profilesuserid) |
+| GET | `/api/v1/security/user-profiles` | List user profiles | [list](endpoints/security-datascope-user-profiles.md#get-apiv1securityuser-profiles) |
+| POST | `/api/v1/security/user-profiles` | Create user profile | [create](endpoints/security-datascope-user-profiles.md#post-apiv1securityuser-profiles) |
+| POST | `/api/v1/security/user-profiles/search` | Search user profiles | [search](endpoints/security-datascope-user-profiles.md#post-apiv1securityuser-profilessearch) |
 
 ### Security - DataScope - Role Branches
 
 | Method | Path | Summary | Doc |
 |---|---|---|---|
-| GET | `/api/v1/security/role-branches/{roleId}/{branchId}` | Get a role-branch assignment | [getById_1](endpoints/security-datascope-role-branches/getById_1.md) |
-| PUT | `/api/v1/security/role-branches/{roleId}/{branchId}` | Update a role-branch assignment | [update_1](endpoints/security-datascope-role-branches/update_1.md) |
-| DELETE | `/api/v1/security/role-branches/{roleId}/{branchId}` | Remove a role-branch assignment | [delete](endpoints/security-datascope-role-branches/delete.md) |
-| GET | `/api/v1/security/role-branches` | List role-branch assignments | [list_1](endpoints/security-datascope-role-branches/list_1.md) |
-| POST | `/api/v1/security/role-branches` | Assign a branch scope to a role | [create_1](endpoints/security-datascope-role-branches/create_1.md) |
-| POST | `/api/v1/security/role-branches/search` | Search role-branch assignments | [search_1](endpoints/security-datascope-role-branches/search_1.md) |
+| GET | `/api/v1/security/role-branches/{roleId}/{branchId}` | Get a role-branch assignment | [getById_1](endpoints/security-datascope-role-branches.md#get-apiv1securityrole-branchesroleidbranchid) |
+| PUT | `/api/v1/security/role-branches/{roleId}/{branchId}` | Update a role-branch assignment | [update_1](endpoints/security-datascope-role-branches.md#put-apiv1securityrole-branchesroleidbranchid) |
+| DELETE | `/api/v1/security/role-branches/{roleId}/{branchId}` | Remove a role-branch assignment | [delete](endpoints/security-datascope-role-branches.md#delete-apiv1securityrole-branchesroleidbranchid) |
+| GET | `/api/v1/security/role-branches` | List role-branch assignments | [list_1](endpoints/security-datascope-role-branches.md#get-apiv1securityrole-branches) |
+| POST | `/api/v1/security/role-branches` | Assign a branch scope to a role | [create_1](endpoints/security-datascope-role-branches.md#post-apiv1securityrole-branches) |
+| POST | `/api/v1/security/role-branches/search` | Search role-branch assignments | [search_1](endpoints/security-datascope-role-branches.md#post-apiv1securityrole-branchessearch) |
 
 ### User Management
 
 | Method | Path | Summary | Doc |
 |---|---|---|---|
-| PUT | `/api/users/{userId}` | Update user | [update_2](endpoints/user-management/update_2.md) |
-| DELETE | `/api/users/{userId}` | Delete user | [delete_1](endpoints/user-management/delete_1.md) |
-| GET | `/api/users/{userId}/roles` | Get user roles | [getUserRoles](endpoints/user-management/getUserRoles.md) |
-| PUT | `/api/users/{userId}/roles` | Assign roles to user | [assignRoles](endpoints/user-management/assignRoles.md) |
-| GET | `/api/users` | List all users | [all](endpoints/user-management/all.md) |
-| POST | `/api/users` | Create new user | [create_2](endpoints/user-management/create_2.md) |
-| POST | `/api/users/search` | Dynamic search for users | [search_2](endpoints/user-management/search_2.md) |
+| PUT | `/api/users/{userId}` | Update user | [update_2](endpoints/user-management.md#put-apiusersuserid) |
+| DELETE | `/api/users/{userId}` | Delete user | [delete_1](endpoints/user-management.md#delete-apiusersuserid) |
+| GET | `/api/users/{userId}/roles` | Get user roles | [getUserRoles](endpoints/user-management.md#get-apiusersuseridroles) |
+| PUT | `/api/users/{userId}/roles` | Assign roles to user | [assignRoles](endpoints/user-management.md#put-apiusersuseridroles) |
+| GET | `/api/users` | List all users | [all](endpoints/user-management.md#get-apiusers) |
+| POST | `/api/users` | Create new user | [create_2](endpoints/user-management.md#post-apiusers) |
+| POST | `/api/users/search` | Dynamic search for users | [search_2](endpoints/user-management.md#post-apiuserssearch) |
 
 ### Role Access Control
 
 | Method | Path | Summary | Doc |
 |---|---|---|---|
-| GET | `/api/roles/{roleId}` | Get role by ID | [getRoleById](endpoints/role-access-control/getRoleById.md) |
-| PUT | `/api/roles/{roleId}` | Update role | [updateRole](endpoints/role-access-control/updateRole.md) |
-| DELETE | `/api/roles/{roleId}` | Delete role | [deleteRole](endpoints/role-access-control/deleteRole.md) |
-| PUT | `/api/roles/{roleId}/toggle-active` | Toggle role active status | [toggleRoleActive](endpoints/role-access-control/toggleRoleActive.md) |
-| GET | `/api/roles/{roleId}/pages` | Get role pages matrix | [getRolePages](endpoints/role-access-control/getRolePages.md) |
-| PUT | `/api/roles/{roleId}/pages` | Bulk update role pages (replace mode) | [syncRolePages](endpoints/role-access-control/syncRolePages.md) |
-| POST | `/api/roles/{roleId}/pages` | Add page to role | [addPageToRole](endpoints/role-access-control/addPageToRole.md) |
-| POST | `/api/roles` | Create new role | [createRole](endpoints/role-access-control/createRole.md) |
-| POST | `/api/roles/{roleId}/copy-from/{sourceRoleId}` | Copy page permissions from another role | [copyFromRole](endpoints/role-access-control/copyFromRole.md) |
-| POST | `/api/roles/search` | Search roles | [searchRoles](endpoints/role-access-control/searchRoles.md) |
-| DELETE | `/api/roles/{roleId}/pages/{pageCode}` | Remove page from role | [removePageFromRole](endpoints/role-access-control/removePageFromRole.md) |
+| GET | `/api/roles/{roleId}` | Get role by ID | [getRoleById](endpoints/role-access-control.md#get-apirolesroleid) |
+| PUT | `/api/roles/{roleId}` | Update role | [updateRole](endpoints/role-access-control.md#put-apirolesroleid) |
+| DELETE | `/api/roles/{roleId}` | Delete role | [deleteRole](endpoints/role-access-control.md#delete-apirolesroleid) |
+| PUT | `/api/roles/{roleId}/toggle-active` | Toggle role active status | [toggleRoleActive](endpoints/role-access-control.md#put-apirolesroleidtoggle-active) |
+| GET | `/api/roles/{roleId}/pages` | Get role pages matrix | [getRolePages](endpoints/role-access-control.md#get-apirolesroleidpages) |
+| PUT | `/api/roles/{roleId}/pages` | Bulk update role pages (replace mode) | [syncRolePages](endpoints/role-access-control.md#put-apirolesroleidpages) |
+| POST | `/api/roles/{roleId}/pages` | Add page to role | [addPageToRole](endpoints/role-access-control.md#post-apirolesroleidpages) |
+| POST | `/api/roles` | Create new role | [createRole](endpoints/role-access-control.md#post-apiroles) |
+| POST | `/api/roles/{roleId}/copy-from/{sourceRoleId}` | Copy page permissions from another role | [copyFromRole](endpoints/role-access-control.md#post-apirolesroleidcopy-fromsourceroleid) |
+| POST | `/api/roles/search` | Search roles | [searchRoles](endpoints/role-access-control.md#post-apirolessearch) |
+| DELETE | `/api/roles/{roleId}/pages/{pageCode}` | Remove page from role | [removePageFromRole](endpoints/role-access-control.md#delete-apirolesroleidpagespagecode) |
 
 ### Permission Management
 
 | Method | Path | Summary | Doc |
 |---|---|---|---|
-| PUT | `/api/permissions/{id}` | Update permission | [update_3](endpoints/permission-management/update_3.md) |
-| POST | `/api/permissions` | Create new permission | [create_3](endpoints/permission-management/create_3.md) |
-| POST | `/api/permissions/search` | Search permissions | [searchPermissions](endpoints/permission-management/searchPermissions.md) |
+| PUT | `/api/permissions/{id}` | Update permission | [update_3](endpoints/permission-management.md#put-apipermissionsid) |
+| POST | `/api/permissions` | Create new permission | [create_3](endpoints/permission-management.md#post-apipermissions) |
+| POST | `/api/permissions/search` | Search permissions | [searchPermissions](endpoints/permission-management.md#post-apipermissionssearch) |
 
 ### Page Management
 
 | Method | Path | Summary | Doc |
 |---|---|---|---|
-| GET | `/api/pages/{id}` | Get page by ID | [getPageById](endpoints/page-management/getPageById.md) |
-| PUT | `/api/pages/{id}` | Update page | [updatePage](endpoints/page-management/updatePage.md) |
-| PUT | `/api/pages/{id}/reactivate` | Reactivate page | [reactivatePage](endpoints/page-management/reactivatePage.md) |
-| PUT | `/api/pages/{id}/deactivate` | Deactivate page | [deactivatePage](endpoints/page-management/deactivatePage.md) |
-| POST | `/api/pages` | Create new page | [createPage](endpoints/page-management/createPage.md) |
-| POST | `/api/pages/search` | Search pages | [searchPages](endpoints/page-management/searchPages.md) |
-| GET | `/api/pages/active` | Get active pages | [getActivePages](endpoints/page-management/getActivePages.md) |
+| GET | `/api/pages/{id}` | Get page by ID | [getPageById](endpoints/page-management.md#get-apipagesid) |
+| PUT | `/api/pages/{id}` | Update page | [updatePage](endpoints/page-management.md#put-apipagesid) |
+| PUT | `/api/pages/{id}/reactivate` | Reactivate page | [reactivatePage](endpoints/page-management.md#put-apipagesidreactivate) |
+| PUT | `/api/pages/{id}/deactivate` | Deactivate page | [deactivatePage](endpoints/page-management.md#put-apipagesiddeactivate) |
+| POST | `/api/pages` | Create new page | [createPage](endpoints/page-management.md#post-apipages) |
+| POST | `/api/pages/search` | Search pages | [searchPages](endpoints/page-management.md#post-apipagessearch) |
+| GET | `/api/pages/active` | Get active pages | [getActivePages](endpoints/page-management.md#get-apipagesactive) |
 
 ### Authentication
 
 | Method | Path | Summary | Doc |
 |---|---|---|---|
-| POST | `/api/auth/signup` | Self-registration sign up | [signup](endpoints/authentication/signup.md) |
-| POST | `/api/auth/signup/activate` | Activate a self-registered account | [activate](endpoints/authentication/activate.md) |
-| POST | `/api/auth/reset-password` | Reset password | [resetPassword](endpoints/authentication/resetPassword.md) |
-| POST | `/api/auth/refresh` | Refresh access token | [refresh](endpoints/authentication/refresh.md) |
-| POST | `/api/auth/logout` | User logout | [logout](endpoints/authentication/logout.md) |
-| POST | `/api/auth/login` | User login | [login](endpoints/authentication/login.md) |
-| POST | `/api/auth/login-token` | User login with complete user information | [loginWithToken](endpoints/authentication/loginWithToken.md) |
-| POST | `/api/auth/forgot-password` | Forgot password | [forgotPassword](endpoints/authentication/forgotPassword.md) |
+| POST | `/api/auth/signup` | Self-registration sign up | [signup](endpoints/authentication.md#post-apiauthsignup) |
+| POST | `/api/auth/signup/activate` | Activate a self-registered account | [activate](endpoints/authentication.md#post-apiauthsignupactivate) |
+| POST | `/api/auth/reset-password` | Reset password | [resetPassword](endpoints/authentication.md#post-apiauthreset-password) |
+| POST | `/api/auth/refresh` | Refresh access token | [refresh](endpoints/authentication.md#post-apiauthrefresh) |
+| POST | `/api/auth/logout` | User logout | [logout](endpoints/authentication.md#post-apiauthlogout) |
+| POST | `/api/auth/login` | User login | [login](endpoints/authentication.md#post-apiauthlogin) |
+| POST | `/api/auth/login-token` | User login with complete user information | [loginWithToken](endpoints/authentication.md#post-apiauthlogin-token) |
+| POST | `/api/auth/forgot-password` | Forgot password | [forgotPassword](endpoints/authentication.md#post-apiauthforgot-password) |
 
 ### Menu Management
 
 | Method | Path | Summary | Doc |
 |---|---|---|---|
-| GET | `/api/menu/user-menu` | Get user menu based on permissions | [getUserMenu](endpoints/menu-management/getUserMenu.md) |
-| GET | `/api/menu/user-menu/{userId}` | Get menu for specific user (Admin) | [getUserMenuById](endpoints/menu-management/getUserMenuById.md) |
+| GET | `/api/menu/user-menu` | Get user menu based on permissions | [getUserMenu](endpoints/menu-management.md#get-apimenuuser-menu) |
+| GET | `/api/menu/user-menu/{userId}` | Get menu for specific user (Admin) | [getUserMenuById](endpoints/menu-management.md#get-apimenuuser-menuuserid) |
