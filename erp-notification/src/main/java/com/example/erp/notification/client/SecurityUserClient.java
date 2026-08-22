@@ -37,7 +37,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class SecurityUserClient {
 
-    private final RestTemplate internalApiRestTemplate;
+    private final RestTemplate notificationInternalApiRestTemplate;
 
     @Value("${server.port:7272}")
     private int serverPort;
@@ -53,7 +53,7 @@ public class SecurityUserClient {
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
         try {
-            ResponseEntity<ApiResponse<PageContent>> response = internalApiRestTemplate.exchange(
+            ResponseEntity<ApiResponse<PageContent>> response = notificationInternalApiRestTemplate.exchange(
                     url, HttpMethod.POST, entity, new ParameterizedTypeReference<>() {});
             PageContent page = response.getBody() != null ? response.getBody().getData() : null;
             if (page == null || page.content() == null || page.content().isEmpty()) {

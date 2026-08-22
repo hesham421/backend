@@ -12,12 +12,16 @@ import org.springframework.web.client.RestTemplate;
  * {@code com.example.security.config.InternalApiClientConfig}'s identical pattern for
  * erp-security -> erp-org/erp-masterdata. See
  * {@link com.example.erp.notification.client.SecUserProfileClient}.
+ *
+ * <p>Named distinctly from the security-module twin (class bean name and
+ * {@code RestTemplate} bean name) because both get component-scanned into the same
+ * {@code erp-main} context — identical default names there would collide.
  */
-@Configuration
+@Configuration("notificationInternalApiClientConfig")
 public class InternalApiClientConfig {
 
     @Bean
-    public RestTemplate internalApiRestTemplate() {
+    public RestTemplate notificationInternalApiRestTemplate() {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(3000);
         factory.setReadTimeout(5000);

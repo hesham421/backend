@@ -194,6 +194,19 @@ public class OpenApiConfig {
     }
 
     /**
+     * 🔔 Notification Module APIs
+     * - Channel Config, Templates, Send/Schedule, Inbox
+     */
+    @Bean
+    public GroupedOpenApi notificationApi() {
+        return GroupedOpenApi.builder()
+            .group("6-notification")
+            .displayName("🔔 Notification")
+            .packagesToScan("com.example.erp.notification.controller")
+            .build();
+    }
+
+    /**
      * 📊 All APIs (Combined view)
      * Shows all endpoints from all modules
      */
@@ -207,7 +220,8 @@ public class OpenApiConfig {
                 "com.example.masterdata.controller",
                 "com.example.erp.finance.gl.controller",
                 "com.example.erp.org.controller",
-                "com.example.erp.file.controller"
+                "com.example.erp.file.controller",
+                "com.example.erp.notification.controller"
             )
             .build();
     }

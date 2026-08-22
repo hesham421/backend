@@ -39,7 +39,7 @@ public class SecUserProfileClient {
 
     public static final String DEFAULT_LANGUAGE = "EN";
 
-    private final RestTemplate internalApiRestTemplate;
+    private final RestTemplate notificationInternalApiRestTemplate;
 
     @Value("${server.port:7272}")
     private int serverPort;
@@ -50,7 +50,7 @@ public class SecUserProfileClient {
 
         SecUserProfileLookup profile;
         try {
-            ResponseEntity<ApiResponse<SecUserProfileLookup>> response = internalApiRestTemplate.exchange(
+            ResponseEntity<ApiResponse<SecUserProfileLookup>> response = notificationInternalApiRestTemplate.exchange(
                     url, HttpMethod.GET, entity, new ParameterizedTypeReference<>() {});
             profile = response.getBody() != null ? response.getBody().getData() : null;
         } catch (HttpClientErrorException ex) {

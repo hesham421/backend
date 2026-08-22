@@ -48,7 +48,8 @@ import java.util.Locale;
                 "com.example.masterdata.repository",
                 "com.example.erp.finance.gl.repository",
                 "com.example.erp.org.repository",
-                "com.example.erp.file.repository"
+                "com.example.erp.file.repository",
+                "com.example.erp.notification.repository"
         },
         entityManagerFactoryRef = "entityManagerFactory",
         transactionManagerRef = "transactionManager"
@@ -65,6 +66,7 @@ import java.util.Locale;
     "com.example.erp.finance.gl",               // Finance GL module
     "com.example.erp.org",                       // Organization module
     "com.example.erp.file",                      // File Service module
+    "com.example.erp.notification",              // Notification module
 
     // Common utilities
     "com.example.erp.common.web",               // Web components
