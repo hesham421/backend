@@ -48,7 +48,11 @@ public class SecUserProfileService {
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
             "userIdFk", "branchIdFk", "isActiveFl", "createdAt"
     );
-    private static final Set<String> ALLOWED_SEARCH_FIELDS = ALLOWED_SORT_FIELDS;
+    // fullNameAr/fullNameEn — OQ-010: search-only (not sortable), matching the frontend
+    // grid config's sortable: false for these columns.
+    private static final Set<String> ALLOWED_SEARCH_FIELDS = Set.of(
+            "userIdFk", "branchIdFk", "isActiveFl", "createdAt", "fullNameAr", "fullNameEn"
+    );
 
     @PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).USER_PROFILE_CREATE)")
     @Transactional
