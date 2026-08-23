@@ -8,6 +8,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Set;
+
 /**
  * Request DTO for creating a new Page
  */
@@ -58,4 +60,9 @@ public class CreatePageRequest {
     @Size(max = 500, message = "{validation.size}")
     @Schema(description = "Optional description")
     private String description;
+
+    @Schema(description = "Permission types to skip when auto-generating this page's "
+            + "CRUD permission records (e.g. a page with no delete action doesn't need "
+            + "a DELETE permission). VIEW cannot be suppressed.")
+    private Set<PermissionType> suppressPermissionTypes;
 }

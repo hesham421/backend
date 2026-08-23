@@ -2,14 +2,12 @@ package com.example.security.controller;
 
 import com.example.erp.common.web.ApiResponse;
 import com.example.erp.common.web.OperationCode;
-import com.example.security.constants.SecurityPermissions;
 import com.example.security.dto.MenuItemDto;
 import com.example.security.service.MenuService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -51,7 +49,6 @@ public class MenuController {
      * @return List of root menu items for that user
      */
     @GetMapping("/user-menu/{userId}")
-    @PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).USER_VIEW)")
     @Operation(
         summary = "Get menu for specific user (Admin)", 
         description = "Admin: View menu structure for any user. Useful for debugging permission issues."

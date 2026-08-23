@@ -146,11 +146,17 @@ public class PageService {
                 .description(request.getDescription())
                 .build();
 
+        Set<PermissionType> suppressTypes = request.getSuppressPermissionTypes() != null
+                ? request.getSuppressPermissionTypes() : Set.of();
+        if (suppressTypes.contains(PermissionType.VIEW)) {
+            throw new LocalizedException(Status.BAD_REQUEST, SecurityErrorCodes.CANNOT_REMOVE_VIEW_PERMISSION);
+        }
+
         Page savedPage = pageRepository.save(page);
         log.info("Page created with ID: {}", savedPage.getId());
 
         // Create permission RECORDS linked to the page (definitions only, no role assignment)
-        Map<String, String> permissionKeys = createPermissionRecords(savedPage);
+        Map<String, String> permissionKeys = createPermissionRecords(savedPage, suppressTypes);
         log.info("Auto-generated {} permission records for page: {}", permissionKeys.size(), pageCode);
 
         return ServiceResult.success(toResponse(savedPage, permissionKeys), Status.CREATED);
@@ -315,7 +321,7 @@ public class PageService {
      * @return Updated PageResponse with active=false
      */
     @Transactional
-    @PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).PAGE_UPDATE)")
+    @PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).PAGE_DELETE)")
     public ServiceResult<PageResponse> deactivatePage(Long id) {
         return setPageActive(id, false);
     }
@@ -382,13 +388,18 @@ public class PageService {
      * 2) RoleAccessService manages access control (who can do what)
      *
      * @param page The Page entity to link permissions to
+     * @param suppressTypes Permission types to skip generating for this page (e.g. a
+     *        page with no delete action doesn't need a DELETE permission record)
      * @return Map of permission type -> permission key (e.g., "VIEW" -> "PERM_USER_VIEW")
      */
-    private Map<String, String> createPermissionRecords(Page page) {
+    private Map<String, String> createPermissionRecords(Page page, Set<PermissionType> suppressTypes) {
         Map<String, String> permissionKeys = new LinkedHashMap<>();
         String pageCode = page.getPageCode();
 
         for (PermissionType type : PermissionType.values()) {
+            if (suppressTypes.contains(type)) {
+                continue;
+            }
             String permKey = type.buildPermissionKey(pageCode);
             permissionKeys.put(type.name(), permKey);
 

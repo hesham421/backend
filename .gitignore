@@ -40,3 +40,5 @@ node_modules/
 /playwright/.cache/
 /playwright/.auth/
 tests/masterdata-test-results.json
+testsprite_tests/tmp/
+testsprite_tests/tmp/config.json
