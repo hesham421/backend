@@ -1,0 +1,7 @@
+[
+  {
+    "id": "TC001",
+    "title": "verify_file_upload_download_delete_token_validation",
+    "description": "Test the file upload, download, and delete endpoints that use encrypted tokens for authentication. Verify that expired, tampered, reused, or wrong-action tokens are correctly rejected by the FileTokenFilter on /upload/{encryptedToken}, /download/{encryptedToken}, and /{encryptedToken} endpoints."
+  }
+]

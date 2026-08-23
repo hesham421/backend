@@ -20,6 +20,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * JPA entity for NOTIF_CHANNEL_CONFIG (ENTITY-NOTIF-003, DBF-0031..0038). PRIVATE
@@ -56,8 +58,14 @@ public class NotificationChannelConfig extends AuditableEntity {
     private Boolean isEnabledFl = Boolean.TRUE;
 
     // FIELD-0034 — provider adapter config, consumed by the channel/ dispatch adapters (CORE.md).
-    // TEXT → String + @Lob per CORE-8 type mapping.
+    // TEXT → String + @Lob per CORE-8 type mapping. @JdbcTypeCode(SqlTypes.LONGVARCHAR) forces
+    // Postgres TEXT binding — without it, Hibernate's default @Lob+String mapping on the
+    // PostgreSQL dialect is the Large Object API (oid column type), which doesn't match this
+    // TEXT column and makes ddl-auto=update try (and fail) an ALTER COLUMN ... SET DATA TYPE
+    // oid on every startup. columnDefinition = "text" is required too — without it, Hibernate
+    // infers a bounded varchar(32600) DDL instead of unbounded TEXT.
     @Lob
-    @Column(name = "CONFIG_JSON")
+    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
+    @Column(name = "CONFIG_JSON", columnDefinition = "text")
     private String configJson;
 }

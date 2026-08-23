@@ -20,6 +20,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * JPA entity for NOTIF_TEMPLATE (ENTITY-NOTIF-002, DBF-0017..0030). PRIVATE (Phase 1).
@@ -76,15 +78,23 @@ public class NotificationTemplate extends AuditableEntity {
     private String moduleCode;
 
     // FIELD-0023 — Phase-1 inline storage, supports {{placeholder}} syntax. TEXT → String + @Lob.
+    // @JdbcTypeCode(SqlTypes.LONGVARCHAR) forces Postgres TEXT binding — without it, Hibernate's
+    // default @Lob+String mapping on the PostgreSQL dialect is the Large Object API (oid column
+    // type), which doesn't match this TEXT column and makes ddl-auto=update try (and fail) an
+    // ALTER COLUMN ... SET DATA TYPE oid on every startup. columnDefinition = "text" is required
+    // too — without it, Hibernate infers a bounded varchar(32600) DDL instead of unbounded TEXT.
     @Lob
+    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
     @NotBlank(message = "{validation.required}")
-    @Column(name = "TEMPLATE_BODY_AR", nullable = false)
+    @Column(name = "TEMPLATE_BODY_AR", nullable = false, columnDefinition = "text")
     private String templateBodyAr;
 
-    // FIELD-0024 — Phase-1 inline storage. TEXT → String + @Lob.
+    // FIELD-0024 — Phase-1 inline storage. TEXT → String + @Lob. See TEMPLATE_BODY_AR above for
+    // why @JdbcTypeCode(SqlTypes.LONGVARCHAR) + columnDefinition = "text" are required alongside @Lob.
     @Lob
+    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
     @NotBlank(message = "{validation.required}")
-    @Column(name = "TEMPLATE_BODY_EN", nullable = false)
+    @Column(name = "TEMPLATE_BODY_EN", nullable = false, columnDefinition = "text")
     private String templateBodyEn;
 
     // FIELD-0025 — DEFERRED, unused Phase 1 — XM-NOTIF-001 (see INT-C/INT-R). No JPA association:

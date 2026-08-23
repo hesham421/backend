@@ -36,7 +36,8 @@ public class Permission extends AuditableEntity {
      * 001_rename_pk_fk_to_standard.sql instead.
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "permissions_seq")
+    @SequenceGenerator(name = "permissions_seq", sequenceName = "PERMISSIONS_SEQ", allocationSize = 1)
     @Column(name = "PERMISSIONS_PK")
     private Long id;
 

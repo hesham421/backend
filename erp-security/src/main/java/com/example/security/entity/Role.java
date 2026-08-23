@@ -38,7 +38,8 @@ public class Role extends AuditableEntity {
      * is enforced in the live DB by 001_rename_pk_fk_to_standard.sql instead.
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "roles_seq")
+    @SequenceGenerator(name = "roles_seq", sequenceName = "ROLES_SEQ", allocationSize = 1)
     @Column(name = "ROLES_PK")
     private Long id;
 

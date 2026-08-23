@@ -26,8 +26,9 @@ public class UserAccount extends AuditableEntity {
      * is enforced in the live DB by 001_rename_pk_fk_to_standard.sql instead.
      */
     @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Column(name = "USERS_PK")
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "users_seq")
+    @SequenceGenerator(name = "users_seq", sequenceName = "USERS_SEQ", allocationSize = 1)
+    @Column(name = "USERS_PK")
     private Long id;
 
     @Column(name = "USERNAME", nullable=false, length=80)
