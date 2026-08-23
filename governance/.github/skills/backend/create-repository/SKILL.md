@@ -43,6 +43,18 @@ Generates a JPA repository interface for the ERP system following the canonical 
 
 ---
 
+## Cross-Module Access
+
+This repository is injected ONLY within its own module's service. If another module needs
+this data, it consumes it via this module's own REST API — see `create-service`'s
+"Cross-Module Calls (XM)" section for the `*Client` + `InternalApiClientConfig` pattern used
+on the calling side (real examples: `OrgBranchClient`, `MasterDataLookupClient`,
+`SecUserProfileClient`). Do NOT add methods here to make this repository "easier to reuse"
+from another module — the module boundary is enforced through HTTP, not through repository
+design.
+
+---
+
 ## Steps
 
 ### 1. Create Repository File
@@ -119,7 +131,7 @@ Before creating a new repository, verify the following shared resources from `er
 | Rule ID | Rule | MUST |
 |---------|------|------|
 | A.2.2 | Annotated with `@Repository` | YES |
-| A.2.3 | NEVER injected outside its own module | YES |
+| A.2.3 | NEVER injected outside its own module (cross-module consumers use a `*Client` + REST call — see `create-service`'s "Cross-Module Calls (XM)") | YES |
 | A.2.4 | Existence checks use `boolean existsBy<Field>(...)` | YES |
 | A.2.5 | Update uniqueness uses `existsBy<Field>AndIdNot(value, id)` — ONLY if that field is mutable on update | YES |
 | A.2.6 | Child queries use `JOIN FETCH` in `@Query` to avoid N+1 | YES |

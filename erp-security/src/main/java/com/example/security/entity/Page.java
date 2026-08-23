@@ -92,6 +92,14 @@ public class Page extends AuditableEntity {
         return active;
     }
 
+    public void activate() {
+        this.active = Boolean.TRUE;
+    }
+
+    public void deactivate() {
+        this.active = Boolean.FALSE;
+    }
+
     /** Business rules enforced before persist/update (RULE 24.8 safety net) */
     @PrePersist
     protected void onCreate() {

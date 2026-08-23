@@ -11,6 +11,7 @@ import com.example.security.repository.PageRepository;
 import com.example.security.repository.UserAccountRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,6 +56,7 @@ public class MenuService {
      * جلب القائمة لمستخدم محدد (Admin use)
      */
     @Transactional(readOnly = true)
+    @PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).USER_VIEW)")
     public ServiceResult<List<MenuItemDto>> getUserMenu(Long userId) {
         log.debug("Building menu from SEC_PAGES for userId: {}", userId);
 

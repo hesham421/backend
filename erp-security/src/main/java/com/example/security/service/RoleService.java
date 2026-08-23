@@ -200,35 +200,40 @@ public class RoleService {
     }
 
     /**
-     * PATCH /api/roles/{roleId}/toggle-active
-     * Toggle role active status
+     * PUT /api/roles/{roleId}/activate
+     * Activate a role
      *
-     * NOTE: Currently the 'active' field is @Transient (not persisted).
-     * This method returns the role with the requested active status in memory only.
-     * After DB migration (adding IS_ACTIVE column), remove this note.
-     *
-     * Contract: role-access.contract.md - Endpoint 11
+     * Contract: role-access.contract.md - Endpoint 11 (activate)
      */
     @Transactional
     @PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).ROLE_UPDATE)")
-    public ServiceResult<RoleDto> toggleRoleActive(Long id, boolean active) {
+    public ServiceResult<RoleDto> activate(Long id) {
         Role role = roleRepo.findById(id)
             .orElseThrow(() -> new LocalizedException(Status.NOT_FOUND, SecurityErrorCodes.ROLE_NOT_FOUND, id));
 
-        // Set the active status
-        // NOTE: Currently @Transient - won't persist until DB migration is done
-        role.setActive(active);
-
-        // Save the role (active field won't persist while @Transient)
+        role.activate();
         Role saved = roleRepo.save(role);
 
-        // Manually set active on the saved entity for the response
-        // (since @Transient fields are not persisted/retrieved)
-        saved.setActive(active);
+        log.info("Activated role '{}' (id: {})", saved.getRoleName(), saved.getId());
+        return ServiceResult.success(RoleMapper.toDto(saved), Status.UPDATED);
+    }
 
-        log.info("Toggled role '{}' (id: {}) active status to: {}",
-            saved.getRoleName(), saved.getId(), active);
+    /**
+     * PUT /api/roles/{roleId}/deactivate
+     * Deactivate a role
+     *
+     * Contract: role-access.contract.md - Endpoint 11 (deactivate)
+     */
+    @Transactional
+    @PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).ROLE_UPDATE)")
+    public ServiceResult<RoleDto> deactivate(Long id) {
+        Role role = roleRepo.findById(id)
+            .orElseThrow(() -> new LocalizedException(Status.NOT_FOUND, SecurityErrorCodes.ROLE_NOT_FOUND, id));
 
+        role.deactivate();
+        Role saved = roleRepo.save(role);
+
+        log.info("Deactivated role '{}' (id: {})", saved.getRoleName(), saved.getId());
         return ServiceResult.success(RoleMapper.toDto(saved), Status.UPDATED);
     }
 }

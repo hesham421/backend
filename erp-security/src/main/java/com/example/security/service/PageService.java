@@ -338,7 +338,11 @@ public class PageService {
 
         log.info("{} page ID: {} (code: {})", active ? "Reactivating" : "Deactivating", id, page.getPageCode());
 
-        page.setActive(active);
+        if (active) {
+            page.activate();
+        } else {
+            page.deactivate();
+        }
 
         Page updated = pageRepository.save(page);
 

@@ -95,6 +95,10 @@ erp-<module>/src/main/java/com/example/<module>/
 │                                                            entity has Business Rules
 │                                                            needing Business Decision
 │                                                            ownership (see domain-layer.md)
+├── client/<Target>Client.java (if this feature       [ ]  ← only if this feature reads
+│   reads data owned by another module)                     data from another module —
+│                                                            see create-service's
+│                                                            "Cross-Module Calls (XM)"
 ├── exception/<Module>ErrorCodes.java (updated)      [ ]
 ├── service/<Entity>Service.java                     [ ]
 └── controller/<Entity>Controller.java               [ ]
@@ -207,7 +211,27 @@ Run each enforcement skill's full checklist:
              violations (not the service)
 [ ] 3.6.4 — <Entity>Domain does NOT import or call another
              module's service — cross-module (XM) data is resolved
-             by the Service and passed in as a plain argument
+             by the Service (via a *Client — see create-service's
+             "Cross-Module Calls (XM)") and passed in as a plain
+             argument
+```
+
+#### 3.7 Cross-Module Calls & Eventing (see `create-service`)
+
+```
+[ ] 3.7.1 — Any cross-module read goes through a *Client class in
+             this module's client/ package, calling the target
+             module's own REST API — no direct import/injection of
+             another module's @Service, Repository, or @Entity
+[ ] 3.7.2 — The *Client is only ever injected into this module's
+             Service — never into a Domain object, mapper, or
+             controller
+[ ] 3.7.3 — Any event this feature publishes uses
+             ApplicationEventPublisher with a dedicated
+             <Action><Entity>Event record — no RabbitTemplate, no
+             message broker, no custom publisher/listener port
+[ ] 3.7.4 — The listener for a published event lives in the same
+             module that defines the event
 ```
 
 ---
@@ -235,7 +259,9 @@ Run each enforcement skill's full checklist:
 | **TOTAL** | **100%** | **134 points** |
 
 > Stage 0/1/2 totals include the Domain layer (1 execution-order step, 1 file, 7 contract
-> checks) added by the Domain Layer Guideline — see `domain-layer.md`.
+> checks) added by the Domain Layer Guideline — see `domain-layer.md`. Section 3.7 (Cross-Module
+> Calls & Eventing) is a pass/fail gate under Stage 3, not a separately-weighted point pool —
+> see "Automatic Rejection" below, which is where it's actually enforced.
 
 ### Verdict Thresholds
 
@@ -255,6 +281,11 @@ The feature is **IMMEDIATELY REJECTED** if any of these are found:
 - Service returning raw entity outside module
 - `GenerationType.IDENTITY` or `AUTO`
 - Repository injected in another module
+- Direct import/injection of another module's `@Service`, `Repository`, or `@Entity` from
+  anywhere in this module — cross-module reads must go through a `*Client` calling the
+  target module's REST API (see `create-service`'s "Cross-Module Calls (XM)")
+- An event published via `RabbitTemplate`, a message broker, or any publisher/listener port
+  other than `ApplicationEventPublisher` + a dedicated `<Action><Entity>Event` class
 - Business logic in controller
 - Missing `AuditableEntity` extension
 - `@Builder` instead of `@SuperBuilder` on entity
@@ -314,6 +345,8 @@ The feature is **IMMEDIATELY REJECTED** if any of these are found:
 | Security | 4 | ? | ? |
 | Immutability | 4 | ? | ? |
 | Response Envelope | 8 | ? | ? |
+| Domain Delegation | 4 | ? | ? |
+| Cross-Module Calls & Eventing | 4 | ? | ? |
 | Common-Utils Reuse | 8 | ? | ? |
 
 ## STAGE 4: Compilation

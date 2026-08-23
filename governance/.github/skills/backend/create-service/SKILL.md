@@ -48,7 +48,8 @@ Generates the service class for an ERP feature. This is **Phase 1, Step 1.7** of
 - MUST NOT assume missing error codes or permissions — they must be defined before service creation
 - MUST NOT hardcode error messages — use `<Module>ErrorCodes` constants only
 - MUST NOT catch `DataIntegrityViolationException` — let `GlobalExceptionHandler` handle it
-- MUST NOT set `isActive` directly — use entity’s `activate()`/`deactivate()` helpers
+- MUST NOT set `isActive` directly — use entity's `activate()`/`deactivate()` helpers
+- MUST NOT inject another module's `@Service`, `Repository`, or `@Entity` directly — cross-module reads go through a `*Client` calling that module's REST API (see "Cross-Module Calls (XM)" below)
 
 ## Output
 
@@ -74,20 +75,69 @@ unconditionally, regardless of what any module's Phase CORE does or doesn't say.
 - Call its decision method. It throws `LocalizedException` on violation.
 - On success, call the Entity's own mutation method (e.g. `entity.deactivate()`) and persist.
 
-Cross-module (XM) data needed for a decision is resolved by the Service — call the other
-module's service, obtain the result, and pass it into the Domain object's method as a plain
-argument. The Domain object itself never imports or calls another module's service.
+Cross-module (XM) data needed for a decision is resolved by the Service — call the target
+module's `*Client` (see "Cross-Module Calls (XM)" below), obtain the result, and pass it into
+the Domain object's method as a plain argument. The Domain object itself never imports or
+calls a `*Client`, another module's service, repository, or entity.
 
 The service MUST NOT own business rule conditions (if blocks that
 enforce business invariants) directly in its method bodies.
 
-## Cross-Module Interface Contracts (XM)
-If this service exposes an interface consumed by other modules:
-- The interface MUST be declared in service/ alongside the
-  implementation — NOT in a standalone api/ package.
-- Consuming modules import from:
-  com.example.<module>.service.<InterfaceName>
-- MUST NOT create a dedicated api/ package for this purpose.
+## Cross-Module Calls (XM)
+
+Modules here are separate Maven artifacts assembled into one `erp-main` deployable on one
+port — a module has no compile-time dependency on another module's internals, so
+cross-module reads go over the loopback HTTP API, never through a directly-injected bean
+from another module.
+
+**Calling another module (this module is the consumer):**
+- Add a `<Target>Client` class in `com.example.<module>.client` (real examples:
+  `OrgBranchClient`, `MasterDataLookupClient`, `SecUserProfileClient`, `SecurityUserClient`).
+- Inject the module's own `RestTemplate`, exposed by that module's
+  `InternalApiClientConfig` (`com.example.<module>.config.InternalApiClientConfig`). If the
+  module already has another `RestTemplate` bean in the same Spring context, give the bean a
+  module-qualified name (e.g. `notificationInternalApiRestTemplate`) — see
+  `erp-notification`'s `InternalApiClientConfig` javadoc for why: two `InternalApiClientConfig`
+  classes get component-scanned into the same `erp-main` context, and identical default bean
+  names there collide.
+- Call the target module's own public REST endpoint
+  (`http://localhost:${server.port}/api/...`), forwarding the caller's incoming
+  `Authorization` header — there is no service-to-service credential in this codebase.
+- Treat any 4xx from the call as "not usable" and translate it into this module's own
+  `LocalizedException`, rather than letting the internal HTTP error leak to the caller.
+- The Service is the ONLY layer allowed to hold a `*Client` — never inject a `*Client` into
+  a Domain object, mapper, or controller.
+
+**Exposing this module's data to other modules (this module is the target):**
+- Expose it through this module's own `@RestController` — the same public REST API a
+  frontend would call. Do NOT declare a Java interface in `service/` for another module to
+  implement or call directly, and do NOT create a dedicated `api/` package for this purpose
+  — there is no in-process module facade in this codebase.
+
+**Forbidden regardless of direction:** importing or injecting another module's `@Service`,
+`Repository`, or `@Entity` class directly. If it isn't reachable over that module's REST
+API, the Service does not have a way to reach it.
+
+## Publishing Domain Events (if applicable)
+
+If this feature needs to notify another part of the system that something happened (real
+examples: `erp-security` triggering account-activation email via
+`AccountActivationRequestedEvent`/`PasswordResetRequestedEvent`; `erp-notification`'s
+dispatch pipeline via `NotificationRequestedEvent`/`NotificationLogPersistedEvent`), publish
+an in-process Spring event — do NOT reach into another module's service to perform the side
+effect directly, and do NOT introduce a message broker.
+
+- Define one dedicated, immutable event class per trigger, named `<Action><Entity>Event`
+  (matching the existing convention), carrying only the plain data the listener needs.
+- Publish it from the Service via an injected `ApplicationEventPublisher`:
+  `eventPublisher.publishEvent(new <Action><Entity>Event(...))` — the same pattern used in
+  `AuthService` and `NotificationEventProcessor`.
+- The `@EventListener` (or `@TransactionalEventListener`) that reacts to it stays in the
+  owning module — the module that defines the event owns its listener(s). A different module
+  reacts to the outcome only by calling back over that module's REST API via a `*Client`,
+  never by listening for another module's internal event type.
+- Do NOT introduce `RabbitTemplate`, a message broker, or a publisher/listener port
+  abstraction for this — `ApplicationEventPublisher` is the whole pattern in this codebase.
 
 ### 1. Create Service File
 - **Location:** `erp-<MODULE_NAME>/src/main/java/com/example/<module>/service/<ENTITY_NAME>Service.java`
@@ -383,6 +433,11 @@ Before creating a service, verify the following shared resources from `erp-commo
 - ❌ A business-rule condition (`if` enforcing an invariant) implemented inline in a service
   method instead of delegated to the entity's `<Entity>Domain` object — see
   [`domain-layer.md`](../../../context/domain-layer.md)
+- ❌ Injecting another module's `@Service`, `Repository`, or `@Entity` directly instead of
+  calling it through a `*Client` — see "Cross-Module Calls (XM)"
+- ❌ Publishing an event via `RabbitTemplate`, a message broker, or a custom
+  publisher/listener port instead of `ApplicationEventPublisher` — see "Publishing Domain
+  Events"
 
 ---
 
@@ -417,6 +472,43 @@ public class MasterLookupService {
 
         log.info("Created MasterLookup ID: {}", saved.getId());
         return ServiceResult.success(masterLookupMapper.toResponse(saved), Status.CREATED);
+    }
+}
+```
+
+## Example (Real ERP — cross-module call, OrgBranchClient)
+
+```java
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class OrgBranchClient {
+
+    private final RestTemplate internalApiRestTemplate;
+
+    @Value("${server.port:7272}")
+    private int serverPort;
+
+    public void assertActiveBranch(Long branchId) {
+        String url = "http://localhost:" + serverPort + "/api/v1/org/branches/" + branchId;
+        HttpEntity<Void> entity = new HttpEntity<>(forwardedAuthHeaders());
+        // ... GET call, 4xx treated as "not usable", throws LocalizedException on failure
+    }
+}
+```
+
+## Example (Real ERP — publishing a domain event, AuthService)
+
+```java
+@Service
+@RequiredArgsConstructor
+public class AuthService {
+
+    private final ApplicationEventPublisher eventPublisher;
+
+    public void requestAccountActivation(UserAccount saved, String token, Instant expiresAt) {
+        // ...
+        eventPublisher.publishEvent(new AccountActivationRequestedEvent(saved.getId(), token, expiresAt));
     }
 }
 ```

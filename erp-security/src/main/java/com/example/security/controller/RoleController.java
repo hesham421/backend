@@ -107,21 +107,27 @@ public class RoleController {
     }
 
     /**
-     * PUT /api/roles/{roleId}/toggle-active
-     * Toggle role active status
-     * 
-     * Contract: role-access.contract.md - Endpoint 11
+     * PUT /api/roles/{roleId}/activate
+     * Activate role
+     *
+     * Contract: role-access.contract.md - Endpoint 11 (activate)
      */
-    @PutMapping("/{roleId}/toggle-active")
-    @Operation(
-        summary = "Toggle role active status",
-        description = "Activate or deactivate a role. Pass {active: true} to activate, {active: false} to deactivate."
-    )
-    public ResponseEntity<ApiResponse<RoleDto>> toggleRoleActive(
-            @PathVariable Long roleId,
-            @RequestBody ToggleRoleActiveRequest request
-    ) {
-        return operationCode.craftResponse(roleService.toggleRoleActive(roleId, request.isActive()));
+    @PutMapping("/{roleId}/activate")
+    @Operation(summary = "Activate role", description = "تفعيل الدور")
+    public ResponseEntity<ApiResponse<RoleDto>> activateRole(@PathVariable Long roleId) {
+        return operationCode.craftResponse(roleService.activate(roleId));
+    }
+
+    /**
+     * PUT /api/roles/{roleId}/deactivate
+     * Deactivate role
+     *
+     * Contract: role-access.contract.md - Endpoint 11 (deactivate)
+     */
+    @PutMapping("/{roleId}/deactivate")
+    @Operation(summary = "Deactivate role", description = "إلغاء تفعيل الدور")
+    public ResponseEntity<ApiResponse<RoleDto>> deactivateRole(@PathVariable Long roleId) {
+        return operationCode.craftResponse(roleService.deactivate(roleId));
     }
 
     // ========================================

@@ -31,7 +31,11 @@ import java.util.Optional;
  *
  * <h3>Architecture Rules:</h3>
  * <ul>
- *   <li>Rule 2: Implements {@link LookupValidationApi} for cross-module consumption</li>
+ *   <li>Rule 2: Exposed to other modules only via this module's own REST API
+ *       ({@code GET /api/lookups/{lookupCode}}, see {@code LookupConsumptionController}) —
+ *       cross-module consumers call it as a same-JVM HTTP self-call (e.g.
+ *       {@code com.example.security.client.MasterDataLookupClient}), never by injecting
+ *       this class or a facade interface directly.</li>
  *   <li>Rule 5.4: Return DTOs, not entities</li>
  *   <li>Rule 7: Clear public API per module</li>
  *   <li>Rule 23: Cache read-heavy / stable reference data</li>
@@ -44,7 +48,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 @Slf4j
 @Transactional(readOnly = true)
-public class LookupConsumptionService implements LookupValidationApi {
+public class LookupConsumptionService {
 
     private final MasterLookupRepository masterLookupRepository;
 
@@ -56,7 +60,7 @@ public class LookupConsumptionService implements LookupValidationApi {
     @Autowired
     private LookupConsumptionService self;
 
-    // ── Public API (LookupValidationApi) ─────────────────────────
+    // ── Public API ─────────────────────────────────────────────
 
     /**
      * Fetch all active lookup values for a lookup code.
@@ -70,7 +74,6 @@ public class LookupConsumptionService implements LookupValidationApi {
      * @param lookupCode Master lookup key (case-insensitive)
      * @return ServiceResult with list of values, or NOT_FOUND on error
      */
-    @Override
     public ServiceResult<List<LookupValueResponse>> fetchLookupValues(String lookupCode) {
         String key = normalize(lookupCode);
         log.debug("Fetching lookup values for key='{}'", key);
@@ -135,7 +138,6 @@ public class LookupConsumptionService implements LookupValidationApi {
      * @param value      Detail code to validate (e.g., "DEBIT", "TOTAL")
      * @return true if valid and active
      */
-    @Override
     public boolean isValid(String lookupCode, String value) {
         if (lookupCode == null || value == null || value.isBlank()) {
             return false;
@@ -153,7 +155,6 @@ public class LookupConsumptionService implements LookupValidationApi {
      * @param lookupCode Master lookup key
      * @param value      Detail code to validate
      */
-    @Override
     public void validateOrThrow(String lookupCode, String value) {
         if (!isValid(lookupCode, value)) {
             throw new LocalizedException(
@@ -168,12 +169,15 @@ public class LookupConsumptionService implements LookupValidationApi {
     // ── Private helpers ──────────────────────────────────────────
 
     /**
-     * {@inheritDoc}
+     * Get the SORT_ORDER for a specific lookup detail code.
      *
      * <p>Queries the lookup projection directly to find the SORT_ORDER for
      * a specific detail code under the given master lookup key.</p>
+     *
+     * @param lookupCode Master lookup key (e.g., "GL_ACCOUNT_TYPE")
+     * @param detailCode Lookup detail code (e.g., "ASSET", "LIABILITY")
+     * @return Optional containing the sort order if found, empty otherwise
      */
-    @Override
     public Optional<Integer> getSortOrder(String lookupCode, String detailCode) {
         if (lookupCode == null || detailCode == null) {
             return Optional.empty();
