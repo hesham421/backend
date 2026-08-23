@@ -2,6 +2,6 @@
   {
     "id": "TC001",
     "title": "post api auth login with valid credentials",
-    "description": "Verify that POST /api/auth/login with valid username and password returns 200 with accessToken and expiresIn, and that the token can be used for authenticated API calls."
+    "description": "Verify that POST /api/auth/login with valid username and password returns 200 with accessToken and expiresIn, allowing authenticated API calls with the token."
   }
 ]

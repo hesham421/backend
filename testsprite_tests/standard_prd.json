@@ -19,7 +19,7 @@
       "description": "Allows users to log in, refresh and revoke tokens, self-register, activate accounts, and request password resets.",
       "user_flows": [
         "POST /api/auth/login with valid username and password -> Receive 200 with accessToken and expiresIn -> Use token for authenticated API calls -> Receive 200 from protected endpoints",
-        "POST /api/auth/login with invalid credentials -> Receive 401/400 error response with success=false and error details",
+        "POST /api/auth/login with invalid credentials -> Receive error response with success=false and error details",
         "POST /api/auth/refresh with valid refresh-token HttpOnly cookie -> Receive 200 with new accessToken and expiresIn -> Continue calling protected endpoints",
         "POST /api/auth/logout with an active refresh token -> Receive 204 No Content -> Reusing the old refresh token fails on /api/auth/refresh",
         "POST /api/auth/signup with valid username, email, and password -> Receive 200 with signup confirmation while account remains disabled -> POST /api/auth/signup/activate with valid activation token -> Receive 200 OK",
@@ -34,14 +34,14 @@
         "POST /api/auth/login with valid credentials -> Receive 200 with access token -> GET /api/menu/user-menu with JWT bearer token -> Receive 200 with MenuItemDto[] for the current user",
         "POST /api/auth/login with a low-privilege user -> Receive 200 with access token -> GET /api/menu/user-menu with JWT bearer token -> Receive 200 with a reduced menu tree based on VIEW permission",
         "POST /api/auth/login with valid credentials -> Receive 200 with access token -> GET /api/menu/user-menu/{userId} as an admin -> Receive 200 with MenuItemDto[] for the specified user",
-        "GET /api/menu/user-menu without a JWT bearer token -> Receive 401/403 error response with success=false"
+        "GET /api/menu/user-menu without a JWT bearer token -> Receive error response with success=false"
       ]
     },
     {
       "name": "Pages",
       "description": "Manages application pages/screens and auto-generates CRUD permissions for each created page.",
       "user_flows": [
-        "POST /api/pages with valid pageCode, names, route, module, and active=true -> Receive 201/200 with PageResponse -> Verify auto-generated VIEW, CREATE, UPDATE, and DELETE permissions exist for the page",
+        "POST /api/pages with valid pageCode, names, route, module, and active=true -> Receive 200 with PageResponse -> Verify auto-generated VIEW, CREATE, UPDATE, and DELETE permissions exist for the page",
         "POST /api/pages/search with filters for pageCode, module, or active status -> Receive 200 with paginated Page<PageResponse> results",
         "GET /api/pages/active with a valid JWT token -> Receive 200 with PageResponse[] for dropdown use",
         "PUT /api/pages/{id} with updated metadata but unchanged pageCode -> Receive 200 with updated PageResponse",
@@ -54,22 +54,22 @@
       "name": "Permissions",
       "description": "Creates and updates granular permissions attached to pages and permission types.",
       "user_flows": [
-        "POST /api/permissions with a valid name, pageId, and permissionType -> Receive 201/200 with PermissionDto -> Use returned permission in role-page assignment flows",
+        "POST /api/permissions with a valid name, pageId, and permissionType -> Receive 200 with PermissionDto -> Use returned permission in role-page assignment flows",
         "POST /api/permissions/search with module or name filters -> Receive 200 with paginated Page<PermissionDto> results",
         "PUT /api/permissions/{id} with valid updated values -> Receive 200 with updated PermissionDto",
         "POST /api/permissions with an invalid pageId or duplicate permission definition -> Receive error response with success=false and error details",
-        "PUT /api/permissions/{id} for a non-existent permission -> Receive 404/400-style error response"
+        "PUT /api/permissions/{id} for a non-existent permission -> Receive error response"
       ]
     },
     {
       "name": "Roles",
       "description": "Creates and manages roles, activates or deactivates them, and manages page-permission assignments and copying.",
       "user_flows": [
-        "POST /api/roles with valid roleCode, roleName, description, and active flag -> Receive 201/200 with RoleDto -> GET /api/roles/{roleId} returns the created role",
+        "POST /api/roles with valid roleCode, roleName, description, and active flag -> Receive 200 with RoleDto -> GET /api/roles/{roleId} returns the created role",
         "POST /api/roles/search with roleName filter -> Receive 200 with paginated RoleDto results",
         "PUT /api/roles/{roleId} with updated roleName or description -> Receive 200 with updated RoleDto while roleCode remains immutable",
         "GET /api/roles/{roleId}/pages -> Receive 200 with RolePagesMatrixResponse showing assigned page CRUD permissions",
-        "POST /api/roles/{roleId}/pages with pageCode and permissions -> Receive 201/200 with PageAssignmentResponse -> GET /api/roles/{roleId}/pages shows VIEW added automatically",
+        "POST /api/roles/{roleId}/pages with pageCode and permissions -> Receive 200 with PageAssignmentResponse -> GET /api/roles/{roleId}/pages shows VIEW added automatically",
         "PUT /api/roles/{roleId}/pages with a full replacement matrix -> Receive 200 with RolePagesMatrixResponse reflecting the replacement",
         "POST /api/roles/{roleId}/copy-from/{sourceRoleId} -> Receive 200 with CopyPermissionsResponse -> GET /api/roles/{roleId}/pages reflects copied page-scoped permissions",
         "DELETE /api/roles/{roleId} for a role still referenced by users or assignments -> Receive 409 conflict with role-in-use details",
@@ -81,7 +81,7 @@
       "name": "Role Branch Scoping",
       "description": "Assigns branch-level data access scope to roles and supports create, search, update, and delete operations.",
       "user_flows": [
-        "POST /api/v1/security/role-branches with valid roleIdFk, branchIdFk, and dataAccessLevel -> Receive 201/200 with SecRoleBranchDto",
+        "POST /api/v1/security/role-branches with valid roleIdFk, branchIdFk, and dataAccessLevel -> Receive 200 with SecRoleBranchDto",
         "GET /api/v1/security/role-branches -> Receive 200 with paginated Page<SecRoleBranchDto> results",
         "POST /api/v1/security/role-branches/search with role or branch criteria -> Receive 200 with paginated search results",
         "GET /api/v1/security/role-branches/{roleId}/{branchId} -> Receive 200 with SecRoleBranchDto for the assignment",
@@ -94,7 +94,7 @@
       "name": "User Profiles",
       "description": "Stores extended user profile data such as names, preferred language, branch assignment, and employee linkage.",
       "user_flows": [
-        "POST /api/v1/security/user-profiles with valid userIdFk, branchIdFk, fullName, preferredLang, and employeeIdFk -> Receive 201/200 with SecUserProfileDto",
+        "POST /api/v1/security/user-profiles with valid userIdFk, branchIdFk, fullName, preferredLang, and employeeIdFk -> Receive 200 with SecUserProfileDto",
         "GET /api/v1/security/user-profiles -> Receive 200 with paginated Page<SecUserProfileDto> results",
         "POST /api/v1/security/user-profiles/search with user or branch filters -> Receive 200 with paginated profile results",
         "GET /api/v1/security/user-profiles/{userId} -> Receive 200 with SecUserProfileDto",
@@ -106,7 +106,7 @@
       "name": "Users",
       "description": "Creates and manages user accounts, supports search, updates, role assignment, and deletion.",
       "user_flows": [
-        "POST /api/users with valid username, password, and roleNames -> Receive 201/200 with UserDto -> GET /api/users/{userId}/roles returns assigned role names",
+        "POST /api/users with valid username, password, and roleNames -> Receive 200 with UserDto -> GET /api/users/{userId}/roles returns assigned role names",
         "GET /api/users with a valid JWT token -> Receive 200 with paginated Page<UserDto> results",
         "POST /api/users/search with dynamic filters such as enabled or createdAt -> Receive 200 with paginated search results",
         "PUT /api/users/{userId}/roles with a full roleNames replacement -> Receive 200 with updated UserDto -> GET /api/users/{userId}/roles reflects the new assignment",
@@ -119,7 +119,7 @@
       "name": "Organization - Legal Entities",
       "description": "Manages top-level legal entities with create, update, lookup, search, and activation lifecycle controls.",
       "user_flows": [
-        "POST /api/v1/org/legal-entities with valid nameAr, nameEn, entityTypeId, and notes -> Receive 201/200 with LegalEntityResponse",
+        "POST /api/v1/org/legal-entities with valid nameAr, nameEn, entityTypeId, and notes -> Receive 200 with LegalEntityResponse",
         "GET /api/v1/org/legal-entities/{id} -> Receive 200 with LegalEntityResponse",
         "POST /api/v1/org/legal-entities/search with name or status criteria -> Receive 200 with paginated Page<LegalEntityResponse> results",
         "PUT /api/v1/org/legal-entities/{id} with updated names or notes -> Receive 200 with updated LegalEntityResponse",
@@ -131,7 +131,7 @@
       "name": "Organization - Regions",
       "description": "Manages regions under legal entities with classification, search, and activation lifecycle controls.",
       "user_flows": [
-        "POST /api/v1/org/regions with valid legalEntityFk, regionTypeIdFk, nameAr, nameEn, and notes -> Receive 201/200 with RegionResponse",
+        "POST /api/v1/org/regions with valid legalEntityFk, regionTypeIdFk, nameAr, nameEn, and notes -> Receive 200 with RegionResponse",
         "GET /api/v1/org/regions/{id} -> Receive 200 with RegionResponse",
         "POST /api/v1/org/regions/search with legal entity or active filters -> Receive 200 with paginated Page<RegionResponse> results",
         "PUT /api/v1/org/regions/{id} with updated attributes -> Receive 200 with updated RegionResponse",
@@ -143,7 +143,7 @@
       "name": "Organization - Branches",
       "description": "Manages branches under legal entities with classification, lookup, search, and lifecycle controls.",
       "user_flows": [
-        "POST /api/v1/org/branches with valid legalEntityFk, nameAr, nameEn, branchTypeId, and notes -> Receive 201/200 with BranchResponse",
+        "POST /api/v1/org/branches with valid legalEntityFk, nameAr, nameEn, branchTypeId, and notes -> Receive 200 with BranchResponse",
         "GET /api/v1/org/branches/{id} -> Receive 200 with BranchResponse",
         "POST /api/v1/org/branches/search with legal entity or active criteria -> Receive 200 with paginated Page<BranchResponse> results",
         "PUT /api/v1/org/branches/{id} with updated branch fields -> Receive 200 with updated BranchResponse",
@@ -155,7 +155,7 @@
       "name": "Organization - Departments",
       "description": "Manages hierarchical departments within a branch, including recursive tree retrieval and lifecycle controls.",
       "user_flows": [
-        "POST /api/v1/org/departments with valid branchFk, names, parentDepartmentFk, nodeTypeId, and notes -> Receive 201/200 with DepartmentResponse",
+        "POST /api/v1/org/departments with valid branchFk, names, parentDepartmentFk, nodeTypeId, and notes -> Receive 200 with DepartmentResponse",
         "GET /api/v1/org/departments/{id} -> Receive 200 with DepartmentResponse",
         "POST /api/v1/org/departments/search with branch or active filters -> Receive 200 with paginated Page<DepartmentResponse> results",
         "GET /api/v1/org/departments/tree?branchFk={branchFk}&isActiveFl={flag} -> Receive 200 with DepartmentTreeNodeResponse[]",
@@ -167,7 +167,7 @@
       "name": "Organization - Cost Centers",
       "description": "Manages hierarchical cost centers within a branch, including tree retrieval and lifecycle controls.",
       "user_flows": [
-        "POST /api/v1/org/cost-centers with valid branchFk, names, parentCostCenterFk, nodeTypeId, costCenterTypeId, and notes -> Receive 201/200 with CostCenterResponse",
+        "POST /api/v1/org/cost-centers with valid branchFk, names, parentCostCenterFk, nodeTypeId, costCenterTypeId, and notes -> Receive 200 with CostCenterResponse",
         "GET /api/v1/org/cost-centers/{id} -> Receive 200 with CostCenterResponse",
         "POST /api/v1/org/cost-centers/search with branch or type filters -> Receive 200 with paginated Page<CostCenterResponse> results",
         "GET /api/v1/org/cost-centers/tree?branchFk={branchFk}&isActiveFl={flag} -> Receive 200 with CostCenterTreeNodeResponse[]",
@@ -179,7 +179,7 @@
       "name": "Organization - Profit Centers",
       "description": "Manages profit centers under legal entities with search and lifecycle controls.",
       "user_flows": [
-        "POST /api/v1/org/profit-centers with valid legalEntityFk, nameAr, nameEn, and notes -> Receive 201/200 with ProfitCenterResponse",
+        "POST /api/v1/org/profit-centers with valid legalEntityFk, nameAr, nameEn, and notes -> Receive 200 with ProfitCenterResponse",
         "GET /api/v1/org/profit-centers/{id} -> Receive 200 with ProfitCenterResponse",
         "POST /api/v1/org/profit-centers/search with legal entity or active criteria -> Receive 200 with paginated Page<ProfitCenterResponse> results",
         "PUT /api/v1/org/profit-centers/{id} with updated values -> Receive 200 with updated ProfitCenterResponse",
@@ -191,7 +191,7 @@
       "name": "Organization - Location Sites",
       "description": "Manages physical location sites within branches with classification, search, and lifecycle controls.",
       "user_flows": [
-        "POST /api/v1/org/location-sites with valid branchFk, nameAr, nameEn, siteTypeId, and notes -> Receive 201/200 with LocationSiteResponse",
+        "POST /api/v1/org/location-sites with valid branchFk, nameAr, nameEn, siteTypeId, and notes -> Receive 200 with LocationSiteResponse",
         "GET /api/v1/org/location-sites/{id} -> Receive 200 with LocationSiteResponse",
         "POST /api/v1/org/location-sites/search with branch or active filters -> Receive 200 with paginated Page<LocationSiteResponse> results",
         "PUT /api/v1/org/location-sites/{id} with updated site data -> Receive 200 with updated LocationSiteResponse",
@@ -203,8 +203,8 @@
       "name": "Master Data Lookups",
       "description": "Provides reusable master lookups and detail rows for dropdowns and cross-module reference data, including cached read-only consumption endpoints.",
       "user_flows": [
-        "POST /api/masterdata/master-lookups with valid lookupKey, lookupName, lookupNameEn, description, and isActive -> Receive 201/200 with MasterLookupResponse",
-        "POST /api/masterdata/master-lookups/details with valid masterLookupId, code, names, sortOrder, and isActive -> Receive 201/200 with LookupDetailResponse",
+        "POST /api/masterdata/master-lookups with valid lookupKey, lookupName, lookupNameEn, description, and isActive -> Receive 200 with MasterLookupResponse",
+        "POST /api/masterdata/master-lookups/details with valid masterLookupId, code, names, sortOrder, and isActive -> Receive 200 with LookupDetailResponse",
         "GET /api/lookups/{lookupCode} with a valid lookup code -> Receive 200 with cached LookupValueResponse[] for dropdown consumption",
         "GET /api/masterdata/master-lookups/{id}/usage -> Receive 200 with MasterLookupUsageResponse",
         "GET /api/masterdata/master-lookups/details/options/{lookupKey}?active=true -> Receive 200 with LookupDetailOptionResponse[]",
@@ -220,9 +220,9 @@
       "name": "File Management",
       "description": "Issues secure upload and access tokens, supports byte upload/download/delete via encrypted token routes, and lists files by owner.",
       "user_flows": [
-        "POST /api/v1/files/upload-token with valid ownerId, ownerType, moduleCode, and fileCategoryFk -> Receive 201/200 with encryptedToken and expiresAt -> POST /upload/{encryptedToken} with multipart file bytes -> Receive 201/200 with fileDocumentPk and file metadata",
-        "POST /api/v1/files/{fileDocumentPk}/access-token?action=download with a valid JWT token -> Receive 201/200 with encryptedToken and expiresAt -> GET /download/{encryptedToken} -> Receive binary file bytes",
-        "POST /api/v1/files/{fileDocumentPk}/access-token?action=delete with a valid JWT token -> Receive 201/200 with encryptedToken and expiresAt -> DELETE /{encryptedToken} -> Receive 200 with FileDeleteConfirmation",
+        "POST /api/v1/files/upload-token with valid ownerId, ownerType, moduleCode, and fileCategoryFk -> Receive 200 with encryptedToken and expiresAt -> POST /upload/{encryptedToken} with multipart file bytes -> Receive 200 with fileDocumentPk and file metadata",
+        "POST /api/v1/files/{fileDocumentPk}/access-token?action=download with a valid JWT token -> Receive 200 with encryptedToken and expiresAt -> GET /download/{encryptedToken} -> Receive binary file bytes",
+        "POST /api/v1/files/{fileDocumentPk}/access-token?action=delete with a valid JWT token -> Receive 200 with encryptedToken and expiresAt -> DELETE /{encryptedToken} -> Receive 200 with FileDeleteConfirmation",
         "GET /api/v1/files/{ownerId}?ownerType={ownerType}&page=0&size=10 with a valid JWT token -> Receive 200 with Page<FileDocumentSummaryResponse>",
         "POST /upload/{encryptedToken} with an expired, tampered, or wrong-action token -> Receive error response from token validation filter",
         "GET /download/{encryptedToken} after the token expires -> Receive error response or rejected request instead of file bytes",
@@ -234,11 +234,11 @@
       "name": "Notifications",
       "description": "Sends immediate or scheduled notifications, manages channel settings and templates, and exposes inbox/history endpoints for tracking.",
       "user_flows": [
-        "POST /api/v1/notifications/send with valid recipientId, channelHint, templateCode, contextData, priority, moduleCode, referenceId, and referenceType -> Receive 201/200 with NotificationSendConfirmation",
-        "POST /api/v1/notifications/schedule with future scheduledAt and valid notification payload -> Receive 201/200 with NotificationSendConfirmation",
+        "POST /api/v1/notifications/send with valid recipientId, channelHint, templateCode, contextData, priority, moduleCode, referenceId, and referenceType -> Receive 200 with NotificationSendConfirmation",
+        "POST /api/v1/notifications/schedule with future scheduledAt and valid notification payload -> Receive 200 with NotificationSendConfirmation",
         "GET /api/v1/notifications/channel-configs with a valid JWT token -> Receive 200 with NotificationChannelConfigResponse[]",
         "PUT /api/v1/notifications/channel-configs/{id} with isEnabledFl=false and configJson -> Receive 200 with updated NotificationChannelConfigResponse",
-        "POST /api/v1/notifications/templates with valid bilingual template fields -> Receive 201/200 with NotificationTemplateResponse",
+        "POST /api/v1/notifications/templates with valid bilingual template fields -> Receive 200 with NotificationTemplateResponse",
         "POST /api/v1/notifications/templates/search with module or templateCode filters -> Receive 200 with paginated Page<NotificationTemplateResponse> results",
         "GET /api/v1/notifications/templates/{id} -> Receive 200 with NotificationTemplateResponse",
         "PUT /api/v1/notifications/templates/{id} with updated bilingual body -> Receive 200 with updated NotificationTemplateResponse",
