@@ -3,16 +3,19 @@
 --
 -- Replaces the bare "{{token}} (valid until {{expiresAt}})" copy V11 seeded for
 -- PASSWORD_RESET_REQUESTED with a real bilingual HTML message: application
--- name, greeting, a clickable reset button, a human-readable expiry, a
+-- name header, a clickable reset button, a human-readable expiry, a
 -- "didn't request this" / do-not-share warning, and an optional support
 -- contact line. The raw token now only ever appears embedded inside
 -- {{resetUrl}} (URL-encoded), never as a bare standalone value.
 --
--- HTML is safe to use now: EmailChannelSender sends real MIME/HTML (not
+-- HTML is safe to use: EmailChannelSender sends real MIME/HTML (not
 -- SimpleMailMessage — see EmailChannelSender.java), and notif_log.body_preview
 -- is unbounded TEXT (V13), not the old VARCHAR(1000) that would have clipped
--- markup mid-tag. Table-based layout, inline CSS only, max-width ~600px —
--- standard transactional-email practice for client compatibility.
+-- markup mid-tag. Inline CSS only (external stylesheets/<style> blocks are
+-- unreliable across mail clients), single-column max-width layout for mobile,
+-- and two explicitly marked sections — dir="ltr" lang="en" and dir="rtl"
+-- lang="ar" — so RTL Arabic text actually renders right-to-left instead of
+-- inheriting the client's default direction.
 --
 -- templateCode is left as PASSWORD_RESET_REQUESTED (the code erp-security's
 -- NotificationClient already sends) rather than introducing a new code — no
@@ -33,55 +36,63 @@
 BEGIN;
 
 UPDATE notif_template
-SET template_body_ar = $$<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a;">
-  <h2 style="margin:0 0 16px;">{{applicationName}}</h2>
-
-  <div dir="ltr" lang="en" style="text-align:left;margin-bottom:24px;">
-    <p>Hi {{recipientNameEn}},</p>
-    <p>We received a request to reset your password. Click the button below to continue — this link expires on <strong>{{resetExpiryFormattedEn}}</strong>.</p>
-    <p style="margin:24px 0;">
-      <a href="{{resetUrl}}" style="background:#2563eb;color:#ffffff;padding:12px 20px;border-radius:6px;text-decoration:none;display:inline-block;">Reset Password</a>
-    </p>
-    <p>If you did not request this, you can safely ignore this email — your password will not change. Never share this link with anyone.</p>
+SET template_body_en = $$<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;padding:24px;background-color:#ffffff;color:#1f2937;">
+  <div style="text-align:center;padding-bottom:16px;border-bottom:2px solid #2563eb;">
+    <h1 style="margin:0;font-size:20px;color:#2563eb;">{{applicationName}}</h1>
   </div>
-
-  <hr style="border:none;border-top:1px solid #e5e5e5;margin:24px 0;">
-
-  <div dir="rtl" lang="ar" style="text-align:right;margin-bottom:24px;">
-    <p>مرحباً {{recipientNameAr}}،</p>
-    <p>وصلنا طلب لإعادة تعيين كلمة مرورك. اضغط على الزر أدناه للمتابعة — تنتهي صلاحية هذا الرابط في <strong>{{resetExpiryFormattedAr}}</strong>.</p>
-    <p style="margin:24px 0;">
-      <a href="{{resetUrl}}" style="background:#2563eb;color:#ffffff;padding:12px 20px;border-radius:6px;text-decoration:none;display:inline-block;">إعادة تعيين كلمة المرور</a>
-    </p>
-    <p>إذا لم تطلب ذلك، يمكنك تجاهل هذه الرسالة بأمان — لن تتغير كلمة مرورك. لا تشارك هذا الرابط مع أي شخص.</p>
+  <div dir="ltr" lang="en" style="padding:24px 0;text-align:left;">
+    <h2 style="font-size:18px;margin:0 0 12px 0;color:#111827;">Password Reset Request</h2>
+    <p style="font-size:14px;line-height:1.6;margin:0 0 12px 0;">Hello {{recipientNameEn}},</p>
+    <p style="font-size:14px;line-height:1.6;margin:0 0 16px 0;">We received a request to reset your password. Click the button below to continue:</p>
+    <div style="text-align:center;margin:24px 0;">
+      <a href="{{resetUrl}}" style="background-color:#2563eb;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;font-size:14px;font-weight:bold;display:inline-block;">Reset Password</a>
+    </div>
+    <p style="font-size:13px;line-height:1.6;margin:0 0 8px 0;color:#4b5563;">This link will expire on <strong>{{resetExpiryFormattedEn}}</strong>.</p>
+    <p style="font-size:13px;line-height:1.6;margin:0;color:#6b7280;">If you did not request a password reset, please ignore this email — your password will remain unchanged. Never share this link with anyone.</p>
   </div>
-
-  <p style="font-size:12px;color:#666;margin-top:24px;">{{supportEmail}}</p>
+  <hr style="border:none;border-top:1px solid #e5e7eb;margin:8px 0;">
+  <div dir="rtl" lang="ar" style="padding:24px 0;text-align:right;">
+    <h2 style="font-size:18px;margin:0 0 12px 0;color:#111827;">طلب إعادة تعيين كلمة المرور</h2>
+    <p style="font-size:14px;line-height:1.8;margin:0 0 12px 0;">مرحباً {{recipientNameAr}}،</p>
+    <p style="font-size:14px;line-height:1.8;margin:0 0 16px 0;">لقد تلقينا طلباً لإعادة تعيين كلمة المرور الخاصة بحسابك. اضغط على الزر أدناه للمتابعة:</p>
+    <div style="text-align:center;margin:24px 0;">
+      <a href="{{resetUrl}}" style="background-color:#2563eb;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;font-size:14px;font-weight:bold;display:inline-block;">إعادة تعيين كلمة المرور</a>
+    </div>
+    <p style="font-size:13px;line-height:1.8;margin:0 0 8px 0;color:#4b5563;">ستنتهي صلاحية هذا الرابط في <strong>{{resetExpiryFormattedAr}}</strong>.</p>
+    <p style="font-size:13px;line-height:1.8;margin:0;color:#6b7280;">إذا لم تطلب إعادة تعيين كلمة المرور، يمكنك تجاهل هذه الرسالة — لن تتغير كلمة مرورك. لا تشارك هذا الرابط مع أي شخص.</p>
+  </div>
+  <div style="text-align:center;padding-top:16px;border-top:1px solid #e5e7eb;margin-top:8px;">
+    <p style="font-size:12px;color:#9ca3af;margin:0;">{{applicationName}} &middot; Support: {{supportEmail}}</p>
+  </div>
 </div>$$,
-    template_body_en = $$<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a;">
-  <h2 style="margin:0 0 16px;">{{applicationName}}</h2>
-
-  <div dir="ltr" lang="en" style="text-align:left;margin-bottom:24px;">
-    <p>Hi {{recipientNameEn}},</p>
-    <p>We received a request to reset your password. Click the button below to continue — this link expires on <strong>{{resetExpiryFormattedEn}}</strong>.</p>
-    <p style="margin:24px 0;">
-      <a href="{{resetUrl}}" style="background:#2563eb;color:#ffffff;padding:12px 20px;border-radius:6px;text-decoration:none;display:inline-block;">Reset Password</a>
-    </p>
-    <p>If you did not request this, you can safely ignore this email — your password will not change. Never share this link with anyone.</p>
+    template_body_ar = $$<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;padding:24px;background-color:#ffffff;color:#1f2937;">
+  <div style="text-align:center;padding-bottom:16px;border-bottom:2px solid #2563eb;">
+    <h1 style="margin:0;font-size:20px;color:#2563eb;">{{applicationName}}</h1>
   </div>
-
-  <hr style="border:none;border-top:1px solid #e5e5e5;margin:24px 0;">
-
-  <div dir="rtl" lang="ar" style="text-align:right;margin-bottom:24px;">
-    <p>مرحباً {{recipientNameAr}}،</p>
-    <p>وصلنا طلب لإعادة تعيين كلمة مرورك. اضغط على الزر أدناه للمتابعة — تنتهي صلاحية هذا الرابط في <strong>{{resetExpiryFormattedAr}}</strong>.</p>
-    <p style="margin:24px 0;">
-      <a href="{{resetUrl}}" style="background:#2563eb;color:#ffffff;padding:12px 20px;border-radius:6px;text-decoration:none;display:inline-block;">إعادة تعيين كلمة المرور</a>
-    </p>
-    <p>إذا لم تطلب ذلك، يمكنك تجاهل هذه الرسالة بأمان — لن تتغير كلمة مرورك. لا تشارك هذا الرابط مع أي شخص.</p>
+  <div dir="ltr" lang="en" style="padding:24px 0;text-align:left;">
+    <h2 style="font-size:18px;margin:0 0 12px 0;color:#111827;">Password Reset Request</h2>
+    <p style="font-size:14px;line-height:1.6;margin:0 0 12px 0;">Hello {{recipientNameEn}},</p>
+    <p style="font-size:14px;line-height:1.6;margin:0 0 16px 0;">We received a request to reset your password. Click the button below to continue:</p>
+    <div style="text-align:center;margin:24px 0;">
+      <a href="{{resetUrl}}" style="background-color:#2563eb;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;font-size:14px;font-weight:bold;display:inline-block;">Reset Password</a>
+    </div>
+    <p style="font-size:13px;line-height:1.6;margin:0 0 8px 0;color:#4b5563;">This link will expire on <strong>{{resetExpiryFormattedEn}}</strong>.</p>
+    <p style="font-size:13px;line-height:1.6;margin:0;color:#6b7280;">If you did not request a password reset, please ignore this email — your password will remain unchanged. Never share this link with anyone.</p>
   </div>
-
-  <p style="font-size:12px;color:#666;margin-top:24px;">{{supportEmail}}</p>
+  <hr style="border:none;border-top:1px solid #e5e7eb;margin:8px 0;">
+  <div dir="rtl" lang="ar" style="padding:24px 0;text-align:right;">
+    <h2 style="font-size:18px;margin:0 0 12px 0;color:#111827;">طلب إعادة تعيين كلمة المرور</h2>
+    <p style="font-size:14px;line-height:1.8;margin:0 0 12px 0;">مرحباً {{recipientNameAr}}،</p>
+    <p style="font-size:14px;line-height:1.8;margin:0 0 16px 0;">لقد تلقينا طلباً لإعادة تعيين كلمة المرور الخاصة بحسابك. اضغط على الزر أدناه للمتابعة:</p>
+    <div style="text-align:center;margin:24px 0;">
+      <a href="{{resetUrl}}" style="background-color:#2563eb;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;font-size:14px;font-weight:bold;display:inline-block;">إعادة تعيين كلمة المرور</a>
+    </div>
+    <p style="font-size:13px;line-height:1.8;margin:0 0 8px 0;color:#4b5563;">ستنتهي صلاحية هذا الرابط في <strong>{{resetExpiryFormattedAr}}</strong>.</p>
+    <p style="font-size:13px;line-height:1.8;margin:0;color:#6b7280;">إذا لم تطلب إعادة تعيين كلمة المرور، يمكنك تجاهل هذه الرسالة — لن تتغير كلمة مرورك. لا تشارك هذا الرابط مع أي شخص.</p>
+  </div>
+  <div style="text-align:center;padding-top:16px;border-top:1px solid #e5e7eb;margin-top:8px;">
+    <p style="font-size:12px;color:#9ca3af;margin:0;">{{applicationName}} &middot; Support: {{supportEmail}}</p>
+  </div>
 </div>$$,
     updated_by = 'SYSTEM',
     updated_at = now()
