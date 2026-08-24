@@ -6,6 +6,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
@@ -17,6 +18,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 
@@ -76,9 +79,13 @@ public class NotificationLog extends AuditableEntity {
     @Column(name = "SUBJECT", length = 500)
     private String subject;
 
-    // FIELD-0006
-    @Size(max = 1000, message = "{validation.size}")
-    @Column(name = "BODY_PREVIEW", length = 1000)
+    // FIELD-0006 — was VARCHAR(1000); widened to unbounded TEXT (same @Lob +
+    // JdbcTypeCode(SqlTypes.LONGVARCHAR) + columnDefinition="text" pattern as
+    // NotificationTemplate.templateBodyAr/En) now that the EMAIL channel sends real HTML — the
+    // old 1000-char cap was clipping rendered bodies mid-tag.
+    @Lob
+    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
+    @Column(name = "BODY_PREVIEW", columnDefinition = "text")
     private String bodyPreview;
 
     // FIELD-0007 — LOV-NOTIF-002, Status Lifecycle (4 states)

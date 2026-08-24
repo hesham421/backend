@@ -44,6 +44,13 @@ public class NotificationEventProcessor {
      */
     private static final String DEFAULT_TEMPLATE_CODE = "SYSTEM_DEFAULT";
 
+    /**
+     * body_preview is TEXT now (was VARCHAR(1000) — see V13 migration), but it's still the
+     * literal content EmailChannelSender emails, not an unbounded log field — this is a
+     * defensive ceiling against a pathological template, not a real-world limit for an email.
+     */
+    private static final int MAX_BODY_LENGTH = 20_000;
+
     private final NotificationLogRepository logRepository;
     private final NotificationTemplateRepository templateRepository;
     private final NotificationChannelConfigRepository channelConfigRepository;
@@ -164,7 +171,7 @@ public class NotificationEventProcessor {
                 .notificationTypeId(channelTypeId)
                 .templateCode(request.getTemplateCode())
                 .subject(truncate(subject, 500))
-                .bodyPreview(truncate(renderedBody, 1000))
+                .bodyPreview(truncate(renderedBody, MAX_BODY_LENGTH))
                 .moduleCode(request.getModuleCode())
                 .referenceId(request.getReferenceId())
                 .referenceType(request.getReferenceType())
