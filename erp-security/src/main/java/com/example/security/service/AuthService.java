@@ -69,6 +69,7 @@ public class AuthService {
     private final PasswordResetTokenRepository passwordResetTokenRepo;
     private final SecRoleBranchRepository secRoleBranchRepo;
     private final ApplicationEventPublisher eventPublisher;
+    private final PasswordResetEmailContextBuilder passwordResetEmailContextBuilder;
 
     // Configuration Properties (injected via constructor)
     private final JwtProperties jwtProperties;
@@ -396,7 +397,10 @@ public class AuthService {
                     .usedFl(false)
                     .build());
 
-            eventPublisher.publishEvent(new PasswordResetRequestedEvent(user.getId(), token, expiresAt));
+            // Compose the email contextData here (never logged) and hand it to the event —
+            // AuthEventListener/NotificationClient only forward it, they never re-derive it.
+            var contextData = passwordResetEmailContextBuilder.build(user, token, expiresAt);
+            eventPublisher.publishEvent(new PasswordResetRequestedEvent(user.getId(), contextData));
         });
 
         // RULE-SEC-038 — response is identical whether or not the email existed; nothing

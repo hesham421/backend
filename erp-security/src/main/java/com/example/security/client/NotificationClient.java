@@ -56,11 +56,8 @@ public class NotificationClient {
         ));
     }
 
-    public void sendPasswordReset(Long userId, String token, Instant expiresAt) {
-        send(userId, "PASSWORD_RESET_REQUESTED", Map.of(
-                "token", token,
-                "expiresAt", expiresAt.toString()
-        ));
+    public void sendPasswordReset(Long userId, Map<String, Object> contextData) {
+        send(userId, "PASSWORD_RESET_REQUESTED", contextData);
     }
 
     private void send(Long recipientId, String templateCode, Map<String, Object> contextData) {

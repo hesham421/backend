@@ -20,7 +20,8 @@ import org.springframework.context.annotation.Configuration;
     CorsProperties.class,
     RefreshTokenCleanupProperties.class,
     LoginRateLimitProperties.class,
-    SelfServiceTokenProperties.class
+    SelfServiceTokenProperties.class,
+    PasswordResetEmailProperties.class
 })
 public class SecurityPropertiesConfig {
     // Configuration properties are automatically registered

@@ -34,6 +34,6 @@ public class AuthEventListener {
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onPasswordResetRequested(PasswordResetRequestedEvent event) {
-        notificationClient.sendPasswordReset(event.userIdFk(), event.token(), event.expiresAt());
+        notificationClient.sendPasswordReset(event.userIdFk(), event.contextData());
     }
 }
