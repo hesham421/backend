@@ -5,8 +5,8 @@
 =====================================================
 
 - Project Name  : Enterprise Engine Platform
-- Version       : 2.10.0
-- Last Updated  : 2026-07-14
+- Version       : 2.10.3
+- Last Updated  : 2026-08-24
 - Maintained By : System Architect
 - Governance Level: LOCKED
 
@@ -208,24 +208,63 @@ Scope       : All Security entities and their column names.
 
 Security Module actual naming (for reference only — NOT a template):
 
-| Convention      | Standard                | Security Actual                                 |
-|-----------------|-------------------------|-------------------------------------------------|
-| Primary Key     | ends with Pk            | USERS_PK, ROLES_PK, PERMISSIONS_PK, REFRESH_TOKENS_PK ✅ |
-| Primary Key     | ends with Pk            | SEC_PAGES_PK ✅ |
-| Foreign Key     | ends with Fk            | USER_ID_FK, ROLE_ID_FK, PERM_ID_FK (join tables) ✅ |
-| Foreign Key     | ends with Fk            | PAGE_ID_FK, PARENT_ID_FK ✅                     |
-| Flag Field      | ends with Fl            | ENABLED, IS_ACTIVE, REVOKED                     |
-| Dropdown Field  | ends with Id            | PERMISSION_TYPE (stored as VARCHAR Enum)        |
+Security Module entities (for reference only — NOT a template):
 
-`Role.roleCode` and `Role.description` are persisted columns (`ROLE_CODE`,
-`DESCRIPTION` on `ROLES`).
+| Table                    | Java Entity                | PK Column                  | Status         |
+|--------------------------|----------------------------|----------------------------|----------------|
+| USERS                    | UserAccount                | USERS_PK                   | ACTIVE ⚠️      |
+| ROLES                    | Role                       | ROLES_PK                   | ACTIVE ⚠️      |
+| PERMISSIONS              | Permission                 | PERMISSIONS_PK             | ACTIVE ⚠️      |
+| SEC_PAGES                | Page                       | SEC_PAGES_PK (+ SEQ)       | ACTIVE ⚠️      |
+| REFRESH_TOKENS           | RefreshToken               | REFRESH_TOKENS_PK          | ACTIVE ⚠️      |
+| USER_ROLES               | (join table)               | USER_ID_FK + ROLE_ID_FK    | ACTIVE ⚠️      |
+| ROLE_PERMISSIONS         | (join table)               | ROLE_ID_FK + PERM_ID_FK    | ACTIVE ⚠️      |
+| SEC_USER_PROFILE         | SecUserProfile             | USER_ID_FK (shared 1:1 PK) | ACTIVE ⚠️ EXT  |
+| SEC_ROLE_BRANCH          | SecRoleBranch              | ROLE_ID_FK + BRANCH_ID_FK  | ACTIVE ⚠️ EXT  |
+| PASSWORD_RESET_TOKEN     | PasswordResetToken         | TOKEN_PK                   | ACTIVE ⚠️ EXT  |
+| ACCOUNT_ACTIVATION_TOKEN | AccountActivationToken     | TOKEN_PK                   | ACTIVE ⚠️ EXT  |
+
+Naming convention reference (actual column names, NOT a template):
+
+| Convention      | Standard                | Security Actual                                                          |
+|-----------------|-------------------------|--------------------------------------------------------------------------|
+| Primary Key     | ends with Pk            | USERS_PK, ROLES_PK, PERMISSIONS_PK, REFRESH_TOKENS_PK ✅                |
+| Primary Key     | ends with Pk            | SEC_PAGES_PK ✅ (sequence: SEC_PAGES_SEQ)                                |
+| Foreign Key     | ends with Fk            | USER_ID_FK, ROLE_ID_FK, PERM_ID_FK (join tables) ✅                      |
+| Foreign Key     | ends with Fk            | PAGE_ID_FK, PARENT_ID_FK ✅                                               |
+| Foreign Key     | ends with Fk            | BRANCH_ID_FK (SEC_USER_PROFILE / SEC_ROLE_BRANCH → ORG_BRANCH) ✅        |
+| Flag Field      | ends with Fl            | ENABLED, IS_ACTIVE, REVOKED, USED_FL (token tables)                      |
+| Dropdown Field  | ends with Id            | PERMISSION_TYPE (stored as VARCHAR Enum)                                 |
+
+`Role.roleCode` and `Role.description` are persisted columns (`ROLE_CODE`, `DESCRIPTION` on `ROLES`).
+
+SEC_USER_PROFILE notes: PK is USER_ID_FK (shared 1:1 with USERS via @MapsId).
+  BRANCH_ID_FK is a HARD cross-module FK to ORG_BRANCH(BRANCH_PK) — enforced at DB level;
+  service layer validates branch existence via OrgBranchClient HTTP call.
+
+SEC_ROLE_BRANCH notes: Composite PK (ROLE_ID_FK, BRANCH_ID_FK). BRANCH_ID_FK is a HARD
+  cross-module FK to ORG_BRANCH(BRANCH_PK). DATA_ACCESS_LEVEL validated against LOV-SEC-002
+  (MD_MASTER_LOOKUP lookup key: DATA_ACCESS_LEVEL) via MasterDataLookupClient.
+
+PASSWORD_RESET_TOKEN notes: No AuditableEntity — plain @Data @Builder entity.
+  UUID token. TTL configurable (erp.security.self-service-token.reset-expiration-seconds,
+  default 1h). USED_FL constraint: CHK_PASSWORD_RESET_TOKEN_USED_FL.
+
+ACCOUNT_ACTIVATION_TOKEN notes: No AuditableEntity — plain @Data @Builder entity.
+  UUID token. TTL configurable (erp.security.self-service-token.activation-expiration-seconds,
+  default 24h). USED_FL constraint: CHK_ACCOUNT_ACTIVATION_TOKEN_USED_FL.
 
 Additional Security implementation status (non-naming, informational —
-sourced from registry-security.md v2.4.0, does not require an exception
+sourced from registry-security.md v2.5.0, does not require an exception
 amendment since no naming/table structure is affected):
   - Login rate limiting (`LoginRateLimitFilter`) — IMPLEMENTED
   - Expired/revoked refresh-token cleanup job (`RefreshTokenCleanupJob`) — IMPLEMENTED
   - Role copy-permissions endpoint (`POST /api/roles/{roleId}/copy-from/{sourceRoleId}`) — IMPLEMENTED
+  - Sign Up + Account Activation flow — IMPLEMENTED (AccountActivationToken + event publishing)
+  - Forgot Password + Reset Password flow — IMPLEMENTED (PasswordResetToken + event publishing)
+  - Events published via Spring ApplicationEventPublisher (AccountActivationRequestedEvent,
+    PasswordResetRequestedEvent) — no NotificationService subscriber wired yet (H.2 pattern)
+
 | DataScope       | Separate entity         | System is permanently single-tenant — no TENANT_ID column exists. |
 | UserManagement  | Separate module         | Merged into Security — no split will occur      |
 
@@ -367,6 +406,10 @@ LAYER-1 — Foundation Entities
 | RefreshToken         | REFRESH_TOKENS  ⚠️      | Security             | Active ⚠️           | Security only (infrastructure)         |
 | UserRole             | USER_ROLES  ⚠️          | Security             | Active ⚠️           | Security only (join table)             |
 | RolePermission       | ROLE_PERMISSIONS ⚠️     | Security             | Active ⚠️           | Security only (join table)             |
+| SecUserProfile       | SEC_USER_PROFILE ⚠️     | Security             | Active ⚠️ EXT       | Security (DataScope) / ORG cross-ref   |
+| SecRoleBranch        | SEC_ROLE_BRANCH ⚠️      | Security             | Active ⚠️ EXT       | Security (DataScope) / ORG cross-ref   |
+| PasswordResetToken   | PASSWORD_RESET_TOKEN ⚠️ | Security             | Active ⚠️ EXT       | Security only (Self-Service Auth)      |
+| AccountActivationToken| ACCOUNT_ACTIVATION_TOKEN ⚠️| Security          | Active ⚠️ EXT       | Security only (Self-Service Auth)      |
 | MdMasterLookup       | MD_MASTER_LOOKUP ⚠️     | MasterData           | Active ⚠️           | All modules (dropdown source)          |
 | MdLookupDetail       | MD_LOOKUP_DETAIL ⚠️     | MasterData           | Active ⚠️           | All modules (dropdown values)          |
 | Item                 | (planned)               | MasterData           | Planned             | Inventory / Sales / Procurement        |
@@ -467,6 +510,7 @@ LAYER-3 — Operational Entities
 | FileType            | Lookup         | Lookup Details  | FileService         | <= 15      |
 | FileStatus          | Lookup         | Lookup Details  | FileService         | <= 15      |
 | ScopeLevel          | Lookup         | Lookup Details  | Security            | <= 15      |
+| DATA_ACCESS_LEVEL   | Lookup         | Lookup Details  | Security            | <= 15      |
 | LEGAL_ENTITY_TYPE   | Lookup         | Lookup Details  | Organization        | <= 15      |
 | BRANCH_TYPE         | Lookup         | Lookup Details  | Organization        | <= 15      |
 | DEPARTMENT_NODE_TYPE| Lookup         | Lookup Details  | Organization        | <= 15      |
@@ -479,6 +523,12 @@ Rules:
 - If values <= 15 → Lookup / Lookup Details
 - If values > 15  → Reference Table (LOV)
 - Detailed values defined in registry-[module].md
+
+DATA_ACCESS_LEVEL note (LOV-SEC-002, added 2026-08-24):
+  Lookup key: DATA_ACCESS_LEVEL. Seeded by 002_datascope_selfservice_auth_schema.sql BLOCK 8.
+  Values: BRANCH_ONLY / BRANCH_AND_CHILDREN / ALL.
+  Used by: SEC_ROLE_BRANCH.DATA_ACCESS_LEVEL — validated via MasterDataLookupClient.
+  This is Security's first live consumption of MD_MASTER_LOOKUP / MD_LOOKUP_DETAIL.
 
 =====================================================
 7. Module Dependency Matrix
@@ -597,7 +647,10 @@ AUDIT RULES:
 
 NOTIFICATION RULES:
 - Every business event MAY produce a Notification
-- Notification channels: InApp / Email / SMS / WhatsApp (+ Push — 5 total, see Section 6)
+- Notification channels: InApp / Email / SMS / WhatsApp / Push (5 total, see Section 6)
+- Active channels (2026-08-24): Email ✅ / InApp ✅ — SMS ❌ DISABLED / WhatsApp ❌ DISABLED / Push ❌ DISABLED
+- Email provider: Gmail SMTP (free). See GD note in Section 8 for config.
+- SMS / WhatsApp: is_enabled_fl = 0 in NOTIF_CHANNEL_CONFIG — re-enable when paid provider ready
 - Templates MUST be defined per event type
 - NotificationService owns delivery — modules only publish events
 
@@ -645,6 +698,21 @@ backend code + a live end-to-end test run):
   decided).
   No module may query NOTIF_LOG / NOTIF_TEMPLATE / NOTIF_CHANNEL_CONFIG
   directly — same rule as MD_MASTER_LOOKUP (Section 4).
+
+Email Channel — Gmail SMTP Configuration (decided 2026-08-24):
+  Active provider for this phase: Gmail SMTP (free).
+  Required application.properties settings:
+    spring.mail.host=smtp.gmail.com
+    spring.mail.port=587
+    spring.mail.username=<your-gmail-address>
+    spring.mail.password=<app-password>        ← NOT your Gmail login password
+    spring.mail.properties.mail.smtp.auth=true
+    spring.mail.properties.mail.smtp.starttls.enable=true
+  Gmail setup: Google Account → Security → 2-Step Verification ON →
+    App Passwords → generate one → use it as spring.mail.password.
+  Limit: ~500 emails/day on free Gmail. Sufficient for dev/test phase.
+  NOTIF_CHANNEL_CONFIG row for EMAIL: is_enabled_fl = 1.
+  NOTIF_CHANNEL_CONFIG rows for SMS / WhatsApp / Push: is_enabled_fl = 0.
 
 FILE RULES:
 - All attachments MUST be stored via FileService
@@ -738,6 +806,10 @@ Rules:
 | Role                 | ROLES  ⚠️               | Security             | Admin Only                       |
 | Permission           | PERMISSIONS  ⚠️         | Security             | Admin Only                       |
 | Page                 | SEC_PAGES  ⚠️           | Security             | Admin Only                       |
+| SecUserProfile       | SEC_USER_PROFILE ⚠️     | Security             | Admin / User (own profile)       |
+| SecRoleBranch        | SEC_ROLE_BRANCH ⚠️      | Security             | Admin Only                       |
+| PasswordResetToken   | PASSWORD_RESET_TOKEN ⚠️ | Security             | System Only (self-service flow)  |
+| AccountActivationToken| ACCOUNT_ACTIVATION_TOKEN ⚠️| Security          | System Only (self-service flow)  |
 | Currency             | (planned)               | CurrencyCalendar     | Admin Only                       |
 | ExchangeRate         | (planned)               | CurrencyCalendar     | Admin / Finance                  |
 | FiscalYear           | (planned)               | CurrencyCalendar     | Admin / Finance                  |
@@ -946,6 +1018,43 @@ Rule: All deferred modules MUST be buildable on top without redesigning any core
 |         |            | test_file_apis.py / test_notification_apis.py run against this    |             |
 |         |            | dev environment, both 100% green (25/25, 18/18).                  |             |
 
+| 2.10.1  | 2026-08-24 | Full codebase review against backend.zip. Baseline advanced    | Registry    |
+|         |            | from partial v2.7.6 (prior session) to complete v2.10.0        | Builder     |
+|         |            | found in governance/master-registry-old.md. Net additions:     |             |
+|         |            | Section 4: Security PERMANENT EXCEPTION entity table expanded — |             |
+|         |            | added SEC_USER_PROFILE, SEC_ROLE_BRANCH, PASSWORD_RESET_TOKEN,  |             |
+|         |            | ACCOUNT_ACTIVATION_TOKEN (all IMPLEMENTED, per                  |             |
+|         |            | security-registry.md v2.5.0 §1.7–1.10). Source updated to      |             |
+|         |            | registry-security.md v2.5.0. Section 5: four new Security       |             |
+|         |            | entities added to Layer-1 entity table. Section 6:              |             |
+|         |            | DATA_ACCESS_LEVEL (LOV-SEC-002) lookup registered under         |             |
+|         |            | Security — seeded by 002_datascope_selfservice_auth_schema.sql; |             |
+|         |            | values: BRANCH_ONLY/BRANCH_AND_CHILDREN/ALL. Section 10:        |             |
+|         |            | four new Security entities added to data ownership table.       |             |
+|         |            | Section 14: AQ-006, AQ-007 → RESOLVED (version mismatch was    |             |
+|         |            | caused by partial upload in prior session — full changelog      |             |
+|         |            | confirmed intact in codebase). Section 15: Security row         |             |
+|         |            | updated to v2.5.0, open AQ-IDs cleared.                        |             |
+
+| 2.10.2  | 2026-08-24 | Code-only audit pass. erp-finance-gl module confirmed deleted   | Registry    |
+|         |            | (zero source files in codebase — only pom.xml stub remains).   | Builder     |
+|         |            | All GL-related content removed from registry: Finance status    |             |
+|         |            | reverted to Planned (from erroneous Partial Active). GL note    |             |
+|         |            | removed from Section 3. AccountsChart (accounts_chart table     |             |
+|         |            | exists in V1 migration but has no owning Java source) not       |             |
+|         |            | registered — code is the only source of truth, and it is        |             |
+|         |            | absent. ChartOfAccounts stays as Planned (Finance module        |             |
+|         |            | itself is Planned). Registry now matches codebase exactly.      |             |
+
+| 2.10.3  | 2026-08-24 | Notification channel decision: Email only (Gmail SMTP, free).   | Hesham      |
+|         |            | SMS and WhatsApp DISABLED (is_enabled_fl = 0) — no free         |             |
+|         |            | provider. Push and InApp status unchanged. Section 8:           |             |
+|         |            | NOTIFICATION RULES updated with active/disabled channel list    |             |
+|         |            | and Gmail SMTP config block. Section 14: AQ-010 RESOLVED        |             |
+|         |            | (SMS disabled), AQ-011 RESOLVED (WhatsApp disabled) — both      |             |
+|         |            | moved to Previously Resolved table. Section 15:                 |             |
+|         |            | NotificationService open AQ-IDs cleared (none remaining).       |             |
+
 - Major changes (new layer / new module) → increment major version (X.0.0)
 - Minor changes (new entity / new rule) → increment minor version (X.Y.0)
 - Patches (corrections / resolutions) → increment patch version (X.Y.Z)
@@ -1046,30 +1155,25 @@ Rules:
 |--------|------------------------------|--------------------------------------------------------------------------|------------------|------------|----------|
 | AQ-003 | Region SOFT-READ consumers   | Which modules consume ORG_REGION via SOFT-READ? What is the impact       | ORG MODE 1.5     | 2026-06-16 | DEFERRED |
 |        |                              | of Region deactivation on those consumers? (OQ-001 escalation — ARCH-8) | (OQ-001 escalation) |         |          |
-| AQ-006 | Registry version mismatch   | registry-security.md v2.4.0 cites "Architecture decision LOCKED         | Registry Builder | 2026-07-09 | OPEN     |
-|        |                              | (master-registry v2.9.0)" for SEC_USER_PROFILE / SEC_ROLE_BRANCH        | (analysis session)|           |          |
-|        |                              | (§8.1–8.2), but this registry is v2.7.5 and has no record of that       |                  |            |          |
-|        |                              | decision. Is there an intermediate registry version not yet supplied,   |                  |            |          |
-|        |                              | or is the security document's version citation in error?                |                  |            |          |
-| AQ-007 | Registry version mismatch   | registry-update-blocks-SEC.md targets a version bump v2.9.0 → v2.10.0,  | Registry Builder | 2026-07-09 | OPEN     |
-|        | (extension, linked to AQ-006)| but this registry is v2.7.5 — there is no record of v2.8.0 or v2.9.0    | (analysis session)|           |          |
-|        |                              | between them. Were those two versions lost in upload, or is the         |                  |            |          |
-|        |                              | v2.9.0 citation (also underlying AQ-006) wrong from the start? Linked   |                  |            |          |
-|        |                              | to AQ-006 — do not close AQ-006 until AQ-007 is resolved.               |                  |            |          |
-| AQ-010 | SMS provider selection      | Which SMS provider (Twilio / Unifonic / local provider)? Not            | ARCH-REF-1.8 P0  | 2026-07-11 | OPEN     |
-|        | (NotificationService)       | architecture-blocking — provider lives in NOTIF_CHANNEL_CONFIG          | session          |            |          |
-|        |                              | .config_json, structure is provider-agnostic. Needed before P3          |                  |            |          |
-|        |                              | (Execution Plan) writes the actual B2 API integration.                  |                  |            |          |
-| AQ-011 | WhatsApp Business API       | Meta Cloud API directly, or via a BSP (Twilio / 360dialog)? Same        | ARCH-REF-1.8 P0  | 2026-07-11 | OPEN     |
-|        | provider selection          | non-blocking status as AQ-010 — needed before P3 writes                 | session          |            |          |
-|        | (NotificationService)       | WhatsAppChannelService integration.                                     |                  |            |          |
+| AQ-006 | Registry version mismatch   | RESOLVED — Codebase review (2026-08-24) confirmed v2.8.0 / v2.9.0 /    | Registry Builder | 2026-07-09 | RESOLVED |
+|        | (RESOLVED 2026-08-24)        | v2.9.1 / v2.10.0 all exist in the master-registry-old.md found in       | (analysis session)|           |          |
+|        |                              | governance/. The question was raised because only a partial upload       |                  |            |          |
+|        |                              | (v2.7.6) had been provided in the prior session. The v2.9.0 citation    |                  |            |          |
+|        |                              | in security-registry.md was correct — not a citation error.             |                  |            |          |
+| AQ-007 | Registry version mismatch   | RESOLVED — same root cause as AQ-006. v2.8.0 and v2.9.0 were not        | Registry Builder | 2026-07-09 | RESOLVED |
+|        | (extension, linked to AQ-006)| lost — they existed in the codebase and are now confirmed visible in    | (analysis session)|           |          |
+|        | (RESOLVED 2026-08-24)        | the full registry changelog (Section 12).                               |                  |            |          |
+| AQ-010 | SMS provider selection      | RESOLVED — SMS channel DISABLED. Free tier not viable.          | Hesham           | 2026-08-24 | RESOLVED |
+|        | (NotificationService)       | NOTIF_CHANNEL_CONFIG row for SMS: is_enabled_fl = 0.            |                  |            |          |
+|        |                              | Re-enable when a paid provider (Unifonic recommended) is ready. |                  |            |          |
+| AQ-011 | WhatsApp Business API       | RESOLVED — WhatsApp channel DISABLED. No free option.           | Hesham           | 2026-08-24 | RESOLVED |
+|        | provider selection          | NOTIF_CHANNEL_CONFIG row for WhatsApp: is_enabled_fl = 0.       |                  |            |          |
+|        | (NotificationService)       | Re-enable when Meta Cloud API or BSP is configured.             |                  |            |          |
 
 Note: AQ-003 is non-blocking. Resolves automatically when the first consuming
 module (TBD) runs its own MODE 1.5 session and declares its XM dependency on Region.
 
-Note: AQ-006 is non-blocking for Security's PERMANENT EXCEPTION status but
-should be resolved before SEC_USER_PROFILE / SEC_ROLE_BRANCH are treated as
-having a LOCKED architecture decision in this registry.
+Note: AQ-006 and AQ-007 resolved 2026-08-24 — both moved to Previously Resolved table.
 
 Previously resolved questions:
 
@@ -1086,6 +1190,16 @@ Previously resolved questions:
 | AQ-012 | Push (Firebase) channel| RESOLVED — no deferral for any channel. Push is fully         | 2026-07-11 |
 |        | phase confirmation     | implemented in Phase 1, same as Email/SMS/WhatsApp/Internal.  |            |
 |        | (NotificationService)  | All 5 channels ship enabled (is_enabled_fl = 1).               |            |
+| AQ-006 | Registry version       | RESOLVED — full codebase review confirmed v2.8.0/2.9.0/2.9.1/ | 2026-08-24 |
+|        | mismatch               | v2.10.0 all exist. Prior question raised because only partial  |            |
+|        |                        | upload (v2.7.6) was available. Citation in security-registry   |            |
+|        |                        | v2.4.0 was correct. See also AQ-007.                           |            |
+| AQ-007 | Registry version       | RESOLVED — same root cause as AQ-006. v2.8.0 and v2.9.0 were  | 2026-08-24 |
+|        | mismatch (ext.)        | not lost — confirmed in full codebase registry changelog.      |            |
+| AQ-010 | SMS provider           | RESOLVED — SMS DISABLED. is_enabled_fl = 0 in                  | 2026-08-24 |
+|        | (NotificationService)  | NOTIF_CHANNEL_CONFIG. Re-enable with Unifonic when ready.      |            |
+| AQ-011 | WhatsApp provider      | RESOLVED — WhatsApp DISABLED. is_enabled_fl = 0 in             | 2026-08-24 |
+|        | (NotificationService)  | NOTIF_CHANNEL_CONFIG. Re-enable with Meta/BSP when ready.      |            |
 
 New questions raised during analysis must follow this format before being added:
 
@@ -1106,13 +1220,13 @@ Rule: This table is updated by P0 REGISTRY UPDATE BLOCKS only.
 | Module              | Layer | Step  | P0 Date    | Readiness          | module-registry files                                    | Open AQ-IDs        |
 |---------------------|-------|-------|------------|--------------------|----------------------------------------------------------|--------------------|
 | Organization        | L1    | L1-1  | 2026-06-16 | READY ✓            | registry-srs-ORG.md / registry-db-ORG.md / registry-exec-ORG.md | AQ-003 (DEFERRED) |
-| Security            | L1    | L1-2  | EXCEPTION  | EXCEPTION ⚠️ (core) / PARTIALLY_READY ⚠️ (extension scope — unblocked, Conflict #20 CLOSED) | registry-security.md v2.4.1 | AQ-006, AQ-007 (OPEN, non-blocking) |
+| Security            | L1    | L1-2  | EXCEPTION  | EXCEPTION ⚠️ (core) / PARTIALLY_READY ⚠️ (extension scope — unblocked, Conflict #20 CLOSED) | registry-security.md v2.5.0 | — (AQ-006, AQ-007 RESOLVED 2026-08-24) |
 | MasterData          | L1    | L1-3  | EXCEPTION  | PARTIAL EXCEP ⚠️   | — (Lookup AS-IS per Section 4)                           | —                  |
 | CurrencyCalendar    | L1    | L1-3  | —          | NOT STARTED        | —                                                        | —                  |
 | NumberingEngine     | L1    | L1-4  | —          | NOT STARTED        | —                                                        | —                  |
 | IntegrationService  | L1    | L1-3  | —          | NOT STARTED        | —                                                        | —                  |
 | FileService         | L1    | L1-3  | 2026-07-11 | READY ✓            | module-registry-file.md / business-policies-file.md / ARCH-REF-1.10-FILE-SERVICE.md v1.1.0 | — |
-| NotificationService | L1    | L1-4  | 2026-07-11 | PARTIALLY_READY ⚠️ | module-registry-notif.md / business-policies-notif.md / ARCH-REF-1.8-NOTIFICATION-SERVICE.md v1.1.0 | AQ-010, AQ-011 (OPEN, non-blocking) |
+| NotificationService | L1    | L1-4  | 2026-07-11 | PARTIALLY_READY ⚠️ | module-registry-notif.md / business-policies-notif.md / ARCH-REF-1.8-NOTIFICATION-SERVICE.md v1.1.0 | — (AQ-010, AQ-011 RESOLVED 2026-08-24) |
 | AuditService        | L1    | L1-4  | —          | NOT STARTED        | —                                                        | —                  |
 | PricingEngine       | L2    | L2-1  | —          | NOT STARTED        | —                                                        | —                  |
 | TaxEngine           | L2    | L2-2  | —          | NOT STARTED        | —                                                        | —                  |
@@ -1177,6 +1291,10 @@ Note on Security's split readiness (added 2026-07-09, updated 2026-07-11):
   build-order), while Security→NotificationService (Forgot Password) is
   Event-Based (publish-only via RabbitMQ, no build-order coupling), the
   same pattern every other module already uses to reach Notification.
-  Security's extension scope is no longer blocked on this item. Remaining
-  open items for the extension scope are AQ-006/AQ-007 only (registry
-  version-citation mismatch — non-blocking, does not affect this scope).
+  Security's extension scope is no longer blocked on this item.
+  AQ-006 and AQ-007 (registry version-citation mismatch) RESOLVED 2026-08-24
+  — full codebase review confirmed v2.8.0/2.9.0/2.10.0 all exist. No open
+  AQ-IDs remain for the Security extension scope.
+  Source updated to registry-security.md v2.5.0 (2026-08-24) — which confirms
+  SEC_USER_PROFILE, SEC_ROLE_BRANCH, PASSWORD_RESET_TOKEN, and
+  ACCOUNT_ACTIVATION_TOKEN are all IMPLEMENTED in code.

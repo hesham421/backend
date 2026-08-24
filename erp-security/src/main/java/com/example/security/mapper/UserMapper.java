@@ -18,7 +18,7 @@ public final class UserMapper {
                 .map(Permission::getName)
                 .collect(Collectors.toSet());
         return new UserDto(
-                u.getId(), u.getUsername(), u.isEnabled(), roles, perms,
+                u.getId(), u.getUsername(), u.getEmail(), u.isEnabled(), roles, perms,
                 u.getCreatedAt(), u.getCreatedBy(), u.getUpdatedAt(), u.getUpdatedBy());
     }
 }

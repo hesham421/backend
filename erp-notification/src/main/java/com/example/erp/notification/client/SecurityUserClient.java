@@ -43,9 +43,25 @@ public class SecurityUserClient {
     private int serverPort;
 
     public Optional<Long> resolveUserIdByUsername(String username) {
+        return searchOne("username", username, "username '" + username + "'").map(UserLookup::id);
+    }
+
+    /**
+     * Resolves a {@code USERS_PK} to its email address, needed by
+     * {@code EmailChannelSender} to dispatch EMAIL-channel notifications.
+     * Returns empty if the user doesn't exist or has no email on file (nullable column,
+     * see {@code UserAccount.email}).
+     */
+    public Optional<String> resolveEmailByUserId(Long userId) {
+        return searchOne("id", userId, "user id " + userId)
+                .map(UserLookup::email)
+                .filter(email -> !email.isBlank());
+    }
+
+    private Optional<UserLookup> searchOne(String field, Object value, String logDescription) {
         String url = "http://localhost:" + serverPort + "/api/users/search";
 
-        Map<String, Object> filter = Map.of("field", "username", "operator", "EQUALS", "value", username);
+        Map<String, Object> filter = Map.of("field", field, "operator", "EQUALS", "value", value);
         Map<String, Object> body = Map.of("filters", List.of(filter), "page", 0, "size", 1);
 
         HttpHeaders headers = forwardedAuthHeaders();
@@ -59,9 +75,9 @@ public class SecurityUserClient {
             if (page == null || page.content() == null || page.content().isEmpty()) {
                 return Optional.empty();
             }
-            return Optional.ofNullable(page.content().get(0).id());
+            return Optional.ofNullable(page.content().get(0));
         } catch (HttpClientErrorException ex) {
-            log.warn("User lookup for username '{}' failed with {}", username, ex.getStatusCode());
+            log.warn("User lookup for {} failed with {}", logDescription, ex.getStatusCode());
             return Optional.empty();
         }
     }
