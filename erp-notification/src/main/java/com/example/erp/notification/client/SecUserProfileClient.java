@@ -67,12 +67,17 @@ public class SecUserProfileClient {
 
     private HttpHeaders forwardedAuthHeaders() {
         HttpHeaders headers = new HttpHeaders();
-        var attrs = RequestContextHolder.getRequestAttributes();
-        if (attrs instanceof ServletRequestAttributes servletAttrs) {
-            String authorization = servletAttrs.getRequest().getHeader(HttpHeaders.AUTHORIZATION);
-            if (authorization != null) {
-                headers.set(HttpHeaders.AUTHORIZATION, authorization);
+        // Async dispatch thread has no live request — NotificationAsyncConfig's TaskDecorator
+        // stashes the original caller's header here instead (see SecurityUserClient, same fix).
+        String authorization = DispatchAuthContext.get();
+        if (authorization == null) {
+            var attrs = RequestContextHolder.getRequestAttributes();
+            if (attrs instanceof ServletRequestAttributes servletAttrs) {
+                authorization = servletAttrs.getRequest().getHeader(HttpHeaders.AUTHORIZATION);
             }
+        }
+        if (authorization != null) {
+            headers.set(HttpHeaders.AUTHORIZATION, authorization);
         }
         return headers;
     }

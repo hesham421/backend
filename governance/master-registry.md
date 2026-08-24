@@ -5,7 +5,7 @@
 =====================================================
 
 - Project Name    : Enterprise Engine Platform
-- Version         : 2.10.3
+- Version         : 2.11.0
 - Last Updated    : 2026-08-24
 - Maintained By   : System Architect
 - Governance Level: LOCKED
@@ -92,6 +92,12 @@ Status notes:
 - ACTIVE ⚠️ EXCEPTION: Implemented before registry — used AS-IS, no code changes ever.
 - ACTIVE ⚠️ SVCAPI ✓: Backend live-tested end-to-end. DOC/INT/SEC/ALIGN phases still pending.
 - Partial Active ⚠️: Lookup feature ACTIVE (EXCEPTION). Other entities Planned (must follow standard).
+
+Reading note (v2.11.0): "SVCAPI ✓" + "phases pending" means backend is live
+and P0 is COMPLETE — the pending phases are later ones (DOC/INT/SEC/ALIGN)
+only. NotificationService (1.8) and FileService (1.10) are DONE for
+foundation/consumption. Section 12 "READY / PARTIALLY_READY" states the same
+fact (P0 done) on a different axis. Do not read "phases pending" as "unfinished."
 
 =====================================================
 4. Naming & Data Governance Rules
@@ -457,3 +463,42 @@ Readiness States:
 - BLOCKED ✗      : Open AQ-IDs exist — P1 prohibited
 - EXCEPTION ⚠️   : Pre-existing module — used AS-IS per Section 4
 - PARTIAL EXCEP  : Module partially implemented — AS-IS parts noted
+=====================================================
+13. Progress Snapshot (2026-08-24)
+=====================================================
+
+Navigational summary only — Sections 1-12 govern. Records where the work
+stands so a future session resumes without re-deriving state.
+
+DONE (P0 complete):
+  1.1  Organization        — GOVERNED ✓ MODE 2
+  1.2  Security            — EXCEPTION ⚠️ (AS-IS; GL_* permission seeds present)
+  1.10 FileService         — P0 complete + backend live (SVCAPI ✓)
+  1.8  NotificationService — P0 complete + backend live. Active channel:
+                             Email ONLY (Gmail SMTP). SMS / WhatsApp / Push
+                             NOT enabled now (confirmed 2026-08-24 — matches
+                             Section 8). The module-registry-notification.md /
+                             business-policies-notification.md "all-5-channels"
+                             wording is superseded and must be corrected there.
+  1.4  MasterData          — Lookup only (EXCEPTION); rest Planned
+
+CURRENT TRACK — Finance / General Accounts (3.4): STARTED.
+  Built as a unified, reusable General-Ledger module; first consumer is an
+  external project via a DEFERRED integration layer (architect plan pending).
+  Prerequisites — built first, kept as SEPARATE modules (NO merge):
+    • CurrencyCalendar (1.5) — Currency / ExchangeRate / FiscalYear /
+      FiscalPeriod. Finance CONSUMES these; it does not own them.
+    • NumberingEngine (1.6) — journal / payment document numbers
+      (Section 8 hard rule: no module numbers its own documents).
+  Consumed AS-IS / mandatory to Finance:
+    • Security GL_* permission seeds (AS-IS).
+    • Cost Centers (ORG 1.1) — mandatory on every financial transaction (Section 8).
+  Deferred (do NOT build yet):
+    • External-project integration layer.
+    • Auto-posting FROM this platform's own 3.1 / 3.2 / 3.3 — incl.
+      VendorInvoice (3.1-owned) and CustomerInvoice (3.3-owned) — until those exist.
+  Sequencing: starting 3.4 ahead of the standard L2 + 3.1/3.2/3.3 gate is an
+  architect-approved deviation. Module numbering, ownership and separation
+  are unchanged — nothing is merged.
+
+=====================================================
