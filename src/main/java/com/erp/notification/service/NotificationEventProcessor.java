@@ -165,7 +165,10 @@ public class NotificationEventProcessor {
                     .map(NotificationChannelConfig::getChannelTypeId)
                     .toList();
         }
-        return channelHint;
+        // NOTIF_CHANNEL_CONFIG.channel_type_id is stored uppercase (EMAIL, SMS, ...);
+        // normalize here so a lowercase/mixed-case request value doesn't silently miss the
+        // config lookup in persistForChannel() and get treated as disabled/unconfigured.
+        return channelHint.stream().map(c -> c == null ? null : c.trim().toUpperCase()).toList();
     }
 
     /**
