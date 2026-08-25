@@ -5,8 +5,8 @@
 =====================================================
 
 - Project Name    : Enterprise Engine Platform
-- Version         : 2.11.0
-- Last Updated    : 2026-08-24
+- Version         : 2.12.0
+- Last Updated    : 2026-08-25
 - Maintained By   : System Architect
 - Governance Level: LOCKED
 
@@ -342,7 +342,19 @@ NOTIFICATION:
 - Gmail setup: Google Account → Security → 2-Step Verification ON → App Passwords
 - channelHint is decided by the PUBLISHING module — NotificationService never infers channel
 - Two ingress paths: REST (POST /api/v1/notifications/send) or Spring Event (NotificationRequestedEvent)
-- RabbitMQ path documented in CORE.md is NOT YET IMPLEMENTED — do not use
+- A third in-process ingress exists for trusted callers with no HTTP principal at all (e.g.
+  erp-security's AuthEventListener) — see "IN-JVM CROSS-MODULE CALLS" below for the
+  InternalCaller pattern that gates it. Not a new ingress path in CORE.md's sense (same
+  validate/fan-out/persist logic as the other two), just a third way to reach it.
+- RabbitMQ path documented in CORE.md is NOT YET IMPLEMENTED anywhere in this codebase — do not
+  use. (2026-08-25 note: no "scoped to an Accounting pilot" exception has ever been formally
+  recorded in this registry — a prior audit assumed one existed and was corrected. If/when a
+  pilot scoping decision is actually made, record it here explicitly, dated, rather than
+  inferring one from this note.)
+- Oracle AQ: this registry has never documented a policy for Oracle AQ (no prior mention found
+  anywhere in this file). Not stated here as "external/legacy-only" or any other scope, because
+  no such decision has actually been recorded — that would need to come from the architect, not
+  be inferred. Flagged as an open item until an explicit decision is made and recorded.
 - No module may query NOTIF_LOG / NOTIF_TEMPLATE / NOTIF_CHANNEL_CONFIG directly
 
 FILE:
@@ -364,6 +376,57 @@ CROSS-MODULE FK:
 FILE CATEGORY:
 - FileCategory has no Create/Update API — DB-seeded reference table only
 - Each consuming module seeds its own FILE_CATEGORY rows via migration
+
+IN-JVM CROSS-MODULE CALLS (added 2026-08-25, structural/governance decision — see RULE-2 version
+bump and Section 13 event-log entry below):
+- Default mechanism for a same-JVM, permission-checked, read-or-write call into another module:
+  DIRECT SPRING INTERFACE INJECTION, not loopback REST. Replaces the former *Client+REST-loopback
+  pattern (erp-security's old NotificationClient, MasterDataLookupClient, OrgBranchClient,
+  SecurityUserClient, SecUserProfileClient — all deleted; do not reintroduce).
+- Consume ONLY the producing module's own `com.erp.<module>.crossmodule` interface (real
+  examples: OrgBranchApi, MasterDataLookupApi, SecurityUserApi, SecUserProfileApi,
+  NotificationDispatchApi) — never its internal @Service/@Repository/@Entity directly.
+- The interface returns ONLY a narrow, producing-module-defined read-model type (e.g.
+  OrgBranchView, LookupValueView, SecurityUserView, SecUserProfileView) — never the producing
+  module's real entity/DTO.
+- Every call site MUST explicitly declare transaction-propagation intent — never rely on
+  Spring's default silently: REQUIRED (readOnly) for a pure read; REQUIRES_NEW for any write on
+  the producing side, so it commits independently of the caller's own transaction outcome.
+- Enforcement: this is now the ONLY boundary — there is no separate Maven artifact graph left
+  (single pom, package-by-feature). src/test/java/com/erp/architecture/CrossModuleBoundaryArchTest
+  fails the build if any class outside a module's own crossmodule/ package is referenced from
+  another module's package, and separately pattern-matches the one tracked SpEL/reflection
+  exception (hasAuthority(T(com.erp.security.constants.SecurityPermissions).*)) so that specific
+  bypass can't silently gain new, unreviewed instances.
+- INTERNAL TRUSTED-CALLER CALLS (no HTTP principal at all, e.g. a Spring Event listener calling
+  into another module with no live SecurityContext to check): gate the target method on
+  com.erp.common.security.InternalCaller's synthetic authority (`INTERNAL_TRUSTED_CALLER`)
+  instead of leaving it fully ungated. Every legitimate in-process caller wraps its call in
+  InternalCaller.call()/.run(). No JWT filter or login path ever grants that authority, so no
+  external HTTP request can satisfy it. Pair with an @ArchTest guard (real example:
+  CrossModuleBoundaryArchTest.no_controller_reaches_the_internal_caller_gated_processor) that
+  fails the build if a controller ever calls the gated method directly. Full pattern documented
+  in governance/.github/skills/backend/create-service/SKILL.md's "Internal trusted-caller calls"
+  subsection.
+- DURABLE RETRY / OUTBOX: the design proposed in
+  governance/project-artifacts/RESILIENT-FAILURE-HANDLING-DESIGN-REPORT.md (generic
+  FailedCallRecordBase mapped-superclass + generic @Scheduled processor + per-module concrete
+  entity, in erp-common-utils) was never actually implemented in the delivered codebase — a
+  2026-08-25 post-implementation audit found zero trace of it (not orphaned; simply absent),
+  despite governance/project-artifacts/INTERFACE-VS-REST-AND-POM-STRUCTURE-RECOMMENDATION.md
+  stating it must be retained. On investigation, the ONLY current call site with a genuinely
+  network-shaped failure mode is NotificationService's real Gmail SMTP send
+  (EmailChannelSender) — the 5 interface-injection call sites this design originally targeted no
+  longer have one (a same-JVM method call doesn't fail over the network). Building a generic,
+  reusable, multi-module mechanism today would have exactly one consumer and would duplicate
+  state NOTIF_LOG already tracks. Resolution: NOT rebuilt generically. Instead,
+  com.erp.notification.service.FailedNotificationSweepScheduler reuses NOTIF_LOG directly (a new
+  sweep_retry_count column, V15 migration, independent of RULE-NOTIF-004's existing fast
+  in-process retry/retry_count) — a periodic @Scheduled sweep that re-attempts rows already
+  marked FAILED after RULE-NOTIF-004's in-process retries are exhausted. If a second genuinely
+  network-shaped call site appears in a future module, extracting a shared base class at that
+  point (two real consumers) is the point a generic mechanism stops being speculative — do not
+  build one preemptively before that.
 
 =====================================================
 9. Internal Module Pattern (Mandatory)
@@ -500,5 +563,39 @@ CURRENT TRACK — Finance / General Accounts (3.4): STARTED.
   Sequencing: starting 3.4 ahead of the standard L2 + 3.1/3.2/3.3 gate is an
   architect-approved deviation. Module numbering, ownership and separation
   are unchanged — nothing is merged.
+
+EVENT LOG (this registry has no dedicated event-log section — Section 9 is "Internal Module
+Pattern," unrelated — so structural/governance events are appended here, dated, per RULE-2):
+
+  2026-08-25 — v2.11.0 -> v2.12.0. Structural/governance decision, retroactively documented:
+  multi-module Maven (erp-security/erp-notification/erp-org/erp-masterdata/erp-file/
+  erp-common-utils, each its own pom.xml) was consolidated into a single pom.xml,
+  package-by-feature (com.erp.security/.notification/.org/.masterdata/.file/.common), per
+  governance/project-artifacts/INTERFACE-VS-REST-AND-POM-STRUCTURE-RECOMMENDATION.md. The former
+  *Client+REST-loopback cross-module call pattern (5 call sites) was replaced by direct Spring
+  interface injection through each module's crossmodule/ package — see the new "IN-JVM
+  CROSS-MODULE CALLS" entry in Section 8 for the mechanism and its enforcement
+  (CrossModuleBoundaryArchTest). This entry was written during a 2026-08-25
+  post-implementation-audit remediation session — the consolidation itself had already shipped
+  in code by this date without a corresponding registry update; this entry closes that gap
+  rather than backdating it.
+    - NAMESPACE: the package rename com.example.* -> com.erp.* was made alongside the
+      consolidation. Confirmed by the architect (2026-08-25) as a deliberate, approved decision
+      made at the same time as the structural refactor — not an undocumented deviation. Recorded
+      here so it is not re-flagged as one by a future audit.
+    - BUILD TOOLCHAIN: pom.xml java.version/maven.compiler.release bumped 21 -> 25 the same
+      session (Spring Boot 4.0.1 has first-class Java 25 support, confirmed before the bump).
+      lombok.version bumped 1.18.36 -> 1.18.40 and archunit.version bumped 1.3.0 -> 1.4.2 — both
+      were required for a genuine `mvn clean test` to pass under JDK 25 (1.18.36 crashed javac;
+      1.3.0 could not parse Java 25 class files) — found and fixed in the same session, not
+      assumed. A maven-enforcer-plugin RequireJavaVersion rule now fails the build immediately,
+      at `validate`, under any other JDK.
+    - OUTBOX: see Section 8's "IN-JVM CROSS-MODULE CALLS" / DURABLE RETRY entry — the generic
+      outbox design was found absent from the delivered code and was deliberately NOT rebuilt
+      generically; a narrower, NOTIF_LOG-based sweep was built instead, scoped to the one real
+      current consumer (NotificationService's SMTP send).
+    - RabbitMQ / Oracle AQ: no formal scoping decision for either exists in this registry as of
+      this entry — see Section 8's NOTIFICATION subsection. Flagged as open items for the
+      architect, not resolved here.
 
 =====================================================

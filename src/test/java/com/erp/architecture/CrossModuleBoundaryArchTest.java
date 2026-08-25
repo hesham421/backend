@@ -4,10 +4,13 @@ import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
+import com.tngtech.archunit.core.domain.JavaMethodCall;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.regex.Matcher;
@@ -132,5 +135,47 @@ public class CrossModuleBoundaryArchTest {
     private static String packageOf(String fullyQualifiedClassName) {
         int lastDot = fullyQualifiedClassName.lastIndexOf('.');
         return lastDot < 0 ? "" : fullyQualifiedClassName.substring(0, lastDot);
+    }
+
+    /**
+     * {@code com.erp.notification.service.NotificationEventProcessor.process(...)} is gated on
+     * {@code com.erp.common.security.InternalCaller.AUTHORITY} instead of a real HTTP/JWT
+     * principal (see that class's javadoc — post-implementation-audit finding, Item 1). The
+     * runtime {@code @PreAuthorize} check is the real guarantee; this rule is the build-time
+     * guard alongside it. Deliberately method-scoped, not class-scoped: {@code NotificationController}
+     * legitimately depends on {@code NotificationEventProcessor} today (calls its
+     * {@code @PreAuthorize("isAuthenticated()")}-gated {@code send()}/{@code schedule()}) — a
+     * class-level "no controller may depend on this class at all" rule would false-positive on
+     * that. This walks every controller method's direct method calls looking specifically for a
+     * call to {@code process}. It does not trace multi-hop call chains through a third,
+     * non-controller class — that shape is already covered by the module-boundary rule above,
+     * since any such intermediary would itself have to sit inside {@code com.erp.notification} or
+     * go through its {@code crossmodule} package.
+     */
+    @ArchTest
+    static void no_controller_reaches_the_internal_caller_gated_processor(JavaClasses classes) {
+        String gatedClass = "com.erp.notification.service.NotificationEventProcessor";
+        String gatedMethod = "process";
+
+        for (JavaClass clazz : classes) {
+            boolean isController = clazz.isAnnotatedWith(RestController.class) || clazz.isAnnotatedWith(Controller.class);
+            if (!isController) {
+                continue;
+            }
+            for (JavaMethod method : clazz.getMethods()) {
+                for (JavaMethodCall call : method.getMethodCallsFromSelf()) {
+                    JavaClass targetOwner = call.getTargetOwner();
+                    if (targetOwner.getFullName().equals(gatedClass)
+                            && call.getTarget().getName().equals(gatedMethod)) {
+                        throw new AssertionError(
+                                clazz.getFullName() + "#" + method.getName()
+                                        + " calls " + gatedClass + "#" + gatedMethod + " directly — "
+                                        + "that method is internal-caller-gated, not HTTP-reachable. Route "
+                                        + "through com.erp.notification.crossmodule.NotificationDispatchApi, "
+                                        + "or the existing send()/schedule() methods, instead.");
+                    }
+                }
+            }
+        }
     }
 }

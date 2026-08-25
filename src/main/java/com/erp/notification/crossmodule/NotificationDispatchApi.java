@@ -13,12 +13,13 @@ import java.util.Map;
  * <p>Replaces erp-security's old {@code NotificationClient} REST-loopback client (see that
  * class's former javadoc / git history) — this was a tracked, temporary exception until pom
  * consolidation removed the circular-dependency reason it couldn't convert alongside the other
- * 4 cross-module call sites. No principal/authentication is required to call this: it delegates
- * to {@code NotificationEventProcessor.process()}, which is deliberately not
- * {@code @PreAuthorize}-gated for exactly this "trusted in-process caller" reason (see that
- * method's javadoc) — replacing the old REST client's {@code svc-notification} JWT-minting
- * mechanism, which existed only to satisfy an HTTP-layer authentication check that a direct,
- * never-externally-reachable method call doesn't need.
+ * 4 cross-module call sites. No HTTP/JWT principal is required to call this — the implementation
+ * supplies {@code com.erp.common.security.InternalCaller}'s synthetic authority for the duration
+ * of the call, which {@code NotificationEventProcessor.process()} requires via
+ * {@code @PreAuthorize} instead of the old fully-ungated method. This replaces the old REST
+ * client's {@code svc-notification} JWT-minting mechanism with something that still keeps a real,
+ * checked gate on the target method, rather than relying only on "nothing currently calls it from
+ * a controller."
  */
 public interface NotificationDispatchApi {
 

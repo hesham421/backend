@@ -97,6 +97,11 @@ package.json             ← Playwright dev dependency only
 
 ## Running Locally
 
+**Requires JDK 25.** `pom.xml` pins `java.version`/`maven.compiler.release` to 25 and a
+`maven-enforcer-plugin` rule fails the build immediately (at `validate`, before any compilation)
+under any other JDK, with a message naming the JDK actually in use. Point `JAVA_HOME` at a JDK 25
+install before running any `mvn`/`./mvnw` command below.
+
 ```bash
 # Start local Postgres
 docker compose -f docker/docker-compose.yml up -d

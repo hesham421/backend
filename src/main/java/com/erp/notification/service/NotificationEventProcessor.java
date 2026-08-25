@@ -3,6 +3,7 @@ package com.erp.notification.service;
 import com.erp.common.domain.status.ServiceResult;
 import com.erp.common.domain.status.Status;
 import com.erp.common.exception.LocalizedException;
+import com.erp.common.security.InternalCaller;
 import com.erp.security.crossmodule.SecUserProfileApi;
 import com.erp.notification.dto.NotificationScheduleRequest;
 import com.erp.notification.dto.NotificationSendConfirmation;
@@ -89,16 +90,26 @@ public class NotificationEventProcessor {
     }
 
     /**
-     * Public (not gated by {@code @PreAuthorize}) on purpose — this is this codebase's
-     * established pattern for "trusted in-process caller, no HTTP principal needed":
-     * the Spring Event ingress ({@code NotificationRequestedEventListener}) calls this
-     * directly, bypassing the {@code @PreAuthorize("isAuthenticated()")} REST gate on
-     * {@link #send}/{@link #schedule}, since that ingress has no HTTP/JWT principal (see the
-     * listener's own javadoc). {@code com.erp.notification.crossmodule.NotificationDispatchApi}
-     * (the direct-injection replacement for erp-security's old {@code NotificationClient} REST
-     * client) uses the same reasoning: it's a same-JVM method call, never reachable over HTTP,
-     * so no principal is needed here either — see that interface's javadoc.
+     * Gated by {@link InternalCaller#AUTHORITY}, not {@code isAuthenticated()} — this is this
+     * codebase's pattern for "trusted in-process caller, no HTTP principal needed" (see
+     * {@code create-service/SKILL.md}'s "Cross-Module Calls (XM)"). The Spring Event ingress
+     * ({@code NotificationRequestedEventListener}) and
+     * {@code com.erp.notification.crossmodule.NotificationDispatchApiService} both call this
+     * wrapped in {@link InternalCaller#call}/{@link InternalCaller#run} — neither has an HTTP/JWT
+     * principal to satisfy the {@code @PreAuthorize("isAuthenticated()")} gate on
+     * {@link #send}/{@link #schedule}. Unlike the old fully-ungated version of this method, an
+     * external HTTP request cannot satisfy this check under any authentication: no JWT filter or
+     * login path ever grants {@link InternalCaller#AUTHORITY}, and
+     * {@code CrossModuleBoundaryArchTest.no_controller_reaches_the_internal_caller_gated_processor}
+     * fails the build if any {@code @RestController}/{@code @Controller} class ever references
+     * this class directly, as an additional build-time guard.
+     *
+     * <p>The literal below MUST equal {@link InternalCaller#AUTHORITY} — a plain string literal
+     * is used instead of a {@code T(com.erp.common.security.InternalCaller)} SpEL type reference
+     * on purpose, so this doesn't itself become a second, untracked instance of the
+     * cross-module SpEL bypass {@code CrossModuleBoundaryArchTest} otherwise watches for.
      */
+    @PreAuthorize("hasAuthority('INTERNAL_TRUSTED_CALLER')")
     public List<Long> process(NotificationSendRequest request) {
         validateCompleteness(request);
 

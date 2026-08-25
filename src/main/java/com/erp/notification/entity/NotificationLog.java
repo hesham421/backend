@@ -50,6 +50,9 @@ public class NotificationLog extends AuditableEntity {
     /** RULE-NOTIF-004 — retry ceiling; enforced by the dispatch orchestration, not this entity. */
     public static final short MAX_RETRY_COUNT = 5;
 
+    /** Sweep-retry ceiling for {@code FailedNotificationSweepScheduler} — see V15 migration comment. */
+    public static final short MAX_SWEEP_RETRY_COUNT = 3;
+
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "notif_log_seq")
     @SequenceGenerator(name = "notif_log_seq", sequenceName = "SEQ_NOTIF_LOG", allocationSize = 1)
@@ -121,6 +124,13 @@ public class NotificationLog extends AuditableEntity {
     @Column(name = "REFERENCE_TYPE", length = 50)
     private String referenceType;
 
+    // FIELD (post-implementation-audit remediation, Item 2) — separate from retryCount; see
+    // V15__notif_log_sweep_retry_count.sql for why this is a distinct counter.
+    @NotNull(message = "{validation.required}")
+    @Column(name = "SWEEP_RETRY_COUNT", nullable = false)
+    @Builder.Default
+    private Short sweepRetryCount = 0;
+
     /** RULE-NOTIF-003/RULE-13 — one-way terminal transition, send succeeded. */
     public void markSent() {
         this.notificationStatusId = STATUS_SENT;
@@ -144,5 +154,16 @@ public class NotificationLog extends AuditableEntity {
      */
     public void incrementRetry() {
         this.retryCount = (short) (this.retryCount + 1);
+    }
+
+    /**
+     * Called by {@code FailedNotificationSweepScheduler} on each failed later re-attempt of an
+     * already-terminal {@link #STATUS_FAILED} row. Does not change {@link #notificationStatusId}
+     * — the row stays {@code FAILED} (queryable, unchanged terminal status) until either a sweep
+     * attempt succeeds ({@link #markSent()}) or {@link #MAX_SWEEP_RETRY_COUNT} is reached, at
+     * which point the scheduler stops selecting it.
+     */
+    public void incrementSweepRetry() {
+        this.sweepRetryCount = (short) (this.sweepRetryCount + 1);
     }
 }

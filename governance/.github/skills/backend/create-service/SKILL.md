@@ -153,11 +153,40 @@ so never bypass a module's `crossmodule` package "because it would still compile
 This pairing was a `*Client` + REST-loopback exception only while these were separate Maven
 artifacts, which would have made both directions at once a circular dependency — pom
 consolidation removed that constraint, so it converted like every other pairing.
-`NotificationDispatchApi` needs no principal at all: it delegates to
-`NotificationEventProcessor.process()`, which is deliberately not `@PreAuthorize`-gated for
-same reason the Spring Event ingress isn't (see that method's javadoc) — this replaced the old
-`NotificationClient`'s `svc-notification` JWT-minting mechanism entirely, which existed only to
-satisfy an HTTP-layer authentication check a direct method call doesn't need.
+`NotificationDispatchApi` needs no HTTP/JWT principal: it delegates to
+`NotificationEventProcessor.process()`, which is gated on the Internal Trusted-Caller pattern
+below instead of a real user principal — see that method's javadoc.
+
+### Internal trusted-caller calls (no HTTP principal, but still a real gate)
+
+Some target methods are only ever reached from another in-process caller with no HTTP
+request/JWT principal available at all (a Spring Event listener, a `crossmodule` implementation
+called from one) — the target still needs `@PreAuthorize("isAuthenticated()")`-shaped protection
+in spirit (it must not become reachable from a controller), but there is no real principal to
+check. Do NOT leave the method fully ungated on the reasoning "nothing calls it from a
+controller today" — that was tried (`NotificationEventProcessor.process()`, pre-remediation) and
+the post-implementation audit correctly flagged it as a convention-only boundary with no
+automated guard.
+
+The sanctioned pattern (real example: `NotificationEventProcessor.process()` /
+`com.erp.common.security.InternalCaller`):
+- Gate the target method with `@PreAuthorize("hasAuthority('INTERNAL_TRUSTED_CALLER')")` — a
+  plain string literal, not a `T(com.erp.common.security.InternalCaller)` SpEL type reference
+  (doing the latter would itself become a new, untracked cross-module SpEL bypass instance —
+  see the "Forbidden" list above and `CrossModuleBoundaryArchTest.TRACKED_SPEL_EXCEPTION`).
+- Every legitimate in-process caller wraps its call in
+  `com.erp.common.security.InternalCaller.call(...)`/`.run(...)`, which installs a synthetic
+  `Authentication` carrying exactly that one authority for the duration of the call, then
+  restores whatever `SecurityContext` was there before. No JWT filter, login endpoint, or other
+  authentication entry point ever grants this authority, so no external HTTP request can satisfy
+  the check under any authentication.
+- Add a build-time guard alongside the runtime one: an `@ArchTest` in
+  `CrossModuleBoundaryArchTest` that fails if any `@RestController`/`@Controller` class calls the
+  gated method (see `no_controller_reaches_the_internal_caller_gated_processor` for the pattern —
+  method-scoped, not class-scoped, if the same class also exposes other, legitimately
+  HTTP-reachable methods).
+- Document both the gate and the guard in the target method's javadoc, same as
+  `NotificationEventProcessor.process()`.
 
 ## Publishing Domain Events (if applicable)
 
