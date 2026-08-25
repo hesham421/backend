@@ -286,6 +286,11 @@ The feature is **IMMEDIATELY REJECTED** if any of these are found:
   target module's REST API (see `create-service`'s "Cross-Module Calls (XM)")
 - An event published via `RabbitTemplate`, a message broker, or any publisher/listener port
   other than `ApplicationEventPublisher` + a dedicated `<Action><Entity>Event` class
+  — Exception: RabbitMQ publish where the sole target consumer is the Accounting module
+  (inbound only) is not subject to this rejection trigger — see `create-service`'s
+  "Scoped exception — Accounting inbound events (PILOT)" under "Publishing Domain Events".
+  Status: PLANNED — no implementation exists in this codebase yet. All other RabbitMQ/
+  message-broker usage remains an automatic rejection with no exceptions.
 - Business logic in controller
 - Missing `AuditableEntity` extension
 - `@Builder` instead of `@SuperBuilder` on entity

@@ -139,6 +139,14 @@ effect directly, and do NOT introduce a message broker.
 - Do NOT introduce `RabbitTemplate`, a message broker, or a publisher/listener port
   abstraction for this — `ApplicationEventPublisher` is the whole pattern in this codebase.
 
+**Scoped exception — Accounting inbound events (PILOT):**
+The only sanctioned exception to the above is publishing a Business Event via RabbitMQ
+where the sole consumer is the Accounting module (e.g. SALE_COMPLETED → Accounting →
+Posting Engine). This exception does not apply to any other module pair and does not
+authorize Accounting to publish outbound via RabbitMQ. Status: PLANNED — no
+implementation exists in this codebase yet. Do not treat this exception as authorization
+to use RabbitMQ for any other purpose.
+
 ### 1. Create Service File
 - **Location:** `erp-<MODULE_NAME>/src/main/java/com/example/<module>/service/<ENTITY_NAME>Service.java`
 
