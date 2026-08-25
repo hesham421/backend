@@ -58,8 +58,8 @@ Generates a JPA entity class for the ERP system following the canonical MasterLo
 
 ## Output
 
-- `erp-<MODULE>/src/main/java/com/example/<module>/entity/Md<Entity>.java`
-- `erp-<MODULE>/src/main/java/com/example/<module>/domain/<Entity>Domain.java` — only when the
+- `src/main/java/com/erp/<module>/entity/Md<Entity>.java`
+- `src/main/java/com/erp/<module>/domain/<Entity>Domain.java` — only when the
   entity has Business Rules requiring Business Decision ownership (see "DOMAIN COMPANION
   OBJECT" below)
 
@@ -68,7 +68,7 @@ Generates a JPA entity class for the ERP system following the canonical MasterLo
 ## Steps
 
 ### 1. Create Entity File
-- **Location:** `erp-<MODULE_NAME>/src/main/java/com/example/<module>/entity/Md<ENTITY_NAME>.java`
+- **Location:** `src/main/java/com/erp/<module>/entity/Md<ENTITY_NAME>.java`
 
 ### 2. Class-Level Setup
 ```java
@@ -166,9 +166,9 @@ Before creating a new entity, verify the following shared resources from `erp-co
 
 | # | Requirement | Shared Class | Package |
 |---|-------------|-------------|--------|
-| SH.1 | MUST extend `AuditableEntity` for audit fields. Exception: short-lived security/session artifacts (e.g., RefreshToken) with their own lifecycle fields (issuedAt, expiresAt, revoked) are NOT required to extend AuditableEntity. Declare in Phase CORE: "[EntityName]: Session artifact — does not extend AuditableEntity." | `AuditableEntity` | `com.example.erp.common.domain` |
-| SH.2 | MUST use `BooleanNumberConverter` for all boolean columns (SMALLINT) | `BooleanNumberConverter` | `com.example.erp.common.converter` |
-| SH.3 | Audit fields auto-populated by `AuditEntityListener` — do NOT set manually | `AuditEntityListener` | `com.example.erp.common.audit` |
+| SH.1 | MUST extend `AuditableEntity` for audit fields. Exception: short-lived security/session artifacts (e.g., RefreshToken) with their own lifecycle fields (issuedAt, expiresAt, revoked) are NOT required to extend AuditableEntity. Declare in Phase CORE: "[EntityName]: Session artifact — does not extend AuditableEntity." | `AuditableEntity` | `com.erp.erp.common.domain` |
+| SH.2 | MUST use `BooleanNumberConverter` for all boolean columns (SMALLINT) | `BooleanNumberConverter` | `com.erp.erp.common.converter` |
+| SH.3 | Audit fields auto-populated by `AuditEntityListener` — do NOT set manually | `AuditEntityListener` | `com.erp.erp.common.audit` |
 | SH.4 | Use `@SuperBuilder` due to `AuditableEntity` inheritance — NEVER `@Builder` | — | Lombok |
 
 **Rules:**
@@ -193,7 +193,7 @@ prevention — does not belong on the entity. It belongs on a separate, dedicate
 
 ### Package — check for a naming collision before generating
 
-Default output package: `com.example.<module>.domain.<Entity>Domain`. Before generating into
+Default output package: `com.erp.<module>.domain.<Entity>Domain`. Before generating into
 that package, check the module's Phase CORE for an existing, conflicting use of `<module>.domain`
 (for example, the ORG module's `CORE.md` already assigns `org.domain` to its JPA entities, not to
 business-rule classes — that module is not to be touched by this default). If the module's Phase

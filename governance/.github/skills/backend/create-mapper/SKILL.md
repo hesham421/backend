@@ -41,14 +41,14 @@ Generates the entity-to-DTO mapper class for the ERP system. This is **Phase 1, 
 
 ## Output
 
-- Single file: `erp-<MODULE>/src/main/java/com/example/<module>/mapper/<Entity>Mapper.java`
+- Single file: `src/main/java/com/erp/<module>/mapper/<Entity>Mapper.java`
 
 ---
 
 ## Steps
 
 ### 1. Create Mapper File
-- **Location:** `erp-<MODULE_NAME>/src/main/java/com/example/<module>/mapper/<ENTITY_NAME>Mapper.java`
+- **Location:** `src/main/java/com/erp/<module>/mapper/<ENTITY_NAME>Mapper.java`
 
 ### 2. Class Declaration
 ```java

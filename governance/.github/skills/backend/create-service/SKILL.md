@@ -49,11 +49,13 @@ Generates the service class for an ERP feature. This is **Phase 1, Step 1.7** of
 - MUST NOT hardcode error messages — use `<Module>ErrorCodes` constants only
 - MUST NOT catch `DataIntegrityViolationException` — let `GlobalExceptionHandler` handle it
 - MUST NOT set `isActive` directly — use entity's `activate()`/`deactivate()` helpers
-- MUST NOT inject another module's `@Service`, `Repository`, or `@Entity` directly — cross-module reads go through a `*Client` calling that module's REST API (see "Cross-Module Calls (XM)" below)
+- MUST NOT inject another module's `@Service`, `Repository`, or `@Entity` directly, or any class outside its `crossmodule` package — cross-module reads go through the target module's `crossmodule` interface (see "Cross-Module Calls (XM)" below)
 
 ## Output
 
-- Single file: `erp-<MODULE>/src/main/java/com/example/<module>/service/<Entity>Service.java`
+- Single file: `src/main/java/com/erp/<module>/service/<Entity>Service.java` (single
+  consolidated `pom.xml` — see
+  `governance/project-artifacts/INTERFACE-VS-REST-AND-POM-STRUCTURE-RECOMMENDATION.md`)
 
 ---
 
@@ -76,47 +78,86 @@ unconditionally, regardless of what any module's Phase CORE does or doesn't say.
 - On success, call the Entity's own mutation method (e.g. `entity.deactivate()`) and persist.
 
 Cross-module (XM) data needed for a decision is resolved by the Service — call the target
-module's `*Client` (see "Cross-Module Calls (XM)" below), obtain the result, and pass it into
-the Domain object's method as a plain argument. The Domain object itself never imports or
-calls a `*Client`, another module's service, repository, or entity.
+module's `crossmodule` interface (see "Cross-Module Calls (XM)" below), obtain the result, and
+pass it into the Domain object's method as a plain argument. The Domain object itself never
+imports or calls a `crossmodule` interface, another module's service, repository, or entity.
 
 The service MUST NOT own business rule conditions (if blocks that
 enforce business invariants) directly in its method bodies.
 
 ## Cross-Module Calls (XM)
 
-Modules here are separate Maven artifacts assembled into one `erp-main` deployable on one
-port — a module has no compile-time dependency on another module's internals, so
-cross-module reads go over the loopback HTTP API, never through a directly-injected bean
-from another module.
+Modules here are package-by-feature areas assembled into one `erp-main` deployable on one
+port, one JVM — always deployed together, never independently (single consolidated `pom.xml`;
+see `governance/project-artifacts/INTERFACE-VS-REST-AND-POM-STRUCTURE-RECOMMENDATION.md`).
+Cross-module reads go through **direct Spring interface injection**, not loopback HTTP. The
+only thing enforcing module boundaries now is the ArchUnit suite in
+`src/test/java/com/erp/architecture` — there is no separate Maven artifact graph to lean on,
+so never bypass a module's `crossmodule` package "because it would still compile."
 
 **Calling another module (this module is the consumer):**
-- Add a `<Target>Client` class in `com.example.<module>.client` (real examples:
-  `OrgBranchClient`, `MasterDataLookupClient`, `SecUserProfileClient`, `SecurityUserClient`).
-- Inject the module's own `RestTemplate`, exposed by that module's
-  `InternalApiClientConfig` (`com.example.<module>.config.InternalApiClientConfig`). If the
-  module already has another `RestTemplate` bean in the same Spring context, give the bean a
-  module-qualified name (e.g. `notificationInternalApiRestTemplate`) — see
-  `erp-notification`'s `InternalApiClientConfig` javadoc for why: two `InternalApiClientConfig`
-  classes get component-scanned into the same `erp-main` context, and identical default bean
-  names there collide.
-- Call the target module's own public REST endpoint
-  (`http://localhost:${server.port}/api/...`), forwarding the caller's incoming
-  `Authorization` header — there is no service-to-service credential in this codebase.
-- Treat any 4xx from the call as "not usable" and translate it into this module's own
-  `LocalizedException`, rather than letting the internal HTTP error leak to the caller.
-- The Service is the ONLY layer allowed to hold a `*Client` — never inject a `*Client` into
-  a Domain object, mapper, or controller.
+- Inject the producing module's designated interface from its own
+  `com.erp.<module>.crossmodule` package (real examples: `OrgBranchApi`,
+  `MasterDataLookupApi`, `SecurityUserApi`, `SecUserProfileApi`) — never the module's internal
+  `@Service`, `Repository`, or `@Entity` class directly, and never any class outside that
+  `crossmodule` package.
+- The interface returns only the narrow, producing-module-defined read-model type already
+  established for that lookup (e.g. `OrgBranchView`, `LookupValueView`, `SecurityUserView`,
+  `SecUserProfileView`) — never the producing module's real JPA entity or internal DTO. This
+  is a deliberate anti-corruption boundary, not incidental; it's what the REST/JSON hop used
+  to give for free.
+- Every call site must explicitly state its transaction-propagation intent — do not rely on
+  Spring's default. Use `@Transactional(readOnly = true)` (default `REQUIRED` propagation) on
+  the producing side for a pure read consulted before the caller has written anything itself;
+  use `@Transactional(propagation = Propagation.REQUIRES_NEW)` if the producing side performs
+  a write that must commit independently of the caller's own transaction outcome. State the
+  reasoning in a comment — don't apply either mechanically.
+- Authorization on the producing side's interface implementation is enforced the same way as
+  any other `@Service` method — via `@EnableMethodSecurity`/`@PreAuthorize`, which fires
+  regardless of call path since this is one Spring `ApplicationContext`. Do NOT manually
+  forward an `Authorization` header — `SecurityContextHolder` already carries the caller's
+  principal on the calling thread for a synchronous call. If the call happens from an
+  async/scheduled thread with no live `SecurityContext`, that thread's executor must propagate
+  it explicitly (see `erp-notification`'s `NotificationAsyncConfig.SecurityContextTaskDecorator`
+  for the established pattern) — same discipline this codebase previously required for
+  header-forwarding, just applied to `SecurityContext` instead of a header string.
+- Catch the producing side's `AccessDeniedException`/not-found exception at the call site the
+  same way an HTTP 4xx used to be caught — do not let it leak as an unhandled 500, but do not
+  silently swallow it either if the module's existing REST behavior didn't.
+- The Service is the ONLY layer allowed to hold a `crossmodule` interface reference — never
+  inject one into a Domain object, mapper, or controller.
 
 **Exposing this module's data to other modules (this module is the target):**
-- Expose it through this module's own `@RestController` — the same public REST API a
-  frontend would call. Do NOT declare a Java interface in `service/` for another module to
-  implement or call directly, and do NOT create a dedicated `api/` package for this purpose
-  — there is no in-process module facade in this codebase.
+- Define a narrow interface (and its read-model return type(s)) in this module's own
+  `com.erp.<module>.crossmodule` package. Implement it in a small, dedicated class that
+  delegates to this module's existing internal service/repository — do not implement the
+  interface directly on the module's main internal-facing `@Service` class, so the
+  cross-module contract surface stays intentionally narrow and doesn't grow un-reviewed as
+  the internal service evolves.
+- This `crossmodule` package is the ONLY public surface another module may depend on — the
+  ArchUnit suite fails the build if anything outside it is referenced from another module's
+  package.
 
-**Forbidden regardless of direction:** importing or injecting another module's `@Service`,
-`Repository`, or `@Entity` class directly. If it isn't reachable over that module's REST
-API, the Service does not have a way to reach it.
+**Forbidden regardless of direction:**
+- Importing or injecting another module's `@Service`, `Repository`, or `@Entity` class
+  directly, or any class outside its `crossmodule` package.
+- Returning a target module's real entity or internal DTO from a `crossmodule` interface
+  method.
+- A circular dependency between two modules' `crossmodule` interfaces (e.g. module A injects
+  module B's interface AND module B injects module A's) — this codebase hit exactly this case
+  converting `erp-security`↔`erp-notification`; resolve it architecturally, don't force it.
+
+**Resolved — erp-security ↔ erp-notification:** both directions now use direct injection
+(`erp-notification` injects `erp-security`'s `SecurityUserApi`/`SecUserProfileApi`;
+`erp-security`'s `AuthEventListener` injects `erp-notification`'s `NotificationDispatchApi`).
+This pairing was a `*Client` + REST-loopback exception only while these were separate Maven
+artifacts, which would have made both directions at once a circular dependency — pom
+consolidation removed that constraint, so it converted like every other pairing.
+`NotificationDispatchApi` needs no principal at all: it delegates to
+`NotificationEventProcessor.process()`, which is deliberately not `@PreAuthorize`-gated for
+same reason the Spring Event ingress isn't (see that method's javadoc) — this replaced the old
+`NotificationClient`'s `svc-notification` JWT-minting mechanism entirely, which existed only to
+satisfy an HTTP-layer authentication check a direct method call doesn't need.
 
 ## Publishing Domain Events (if applicable)
 
@@ -134,7 +175,7 @@ effect directly, and do NOT introduce a message broker.
   `AuthService` and `NotificationEventProcessor`.
 - The `@EventListener` (or `@TransactionalEventListener`) that reacts to it stays in the
   owning module — the module that defines the event owns its listener(s). A different module
-  reacts to the outcome only by calling back over that module's REST API via a `*Client`,
+  reacts to the outcome only by calling back through that module's `crossmodule` interface,
   never by listening for another module's internal event type.
 - Do NOT introduce `RabbitTemplate`, a message broker, or a publisher/listener port
   abstraction for this — `ApplicationEventPublisher` is the whole pattern in this codebase.
@@ -148,7 +189,7 @@ implementation exists in this codebase yet. Do not treat this exception as autho
 to use RabbitMQ for any other purpose.
 
 ### 1. Create Service File
-- **Location:** `erp-<MODULE_NAME>/src/main/java/com/example/<module>/service/<ENTITY_NAME>Service.java`
+- **Location:** `src/main/java/com/erp/<module>/service/<ENTITY_NAME>Service.java`
 
 ### 2. Class Declaration
 ```java
@@ -169,7 +210,7 @@ public class <ENTITY_NAME>Service {
 ```java
 @CacheEvict(cacheNames = "<cacheName>", allEntries = true) // ONLY if entity is cache-eligible
 @Transactional
-@PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).<ENTITY>_CREATE)")
+@PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).<ENTITY>_CREATE)")
 public ServiceResult<<ENTITY>Response> create(<ENTITY>CreateRequest request) {
     log.info("Creating <Entity> with key: {}", request.getKey());
 
@@ -198,7 +239,7 @@ public ServiceResult<<ENTITY>Response> create(<ENTITY>CreateRequest request) {
 ```java
 @CacheEvict(cacheNames = "<cacheName>", allEntries = true) // ONLY if cache-eligible
 @Transactional
-@PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).<ENTITY>_UPDATE)")
+@PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).<ENTITY>_UPDATE)")
 public ServiceResult<<ENTITY>Response> update(Long id, <ENTITY>UpdateRequest request) {
     log.info("Updating <Entity> ID: {}", id);
 
@@ -230,7 +271,7 @@ public ServiceResult<<ENTITY>Response> update(Long id, <ENTITY>UpdateRequest req
 ### 5. getById() Method
 ```java
 @Transactional(readOnly = true)
-@PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).<ENTITY>_VIEW)")
+@PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).<ENTITY>_VIEW)")
 public ServiceResult<<ENTITY>Response> getById(Long id) {
     log.debug("Fetching <Entity> ID: {}", id);
 
@@ -245,7 +286,7 @@ public ServiceResult<<ENTITY>Response> getById(Long id) {
 ### 6. search() Method
 ```java
 @Transactional(readOnly = true)
-@PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).<ENTITY>_VIEW)")
+@PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).<ENTITY>_VIEW)")
 public ServiceResult<Page<<ENTITY>Response>> search(<ENTITY>SearchRequest searchRequest) {
     log.debug("Searching <Entity>s");
 
@@ -266,7 +307,7 @@ public ServiceResult<Page<<ENTITY>Response>> search(<ENTITY>SearchRequest search
 ```java
 @CacheEvict(cacheNames = "<cacheName>", allEntries = true) // ONLY if cache-eligible
 @Transactional
-@PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).<ENTITY>_UPDATE)")
+@PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).<ENTITY>_UPDATE)")
 public ServiceResult<<ENTITY>Response> activate(Long id) {
     log.info("Activating <Entity> ID: {}", id);
 
@@ -287,7 +328,7 @@ public ServiceResult<<ENTITY>Response> activate(Long id) {
 ```java
 @CacheEvict(cacheNames = "<cacheName>", allEntries = true) // ONLY if cache-eligible
 @Transactional
-@PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).<ENTITY>_UPDATE)")
+@PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).<ENTITY>_UPDATE)")
 public ServiceResult<<ENTITY>Response> deactivate(Long id) {
     log.info("Deactivating <Entity> ID: {}", id);
 
@@ -312,7 +353,7 @@ public ServiceResult<<ENTITY>Response> deactivate(Long id) {
 ```java
 @CacheEvict(cacheNames = "<cacheName>", allEntries = true) // ONLY if cache-eligible
 @Transactional
-@PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).<ENTITY>_DELETE)")
+@PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).<ENTITY>_DELETE)")
 public void delete(Long id) {
     log.info("Deleting <Entity> ID: {}", id);
 
@@ -336,7 +377,7 @@ public void delete(Long id) {
 ### 10. getUsage() Method
 ```java
 @Transactional(readOnly = true)
-@PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).<ENTITY>_VIEW)")
+@PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).<ENTITY>_VIEW)")
 public ServiceResult<<ENTITY>UsageResponse> getUsage(Long id) {
     log.debug("Fetching usage for <Entity> ID: {}", id);
 
@@ -361,14 +402,14 @@ Before creating a service, verify the following shared resources from `erp-commo
 
 | # | Requirement | Shared Class | Package |
 |---|-------------|-------------|--------|
-| SH.1 | Return type: `ServiceResult<T>` for all methods except `delete()` | `ServiceResult` | `com.example.erp.common.domain.status` |
-| SH.2 | Status codes: `Status.CREATED`, `Status.UPDATED`, `Status.SUCCESS` | `Status` | `com.example.erp.common.domain.status` |
-| SH.3 | Errors: `LocalizedException(Status, ErrorCode, ...args)` for ALL errors | `LocalizedException` | `com.example.erp.common.exception` |
+| SH.1 | Return type: `ServiceResult<T>` for all methods except `delete()` | `ServiceResult` | `com.erp.erp.common.domain.status` |
+| SH.2 | Status codes: `Status.CREATED`, `Status.UPDATED`, `Status.SUCCESS` | `Status` | `com.erp.erp.common.domain.status` |
+| SH.3 | Errors: `LocalizedException(Status, ErrorCode, ...args)` for ALL errors | `LocalizedException` | `com.erp.erp.common.exception` |
 | SH.4 | Search: `SpecBuilder.build()` for dynamic JPA specifications | `SpecBuilder` | `com.erp.common.search` |
 | SH.5 | Pagination: `PageableBuilder.from()` with sort field whitelist | `PageableBuilder` | `com.erp.common.search` |
 | SH.6 | Sort validation: `SetAllowedFields` for `ALLOWED_SORT_FIELDS` whitelist | `SetAllowedFields` | `com.erp.common.search` |
-| SH.7 | Security context: `SecurityContextHelper` for current user (`getUsernameOrSystem()`, `isAuthenticated()`) | `SecurityContextHelper` | `com.example.erp.common.util` |
-| SH.8 | Validation utilities: `ValidationUtils` for common validations | `ValidationUtils` | `com.example.erp.common.util` |
+| SH.7 | Security context: `SecurityContextHelper` for current user (`getUsernameOrSystem()`, `isAuthenticated()`) | `SecurityContextHelper` | `com.erp.erp.common.util` |
+| SH.8 | Validation utilities: `ValidationUtils` for common validations | `ValidationUtils` | `com.erp.erp.common.util` |
 
 **Rules:**
 - NEVER throw raw `RuntimeException` — use `LocalizedException`
@@ -441,8 +482,9 @@ Before creating a service, verify the following shared resources from `erp-commo
 - ❌ A business-rule condition (`if` enforcing an invariant) implemented inline in a service
   method instead of delegated to the entity's `<Entity>Domain` object — see
   [`domain-layer.md`](../../../context/domain-layer.md)
-- ❌ Injecting another module's `@Service`, `Repository`, or `@Entity` directly instead of
-  calling it through a `*Client` — see "Cross-Module Calls (XM)"
+- ❌ Injecting another module's `@Service`, `Repository`, or `@Entity` directly, or any class
+  outside its `crossmodule` package, instead of calling it through that interface — see
+  "Cross-Module Calls (XM)"
 - ❌ Publishing an event via `RabbitTemplate`, a message broker, or a custom
   publisher/listener port instead of `ApplicationEventPublisher` — see "Publishing Domain
   Events"
@@ -466,7 +508,7 @@ public class MasterLookupService {
 
     @CacheEvict(cacheNames = "lookupValues", allEntries = true)
     @Transactional
-    @PreAuthorize("hasAuthority(T(com.example.security.constants.SecurityPermissions).MASTER_LOOKUP_CREATE)")
+    @PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).MASTER_LOOKUP_CREATE)")
     public ServiceResult<MasterLookupResponse> create(MasterLookupCreateRequest request) {
         log.info("Creating MasterLookup with key: {}", request.getLookupKey());
 
@@ -484,23 +526,48 @@ public class MasterLookupService {
 }
 ```
 
-## Example (Real ERP — cross-module call, OrgBranchClient)
+## Example (Real ERP — cross-module call, OrgBranchApi)
+
+Producing side (`erp-org`'s own `crossmodule` package — the ONLY erp-org surface another
+module may depend on):
 
 ```java
-@Slf4j
-@Component
+public interface OrgBranchApi {
+    Optional<OrgBranchView> findBranch(Long branchId);
+}
+
+public record OrgBranchView(Long id, boolean active) {}
+
+@Service
 @RequiredArgsConstructor
-public class OrgBranchClient {
+class OrgBranchApiService implements OrgBranchApi {
 
-    private final RestTemplate internalApiRestTemplate;
+    private final BranchService branchService;
 
-    @Value("${server.port:7272}")
-    private int serverPort;
+    @Override
+    @Transactional(readOnly = true) // pure read, no write on this side — REQUIRED (default) is fine
+    public Optional<OrgBranchView> findBranch(Long branchId) {
+        // ... delegates to branchService.getById(branchId), catches LocalizedException
+        // (not found) and AccessDeniedException (caller lacks BRANCH_VIEW) into Optional.empty()
+    }
+}
+```
 
-    public void assertActiveBranch(Long branchId) {
-        String url = "http://localhost:" + serverPort + "/api/v1/org/branches/" + branchId;
-        HttpEntity<Void> entity = new HttpEntity<>(forwardedAuthHeaders());
-        // ... GET call, 4xx treated as "not usable", throws LocalizedException on failure
+Consuming side (`erp-security`'s `SecUserProfileService`, injecting the interface directly —
+no `RestTemplate`, no header forwarding, no HTTP round trip):
+
+```java
+@Service
+@RequiredArgsConstructor
+public class SecUserProfileService {
+
+    private final OrgBranchApi orgBranchApi;
+
+    private void assertActiveBranch(Long branchId) {
+        OrgBranchView branch = orgBranchApi.findBranch(branchId).orElse(null);
+        if (branch == null || !branch.active()) {
+            throw new LocalizedException(Status.BAD_REQUEST, SecurityErrorCodes.SEC_USER_PROFILE_BRANCH_INACTIVE, branchId);
+        }
     }
 }
 ```

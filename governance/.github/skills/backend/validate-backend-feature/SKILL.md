@@ -81,7 +81,7 @@ Verify that ALL phases were executed in the correct order:
 For a feature named `<Entity>` in module `<module>`, verify ALL files exist:
 
 ```
-erp-<module>/src/main/java/com/example/<module>/
+src/main/java/com/erp/<module>/
 ├── entity/Md<Entity>.java                          [ ]
 ├── repository/<Entity>Repository.java               [ ]
 ├── dto/<Entity>CreateRequest.java                   [ ]
@@ -95,18 +95,18 @@ erp-<module>/src/main/java/com/example/<module>/
 │                                                            entity has Business Rules
 │                                                            needing Business Decision
 │                                                            ownership (see domain-layer.md)
-├── client/<Target>Client.java (if this feature       [ ]  ← only if this feature reads
-│   reads data owned by another module)                     data from another module —
+├── crossmodule/<Target>Api.java (if this feature     [ ]  ← only if this feature exposes
+│   exposes data to another module)                         data to another module —
 │                                                            see create-service's
 │                                                            "Cross-Module Calls (XM)"
 ├── exception/<Module>ErrorCodes.java (updated)      [ ]
 ├── service/<Entity>Service.java                     [ ]
 └── controller/<Entity>Controller.java               [ ]
 
-erp-security/src/main/java/.../
-└── constants/SecurityPermissions.java (updated)     [ ]
+src/main/java/com/erp/security/constants/
+└── SecurityPermissions.java (updated)                [ ]
 
-erp-main/src/main/resources/i18n/
+src/main/resources/i18n/
 ├── messages.properties (updated)                    [ ]
 └── messages_ar.properties (updated)                 [ ]
 ```
@@ -211,21 +211,22 @@ Run each enforcement skill's full checklist:
              violations (not the service)
 [ ] 3.6.4 — <Entity>Domain does NOT import or call another
              module's service — cross-module (XM) data is resolved
-             by the Service (via a *Client — see create-service's
-             "Cross-Module Calls (XM)") and passed in as a plain
-             argument
+             by the Service (via the target module's crossmodule
+             interface — see create-service's "Cross-Module Calls
+             (XM)") and passed in as a plain argument
 ```
 
 #### 3.7 Cross-Module Calls & Eventing (see `create-service`)
 
 ```
-[ ] 3.7.1 — Any cross-module read goes through a *Client class in
-             this module's client/ package, calling the target
-             module's own REST API — no direct import/injection of
-             another module's @Service, Repository, or @Entity
-[ ] 3.7.2 — The *Client is only ever injected into this module's
-             Service — never into a Domain object, mapper, or
-             controller
+[ ] 3.7.1 — Any cross-module read goes through the target module's
+             crossmodule interface, injected directly — no direct
+             import/injection of another module's @Service,
+             Repository, @Entity, or any class outside that
+             interface's package
+[ ] 3.7.2 — The crossmodule interface is only ever injected into
+             this module's Service — never into a Domain object,
+             mapper, or controller
 [ ] 3.7.3 — Any event this feature publishes uses
              ApplicationEventPublisher with a dedicated
              <Action><Entity>Event record — no RabbitTemplate, no
@@ -281,9 +282,10 @@ The feature is **IMMEDIATELY REJECTED** if any of these are found:
 - Service returning raw entity outside module
 - `GenerationType.IDENTITY` or `AUTO`
 - Repository injected in another module
-- Direct import/injection of another module's `@Service`, `Repository`, or `@Entity` from
-  anywhere in this module — cross-module reads must go through a `*Client` calling the
-  target module's REST API (see `create-service`'s "Cross-Module Calls (XM)")
+- Direct import/injection of another module's `@Service`, `Repository`, `@Entity`, or any
+  class outside its `crossmodule` package, from anywhere in this module — cross-module reads
+  must go through the target module's `crossmodule` interface, injected directly (see
+  `create-service`'s "Cross-Module Calls (XM)")
 - An event published via `RabbitTemplate`, a message broker, or any publisher/listener port
   other than `ApplicationEventPublisher` + a dedicated `<Action><Entity>Event` class
   — Exception: RabbitMQ publish where the sole target consumer is the Accounting module

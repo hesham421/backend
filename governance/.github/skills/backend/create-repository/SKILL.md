@@ -39,26 +39,30 @@ Generates a JPA repository interface for the ERP system following the canonical 
 
 ## Output
 
-- Single file: `erp-<MODULE>/src/main/java/com/example/<module>/repository/<Entity>Repository.java`
+- Single file: `src/main/java/com/erp/<module>/repository/<Entity>Repository.java` (single
+  consolidated `pom.xml` — see
+  `governance/project-artifacts/INTERFACE-VS-REST-AND-POM-STRUCTURE-RECOMMENDATION.md`; module
+  boundaries are package-based, enforced by ArchUnit, not separate Maven module directories)
 
 ---
 
 ## Cross-Module Access
 
 This repository is injected ONLY within its own module's service. If another module needs
-this data, it consumes it via this module's own REST API — see `create-service`'s
-"Cross-Module Calls (XM)" section for the `*Client` + `InternalApiClientConfig` pattern used
-on the calling side (real examples: `OrgBranchClient`, `MasterDataLookupClient`,
-`SecUserProfileClient`). Do NOT add methods here to make this repository "easier to reuse"
-from another module — the module boundary is enforced through HTTP, not through repository
-design.
+this data, it consumes it via this module's own `crossmodule` interface — see
+`create-service`'s "Cross-Module Calls (XM)" section for the direct-injection pattern used on
+the calling side (real examples: `OrgBranchApi`, `MasterDataLookupApi`, `SecurityUserApi`,
+`SecUserProfileApi`). Do NOT add methods here to make this repository "easier to reuse" from
+another module, and do NOT inject this repository directly from another module — the module
+boundary is enforced by the ArchUnit suite in `src/test/java/com/erp/architecture`, not by
+repository design.
 
 ---
 
 ## Steps
 
 ### 1. Create Repository File
-- **Location:** `erp-<MODULE_NAME>/src/main/java/com/example/<module>/repository/<ENTITY_NAME>Repository.java`
+- **Location:** `src/main/java/com/erp/<module>/repository/<ENTITY_NAME>Repository.java`
 
 ### 2. Interface Declaration
 ```java
@@ -131,7 +135,7 @@ Before creating a new repository, verify the following shared resources from `er
 | Rule ID | Rule | MUST |
 |---------|------|------|
 | A.2.2 | Annotated with `@Repository` | YES |
-| A.2.3 | NEVER injected outside its own module (cross-module consumers use a `*Client` + REST call — see `create-service`'s "Cross-Module Calls (XM)") | YES |
+| A.2.3 | NEVER injected outside its own module (cross-module consumers use the module's `crossmodule` interface, injected directly — see `create-service`'s "Cross-Module Calls (XM)") | YES |
 | A.2.4 | Existence checks use `boolean existsBy<Field>(...)` | YES |
 | A.2.5 | Update uniqueness uses `existsBy<Field>AndIdNot(value, id)` — ONLY if that field is mutable on update | YES |
 | A.2.6 | Child queries use `JOIN FETCH` in `@Query` to avoid N+1 | YES |

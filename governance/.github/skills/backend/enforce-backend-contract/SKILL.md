@@ -107,8 +107,9 @@ Run EVERY check. Mark ✅ PASS or ❌ VIOLATION.
 ```
 [ ] A.2.1 — Extends JpaRepository AND JpaSpecificationExecutor
 [ ] A.2.2 — Has @Repository annotation
-[ ] A.2.3 — NOT injected outside its own module (cross-module consumers use a *Client + REST
-             call — see create-service's "Cross-Module Calls (XM)")
+[ ] A.2.3 — NOT injected outside its own module (cross-module consumers use the module's
+             crossmodule interface, injected directly — see create-service's
+             "Cross-Module Calls (XM)")
 [ ] A.2.4 — Existence checks use existsBy<Field>()
 [ ] A.2.5 — Update uniqueness uses existsBy<Field>AndIdNot() ONLY if field is mutable
 [ ] A.2.6 — Child queries use JOIN FETCH
@@ -233,7 +234,7 @@ The following patterns trigger IMMEDIATE rejection — no exceptions:
 | `GenerationType.IDENTITY` or `AUTO` | Must use `GenerationType.SEQUENCE` |
 | `@Builder` annotation on entity class (instead of `@SuperBuilder`) | Breaks `AuditableEntity` inheritance — `@Builder.Default` on fields is allowed with `@SuperBuilder` |
 | Repository injected outside its module | Cross-module violation |
-| Direct import/injection of another module's `@Service`, `Repository`, or `@Entity` from a Service, Domain, mapper, or controller | Cross-module violation — must go through the target module's REST API via a `*Client` (see `create-service`'s "Cross-Module Calls (XM)") |
+| Direct import/injection of another module's `@Service`, `Repository`, `@Entity`, or any class outside its `crossmodule` package, from a Service, Domain, mapper, or controller | Cross-module violation — must go through the target module's `crossmodule` interface, injected directly (see `create-service`'s "Cross-Module Calls (XM)") |
 | Event published via `RabbitTemplate`, a message broker, or a custom publisher/listener port instead of `ApplicationEventPublisher` + a dedicated `<Action><Entity>Event` | Not part of this codebase's architecture — see `create-service`'s "Publishing Domain Events" |
 | Controller with business logic | Thin controller violation |
 | Controller injecting repository | Layer violation |

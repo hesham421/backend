@@ -1,0 +1,77 @@
+package com.erp.security.entity;
+
+import com.erp.common.domain.AuditableEntity;
+import com.erp.security.dto.PermissionType;
+import jakarta.persistence.*;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
+
+/**
+ * Permission Entity - Represents a single permission in the RBAC system
+ *
+ * Each page permission is linked to a Page via PAGE_ID_FK for:
+ * - Better query performance (JOIN instead of string parsing)
+ * - Referential integrity (FK constraint)
+ * - Cleaner architecture (proper relational model)
+ *
+ * System permissions (not linked to pages) have PAGE_ID_FK = null
+ */
+@Entity
+@Table(name = "PERMISSIONS",
+       uniqueConstraints = {@UniqueConstraint(name="UK_PERMS_NAME", columnNames={"NAME"})},
+       indexes = {
+           @Index(name = "IDX_PERMS_NAME", columnList = "NAME"),
+           @Index(name = "IDX_PERMS_PAGE_FK", columnList = "PAGE_ID_FK"),
+           @Index(name = "IDX_PERMS_TYPE", columnList = "PERMISSION_TYPE")
+       })
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @SuperBuilder
+public class Permission extends AuditableEntity {
+
+    /**
+     * PK constraint name: PERMISSIONS_PK (matches the column name below).
+     * Naming the constraint itself isn't expressible via a JPA annotation on
+     * @Id (unlike @ForeignKey for FKs) — Hibernate's naming-strategy hooks
+     * only cover FOREIGN_KEY/UNIQUE_KEY/INDEX, never PRIMARY_KEY — so the
+     * constraint name is enforced in the live DB by
+     * 001_rename_pk_fk_to_standard.sql instead.
+     */
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "permissions_seq")
+    @SequenceGenerator(name = "permissions_seq", sequenceName = "PERMISSIONS_SEQ", allocationSize = 1)
+    @Column(name = "PERMISSIONS_PK")
+    private Long id;
+
+    @Column(name = "NAME", nullable = false, length = 150)
+    private String name; // PERM_<PAGE_CODE>_<TYPE>
+
+    /**
+     * Direct link to the Page entity
+     * Nullable for system permissions that are not page-related
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "PAGE_ID_FK", referencedColumnName = "SEC_PAGES_PK",
+        foreignKey = @ForeignKey(name = "FK_PERMS_PAGE"))
+    private Page page;
+
+    /**
+     * Permission type: VIEW, CREATE, UPDATE, DELETE
+     * Stored separately for efficient queries without string parsing
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "PERMISSION_TYPE", length = 20)
+    private PermissionType permissionType;
+
+    /**
+     * Check if this is a page-related permission
+     */
+    public boolean isPagePermission() {
+        return page != null;
+    }
+
+    /**
+     * Check if this is a VIEW permission
+     */
+    public boolean isViewPermission() {
+        return permissionType == PermissionType.VIEW;
+    }
+}

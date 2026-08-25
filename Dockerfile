@@ -4,27 +4,15 @@
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
-# Copy parent POM first (cache dependencies)
+# Copy the single consolidated POM (cache dependencies) — see
+# governance/project-artifacts/INTERFACE-VS-REST-AND-POM-STRUCTURE-RECOMMENDATION.md
 COPY pom.xml ./pom.xml
-
-# Copy all module POMs
-COPY erp-common-utils/pom.xml ./erp-common-utils/pom.xml
-COPY erp-security/pom.xml ./erp-security/pom.xml
-COPY erp-finance-gl/pom.xml ./erp-finance-gl/pom.xml
-COPY erp-masterdata/pom.xml ./erp-masterdata/pom.xml
-COPY erp-org/pom.xml ./erp-org/pom.xml
-COPY erp-main/pom.xml ./erp-main/pom.xml
 
 # Download dependencies (cached layer)
 RUN mvn dependency:go-offline -B
 
 # Copy source code
-COPY erp-common-utils/src ./erp-common-utils/src
-COPY erp-security/src ./erp-security/src
-COPY erp-finance-gl/src ./erp-finance-gl/src
-COPY erp-masterdata/src ./erp-masterdata/src
-COPY erp-org/src ./erp-org/src
-COPY erp-main/src ./erp-main/src
+COPY src ./src
 
 # Build (skip tests — run tests in CI, not in Docker build)
 RUN mvn clean package -DskipTests -B
@@ -43,7 +31,7 @@ RUN apk add --no-cache wget && \
 	chown -R appuser:appgroup /app
 
 # Copy JAR from build stage
-COPY --from=build /app/erp-main/target/erp-main-*.jar app.jar
+COPY --from=build /app/target/erp-system-*.jar app.jar
 
 # Set ownership
 RUN chown appuser:appgroup app.jar

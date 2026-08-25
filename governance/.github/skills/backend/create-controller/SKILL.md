@@ -45,14 +45,14 @@ Generates a thin REST controller that delegates ALL logic to the service layer. 
 
 ## Output
 
-- Single file: `erp-<MODULE>/src/main/java/com/example/<module>/controller/<Entity>Controller.java`
+- Single file: `src/main/java/com/erp/<module>/controller/<Entity>Controller.java`
 
 ---
 
 ## Steps
 
 ### 1. Create Controller File
-- **Location:** `erp-<MODULE_NAME>/src/main/java/com/example/<module>/controller/<ENTITY_NAME>Controller.java`
+- **Location:** `src/main/java/com/erp/<module>/controller/<ENTITY_NAME>Controller.java`
 
 ### 2. Class Declaration
 ```java
@@ -199,11 +199,11 @@ Before creating a controller, verify the following shared resources from `erp-co
 
 | # | Requirement | Shared Class | Package |
 |---|-------------|-------------|--------|
-| SH.1 | Response mapping via `OperationCode.craftResponse()` | `OperationCode` / `OperationCodeImpl` | `com.example.erp.common.web` |
-| SH.2 | Response envelope is `ApiResponse<T>` — handled automatically by `ApiResponseWrapper` | `ApiResponse` / `ApiResponseWrapper` | `com.example.erp.common.web` / `web.advice` |
-| SH.3 | Exception handling by `GlobalExceptionHandler` — do NOT catch exceptions in controllers | `GlobalExceptionHandler` | `com.example.erp.common.web` |
-| SH.4 | Pagination validation by `PageableValidator` / `PageableUtils` | `PageableUtils` | `com.example.erp.common.web.util` |
-| SH.5 | Jackson serialization configured by `CommonJacksonConfig` — do NOT add custom ObjectMapper | `CommonJacksonConfig` | `com.example.erp.common.web.config` |
+| SH.1 | Response mapping via `OperationCode.craftResponse()` | `OperationCode` / `OperationCodeImpl` | `com.erp.erp.common.web` |
+| SH.2 | Response envelope is `ApiResponse<T>` — handled automatically by `ApiResponseWrapper` | `ApiResponse` / `ApiResponseWrapper` | `com.erp.erp.common.web` / `web.advice` |
+| SH.3 | Exception handling by `GlobalExceptionHandler` — do NOT catch exceptions in controllers | `GlobalExceptionHandler` | `com.erp.erp.common.web` |
+| SH.4 | Pagination validation by `PageableValidator` / `PageableUtils` | `PageableUtils` | `com.erp.erp.common.web.util` |
+| SH.5 | Jackson serialization configured by `CommonJacksonConfig` — do NOT add custom ObjectMapper | `CommonJacksonConfig` | `com.erp.erp.common.web.config` |
 
 **Rules:**
 - NEVER create custom response wrappers — use `operationCode.craftResponse(serviceResult)`

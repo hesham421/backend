@@ -43,7 +43,7 @@ Generates the complete set of DTO classes for a feature in the ERP system. This 
 
 ## Output
 
-- 5–6 Java files in `erp-<MODULE>/src/main/java/com/example/<module>/dto/`:
+- 5–6 Java files in `src/main/java/com/erp/<module>/dto/`:
   - `<Entity>CreateRequest.java`
   - `<Entity>UpdateRequest.java`
   - `<Entity>Response.java`
@@ -57,7 +57,7 @@ Generates the complete set of DTO classes for a feature in the ERP system. This 
 
 ### 1. Create All Required DTO Classes
 
-For each entity, create **exactly** these DTOs in `erp-<MODULE_NAME>/src/main/java/com/example/<module>/dto/`:
+For each entity, create **exactly** these DTOs in `src/main/java/com/erp/<module>/dto/`:
 
 | # | DTO Class | Purpose |
 |---|-----------|---------|
@@ -231,9 +231,9 @@ Before creating DTOs, verify the following shared resources from `erp-common-uti
 |---|-------------|-------------|--------|
 | SH.1 | `SearchRequest` DTO for search input already exists in common-utils | `SearchRequest` | `com.erp.common.search` |
 | SH.2 | `SearchFilter` for filter criteria already exists in common-utils | `SearchFilter` | `com.erp.common.search` |
-| SH.3 | `BaseSearchContractRequest` for API layer search mapping | `BaseSearchContractRequest` | `com.example.erp.common.dto` |
-| SH.4 | API response envelope `ApiResponse<T>` — do NOT create per-module response wrappers | `ApiResponse` | `com.example.erp.common.web` |
-| SH.5 | Field validation error items use `FieldErrorItem` | `FieldErrorItem` | `com.example.erp.common.web` |
+| SH.3 | `BaseSearchContractRequest` for API layer search mapping | `BaseSearchContractRequest` | `com.erp.erp.common.dto` |
+| SH.4 | API response envelope `ApiResponse<T>` — do NOT create per-module response wrappers | `ApiResponse` | `com.erp.erp.common.web` |
+| SH.5 | Field validation error items use `FieldErrorItem` | `FieldErrorItem` | `com.erp.erp.common.web` |
 
 **Rules:**
 - NEVER redefine `SearchRequest`, `SearchFilter`, or `Op` in feature modules — import from `erp-common-utils`
