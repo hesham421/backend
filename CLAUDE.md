@@ -72,7 +72,7 @@ in this repo needs lives inside `backend/governance/`.
 | Governance tooling (splitter, api-doc-generator, etc.) | `governance/governance-tools/` |
 | Postgres MCP server | `governance/mcp-servers/postgres/` |
 | Playwright MCP server (backend-side copy, for API integration tests) | `governance/mcp-servers/playwright/` |
-| SECURITY module (permanent exception) | `governance/modules/SECURITY/` |
+| SECURITY module | `governance/modules/SECURITY/` |
 | Reporting / non-impacting markdown (see below) | `governance/project-artifacts/` |
 
 ---
@@ -240,7 +240,6 @@ ownership table below, it almost certainly belongs in
 | `.github/skills/frontend/` | `frontend/governance/.github/skills/` | `backend/governance/` |
 | `mcp-servers/postgres/` | `backend/governance/mcp-servers/postgres/` only, wired via `backend/.mcp.json` | `frontend/governance/` — no frontend DB access use case |
 | `mcp-servers/playwright/` | Both: `backend/governance/mcp-servers/playwright/` (API integration tests, wired via `backend/.mcp.json`) AND an independent copy at `frontend/governance/mcp-servers/playwright/` (wired via `frontend/.mcp.json`). Same manual-sync caveat as `governance-tools/`. | — |
-| SECURITY module (all of it — "PERMANENT EXCEPTION") | `backend/governance/modules/SECURITY/` | `frontend/governance/` |
 | `api-docs/` (auto-generated) | `backend/governance/modules/<MOD>/api-docs/` | `frontend/governance/` — frontend reads this via the sanctioned cross-repo path, never gets its own copy |
 | Reporting / non-impacting markdown | `backend/governance/project-artifacts/` (this repo's own reports) and `frontend/governance/project-artifacts/frontend/` (frontend's own) | Root of either `governance/` tree, or inside `modules/`/`.claude/commands/` |
 | `governance-shared/` | Empty placeholder in both repos, reserved for a future git submodule | Do not put content in either copy without a separate, explicit human decision |
