@@ -26,6 +26,15 @@
         1
       ],
       "current_version": 1
+    },
+    "MASTERDATA": {
+      "code": "MASTERDATA",
+      "description": "Master data lookup management",
+      "registered_at": "2026-08-26T00:00:00.000000",
+      "versions": [
+        1
+      ],
+      "current_version": 1
     }
   }
 }

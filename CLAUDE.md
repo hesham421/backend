@@ -133,6 +133,41 @@ in this repo needs lives inside `backend/governance/`.
 
 ---
 
+## Legacy Module Path
+
+Modules on this path: **ORG, NOTIFICATION, FILESVC** (backend-complete,
+built under the pre-split model — `P0`/`P1`/`P2`/`P3`/`P3_5`/`P4` combined,
+`packages/execution/` combined, rather than the current
+`P0`/`P0_5`/`P1`/`P2`/`P2_5`/`P3_1`/`P3_5_BE`/`P4_1` split and
+`packages/backend-execution/`). **MASTERDATA** is also on this path — it
+has only `api-docs/`, missing every formal stage artifact, and is now
+registered in `modules-registry.json`. **SECURITY is explicitly NOT on
+this path** — it has its own separate, non-overridable exception (stuck
+at P1, never gets a frontend path under any circumstance) and Legacy Path
+logic must never be applied to it.
+
+A module qualifies for the Legacy Path if ALL of the following hold:
+1. It has real, working backend code already implemented.
+2. Its `governance/modules/<MOD>/` folder predates the current governance
+   model — combined `P3`/`P3_5`/`P4` naming, OR missing formal
+   `P0_5`/`P2_5`/`P3_1` artifacts entirely.
+3. It is not SECURITY.
+
+A Legacy Path module:
+- Keeps its existing `governance/modules/<MOD>/` structure **untouched** —
+  no retroactive rename of `P3`→`P3_1`, `P3_5`→`P3_5_BE`, `P4`→`P4_1`, or
+  `packages/execution/`→`packages/backend-execution/`. This is a
+  deliberate, already-made decision — do not revisit it.
+- May still proceed to frontend bootstrap via the documented-override
+  mechanism already built into `generate-module-setup-3.md` /
+  `frontend-bootstrap-launcher.md` — no separate mechanism for that.
+- Gets metadata-level fixes only where something is simply wrong (a
+  misnamed folder, a missing registry entry) — never a structural
+  migration. Fixing a naming mistake is not the same as retroactively
+  migrating a legacy structure; the two must never be conflated.
+
+---
+
 ## Repository Structure
 
 ```
