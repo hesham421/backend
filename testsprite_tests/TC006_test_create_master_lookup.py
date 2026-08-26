@@ -1,63 +1,68 @@
 import requests
-from requests.auth import HTTPBasicAuth
+import uuid
 
 BASE_URL = "http://localhost:7272"
-LOGIN_PATH = "/api/auth/login"
-MASTER_LOOKUPS_PATH = "/api/masterdata/master-lookups"
+LOGIN_ENDPOINT = "/api/auth/login"
+MASTER_LOOKUPS_ENDPOINT = "/api/masterdata/master-lookups"
+
+USERNAME = "admin"
+PASSWORD = "admin"
 TIMEOUT = 30
 
-
 def test_create_master_lookup():
-    # Step 1: Login as admin to get JWT access token
-    login_url = BASE_URL + LOGIN_PATH
-    login_payload = {"username": "admin", "password": "admin"}
-    login_resp = requests.post(login_url, json=login_payload, timeout=TIMEOUT)
+    # Step 1: Authenticate to get JWT bearer token
+    login_url = BASE_URL + LOGIN_ENDPOINT
+    auth_payload = {"username": USERNAME, "password": PASSWORD}
+    login_resp = requests.post(login_url, json=auth_payload, timeout=TIMEOUT)
     assert login_resp.status_code == 200, f"Login failed: {login_resp.text}"
     login_json = login_resp.json()
-    assert login_json.get("success") is True, f"Login API returned unsuccessful response: {login_json}"
+    assert login_json.get("success") is True, f"Login success flag false: {login_json}"
     access_token = login_json.get("data", {}).get("accessToken")
-    assert access_token, "accessToken not found in login response"
+    assert access_token and isinstance(access_token, str), "No accessToken in login response"
+
+    # Step 2: Prepare unique lookupKey and names
+    unique_suffix = uuid.uuid4().hex[:8]
+    lookup_key_raw = f"testLookupKey_{unique_suffix}"
+    lookup_key_upper = lookup_key_raw.upper()
+    lookup_name = f"Test Lookup Name {unique_suffix}"
+    lookup_name_en = f"Test Lookup Name En {unique_suffix}"
+    description = "Test Description for master lookup creation"
 
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json"
     }
 
-    # Prepare a unique lookupKey to avoid conflicts
-    import uuid
-    unique_lookup_key = "test_lookup_" + str(uuid.uuid4())[:8]
-
-    # Payload for creating master lookup
-    create_payload = {
-        "lookupKey": unique_lookup_key,
-        "lookupName": "Test Lookup Name",
-        "lookupNameEn": "Test Lookup Name EN",
-        "description": "This is a test master lookup created by automated test."
+    url = BASE_URL + MASTER_LOOKUPS_ENDPOINT
+    payload = {
+        "lookupKey": lookup_key_raw,
+        "lookupName": lookup_name,
+        "lookupNameEn": lookup_name_en,
+        "description": description
     }
 
-    master_lookups_url = BASE_URL + MASTER_LOOKUPS_PATH
+    # Step 3: Send POST request to create master lookup
+    resp = requests.post(url, json=payload, headers=headers, timeout=TIMEOUT)
 
-    # Use try-finally to delete created resource after test
-    created_id = None
-    try:
-        resp = requests.post(master_lookups_url, json=create_payload, headers=headers, timeout=TIMEOUT)
-        assert resp.status_code == 200, f"Create master lookup failed: {resp.text}"
-        resp_json = resp.json()
-        assert resp_json.get("success") is True, f"API returned unsuccessful response: {resp_json}"
-        data = resp_json.get("data")
-        assert data is not None, "Response data is missing"
-        # Adjust lookupKey assertion to be case-insensitive
-        assert data.get("lookupKey").lower() == unique_lookup_key.lower(), "lookupKey in response doesn't match request"
-        assert data.get("lookupName") == create_payload["lookupName"], "lookupName in response doesn't match"
-        assert data.get("lookupNameEn") == create_payload["lookupNameEn"], "lookupNameEn in response doesn't match"
-        created_id = data.get("id")
-        assert created_id is not None, "Created resource ID not found in response"
-    finally:
-        if created_id:
-            delete_url = f"{master_lookups_url}/{created_id}"
-            delete_resp = requests.delete(delete_url, headers=headers, timeout=TIMEOUT)
-            # Deletion might fail if detail rows exist or constraints, we don't assert deletion here
-            # Just best effort cleanup
+    # Step 4: Assert response status code is 201 Created
+    assert resp.status_code == 201, f"Expected 201 Created, got {resp.status_code}, body={resp.text}"
 
+    # Step 5: Assert response JSON follows ApiResponse envelope and data fields
+    resp_json = resp.json()
+    assert resp_json.get("success") is True, f"API success flag false: {resp_json}"
+    data = resp_json.get("data")
+    assert data is not None, "Response data is missing"
 
+    # Step 6: Assert returned lookupKey equals input lookupKey uppercased
+    returned_lookup_key = data.get("lookupKey")
+    assert returned_lookup_key == lookup_key_upper, (
+        f"Returned lookupKey '{returned_lookup_key}' does not match uppercased input '{lookup_key_upper}'"
+    )
+
+    # Step 7: Assert other returned fields match input loosely (lookupName, lookupNameEn, description)
+    assert data.get("lookupName") == lookup_name
+    assert data.get("lookupNameEn") == lookup_name_en
+    assert "description" in data and isinstance(data["description"], str)
+
+# Execute test function
 test_create_master_lookup()

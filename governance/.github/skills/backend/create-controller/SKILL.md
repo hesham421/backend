@@ -199,11 +199,11 @@ Before creating a controller, verify the following shared resources from `erp-co
 
 | # | Requirement | Shared Class | Package |
 |---|-------------|-------------|--------|
-| SH.1 | Response mapping via `OperationCode.craftResponse()` | `OperationCode` / `OperationCodeImpl` | `com.erp.erp.common.web` |
-| SH.2 | Response envelope is `ApiResponse<T>` — handled automatically by `ApiResponseWrapper` | `ApiResponse` / `ApiResponseWrapper` | `com.erp.erp.common.web` / `web.advice` |
-| SH.3 | Exception handling by `GlobalExceptionHandler` — do NOT catch exceptions in controllers | `GlobalExceptionHandler` | `com.erp.erp.common.web` |
-| SH.4 | Pagination validation by `PageableValidator` / `PageableUtils` | `PageableUtils` | `com.erp.erp.common.web.util` |
-| SH.5 | Jackson serialization configured by `CommonJacksonConfig` — do NOT add custom ObjectMapper | `CommonJacksonConfig` | `com.erp.erp.common.web.config` |
+| SH.1 | Response mapping via `OperationCode.craftResponse()` | `OperationCode` / `OperationCodeImpl` | `com.erp.common.web` |
+| SH.2 | Response envelope is `ApiResponse<T>` — handled automatically by `ApiResponseWrapper` | `ApiResponse` / `ApiResponseWrapper` | `com.erp.common.web` / `web.advice` |
+| SH.3 | Exception handling by `GlobalExceptionHandler` — do NOT catch exceptions in controllers | `GlobalExceptionHandler` | `com.erp.common.web` |
+| SH.4 | Pagination validation by `PageableValidator` / `PageableUtils` | `PageableUtils` | `com.erp.common.web.util` |
+| SH.5 | Jackson serialization configured by `CommonJacksonConfig` — do NOT add custom ObjectMapper | `CommonJacksonConfig` | `com.erp.common.web.config` |
 
 **Rules:**
 - NEVER create custom response wrappers — use `operationCode.craftResponse(serviceResult)`

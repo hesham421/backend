@@ -448,17 +448,17 @@
           {
             "method": "POST",
             "path": "/api/roles",
-            "description": "Create role",
+            "description": "Create role. roleCode MUST match ^[A-Z][A-Z0-9_]*$ (uppercase letter first, then uppercase letters/digits/underscore) or the request fails with 400 VALIDATION_ERROR. roleName has a unique constraint (409 DUPLICATE_ROLE_NAME on repeat) -- use a randomized value.",
             "auth_required": true,
             "request_schema": {
               "body": {
-                "roleCode": "string",
-                "roleName": "string",
+                "roleCode": "string (pattern ^[A-Z][A-Z0-9_]*$)",
+                "roleName": "string (unique)",
                 "description": "string"
               }
             },
             "response_schema": {
-              "200": "ApiResponse<RoleDto>"
+              "201": "ApiResponse<RoleDto>"
             }
           },
           {
@@ -890,18 +890,18 @@
           {
             "method": "POST",
             "path": "/api/v1/org/legal-entities",
-            "description": "Create legal entity",
+            "description": "Create legal entity. nameEn has a unique constraint (409 on repeat) -- use a randomized value, not a fixed string, since re-running this test reuses the same database.",
             "auth_required": true,
             "request_schema": {
               "body": {
                 "nameAr": "string",
-                "nameEn": "string",
+                "nameEn": "string (unique)",
                 "entityTypeId": "number",
                 "notes": "string"
               }
             },
             "response_schema": {
-              "200": "ApiResponse<LegalEntityResponse>"
+              "201": "ApiResponse<LegalEntityResponse>"
             }
           },
           {

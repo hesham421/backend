@@ -231,9 +231,9 @@ Before creating DTOs, verify the following shared resources from `erp-common-uti
 |---|-------------|-------------|--------|
 | SH.1 | `SearchRequest` DTO for search input already exists in common-utils | `SearchRequest` | `com.erp.common.search` |
 | SH.2 | `SearchFilter` for filter criteria already exists in common-utils | `SearchFilter` | `com.erp.common.search` |
-| SH.3 | `BaseSearchContractRequest` for API layer search mapping | `BaseSearchContractRequest` | `com.erp.erp.common.dto` |
-| SH.4 | API response envelope `ApiResponse<T>` — do NOT create per-module response wrappers | `ApiResponse` | `com.erp.erp.common.web` |
-| SH.5 | Field validation error items use `FieldErrorItem` | `FieldErrorItem` | `com.erp.erp.common.web` |
+| SH.3 | `BaseSearchContractRequest` for API layer search mapping | `BaseSearchContractRequest` | `com.erp.common.dto` |
+| SH.4 | API response envelope `ApiResponse<T>` — do NOT create per-module response wrappers | `ApiResponse` | `com.erp.common.web` |
+| SH.5 | Field validation error items use `FieldErrorItem` | `FieldErrorItem` | `com.erp.common.web` |
 
 **Rules:**
 - NEVER redefine `SearchRequest`, `SearchFilter`, or `Op` in feature modules — import from `erp-common-utils`

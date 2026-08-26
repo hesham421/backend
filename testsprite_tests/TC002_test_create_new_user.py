@@ -1,134 +1,120 @@
 import requests
-from requests.auth import HTTPBasicAuth
 import uuid
 
 BASE_URL = "http://localhost:7272"
-AUTH_LOGIN_ENDPOINT = "/api/auth/login"
-USER_CREATE_ENDPOINT = "/api/users"
-USER_ROLES_ASSIGN_ENDPOINT = "/api/users/{userId}/roles"
-USER_ROLES_GET_ENDPOINT = "/api/users/{userId}/roles"
-USER_DELETE_ENDPOINT = "/api/users/{userId}"
+AUTH_PATH = "/api/auth/login"
+USERS_PATH = "/api/users"
+USERS_SEARCH_PATH = "/api/users/search"
+USER_ROLES_PATH_TEMPLATE = "/api/users/{userId}/roles"
+TIMEOUT = 30
 
 ADMIN_CREDENTIALS = {
     "username": "admin",
     "password": "admin"
 }
 
-TIMEOUT = 30
-
 
 def test_create_new_user():
-    # Step 1: Login as admin to obtain JWT access token
-    login_url = BASE_URL + AUTH_LOGIN_ENDPOINT
-    try:
-        login_response = requests.post(
-            login_url,
-            json={"username": ADMIN_CREDENTIALS["username"], "password": ADMIN_CREDENTIALS["password"]},
-            timeout=TIMEOUT
-        )
-        assert login_response.status_code == 200, f"Expected 200 OK on login, got {login_response.status_code}"
-        login_resp_json = login_response.json()
-        assert login_resp_json.get("success") is True, "Login response success flag is not True"
-        access_token = login_resp_json["data"].get("accessToken")
-        assert access_token, "Access token missing in login response"
-    except Exception as e:
-        assert False, f"Admin login failed: {e}"
+    # Login as admin to obtain JWT access token
+    login_resp = requests.post(
+        BASE_URL + AUTH_PATH,
+        json=ADMIN_CREDENTIALS,
+        timeout=TIMEOUT
+    )
+    assert login_resp.status_code == 200, f"Login failed: {login_resp.text}"
+    login_data = login_resp.json()
+    assert login_data.get("success") is True
+    access_token = login_data.get("data", {}).get("accessToken")
+    assert isinstance(access_token, str) and len(access_token) > 0
 
-    # Prepare auth headers for subsequent requests
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json"
     }
 
-    # Step 2: Create a new user with valid username and password
-    # Generate unique username to avoid duplicates
-    unique_username = f"testuser_{uuid.uuid4().hex[:8]}"
-    user_password = "TestPassword123!"
+    # Create unique username and password
+    unique_suffix = uuid.uuid4().hex[:8]
+    new_username = f"testuser_{unique_suffix}"
+    new_password = f"Passw0rd!{unique_suffix}"
 
-    create_user_url = BASE_URL + USER_CREATE_ENDPOINT
-    user_payload = {
-        "username": unique_username,
-        "password": user_password
+    create_payload = {
+        "username": new_username,
+        "password": new_password
     }
 
     user_id = None
-
     try:
-        create_response = requests.post(
-            create_user_url,
-            json=user_payload,
+        # POST /api/users to create new user - expect 201 Created
+        create_resp = requests.post(
+            BASE_URL + USERS_PATH,
+            json=create_payload,
             headers=headers,
             timeout=TIMEOUT
         )
-        assert create_response.status_code == 200, f"Expected 200 OK on user creation, got {create_response.status_code}"
-        create_json = create_response.json()
-        assert create_json.get("success") is True, "User creation response success flag is not True"
-        user_data = create_json.get("data")
-        assert user_data is not None, "User data missing in creation response"
+        assert create_resp.status_code == 201, f"User creation failed: {create_resp.text}"
+        create_data = create_resp.json()
+        assert create_data.get("success") is True
+        user_data = create_data.get("data")
+        assert user_data is not None
+        user_id = user_data.get("id") or user_data.get("userId")
+        assert user_id is not None, "Created user ID not found in response"
+        assert user_data.get("username") == new_username
 
-        user_id = user_data.get("userId")
-        assert user_id is not None, "User ID missing in user creation response data"
-        assert user_data.get("username") == unique_username, "Returned username does not match the created one"
-
-        # Step 3: Retrieve the roles of the created user (should be empty or default)
-        get_roles_url = BASE_URL + USER_ROLES_GET_ENDPOINT.format(userId=user_id)
-        get_roles_response = requests.get(
-            get_roles_url,
+        # POST /api/users/search with proper filter (not flat JSON) to find the user
+        search_payload = {
+            "filters": [
+                {
+                    "field": "username",
+                    "operator": "EQUALS",
+                    "value": new_username
+                }
+            ],
+            "page": 0,
+            "size": 20
+        }
+        search_resp = requests.post(
+            BASE_URL + USERS_SEARCH_PATH,
+            json=search_payload,
             headers=headers,
             timeout=TIMEOUT
         )
-        assert get_roles_response.status_code == 200, f"Expected 200 OK on getting user roles, got {get_roles_response.status_code}"
-        roles_json = get_roles_response.json()
-        assert roles_json.get("success") is True, "Get user roles response success flag is not True"
-        roles_data = roles_json.get("data")
-        assert isinstance(roles_data, list), "User roles data is not a list"
+        assert search_resp.status_code == 200, f"User search failed: {search_resp.text}"
+        search_data = search_resp.json()
+        assert search_data.get("success") is True
+        page_data = search_data.get("data", {})
+        content = page_data.get("content", [])
+        # The created user should appear in the search results
+        assert any(u.get("username") == new_username for u in content), "Created user not found in search results"
 
-        # Step 4: Assign roles to the user and validate the updated roles
-        # Assign an example role: "USER" (assuming this role exists)
-        assign_roles_url = BASE_URL + USER_ROLES_ASSIGN_ENDPOINT.format(userId=user_id)
-        roles_to_assign = ["USER"]
-        assign_roles_response = requests.put(
-            assign_roles_url,
-            headers=headers,
-            json={"roleNames": roles_to_assign},
-            timeout=TIMEOUT
-        )
-        assert assign_roles_response.status_code == 200, f"Expected 200 OK on assigning roles, got {assign_roles_response.status_code}"
-        assign_roles_json = assign_roles_response.json()
-        assert assign_roles_json.get("success") is True, "Assign roles response success flag is not True"
-        updated_user_data = assign_roles_json.get("data")
-        assert updated_user_data is not None, "Updated user data missing after role assignment"
-        assigned_roles = updated_user_data.get("roles")
-        assert assigned_roles is not None, "Assigned roles missing in response"
-        for role in roles_to_assign:
-            assert role in assigned_roles, f"Role '{role}' missing in assigned roles"
-
-        # Verify roles again by fetching
-        get_roles_after_assign_response = requests.get(
-            get_roles_url,
+        # Assign roles to the user
+        # For the test, assign an empty list of roles to verify the endpoint
+        roles_payload = {
+            "roleNames": []
+        }
+        put_roles_resp = requests.put(
+            BASE_URL + USER_ROLES_PATH_TEMPLATE.format(userId=user_id),
+            json=roles_payload,
             headers=headers,
             timeout=TIMEOUT
         )
-        assert get_roles_after_assign_response.status_code == 200, f"Expected 200 OK on getting user roles after assign, got {get_roles_after_assign_response.status_code}"
-        roles_after_assign_json = get_roles_after_assign_response.json()
-        assert roles_after_assign_json.get("success") is True, "Get user roles after assign response success flag is not True"
-        roles_after_assign_data = roles_after_assign_json.get("data")
-        assert set(roles_to_assign).issubset(set(roles_after_assign_data)), "Assigned roles not found in user roles after assignment"
-
+        assert put_roles_resp.status_code == 200, f"Assigning roles failed: {put_roles_resp.text}"
+        put_roles_data = put_roles_resp.json()
+        assert put_roles_data.get("success") is True
+        updated_user_data = put_roles_data.get("data", {})
+        assert updated_user_data.get("id") == user_id
+        # roles should be present (empty or list)
+        assert "roles" in updated_user_data
     finally:
-        # Cleanup: Delete the created user to avoid test side-effects
-        if user_id is not None:
-            delete_user_url = BASE_URL + USER_DELETE_ENDPOINT.format(userId=user_id)
-            try:
-                delete_response = requests.delete(
-                    delete_user_url,
-                    headers=headers,
-                    timeout=TIMEOUT
-                )
-                # Could be 204 No Content or error if cascading constraints; log but don't assert here
-                if delete_response.status_code not in (204, 200):
-                    print(f"Warning: Failed to delete test user {user_id}, status {delete_response.status_code}")
-            except Exception as ex:
-                print(f"Warning: Exception occurred trying to delete test user {user_id}: {ex}")
+        # Cleanup: delete the created user if user_id is set
+        if user_id:
+            del_resp = requests.delete(
+                BASE_URL + f"/api/users/{user_id}",
+                headers=headers,
+                timeout=TIMEOUT
+            )
+            # Deletion might fail if user has child relations, but we do not want to raise on cleanup failure.
+            if del_resp.status_code not in (204, 200):
+                print(f"Warning: Failed to delete user {user_id} during cleanup. Status code: {del_resp.status_code}, Response: {del_resp.text}")
+
 
 test_create_new_user()

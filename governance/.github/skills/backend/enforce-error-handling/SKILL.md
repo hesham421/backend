@@ -273,11 +273,11 @@ All error handling MUST use classes from `erp-common-utils` — do NOT create pe
 
 | Class | Package | Usage |
 |-------|---------|-------|
-| `LocalizedException` | `com.erp.erp.common.exception` | All business errors with i18n support |
-| `Status` | `com.erp.erp.common.domain.status` | Status codes: `NOT_FOUND`, `CONFLICT`, `VALIDATION_ERROR`, etc. |
-| `CommonErrorCodes` | `com.erp.erp.common.exception` | Shared error code constants (module-specific codes go in `<Module>ErrorCodes`) |
-| `GlobalExceptionHandler` | `com.erp.erp.common.web` | Centralized exception → API error mapping — do NOT duplicate |
-| `ApiError` | `com.erp.erp.common.web` | Error envelope included in `ApiResponse` — do NOT create custom error DTOs |
+| `LocalizedException` | `com.erp.common.exception` | All business errors with i18n support |
+| `Status` | `com.erp.common.domain.status` | Status codes: `NOT_FOUND`, `CONFLICT`, `VALIDATION_ERROR`, etc. |
+| `CommonErrorCodes` | `com.erp.common.exception` | Shared error code constants (module-specific codes go in `<Module>ErrorCodes`) |
+| `GlobalExceptionHandler` | `com.erp.common.web` | Centralized exception → API error mapping — do NOT duplicate |
+| `ApiError` | `com.erp.common.web` | Error envelope included in `ApiResponse` — do NOT create custom error DTOs |
 
 ---
 

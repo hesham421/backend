@@ -36,8 +36,9 @@ generate.py              CLI entrypoint. Parses --module/--function (+ rare
                          generator.run(). Owns no pipeline logic itself.
 discovery.py             Resolves --module into a RepositoryContext by reading
                          real repository artifacts (Maven reactor, springdoc
-                         group config, WORKSPACE.md's sibling-repo layout) --
-                         never a per-module lookup table. See "Automatic
+                         group config) -- never a per-module lookup table,
+                         and never a WORKSPACE.md (no such file exists in
+                         this repo). See "Automatic
                          discovery" below. RepositoryContext is the ONLY
                          object carrying repository-shaped knowledge
                          (locations, which module, which shared resources)

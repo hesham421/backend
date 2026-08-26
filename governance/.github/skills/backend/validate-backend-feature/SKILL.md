@@ -240,7 +240,7 @@ Run each enforcement skill's full checklist:
 ### STAGE 4: Compilation
 
 ```
-[ ] mvn clean compile -pl erp-<module> -am → SUCCESS (no errors)
+[ ] mvn clean compile → SUCCESS (no errors) — single consolidated pom.xml, no per-module -pl/-am
 [ ] No compilation warnings related to the feature
 ```
 
@@ -252,26 +252,29 @@ Run each enforcement skill's full checklist:
 
 | Stage | Weight | Max Score |
 |-------|--------|-----------|
-| Stage 0: Execution Order | 10% | 10 points |
+| Stage 0: Execution Order | 6% | 9 points |
 | Stage 1: File Inventory | 10% | 15 points |
-| Stage 2: Layer Contracts | 45% | 85 points |
-| Stage 3: Cross-Cutting | 30% | 22 points |
-| Stage 4: Compilation | 5% | 2 points |
-| **TOTAL** | **100%** | **134 points** |
+| Stage 2: Layer Contracts | 57% | 85 points |
+| Stage 3: Cross-Cutting | 25% | 37 points |
+| Stage 4: Compilation | 1% | 2 points |
+| **TOTAL** | **~100%** | **148 points** |
 
-> Stage 0/1/2 totals include the Domain layer (1 execution-order step, 1 file, 7 contract
-> checks) added by the Domain Layer Guideline — see `domain-layer.md`. Section 3.7 (Cross-Module
-> Calls & Eventing) is a pass/fail gate under Stage 3, not a separately-weighted point pool —
-> see "Automatic Rejection" below, which is where it's actually enforced.
+> Points are 1-per-checklist-item throughout (Stage 0 has 9 execution-order steps including
+> Domain at 1.4.5; Stage 1 has 15 mandatory files; Stage 2 has the 85 contract checks from
+> `enforce-backend-contract`; Stage 3 sums its seven listed areas — 8+5+4+4+8+4+4 = 37 — Common-Utils
+> Reuse is intentionally excluded, see the note under STAGE 3 above; Stage 4 has 2 checks).
+> Weight % is informational only and rounds to ~100. Section 3.7 (Cross-Module Calls & Eventing)
+> is also a pass/fail gate independent of its point value — see "Automatic Rejection" below,
+> which is where it's actually enforced.
 
 ### Verdict Thresholds
 
 | Score | Verdict | Action |
 |-------|---------|--------|
-| 134/134 (100%) | ✅ **APPROVED** | Proceed to frontend |
-| 127-133 (95%+) | ⚠️ **APPROVED WITH NOTES** | Minor issues, document and proceed |
-| 107-126 (80%+) | 🔶 **CONDITIONAL** | Fix issues before proceeding |
-| < 107 (< 80%) | ❌ **REJECTED** | Major rework required |
+| 148/148 (100%) | ✅ **APPROVED** | Proceed to frontend |
+| 141-147 (95%+) | ⚠️ **APPROVED WITH NOTES** | Minor issues, document and proceed |
+| 118-140 (80%+) | 🔶 **CONDITIONAL** | Fix issues before proceeding |
+| < 118 (< 80%) | ❌ **REJECTED** | Major rework required |
 
 ### Automatic Rejection (regardless of score)
 
@@ -347,14 +350,17 @@ The feature is **IMMEDIATELY REJECTED** if any of these are found:
 ## STAGE 3: Cross-Cutting
 | Area | Checks | Passed | Failed |
 |------|--------|--------|--------|
-| Error Handling | 7 | ? | ? |
+| Error Handling | 8 | ? | ? |
 | Caching | 5 | ? | ? |
 | Security | 4 | ? | ? |
 | Immutability | 4 | ? | ? |
 | Response Envelope | 8 | ? | ? |
 | Domain Delegation | 4 | ? | ? |
 | Cross-Module Calls & Eventing | 4 | ? | ? |
-| Common-Utils Reuse | 8 | ? | ? |
+
+> Common-Utils Reuse (CU.1–CU.8) is NOT part of this stage's point pool — it's the separate
+> pass/fail gate below ("erp-common-utils Compliance"), which fails the feature regardless of
+> the score here.
 
 ## STAGE 4: Compilation
 - Compile: ✅/❌
@@ -364,7 +370,7 @@ The feature is **IMMEDIATELY REJECTED** if any of these are found:
 ## VIOLATIONS FOUND
 1. [Rule ID] — [Description] — [Location] — [Severity]
 
-## SCORE: [X] / 134 ([Y]%)
+## SCORE: [X] / 148 ([Y]%)
 
 ## VERDICT: APPROVED / APPROVED WITH NOTES / CONDITIONAL / REJECTED
 

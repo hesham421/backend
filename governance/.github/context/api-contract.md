@@ -76,7 +76,7 @@ On failure, `data` is `null` and `error` is populated:
 **Rules:**
 - No module, controller, or feature may define its own response envelope, error DTO, or
   success/failure wrapper. `ApiResponse<T>` / `ApiError` / `FieldErrorItem` in
-  `com.erp.erp.common.web` are the only ones that exist.
+  `com.erp.common.web` are the only ones that exist.
 - A controller never constructs `ApiResponse` by hand for a `ServiceResult`-backed endpoint —
   `OperationCode.craftResponse(result)` is the only translation point (`create-controller`
   SH.1). Plain (non-`ServiceResult`) return values are wrapped automatically by
@@ -86,7 +86,7 @@ On failure, `data` is `null` and `error` is populated:
 
 ## 2. Exception → HTTP Mapping (single source of truth: `OperationCodeImpl` + `GlobalExceptionHandler`)
 
-`Status` (`com.erp.erp.common.domain.status.Status`) is the **only** vocabulary the Service
+`Status` (`com.erp.common.domain.status.Status`) is the **only** vocabulary the Service
 and Domain layers may use to describe an outcome. It carries no HTTP knowledge. `OperationCodeImpl`
 is the **only** place a `Status`/`StatusCategory` is translated into an `HttpStatus`.
 
@@ -152,7 +152,7 @@ resolves through the same `LocalizedException(Status, ErrorCode, ...args)` /
 
 ## 4. Deprecated Surfaces
 
-- `NotFoundException` (`com.erp.erp.common.exception`) is `@Deprecated` and still has a
+- `NotFoundException` (`com.erp.common.exception`) is `@Deprecated` and still has a
   live handler in `GlobalExceptionHandler` for backward compatibility only. New code must never
   use it — `enforce-error-handling`'s "NotFoundException is NOT USED. EVER." rule is unchanged
   and unaffected by the handler's continued existence.

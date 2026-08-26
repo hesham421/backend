@@ -166,9 +166,9 @@ Before creating a new entity, verify the following shared resources from `erp-co
 
 | # | Requirement | Shared Class | Package |
 |---|-------------|-------------|--------|
-| SH.1 | MUST extend `AuditableEntity` for audit fields. Exception: short-lived security/session artifacts (e.g., RefreshToken) with their own lifecycle fields (issuedAt, expiresAt, revoked) are NOT required to extend AuditableEntity. Declare in Phase CORE: "[EntityName]: Session artifact — does not extend AuditableEntity." | `AuditableEntity` | `com.erp.erp.common.domain` |
-| SH.2 | MUST use `BooleanNumberConverter` for all boolean columns (SMALLINT) | `BooleanNumberConverter` | `com.erp.erp.common.converter` |
-| SH.3 | Audit fields auto-populated by `AuditEntityListener` — do NOT set manually | `AuditEntityListener` | `com.erp.erp.common.audit` |
+| SH.1 | MUST extend `AuditableEntity` for audit fields. Exception: short-lived security/session artifacts (e.g., RefreshToken) with their own lifecycle fields (issuedAt, expiresAt, revoked) are NOT required to extend AuditableEntity. Declare in Phase CORE: "[EntityName]: Session artifact — does not extend AuditableEntity." | `AuditableEntity` | `com.erp.common.domain` |
+| SH.2 | MUST use `BooleanNumberConverter` for all boolean columns (SMALLINT) | `BooleanNumberConverter` | `com.erp.common.converter` |
+| SH.3 | Audit fields auto-populated by `AuditEntityListener` — do NOT set manually | `AuditEntityListener` | `com.erp.common.audit` |
 | SH.4 | Use `@SuperBuilder` due to `AuditableEntity` inheritance — NEVER `@Builder` | — | Lombok |
 
 **Rules:**

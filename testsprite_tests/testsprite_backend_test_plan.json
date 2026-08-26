@@ -7,37 +7,37 @@
   {
     "id": "TC002",
     "title": "test_create_new_user",
-    "description": "Verify that POST /api/users with valid username and password creates a new user and returns 200 with ApiResponse.data as UserDto, and that the user can be retrieved and assigned roles."
+    "description": "Verify that POST /api/users with a unique, randomly-generated username and password creates a new user and returns 201 Created (not 200 -- this API returns 201 for all resource-creation endpoints) with ApiResponse.data as UserDto, and that the user can be retrieved and assigned roles. CRITICAL: POST /api/users/search does NOT accept a flat JSON body like {\"username\": \"x\"} -- it requires the standard search-contract shape: {\"filters\": [{\"field\": \"username\", \"operator\": \"EQUALS\", \"value\": \"<username>\"}], \"page\": 0, \"size\": 20}. A flat body returns 400 INVALID_JSON. Use this exact filters array shape for the search step."
   },
   {
     "id": "TC003",
     "title": "test_create_role_with_valid_data",
-    "description": "Verify that POST /api/roles with valid roleCode, roleName, and description creates a new role and returns 200 with ApiResponse.data as RoleDto."
+    "description": "Verify that POST /api/roles with a unique, randomly-generated roleCode, roleName, and description creates a new role and returns 201 Created (not 200) with ApiResponse.data as RoleDto. IMPORTANT: roleCode must match the server-side validation pattern ^[A-Z][A-Z0-9_]*$ (starts with an uppercase letter, then only uppercase letters/digits/underscore -- no lowercase, no leading digit) or the request fails with 400 VALIDATION_ERROR; build it like 'TEST_ROLE_' + a random uppercase-hex/digit suffix, not a raw lowercase uuid. Always delete the created role in a finally block regardless of assertion outcome, using the id captured immediately after creation, so it doesn't leak into other tests."
   },
   {
     "id": "TC004",
     "title": "test_create_page_and_autogenerate_permissions",
-    "description": "Verify that POST /api/pages with valid page data creates a page and auto-generates CRUD permissions, returning 200 with ApiResponse.data as PageResponse."
+    "description": "Verify that POST /api/pages with a unique, randomly-generated pageCode and valid page data creates a page and auto-generates CRUD permissions, returning 201 Created (not 200) with ApiResponse.data as PageResponse. Note: the backend normalizes pageCode to uppercase server-side (PageService.createPage), so assert the returned pageCode equals the input pageCode uppercased/trimmed, not a raw string match."
   },
   {
     "id": "TC005",
     "title": "test_create_legal_entity",
-    "description": "Verify that POST /api/v1/org/legal-entities with valid data creates a legal entity and returns 200 with ApiResponse.data as LegalEntityResponse."
+    "description": "Verify that POST /api/v1/org/legal-entities with valid data creates a legal entity and returns 201 Created (not 200) with ApiResponse.data as LegalEntityResponse, for the currently authenticated SUPER_ADMIN user. IMPORTANT: BOTH nameEn AND nameAr have independent global unique constraints (409 ALREADY_EXISTS/NAME_DUPLICATE on repeat if EITHER matches an existing row) -- build a single randomized suffix (e.g. uuid4 hex or timestamp) and append it to BOTH nameEn and nameAr, never use a fixed/hardcoded literal for either field, since the database persists across test runs."
   },
   {
     "id": "TC006",
     "title": "test_create_master_lookup",
-    "description": "Verify that POST /api/masterdata/master-lookups with valid lookupKey and names creates a master lookup and returns 200 with ApiResponse.data as MasterLookupResponse."
+    "description": "Verify that POST /api/masterdata/master-lookups with a unique, randomly-generated lookupKey and names creates a master lookup and returns 201 Created (not 200) with ApiResponse.data as MasterLookupResponse. IMPORTANT: the backend normalizes lookupKey to uppercase server-side (MasterLookupService), so assert the returned lookupKey equals the input lookupKey uppercased, not a raw case-sensitive match."
   },
   {
     "id": "TC007",
     "title": "test_issue_file_upload_token_and_upload_file",
-    "description": "Verify that POST /api/v1/files/upload-token issues a valid encrypted upload token (in ApiResponse.data), and that POST /upload/{encryptedToken} with multipart file uploads the file successfully."
+    "description": "Verify that POST /api/v1/files/upload-token issues a valid encrypted upload token (in ApiResponse.data). Then verify that POST /upload/{encryptedToken} with multipart file uploads the file successfully. THIS IS CRITICAL AND CONFIRMED BY LIVE CURL TEST -- BOTH of these two separate POST calls return HTTP status 201 (Created), NOT 200. Do not assert 200 on either call: assert response.status_code == 201 for the upload-token call, AND assert response.status_code == 201 for the multipart upload call. The upload response's ApiResponse.data contains the file name under the key 'fileNameOriginal' (not 'fileName' or 'originalFileName') -- assert on that exact key."
   },
   {
     "id": "TC008",
     "title": "test_send_notification_immediately",
-    "description": "Verify that POST /api/v1/notifications/send with valid notification payload sends notification immediately and returns 200 with ApiResponse.data as NotificationSendConfirmation."
+    "description": "Verify that POST /api/v1/notifications/send with a valid notification payload (recipientId referencing an existing user, channelHint as an uppercase channel code list e.g. [\"EMAIL\"], priority one of HIGH/MEDIUM/LOW, moduleCode and templateCode as non-blank strings) sends the notification immediately and returns 201 Created (not 200) with ApiResponse.data as NotificationSendConfirmation containing a non-empty logEntryIds array."
   },
   {
     "id": "TC009",
@@ -47,12 +47,12 @@
   {
     "id": "TC010",
     "title": "test_assign_branch_scope_to_role",
-    "description": "Verify that POST /api/v1/security/role-branches with valid roleIdFk, branchIdFk, and dataAccessLevel assigns branch-level data access scope to a role and returns 200 with ApiResponse.data as SecRoleBranchDto."
+    "description": "Verify that POST /api/v1/security/role-branches with a freshly-created role and a valid branchIdFk and dataAccessLevel assigns branch-level data access scope to that role and returns 201 Created (not 200) with ApiResponse.data as SecRoleBranchDto. IMPORTANT: when creating the role, roleCode must match the server-side validation pattern ^[A-Z][A-Z0-9_]*$ (starts with an uppercase letter, then only uppercase letters/digits/underscore) or role creation fails with 400; build it like 'TEST_ROLE_' + a random uppercase-hex/digit suffix. roleName ALSO has a unique constraint (409 DUPLICATE_ROLE_NAME on repeat) -- append the same random suffix to roleName too, never a fixed literal like 'Test Role for Branch Scope'. Also, RoleDto's id field is named 'id', not 'roleId' -- read role_data['id']. CRITICAL: dataAccessLevel is a lookup-driven enum with ONLY these three valid active values: 'BRANCH_ONLY', 'BRANCH_AND_CHILDREN', 'ALL' -- plain 'BRANCH' or 'Branch' is INVALID and returns 400 SEC_ROLE_BRANCH_DATA_ACCESS_LEVEL_REQUIRED; use 'BRANCH_ONLY' exactly."
   },
   {
     "id": "TC011",
     "title": "test_notification_unread_endpoint_returns_known_422",
-    "description": "Verify that GET /api/v1/notifications/unread returns HTTP 422 with error code NOTIF_READ_TRACKING_UNAVAILABLE, matching the documented known limitation (no read/unread column in NOTIF_LOG)."
+    "description": "Verify that GET /api/v1/notifications/unread returns HTTP 422 with error code NOTIF_READ_TRACKING_UNAVAILABLE, matching the documented known limitation (no read/unread column in NOTIF_LOG). This is the expected, correct behavior -- do not treat the 422 itself as a failure."
   },
   {
     "id": "TC012",

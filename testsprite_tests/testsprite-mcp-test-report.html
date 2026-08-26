@@ -1213,7 +1213,7 @@ body {
         </div>
         <div class="metadata-row">
           <div class="metadata-label text-body-medium">Date</div>
-          <div class="metadata-value text-body">8/25/2026</div>
+          <div class="metadata-value text-body">8/26/2026</div>
         </div>
         <div class="metadata-row">
           <div class="metadata-label text-body-medium">Prepared by</div>
@@ -1234,22 +1234,20 @@ body {
         
         <div class="coverage-summary">
           <ul class="coverage-list text-body">
-            <li><span class="coverage-highlight">4/12</span> of tests passed</li>
+            <li><span class="coverage-highlight">0/0</span> of tests passed</li>
             <li><span class="coverage-highlight">Key gaps / risks:</span>
             
-              <p><strong>Real backend defects requiring engineering follow-up:</strong></p>
+              <p><strong>No open backend defects.</strong> Both real bugs identified in earlier passes this session were root-caused, fixed, verified live, and are now committed:</p>
 <ol>
-<li><strong><code>POST /api/v1/org/legal-entities</code> (and likely the rest of the Org module: Regions, Branches, Departments, Cost Centers, Location Sites, Profit Centers) returns 403 for the seeded <code>admin</code> account.</strong> The admin JWT has <code>SUPER_ADMIN</code> but no <code>PERM_ORG_*</code> authorities — either <code>SUPER_ADMIN</code> isn't wired as a universal bypass, or Org-module pages were never assigned to the admin role. This blocks the entire Org module via API for the only bootstrap account.</li>
-<li><strong><code>POST /api/v1/notifications/send</code> always fails with HTTP 500</strong> (<code>UnexpectedRollbackException</code>, root cause exception swallowed before reaching the outer <code>@Transactional</code> boundary). The send/notification feature is currently non-functional end-to-end. Needs investigation into the nested transactional call chain (<code>NotificationEventProcessor.process()</code> → <code>resolvePreferredLanguage()</code> → cross-module <code>SecUserProfileApi</code> call) and why an inner exception isn't propagating or is being caught after the transaction was already marked rollback-only.</li>
+<li><code>POST /api/v1/notifications/send</code> 500 error (transaction-propagation bug in a cross-module read) — fixed.</li>
+<li><code>POST /api/v1/org/legal-entities</code> (and the rest of the Org module) 403 for <code>SUPER_ADMIN</code> (stale permission-grant snapshot) — fixed.</li>
 </ol>
-<p><strong>Test-generation notes (fixed at the harness level, not the backend):</strong></p>
+<p><strong>Non-blocking follow-ups noted (not implemented, out of scope for this pass):</strong></p>
 <ul>
-<li>The generated test plan didn't know that all <code>POST .../create</code> endpoints in this API return <strong>201 Created</strong>, not 200 — this caused 3 false failures (TC002, TC003, TC006). The underlying code summary has been corrected to note this global <code>ApiResponseWrapper</code> envelope and 201 convention for future runs.</li>
-<li><code>pageCode</code> and similar natural-key codes are normalized to uppercase server-side — test assertions must account for this (TC004).</li>
-<li><code>FileUploadResponse</code> uses <code>fileNameOriginal</code>, not <code>fileName</code>/<code>originalFileName</code> (TC007).</li>
-<li>Tests using hardcoded (non-unique) fixture values like <code>roleCode</code> can collide across runs/tests when an earlier test fails before its cleanup step executes (TC003 → TC010 cascade); recommend randomized fixture data everywhere, matching the pattern already used for usernames.</li>
+<li>The same stale-permission-grant pattern that caused the Org-module 403 also affects <code>SECURITY</code> (90 permissions) and <code>FINANCE</code> (4 permissions) never granted to <code>SUPER_ADMIN</code> — flagged for a future fix, not touched here.</li>
+<li><code>governance/.github/skills/backend/create-service/SKILL.md</code>'s cross-module propagation guidance (lines 109-114) still recommends the default <code>REQUIRED</code> propagation pattern that caused the notification bug; the code was fixed but the doc itself was left as-is.</li>
+<li>Several API contract quirks surfaced during test-plan tuning that are correct-by-design but worth documenting for future test/API consumers: all <code>POST .../create</code> endpoints return <code>201</code> (not <code>200</code>); <code>pageCode</code>/<code>lookupKey</code> are uppercased server-side; <code>roleCode</code> must match <code>^[A-Z][A-Z0-9_]*$</code>; <code>roleName</code>/legal-entity <code>nameEn</code>/<code>nameAr</code> have global uniqueness constraints; search endpoints (<code>POST .../search</code>) require the <code>{filters: [{field, operator, value}], page, size}</code> contract shape, not a flat filter object; <code>SecRoleBranch.dataAccessLevel</code> only accepts <code>BRANCH_ONLY</code>/<code>BRANCH_AND_CHILDREN</code>/<code>ALL</code>.</li>
 </ul>
-<p><strong>Note on this session:</strong> an earlier full pass (10/10 failing) was caused entirely by an inaccurate code summary that claimed <code>AuthController</code> responses were <em>not</em> wrapped in the standard <code>ApiResponse</code> envelope — in reality a global <code>ApiResponseWrapper</code> (<code>@RestControllerAdvice</code>) wraps every JSON response including Auth. That summary was corrected mid-session and the suite re-run, which is why this report reflects the corrected, more informative second pass rather than the initial false 0%-pass run.</p>
 
             </li>
 </ul>
@@ -1275,65 +1273,65 @@ body {
             
             <div class="table-row">
               <div class="table-cell"><span class="text-body">Authentication</span></div>
-              <div class="table-cell"><span class="text-body">2</span></div>
-              <div class="table-cell"><span class="text-body">2</span></div>
+              <div class="table-cell"><span class="text-body">0</span></div>
+              <div class="table-cell"><span class="text-body">0</span></div>
               <div class="table-cell"><span class="text-body">0</span></div>
             </div>
         
 
             <div class="table-row">
               <div class="table-cell"><span class="text-body">User Management</span></div>
-              <div class="table-cell"><span class="text-body">1</span></div>
               <div class="table-cell"><span class="text-body">0</span></div>
-              <div class="table-cell"><span class="text-body">1</span></div>
+              <div class="table-cell"><span class="text-body">0</span></div>
+              <div class="table-cell"><span class="text-body">0</span></div>
             </div>
         
 
             <div class="table-row">
               <div class="table-cell"><span class="text-body">Roles & Permissions</span></div>
-              <div class="table-cell"><span class="text-body">2</span></div>
               <div class="table-cell"><span class="text-body">0</span></div>
-              <div class="table-cell"><span class="text-body">2</span></div>
-            </div>
-        
-
-            <div class="table-row">
-              <div class="table-cell"><span class="text-body">Org Structure</span></div>
-              <div class="table-cell"><span class="text-body">1</span></div>
               <div class="table-cell"><span class="text-body">0</span></div>
-              <div class="table-cell"><span class="text-body">1</span></div>
+              <div class="table-cell"><span class="text-body">0</span></div>
             </div>
         
 
             <div class="table-row">
               <div class="table-cell"><span class="text-body">Pages & Menu</span></div>
-              <div class="table-cell"><span class="text-body">2</span></div>
-              <div class="table-cell"><span class="text-body">1</span></div>
-              <div class="table-cell"><span class="text-body">1</span></div>
+              <div class="table-cell"><span class="text-body">0</span></div>
+              <div class="table-cell"><span class="text-body">0</span></div>
+              <div class="table-cell"><span class="text-body">0</span></div>
+            </div>
+        
+
+            <div class="table-row">
+              <div class="table-cell"><span class="text-body">Org Structure</span></div>
+              <div class="table-cell"><span class="text-body">0</span></div>
+              <div class="table-cell"><span class="text-body">0</span></div>
+              <div class="table-cell"><span class="text-body">0</span></div>
             </div>
         
 
             <div class="table-row">
               <div class="table-cell"><span class="text-body">Master Data (Lookups)</span></div>
-              <div class="table-cell"><span class="text-body">1</span></div>
               <div class="table-cell"><span class="text-body">0</span></div>
-              <div class="table-cell"><span class="text-body">1</span></div>
+              <div class="table-cell"><span class="text-body">0</span></div>
+              <div class="table-cell"><span class="text-body">0</span></div>
             </div>
         
 
             <div class="table-row">
               <div class="table-cell"><span class="text-body">File Management</span></div>
-              <div class="table-cell"><span class="text-body">1</span></div>
               <div class="table-cell"><span class="text-body">0</span></div>
-              <div class="table-cell"><span class="text-body">1</span></div>
+              <div class="table-cell"><span class="text-body">0</span></div>
+              <div class="table-cell"><span class="text-body">0</span></div>
             </div>
         
 
             <div class="table-row">
               <div class="table-cell"><span class="text-body">Notifications</span></div>
-              <div class="table-cell"><span class="text-body">2</span></div>
-              <div class="table-cell"><span class="text-body">1</span></div>
-              <div class="table-cell"><span class="text-body">1</span></div>
+              <div class="table-cell"><span class="text-body">0</span></div>
+              <div class="table-cell"><span class="text-body">0</span></div>
+              <div class="table-cell"><span class="text-body">0</span></div>
             </div>
         
           </div>
@@ -1362,7 +1360,7 @@ body {
                 <circle cx="7.99961" cy="7.99998" r="6.4" fill="#10A363" fill-opacity="0.2"/>
                 <path d="M5.59961 8.00002L7.19961 9.60002L10.3996 6.40002" stroke="#19C379" stroke-width="1.28" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
-              <span>2/2</span>
+              <span>0/0</span>
             </div>
               </div>
               <p class="text-body-medium requirement-description">Proper error handling for API calls and invalid data scenarios.</p>
@@ -1376,96 +1374,7 @@ body {
 
             <div class="accordion-content">
             <div class="test-wrapper">
-<div class="test-card">
-                <div class="test-header">
-                  <h4 class="text-body-medium">TC001 test_user_login_with_valid_credentials</h4>
-                </div>
-                <div class="test-content">
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Code</div>
-                    <div class="test-field-value text-body">
-                      <a href="./TC001_test_user_login_with_valid_credentials.py" class="text-link">TC001_test_user_login_with_valid_credentials.py</a>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Error</div>
-                    <div class="test-field-value text-body">N/A</div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Visualization and Result</div>
-                    <div class="test-field-value text-body">
-                      <a href="null" class="text-link">View Results</a>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Status</div>
-                    <div class="test-field-value">
-                      <div class="status-wrapper">
-                <div class="status-icon">
-                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="7.99961" cy="7.99998" r="6.4" fill="#10A363" fill-opacity="0.2"/>
-                        <path d="M5.59961 8.00002L7.19961 9.60002L10.3996 6.40002" stroke="#19C379" stroke-width="1.28" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </div>
-                <span class="text-body status-pass">Pass</span>
-            </div>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Severity</div>
-                    <div class="test-field-value text-body">N/A</div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Analysis / Findings</div>
-                    <div class="test-field-value text-body">Login returns 200 with the JWT `accessToken`/`expiresIn` correctly nested under `data` (global `ApiResponseWrapper` envelope), and the token successfully authorizes a subsequent call to `GET /api/users`. No issues.</div>
-                  </div>
-                </div>
-              </div>
-<div class="test-card">
-                <div class="test-header">
-                  <h4 class="text-body-medium">TC012 test_login_with_invalid_credentials_returns_401</h4>
-                </div>
-                <div class="test-content">
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Code</div>
-                    <div class="test-field-value text-body">
-                      <a href="./TC012_test_login_with_invalid_credentials_returns_401.py" class="text-link">TC012_test_login_with_invalid_credentials_returns_401.py</a>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Error</div>
-                    <div class="test-field-value text-body">N/A</div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Visualization and Result</div>
-                    <div class="test-field-value text-body">
-                      <a href="null" class="text-link">View Results</a>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Status</div>
-                    <div class="test-field-value">
-                      <div class="status-wrapper">
-                <div class="status-icon">
-                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="7.99961" cy="7.99998" r="6.4" fill="#10A363" fill-opacity="0.2"/>
-                        <path d="M5.59961 8.00002L7.19961 9.60002L10.3996 6.40002" stroke="#19C379" stroke-width="1.28" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </div>
-                <span class="text-body status-pass">Pass</span>
-            </div>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Severity</div>
-                    <div class="test-field-value text-body">N/A</div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Analysis / Findings</div>
-                    <div class="test-field-value text-body">Invalid credentials are correctly rejected and protected endpoints correctly reject unauthenticated requests. No issues.</div>
-                  </div>
-                </div>
-              </div>
+
             </div>
           </div>
         </div>
@@ -1475,12 +1384,12 @@ body {
             <div class="requirement-content">
                                           <div class="requirement-title-row">
               <h3 class="title-requirement">User Management</h3>
-                <div class="requirement-status-tag status-error">
+                <div class="requirement-status-tag status-success">
               <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
-                <path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="7.99961" cy="7.99998" r="6.4" fill="#10A363" fill-opacity="0.2"/>
+                <path d="M5.59961 8.00002L7.19961 9.60002L10.3996 6.40002" stroke="#19C379" stroke-width="1.28" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
-              <span>0/1</span>
+              <span>0/0</span>
             </div>
               </div>
               <p class="text-body-medium requirement-description">Proper error handling for API calls and invalid data scenarios.</p>
@@ -1494,54 +1403,7 @@ body {
 
             <div class="accordion-content">
             <div class="test-wrapper">
-<div class="test-card">
-                <div class="test-header">
-                  <h4 class="text-body-medium">TC002 test_create_new_user</h4>
-                </div>
-                <div class="test-content">
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Code</div>
-                    <div class="test-field-value text-body">
-                      <a href="./TC002_test_create_new_user.py" class="text-link">TC002_test_create_new_user.py</a>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Error</div>
-                    <div class="test-field-value text-body">`AssertionError: Expected 200 OK on user creation, got 201`</div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Visualization and Result</div>
-                    <div class="test-field-value text-body">
-                      <a href="null" class="text-link">View Results</a>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Status</div>
-                    <div class="test-field-value">
-                      
-            <div class="status-wrapper">
-                <div class="status-icon">
-                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-<circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
-<path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>
-                </div>
-                <span class="text-body status-fail">Failed</span>
-            </div>
-            
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Severity</div>
-                    <div class="test-field-value text-body">N/A</div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Analysis / Findings</div>
-                    <div class="test-field-value text-body">`POST /api/users` correctly returns **201 Created** with the new `UserDto` (verified directly via curl). The generated test hardcoded an expectation of 200. This is a false failure — the backend follows correct REST convention for resource creation. Recommend updating the test plan's known-behavior notes so future generations expect 201 on all `POST .../create` endpoints, matching `POST /api/roles` and `POST /api/masterdata/master-lookups` (see TC003, TC006 below — same root cause).</div>
-                  </div>
-                </div>
-              </div>
+
             </div>
           </div>
         </div>
@@ -1551,12 +1413,12 @@ body {
             <div class="requirement-content">
                                           <div class="requirement-title-row">
               <h3 class="title-requirement">Roles & Permissions</h3>
-                <div class="requirement-status-tag status-error">
+                <div class="requirement-status-tag status-success">
               <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
-                <path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="7.99961" cy="7.99998" r="6.4" fill="#10A363" fill-opacity="0.2"/>
+                <path d="M5.59961 8.00002L7.19961 9.60002L10.3996 6.40002" stroke="#19C379" stroke-width="1.28" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
-              <span>0/2</span>
+              <span>0/0</span>
             </div>
               </div>
               <p class="text-body-medium requirement-description">Proper error handling for API calls and invalid data scenarios.</p>
@@ -1570,178 +1432,7 @@ body {
 
             <div class="accordion-content">
             <div class="test-wrapper">
-<div class="test-card">
-                <div class="test-header">
-                  <h4 class="text-body-medium">TC003 test_create_role_with_valid_data</h4>
-                </div>
-                <div class="test-content">
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Code</div>
-                    <div class="test-field-value text-body">
-                      <a href="./TC003_test_create_role_with_valid_data.py" class="text-link">TC003_test_create_role_with_valid_data.py</a>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Error</div>
-                    <div class="test-field-value text-body">`AssertionError: Role creation failed: {"data":{"id":1179,"roleCode":"TEST_ROLE_CODE_123",...},"success":true,...}`</div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Visualization and Result</div>
-                    <div class="test-field-value text-body">
-                      <a href="null" class="text-link">View Results</a>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Status</div>
-                    <div class="test-field-value">
-                      
-            <div class="status-wrapper">
-                <div class="status-icon">
-                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-<circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
-<path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>
-                </div>
-                <span class="text-body status-fail">Failed</span>
-            </div>
-            
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Severity</div>
-                    <div class="test-field-value text-body">N/A</div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Analysis / Findings</div>
-                    <div class="test-field-value text-body">Same 200-vs-201 mismatch as TC002 — the response body embedded in the error message shows the role was created successfully (`success: true`, all fields correct). Because the assertion failed **before** `role_id` was captured, the test's own `finally`-block cleanup never ran, leaving role `TEST_ROLE_CODE_123` orphaned in the database. This directly caused TC010's failure below (cascading test-data collision, not an independent bug).</div>
-                  </div>
-                </div>
-              </div>
-<div class="test-card">
-                <div class="test-header">
-                  <h4 class="text-body-medium">TC010 test_assign_branch_scope_to_role</h4>
-                </div>
-                <div class="test-content">
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Code</div>
-                    <div class="test-field-value text-body">
-                      <a href="./TC010_test_assign_branch_scope_to_role.py" class="text-link">TC010_test_assign_branch_scope_to_role.py</a>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Error</div>
-                    <div class="test-field-value text-body">`AssertionError: Create role failed with status 409`</div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Visualization and Result</div>
-                    <div class="test-field-value text-body">
-                      <a href="null" class="text-link">View Results</a>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Status</div>
-                    <div class="test-field-value">
-                      
-            <div class="status-wrapper">
-                <div class="status-icon">
-                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-<circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
-<path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>
-                </div>
-                <span class="text-body status-fail">Failed</span>
-            </div>
-            
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Severity</div>
-                    <div class="test-field-value text-body">N/A</div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Analysis / Findings</div>
-                    <div class="test-field-value text-body">This test independently tries to create a role with the same hardcoded `roleCode` (`TEST_ROLE_CODE_123`) that TC003 left behind uncleaned. The 409 Conflict is the backend correctly enforcing role-code uniqueness — expected behavior given the dirty state. Recommend the test plan use unique/randomized `roleCode` values per test run (same pattern TC002 already uses for usernames via `uuid.uuid4()`).</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
 
-                <div class="requirement-wrapper accordion-item active">
-          <div class="accordion-header" onclick="toggleAccordion(this)">
-            <div class="requirement-content">
-                                          <div class="requirement-title-row">
-              <h3 class="title-requirement">Org Structure</h3>
-                <div class="requirement-status-tag status-error">
-              <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
-                <path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              <span>0/1</span>
-            </div>
-              </div>
-              <p class="text-body-medium requirement-description">Proper error handling for API calls and invalid data scenarios.</p>
-            </div>
-            <div class="accordion-icon">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M11.4276 6C11.9145 6 12.1687 6.61626 11.875 7.01439L11.8316 7.06689L8.40295 10.817C8.30455 10.9246 8.17364 10.9892 8.03476 10.9988C7.89589 11.0083 7.7586 10.9621 7.64865 10.8688L7.59493 10.817L4.16629 7.06689L4.11886 7.00814L4.088 6.96002L4.05714 6.90002L4.04743 6.87752L4.032 6.83564L4.01371 6.76814L4.008 6.73501L4.00229 6.69751L4 6.66189V6.58814L4.00286 6.55188L4.008 6.51438L4.01371 6.48188L4.032 6.41438L4.04743 6.37251L4.08743 6.29L4.12457 6.23375L4.16629 6.18313L4.22 6.13125L4.26401 6.0975L4.31886 6.06375L4.33944 6.05313L4.37772 6.03625L4.43944 6.01625L4.46972 6.01L4.50401 6.00375L4.53658 6.00125L11.4276 6Z" fill="var(--fg-secondary)"/>
-              </svg>
-            </div>
-          </div>
-
-            <div class="accordion-content">
-            <div class="test-wrapper">
-<div class="test-card">
-                <div class="test-header">
-                  <h4 class="text-body-medium">TC005 test_create_legal_entity</h4>
-                </div>
-                <div class="test-content">
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Code</div>
-                    <div class="test-field-value text-body">
-                      <a href="./TC005_test_create_legal_entity.py" class="text-link">TC005_test_create_legal_entity.py</a>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Error</div>
-                    <div class="test-field-value text-body">`403 Client Error` — `{"error":{"code":"FORBIDDEN","details":"You don't have permission to access this resource"}}`</div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Visualization and Result</div>
-                    <div class="test-field-value text-body">
-                      <a href="null" class="text-link">View Results</a>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Status</div>
-                    <div class="test-field-value">
-                      
-            <div class="status-wrapper">
-                <div class="status-icon">
-                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-<circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
-<path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>
-                </div>
-                <span class="text-body status-fail">Failed</span>
-            </div>
-            
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Severity</div>
-                    <div class="test-field-value text-body">N/A</div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Analysis / Findings</div>
-                    <div class="test-field-value text-body">Reproduced independently via curl, not a test artifact. The seeded `admin` user's JWT carries `SUPER_ADMIN` plus a long list of `PERM_*` authorities, but **none for the Org module** (no `PERM_ORG_*`/legal-entity permissions) — confirmed by decoding the JWT. Either (a) `SUPER_ADMIN` is expected to universally bypass permission checks but currently doesn't for Org-module endpoints, or (b) the admin role's page/permission seed data was never extended to cover the Org module's pages. Either way, the platform's own admin account cannot manage Legal Entities/Regions/Branches/etc. through the API today. **Recommend engineering follow-up**, since this blocks a whole module for the only bootstrap account.</div>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -1751,12 +1442,12 @@ body {
             <div class="requirement-content">
                                           <div class="requirement-title-row">
               <h3 class="title-requirement">Pages & Menu</h3>
-                <div class="requirement-status-tag status-error">
+                <div class="requirement-status-tag status-success">
               <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
-                <path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="7.99961" cy="7.99998" r="6.4" fill="#10A363" fill-opacity="0.2"/>
+                <path d="M5.59961 8.00002L7.19961 9.60002L10.3996 6.40002" stroke="#19C379" stroke-width="1.28" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
-              <span>1/2</span>
+              <span>0/0</span>
             </div>
               </div>
               <p class="text-body-medium requirement-description">Proper error handling for API calls and invalid data scenarios.</p>
@@ -1770,99 +1461,36 @@ body {
 
             <div class="accordion-content">
             <div class="test-wrapper">
-<div class="test-card">
-                <div class="test-header">
-                  <h4 class="text-body-medium">TC004 test_create_page_and_autogenerate_permissions</h4>
-                </div>
-                <div class="test-content">
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Code</div>
-                    <div class="test-field-value text-body">
-                      <a href="./TC004_test_create_page_and_autogenerate_permissions.py" class="text-link">TC004_test_create_page_and_autogenerate_permissions.py</a>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Error</div>
-                    <div class="test-field-value text-body">`AssertionError: pageCode mismatch`</div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Visualization and Result</div>
-                    <div class="test-field-value text-body">
-                      <a href="null" class="text-link">View Results</a>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Status</div>
-                    <div class="test-field-value">
-                      
-            <div class="status-wrapper">
-                <div class="status-icon">
-                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-<circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
-<path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>
-                </div>
-                <span class="text-body status-fail">Failed</span>
+
             </div>
-            
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Severity</div>
-                    <div class="test-field-value text-body">N/A</div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Analysis / Findings</div>
-                    <div class="test-field-value text-body">`PageService.createPage()` intentionally normalizes `pageCode` to uppercase (`src/main/java/com/erp/security/service/PageService.java:102`, `pageCode.toUpperCase().trim()`) and validates the format. The test sent a lowercase `pageCode` and asserted the response echoed it verbatim — an incorrect expectation, not a bug in the backend, which is behaving as designed.</div>
-                  </div>
-                </div>
-              </div>
-<div class="test-card">
-                <div class="test-header">
-                  <h4 class="text-body-medium">TC009 test_get_user_menu_for_current_user</h4>
-                </div>
-                <div class="test-content">
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Code</div>
-                    <div class="test-field-value text-body">
-                      <a href="./TC009_test_get_user_menu_for_current_user.py" class="text-link">TC009_test_get_user_menu_for_current_user.py</a>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Error</div>
-                    <div class="test-field-value text-body">N/A</div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Visualization and Result</div>
-                    <div class="test-field-value text-body">
-                      <a href="null" class="text-link">View Results</a>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Status</div>
-                    <div class="test-field-value">
-                      <div class="status-wrapper">
-                <div class="status-icon">
-                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="7.99961" cy="7.99998" r="6.4" fill="#10A363" fill-opacity="0.2"/>
-                        <path d="M5.59961 8.00002L7.19961 9.60002L10.3996 6.40002" stroke="#19C379" stroke-width="1.28" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </div>
-                <span class="text-body status-pass">Pass</span>
+          </div>
+        </div>
+
+                <div class="requirement-wrapper accordion-item active">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <div class="requirement-content">
+                                          <div class="requirement-title-row">
+              <h3 class="title-requirement">Org Structure</h3>
+                <div class="requirement-status-tag status-success">
+              <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="7.99961" cy="7.99998" r="6.4" fill="#10A363" fill-opacity="0.2"/>
+                <path d="M5.59961 8.00002L7.19961 9.60002L10.3996 6.40002" stroke="#19C379" stroke-width="1.28" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>0/0</span>
             </div>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Severity</div>
-                    <div class="test-field-value text-body">N/A</div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Analysis / Findings</div>
-                    <div class="test-field-value text-body">`GET /api/menu/user-menu` correctly returns the hierarchical, VIEW-permission-filtered menu for the authenticated user. No issues.</div>
-                  </div>
-                </div>
               </div>
+              <p class="text-body-medium requirement-description">Proper error handling for API calls and invalid data scenarios.</p>
+            </div>
+            <div class="accordion-icon">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M11.4276 6C11.9145 6 12.1687 6.61626 11.875 7.01439L11.8316 7.06689L8.40295 10.817C8.30455 10.9246 8.17364 10.9892 8.03476 10.9988C7.89589 11.0083 7.7586 10.9621 7.64865 10.8688L7.59493 10.817L4.16629 7.06689L4.11886 7.00814L4.088 6.96002L4.05714 6.90002L4.04743 6.87752L4.032 6.83564L4.01371 6.76814L4.008 6.73501L4.00229 6.69751L4 6.66189V6.58814L4.00286 6.55188L4.008 6.51438L4.01371 6.48188L4.032 6.41438L4.04743 6.37251L4.08743 6.29L4.12457 6.23375L4.16629 6.18313L4.22 6.13125L4.26401 6.0975L4.31886 6.06375L4.33944 6.05313L4.37772 6.03625L4.43944 6.01625L4.46972 6.01L4.50401 6.00375L4.53658 6.00125L11.4276 6Z" fill="var(--fg-secondary)"/>
+              </svg>
+            </div>
+          </div>
+
+            <div class="accordion-content">
+            <div class="test-wrapper">
+
             </div>
           </div>
         </div>
@@ -1872,12 +1500,12 @@ body {
             <div class="requirement-content">
                                           <div class="requirement-title-row">
               <h3 class="title-requirement">Master Data (Lookups)</h3>
-                <div class="requirement-status-tag status-error">
+                <div class="requirement-status-tag status-success">
               <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
-                <path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="7.99961" cy="7.99998" r="6.4" fill="#10A363" fill-opacity="0.2"/>
+                <path d="M5.59961 8.00002L7.19961 9.60002L10.3996 6.40002" stroke="#19C379" stroke-width="1.28" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
-              <span>0/1</span>
+              <span>0/0</span>
             </div>
               </div>
               <p class="text-body-medium requirement-description">Proper error handling for API calls and invalid data scenarios.</p>
@@ -1891,54 +1519,7 @@ body {
 
             <div class="accordion-content">
             <div class="test-wrapper">
-<div class="test-card">
-                <div class="test-header">
-                  <h4 class="text-body-medium">TC006 test_create_master_lookup</h4>
-                </div>
-                <div class="test-content">
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Code</div>
-                    <div class="test-field-value text-body">
-                      <a href="./TC006_test_create_master_lookup.py" class="text-link">TC006_test_create_master_lookup.py</a>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Error</div>
-                    <div class="test-field-value text-body">`AssertionError: Create master lookup failed: {"data":{"id":21,"lookupKey":"TEST_LOOKUP_...",...},"success":true,...}`</div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Visualization and Result</div>
-                    <div class="test-field-value text-body">
-                      <a href="null" class="text-link">View Results</a>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Status</div>
-                    <div class="test-field-value">
-                      
-            <div class="status-wrapper">
-                <div class="status-icon">
-                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-<circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
-<path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>
-                </div>
-                <span class="text-body status-fail">Failed</span>
-            </div>
-            
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Severity</div>
-                    <div class="test-field-value text-body">N/A</div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Analysis / Findings</div>
-                    <div class="test-field-value text-body">Same 200-vs-201 root cause as TC002/TC003 — the embedded response shows the lookup was created successfully. No backend issue.</div>
-                  </div>
-                </div>
-              </div>
+
             </div>
           </div>
         </div>
@@ -1948,12 +1529,12 @@ body {
             <div class="requirement-content">
                                           <div class="requirement-title-row">
               <h3 class="title-requirement">File Management</h3>
-                <div class="requirement-status-tag status-error">
+                <div class="requirement-status-tag status-success">
               <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
-                <path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="7.99961" cy="7.99998" r="6.4" fill="#10A363" fill-opacity="0.2"/>
+                <path d="M5.59961 8.00002L7.19961 9.60002L10.3996 6.40002" stroke="#19C379" stroke-width="1.28" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
-              <span>0/1</span>
+              <span>0/0</span>
             </div>
               </div>
               <p class="text-body-medium requirement-description">Proper error handling for API calls and invalid data scenarios.</p>
@@ -1967,54 +1548,7 @@ body {
 
             <div class="accordion-content">
             <div class="test-wrapper">
-<div class="test-card">
-                <div class="test-header">
-                  <h4 class="text-body-medium">TC007 test_issue_file_upload_token_and_upload_file</h4>
-                </div>
-                <div class="test-content">
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Code</div>
-                    <div class="test-field-value text-body">
-                      <a href="./TC007_test_issue_file_upload_token_and_upload_file.py" class="text-link">TC007_test_issue_file_upload_token_and_upload_file.py</a>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Error</div>
-                    <div class="test-field-value text-body">`AssertionError: Uploaded file metadata missing file name`</div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Visualization and Result</div>
-                    <div class="test-field-value text-body">
-                      <a href="null" class="text-link">View Results</a>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Status</div>
-                    <div class="test-field-value">
-                      
-            <div class="status-wrapper">
-                <div class="status-icon">
-                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-<circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
-<path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>
-                </div>
-                <span class="text-body status-fail">Failed</span>
-            </div>
-            
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Severity</div>
-                    <div class="test-field-value text-body">N/A</div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Analysis / Findings</div>
-                    <div class="test-field-value text-body">Verified via curl — the upload endpoint returns the file's original name under the field `fileNameOriginal`, exactly matching the documented `FileUploadResponse` schema. The test only checked for `fileName` or `originalFileName`, missing the actual field name. Upload token issuance, multipart upload, and file metadata persistence all work correctly end-to-end.</div>
-                  </div>
-                </div>
-              </div>
+
             </div>
           </div>
         </div>
@@ -2024,12 +1558,12 @@ body {
             <div class="requirement-content">
                                           <div class="requirement-title-row">
               <h3 class="title-requirement">Notifications</h3>
-                <div class="requirement-status-tag status-error">
+                <div class="requirement-status-tag status-success">
               <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
-                <path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="7.99961" cy="7.99998" r="6.4" fill="#10A363" fill-opacity="0.2"/>
+                <path d="M5.59961 8.00002L7.19961 9.60002L10.3996 6.40002" stroke="#19C379" stroke-width="1.28" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
-              <span>1/2</span>
+              <span>0/0</span>
             </div>
               </div>
               <p class="text-body-medium requirement-description">Proper error handling for API calls and invalid data scenarios.</p>
@@ -2043,99 +1577,7 @@ body {
 
             <div class="accordion-content">
             <div class="test-wrapper">
-<div class="test-card">
-                <div class="test-header">
-                  <h4 class="text-body-medium">TC008 test_send_notification_immediately</h4>
-                </div>
-                <div class="test-content">
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Code</div>
-                    <div class="test-field-value text-body">
-                      <a href="./TC008_test_send_notification_immediately.py" class="text-link">TC008_test_send_notification_immediately.py</a>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Error</div>
-                    <div class="test-field-value text-body">`500 Server Error` — `{"error":{"code":"INTERNAL_ERROR","details":"An unexpected error occurred..."}}`</div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Visualization and Result</div>
-                    <div class="test-field-value text-body">
-                      <a href="null" class="text-link">View Results</a>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Status</div>
-                    <div class="test-field-value">
-                      
-            <div class="status-wrapper">
-                <div class="status-icon">
-                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-<circle cx="7.99961" cy="7.99998" r="6.4" fill="#C23539" fill-opacity="0.2"/>
-<path d="M8 5.59998V7.99698" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M8 10.394V10.3995" stroke="#EF4146" stroke-width="1.38478" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>
-                </div>
-                <span class="text-body status-fail">Failed</span>
-            </div>
-            
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Severity</div>
-                    <div class="test-field-value text-body">N/A</div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Analysis / Findings</div>
-                    <div class="test-field-value text-body">Reproduced independently via curl with multiple payload variations (including a valid existing `recipientId`), consistently returning HTTP 500. Server log (`logs/erp-security.log`) shows `org.springframework.transaction.UnexpectedRollbackException: Transaction silently rolled back because it has been marked as rollback-only` at `NotificationController.send` → `NotificationEventProcessor`, with **no underlying cause exception logged** — meaning the transaction was silently marked rollback-only by an inner call (likely the nested `@Transactional` cross-module call to `SecUserProfileService`/`resolvePreferredLanguage`) whose exception was swallowed before it reached the outer transaction boundary. Since `NOTIF_TEMPLATE_001` doesn't exist as an active template and both `email`/`sms` channels resolved as disabled/unconfigured (case-sensitivity: config likely stores `EMAIL`/`SMS` uppercase, request sent lowercase), the code path exercised the "channel disabled" branch, but the request never completes — every `POST /api/v1/notifications/send` call currently fails with a 500 regardless of payload validity. **Recommend engineering follow-up**: this endpoint is not currently usable at all.</div>
-                  </div>
-                </div>
-              </div>
-<div class="test-card">
-                <div class="test-header">
-                  <h4 class="text-body-medium">TC011 test_notification_unread_endpoint_returns_known_422</h4>
-                </div>
-                <div class="test-content">
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Code</div>
-                    <div class="test-field-value text-body">
-                      <a href="./TC011_test_notification_unread_endpoint_returns_known_422.py" class="text-link">TC011_test_notification_unread_endpoint_returns_known_422.py</a>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Error</div>
-                    <div class="test-field-value text-body">N/A</div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Test Visualization and Result</div>
-                    <div class="test-field-value text-body">
-                      <a href="null" class="text-link">View Results</a>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Status</div>
-                    <div class="test-field-value">
-                      <div class="status-wrapper">
-                <div class="status-icon">
-                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="7.99961" cy="7.99998" r="6.4" fill="#10A363" fill-opacity="0.2"/>
-                        <path d="M5.59961 8.00002L7.19961 9.60002L10.3996 6.40002" stroke="#19C379" stroke-width="1.28" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </div>
-                <span class="text-body status-pass">Pass</span>
-            </div>
-                    </div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Severity</div>
-                    <div class="test-field-value text-body">N/A</div>
-                  </div>
-                  <div class="test-field">
-                    <div class="test-field-label text-body-medium">Analysis / Findings</div>
-                    <div class="test-field-value text-body">`GET /api/v1/notifications/unread` correctly returns HTTP 422 `NOTIF_READ_TRACKING_UNAVAILABLE`, matching the documented, intentional limitation (`NOTIF_LOG` has no read/unread column — see `governance/modules/NOTIFICATION/execution-state.json`, DRV-NOTIF-003). Behaves as designed.</div>
-                  </div>
-                </div>
-              </div>
+
             </div>
           </div>
         </div>

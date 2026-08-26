@@ -431,14 +431,14 @@ Before creating a service, verify the following shared resources from `erp-commo
 
 | # | Requirement | Shared Class | Package |
 |---|-------------|-------------|--------|
-| SH.1 | Return type: `ServiceResult<T>` for all methods except `delete()` | `ServiceResult` | `com.erp.erp.common.domain.status` |
-| SH.2 | Status codes: `Status.CREATED`, `Status.UPDATED`, `Status.SUCCESS` | `Status` | `com.erp.erp.common.domain.status` |
-| SH.3 | Errors: `LocalizedException(Status, ErrorCode, ...args)` for ALL errors | `LocalizedException` | `com.erp.erp.common.exception` |
+| SH.1 | Return type: `ServiceResult<T>` for all methods except `delete()` | `ServiceResult` | `com.erp.common.domain.status` |
+| SH.2 | Status codes: `Status.CREATED`, `Status.UPDATED`, `Status.SUCCESS` | `Status` | `com.erp.common.domain.status` |
+| SH.3 | Errors: `LocalizedException(Status, ErrorCode, ...args)` for ALL errors | `LocalizedException` | `com.erp.common.exception` |
 | SH.4 | Search: `SpecBuilder.build()` for dynamic JPA specifications | `SpecBuilder` | `com.erp.common.search` |
 | SH.5 | Pagination: `PageableBuilder.from()` with sort field whitelist | `PageableBuilder` | `com.erp.common.search` |
 | SH.6 | Sort validation: `SetAllowedFields` for `ALLOWED_SORT_FIELDS` whitelist | `SetAllowedFields` | `com.erp.common.search` |
-| SH.7 | Security context: `SecurityContextHelper` for current user (`getUsernameOrSystem()`, `isAuthenticated()`) | `SecurityContextHelper` | `com.erp.erp.common.util` |
-| SH.8 | Validation utilities: `ValidationUtils` for common validations | `ValidationUtils` | `com.erp.erp.common.util` |
+| SH.7 | Security context: `SecurityContextHelper` for current user (`getUsernameOrSystem()`, `isAuthenticated()`) | `SecurityContextHelper` | `com.erp.common.util` |
+| SH.8 | Validation utilities: `ValidationUtils` for common validations | `ValidationUtils` | `com.erp.common.util` |
 
 **Rules:**
 - NEVER throw raw `RuntimeException` — use `LocalizedException`
