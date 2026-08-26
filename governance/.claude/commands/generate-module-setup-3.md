@@ -63,10 +63,45 @@ If `TRACK` is missing or not exactly `backend`/`frontend`, stop and ask
 ║ with Gate ALIGN-FE ✓               ║  hasn't run yet]               ║
 ╚══════════════════════════════════════════════════════════════════╝
 ```
-If any box is "No" or unconfirmed, state plainly which precondition is
-missing and stop. `TRACK=backend` has no such precondition — it only
-requires `backend-execution-plan.md` to exist with Gate ALIGN-BE ✓
-(checked naturally in Step 1's scan).
+If any box is "No" or unconfirmed, this is not an automatic stop — offer
+the documented-override path instead of a silent block:
+
+```
+This module doesn't meet the standard frontend precondition (e.g. a
+legacy module with a working backend but no formal P2.5/P3.1 artifacts).
+
+  1) Yes — I want a documented override (one question, then proceed immediately)
+  2) No — stop here, I'll complete the standard flow first
+```
+
+If (2): stop, state exactly which precondition is missing, do not proceed.
+
+If (1): ask exactly one follow-up question — a one-line reason for the
+override — then immediately append a record to
+`backend/governance/modules/[MODULE]/frontend-gate-overrides.json`
+(create the file with an `"overrides": []` array if it doesn't exist
+yet; otherwise append to the existing array, never overwrite it):
+```json
+{
+  "date": "[actual current date]",
+  "module": "[MODULE]",
+  "gates_bypassed": ["list which of the two gates were No/unconfirmed"],
+  "reason": "[the user's exact one-line answer]",
+  "decided_by": "user (documented override — see CLAUDE.md STRUCTURAL LAW)"
+}
+```
+Print a one-line confirmation that the override was logged, then
+proceed straight to Step 1 — do not re-ask or re-warn again this session.
+
+**Exception with no override path at all:** if `MODULE` is `SECURITY`,
+stop immediately regardless of anything above — SECURITY is a
+PERMANENT EXCEPTION in `CLAUDE.md`'s STRUCTURAL LAW (no frontend
+footprint under any circumstance) and this is a structural prohibition,
+not a precondition gate — it never accepts a documented override.
+
+`TRACK=backend` has no such precondition — it only requires
+`backend-execution-plan.md` to exist with Gate ALIGN-BE ✓ (checked
+naturally in Step 1's scan).
 
 ---
 
@@ -509,8 +544,10 @@ To run tests once implementation phases are COMPLETE:
 ## Constraints (this command itself — NON-NEGOTIABLE)
 
 - NEVER run without both MODULE and TRACK specified
-- NEVER run TRACK=frontend without the precondition gate (top of this
-  file) passing — all three checks are mandatory, not advisory
+- NEVER run TRACK=frontend without EITHER the precondition gate passing
+  OR a documented override logged first — no silent bypass either way
+- NEVER accept an override for MODULE=SECURITY — that exception has no
+  override path at all, documented or otherwise
 - NEVER scan or write across repos — TRACK=backend stays entirely in
   `backend/governance/`, TRACK=frontend stays entirely in
   `frontend/governance/` (except the two sanctioned reads:

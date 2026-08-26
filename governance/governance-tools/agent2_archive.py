@@ -51,6 +51,7 @@ from config import (
     REPO_BASE_PATH,
     ARTIFACT_FILES,
     SHARED_FILES,
+    FRONTEND_EXCLUDED_MODULES,
     get_module_path,
     get_stage_path,
     validate_module,
@@ -245,6 +246,13 @@ def main():
         mod = validate_module(args.module)
     except ValueError as e:
         print(f"\n  ERROR: {e}\n")
+        sys.exit(1)
+
+    # ── Reject frontend-scoped ops on frontend-excluded modules ────────────────
+    if args.track == "frontend" and mod in FRONTEND_EXCLUDED_MODULES:
+        print(f"\n  ERROR: Module '{mod}' is frontend-excluded — it has no frontend "
+              f"track (see FRONTEND_EXCLUDED_MODULES in config.py).")
+        print(f"  --track frontend is not valid for this module.\n")
         sys.exit(1)
 
     source_path = Path(args.source).expanduser().resolve()

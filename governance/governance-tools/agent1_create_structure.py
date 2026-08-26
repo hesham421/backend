@@ -42,6 +42,7 @@ from config import (
     REPO_BASE_PATH,
     FRONTEND_OUTPUT_BASE_PATH,
     KNOWN_MODULES,
+    FRONTEND_EXCLUDED_MODULES,
     MODULE_STRUCTURE,
     PACKAGES_STRUCTURE,
     get_module_version_path,
@@ -261,6 +262,13 @@ def main():
         )
     except ValueError as e:
         print(f"\n  ERROR: {e}\n")
+        sys.exit(1)
+
+    # ── Reject frontend-scoped ops on frontend-excluded modules ────────────────
+    if args.frontend_only and mod in FRONTEND_EXCLUDED_MODULES:
+        print(f"\n  ERROR: Module '{mod}' is frontend-excluded — it has no frontend "
+              f"track (see FRONTEND_EXCLUDED_MODULES in config.py).")
+        print(f"  --frontend-only is not valid for this module.\n")
         sys.exit(1)
 
     # ── Determine version ─────────────────────────────────────────────────────

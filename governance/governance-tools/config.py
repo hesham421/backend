@@ -48,7 +48,17 @@ FRONTEND_OUTPUT_BASE_PATH = Path("/Users/ezzat/my project/frontend/governance")
 
 KNOWN_MODULES = [
     # Add modules here as they're registered, e.g. "ORG", "FIN", "HR"
+    "SECURITY",
 ]
+
+# ─────────────────────────────────────────────
+# FRONTEND EXCLUSIONS — modules with no frontend track, ever
+# ─────────────────────────────────────────────
+# SECURITY is a backend-only module — no UI Shell, no frontend-execution-plan,
+# no frontend track of any kind. A frontend-scoped operation against it is a
+# governance error, not an ordinary "not built yet" gap, so agent1/2/3 reject
+# it outright instead of silently creating empty frontend folders/state.
+FRONTEND_EXCLUDED_MODULES = {"SECURITY"}
 
 # ─────────────────────────────────────────────
 # MODULES REGISTRY FILE

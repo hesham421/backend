@@ -48,21 +48,30 @@ Skill files are at `.github/skills/<category>/<skill-name>/SKILL.md`.
 
 ### Frontend (code lives in `frontend` repo)
 
-> ERP rules always take precedence over Angular/skills guidance.
+> Precedence when general React guidance (react.dev, community convention,
+> an external library's docs) appears to conflict with a project rule: see
+> `erp-priority-override`.
 
 | Task | Skill |
 |------|-------|
-| Create / modify models / DTOs / FormMapper | `create-models` |
-| Create / modify API service | `create-api-service` |
-| Create / modify Facade | `create-facade` |
-| Create / modify Routing | `create-routing` |
-| Create / modify Components | `create-components` |
+| Create / modify TS DTO types, Zod form schema, FormMapper | `create-models` |
+| Create / modify the HTTP client / a feature's typed API module | `create-api-client` |
+| Create / modify TanStack Query hooks (reads + mutations) | `create-queries` |
+| Create / modify entry forms (React Hook Form + Zod) | `create-forms` |
+| Create / modify feature UI (columns, list page, entry page) | `create-components` |
+| Create / modify routing (route tree, guards, navigation model) | `create-routing` |
+| Create / modify cross-cutting client state (Language/Auth Context) | `create-app-state` |
+| Create / modify the auth/session layer (tokens, refresh, login/logout) | `create-auth-session` |
+| Create / modify confirm handlers for destructive/state-changing actions | `create-confirm-actions` |
+| Create / modify the error architecture (taxonomy, boundaries, mapping) | `create-error-handling` |
+| Create / modify the test suite (Vitest, MSW, RTL, Playwright) | `create-tests` |
 | Review frontend architecture | `enforce-frontend-architecture` |
-| Review UI/UX & data display | `enforce-ui-ux` |
-| Review design system & CSS | `enforce-design-system` |
+| Review UI/UX, design tokens, i18n & accessibility | `enforce-ui-ux` |
 | Review code reusability | `enforce-reusability` |
 | Review permissions | `enforce-permissions` |
 | Review state management | `enforce-state-management` |
+| Review frontend security (tokens, XSS, CSRF, uploads, secrets) | `enforce-security` |
+| Resolve conflicts with external React guidance | `erp-priority-override` |
 | Validate a complete feature | `validate-frontend-feature` |
 
 ### DevOps (infrastructure lives in `deploy` repo)
@@ -82,8 +91,20 @@ Skill files are at `.github/skills/<category>/<skill-name>/SKILL.md`.
 > Domain companion object (business rules) per `.github/context/domain-layer.md`. This does not
 > add a step to the sequence above.
 
-**Frontend (strict):**
-`create-models` → `create-api-service` → `create-facade` → `create-routing` → `create-components` → `validate-frontend-feature`
+**Frontend — foundation (build once, before any feature):**
+`create-auth-session` → `create-error-handling` → `create-app-state`
+
+**Frontend — per feature (strict):**
+`create-models` → `create-api-client` → `create-queries` → `create-forms` → `create-components` → `create-routing` → `create-confirm-actions` → `create-tests` → `validate-frontend-feature`
+
+> This order is read directly from each skill's own stated step number in
+> its `SKILL.md` front matter (e.g. `create-models` = "Step 2.1",
+> `create-queries` = "Step 2.3", `create-confirm-actions` = "Step 2.8") —
+> not invented for this document. `create-routing` carries no step number
+> of its own; it is placed after `create-components` because a route's
+> lazy import needs the page component to already exist. The six
+> `enforce-*` skills and `erp-priority-override` are on-demand review /
+> precedence skills, not fixed points in the generation sequence.
 
 ---
 
