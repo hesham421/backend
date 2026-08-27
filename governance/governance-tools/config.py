@@ -9,7 +9,7 @@ To change the repo path: update REPO_BASE_PATH.
 Clean-slate baseline — single governance model, no legacy compatibility
 layer. Every module uses the same folder/artifact/package structure:
 
-  Backend  (this repo)      : P0, P0_5, P1, P2, P2_5, P3_1, P3_5_BE, P4_1
+  Backend  (this repo)      : P0, P0_5, P1, P2, P2_5, P3_1, P3_5_BE
   Frontend (sibling repo)   : P3_2, P3_5_FE, P4_2
 
   backend-execution-plan.md and frontend-execution-plan.md are two
@@ -156,7 +156,6 @@ MODULE_STRUCTURE = {
                               # (visual-mockups/ lives in the frontend repo instead)
     "P3_1":     "P3_1",      # Backend Execution Plan outputs
     "P3_5_BE":  "P3_5_BE",   # Backend Test Plan + test-execution-manifest.md
-    "P4_1":     "P4_1",      # Backend Audit Report
     "P3_2":     "P3_2",      # Frontend Execution Plan outputs — NOTE:
                               # natively generated in the FRONTEND repo.
                               # Listed here for path-resolution
@@ -204,9 +203,6 @@ ARTIFACT_FILES = {
         "backend-test-plan.md",
         "test-execution-manifest.md",
         "registry-test-be-{mod}.md",   # P-REG output
-    ],
-    "P4_1": [
-        "P4.1-audit-report.md",
     ],
     "P3_2": [
         "frontend-execution-plan.md",
@@ -394,7 +390,6 @@ def build_manifest(mod: str, version: int = 1) -> dict:
         "status": {
             "archived_backend":  False,
             "split_backend":     False,
-            "audited_backend":   False,   # P4.1
             "backend_module_complete": False,  # CONTRACT-12 gate
             "ui_shell_complete": False,   # CONTRACT-12 gate (v2.1)
             "archived_frontend": False,
@@ -409,7 +404,6 @@ def build_manifest(mod: str, version: int = 1) -> dict:
             "p2_5":    str(base / MODULE_STRUCTURE["P2_5"]),
             "p3_1":    str(base / MODULE_STRUCTURE["P3_1"]),
             "p3_5_be": str(base / MODULE_STRUCTURE["P3_5_BE"]),
-            "p4_1":    str(base / MODULE_STRUCTURE["P4_1"]),
             # Frontend-native stages resolve in the FRONTEND repo, not here:
             "p3_2":    str(frontend_base / MODULE_STRUCTURE["P3_2"]),
             "p3_5_fe": str(frontend_base / MODULE_STRUCTURE["P3_5_FE"]),

@@ -138,7 +138,7 @@ in this repo needs lives inside `backend/governance/`.
 Modules on this path: **ORG, NOTIFICATION, FILESVC** (backend-complete,
 built under the pre-split model — `P0`/`P1`/`P2`/`P3`/`P3_5`/`P4` combined,
 `packages/execution/` combined, rather than the current
-`P0`/`P0_5`/`P1`/`P2`/`P2_5`/`P3_1`/`P3_5_BE`/`P4_1` split and
+`P0`/`P0_5`/`P1`/`P2`/`P2_5`/`P3_1`/`P3_5_BE` split and
 `packages/backend-execution/`). **MASTERDATA** is also on this path — it
 has only `api-docs/`, missing every formal stage artifact, and is now
 registered in `modules-registry.json`. **SECURITY is explicitly NOT on
@@ -155,7 +155,7 @@ A module qualifies for the Legacy Path if ALL of the following hold:
 
 A Legacy Path module:
 - Keeps its existing `governance/modules/<MOD>/` structure **untouched** —
-  no retroactive rename of `P3`→`P3_1`, `P3_5`→`P3_5_BE`, `P4`→`P4_1`, or
+  no retroactive rename of `P3`→`P3_1`, `P3_5`→`P3_5_BE`, or
   `packages/execution/`→`packages/backend-execution/`. This is a
   deliberate, already-made decision — do not revisit it.
 - May still proceed to frontend bootstrap via the documented-override
@@ -260,7 +260,7 @@ ownership table below, it almost certainly belongs in
 |---|---|---|
 | `CLAUDE.md` | `backend/` (repo root — not `backend/governance/`, since this repo already has a root `CLAUDE.md`; see `governance/README.md`'s note) for backend, `frontend/governance/` (frontend has no root `CLAUDE.md` of its own) for frontend | the other repo's matching location |
 | `GOVERNANCE-RULES.md`, `WORKSPACE.md`, `master-registry.md`, `modules-registry.json`, `vision.md` | `backend/governance/` | `frontend/governance/` |
-| P0, P0.5, P1, P2, P2.5 (text only — flow-diagram.md, ui-ux-spec.md), P3.1, P3.5_BE, P4.1 planning docs (per module) | `backend/governance/modules/<MOD>/` | `frontend/governance/` |
+| P0, P0.5, P1, P2, P2.5 (text only — flow-diagram.md, ui-ux-spec.md), P3.1, P3.5_BE planning docs (per module) | `backend/governance/modules/<MOD>/` | `frontend/governance/` |
 | P2.5 mockups (`visual-mockups/`, rendered via Claude Design) | `frontend/governance/modules/<MOD>/P2_5-mockups/` | `backend/governance/` — this is the one P2.5 artifact type that lives in frontend, since a developer building the UI Shell needs it right there |
 | `packages/backend-execution/<PHASE>/` (CORE, DATA-DOM, SVC-API, DOC, INT-C, INT-R, SEC-BE, ALIGN-BE) | `backend/governance/modules/<MOD>/packages/backend-execution/` | `frontend/governance/` |
 | `packages/backend-test/` (JUnit scenarios) | `backend/governance/modules/<MOD>/packages/backend-test/` | `frontend/governance/` |

@@ -18,7 +18,7 @@ Usage:
 Handles:
     - New known module        → creates its full folder structure
                                   (backend-repo run: P0, P0_5, P1, P2,
-                                  P2_5, P3_1, P3_5_BE, P4_1 — frontend-
+                                  P2_5, P3_1, P3_5_BE — frontend-
                                   native folders are NOT created by a
                                   backend-repo run; see --frontend-only)
     - Unknown module          → rejects unless --auto-register
@@ -56,7 +56,7 @@ from config import (
 )
 
 # Stages created by a normal (backend-repo) run
-BACKEND_STAGES = ("P0", "P0_5", "P1", "P2", "P2_5", "P3_1", "P3_5_BE", "P4_1")
+BACKEND_STAGES = ("P0", "P0_5", "P1", "P2", "P2_5", "P3_1", "P3_5_BE")
 # Stages created by a --frontend-only (frontend-repo) run
 FRONTEND_STAGES = ("P3_2", "P3_5_FE", "P4_2")
 

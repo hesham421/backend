@@ -29,7 +29,7 @@ Handles:
 
 --track is always required:
     --track backend  : scans/archives P0, P0_5, P1, P2, P2_5, P3_1,
-                        P3_5_BE, P4_1 artifacts (this repo only)
+                        P3_5_BE artifacts (this repo only)
     --track frontend : scans/archives P3_2, P3_5_FE, P4_2 artifacts —
                         run from the frontend repo's own copy of this
                         script. These are natively frontend-generated
@@ -58,7 +58,7 @@ from config import (
     resolve_filename,
 )
 
-BACKEND_STAGES = ("P0", "P0_5", "P1", "P2", "P2_5", "P3_1", "P3_5_BE", "P4_1")
+BACKEND_STAGES = ("P0", "P0_5", "P1", "P2", "P2_5", "P3_1", "P3_5_BE")
 FRONTEND_STAGES = ("P3_2", "P3_5_FE", "P4_2")
 
 
