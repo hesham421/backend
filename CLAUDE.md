@@ -177,8 +177,7 @@ tests/
   masterdata-api-test.ps1
   probe-failures.ps1
 governance/               ← internal AI governance copy (see above)
-playwright.config.ts     ← API integration test runner config
-package.json             ← Playwright dev dependency only
+testsprite_tests/        ← Python API test suite (TestSprite-generated)
 .env.example             ← Environment variable template
 ```
 
@@ -203,9 +202,6 @@ install before running any `mvn` command below.
 # Build and run the Spring Boot application (single module — no -pl needed;
 # mainClass is configured to com.erp.main.ErpMainApplication in pom.xml)
 mvn spring-boot:run
-
-# API integration tests (requires backend running on localhost:7272)
-npx playwright test
 
 # Or run the PowerShell test runner directly
 powershell -ExecutionPolicy Bypass -File tests/masterdata-api-test.ps1
@@ -240,10 +236,43 @@ letting them accumulate — do not wait for an explicit cleanup request.
 `__init__.py` files under `governance-tools/api-doc-generator/` (required
 Python package markers).
 
-**Do not reintroduce at backend root**: `playwright.config.ts`, `package.json`,
-`package-lock.json` — removed 2026-08-28. They only ever served the Playwright
-API test suite (`erp-backend-tests`), not the Java/Maven backend itself, and
-have no reason to live outside a dedicated test tooling location.
+**Note on `playwright.config.ts` / `package.json` / `package-lock.json`**: these
+were removed from the repo root 2026-08-28 by explicit human decision. They
+were NOT junk — they were this repo's own Playwright-based API integration
+test runner (`erp-backend-tests`, driving `npx playwright test` against
+`localhost:7272`), a legitimate and previously-documented part of this
+backend's test tooling. `testsprite_tests/` (Python) is the test suite that
+remains. Do not reintroduce the Playwright test runner files without a fresh
+explicit decision — and if reintroduced, restore the "Running Locally"
+`npx playwright test` step above along with them.
+
+---
+
+## Database Migration Policy (Flyway)
+
+Schema changes are managed by Flyway (`org.flywaydb:flyway-core` +
+`flyway-database-postgresql` in `pom.xml`) and applied automatically on
+startup by Spring Boot's `FlywayAutoConfiguration` — never invoked manually
+unless explicitly debugging (`mvn flyway:migrate` is wired but inert
+otherwise).
+
+- **Location**: `src/main/resources/db/migration/`
+- **Naming**: `V<N>__<snake_case_description>.sql` — `N` is a strictly
+  sequential integer with no gaps or reuse (currently at `V16`; the next
+  migration is always `V17`). Check the highest existing `V<N>` before
+  creating a new one — never guess or hardcode a number from memory.
+- **NEVER edit a migration file that has already been merged/applied.**
+  Flyway checksums applied migrations; editing one breaks every environment
+  that already ran it. A wrong or outdated migration is corrected by adding
+  a new migration that fixes it forward — not by rewriting history.
+- **One logical schema change per file** (a table + its seed data, or a
+  single reconciliation fix) — mirrors the existing files
+  (`V3__file_service_schema_and_seed.sql`,
+  `V6__reconcile_filesvc_audit_column_length.sql`), not one giant file per
+  module and not one file per column.
+- Table/column naming inside migrations follows the same `create-entity`
+  skill conventions (UPPER_SNAKE_CASE, module prefix) — a migration and its
+  matching JPA entity must agree on the physical name.
 
 ---
 
