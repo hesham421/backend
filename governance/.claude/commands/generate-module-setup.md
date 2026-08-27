@@ -1,0 +1,329 @@
+# Generate Backend Module Setup
+
+```
+Lives at   : backend/governance/.claude/commands/generate-module-setup.md
+Invokes    : backend/governance/governance-tools/agent1_create_structure.py,
+             agent2_archive.py, agent3_splitter.py — these tools know
+             ONLY the backend. There is no track concept here; this
+             file and the tools it calls have no representation of
+             "frontend" anywhere.
+```
+
+## Your Task
+
+Scan this repo for the specified module and generate three files:
+1. `.claude/commands/execute-backend.md` — implementation phase execution
+2. `.claude/commands/execute-backend-test.md` — test phase execution,
+   gated on execute-backend.md's phases
+3. `execution-state.json` — state tracker for both
+
+Both generated commands reference `TEST-EXECUTION-AGENT.md` for MCP
+boundaries and the failure taxonomy — shared across modules, not
+regenerated per module.
+
+---
+
+## Input
+
+```
+$ARGUMENTS = MODULE
+```
+
+If missing, ask for it — do not guess.
+
+**Module validation:** confirm `MODULE` exists in
+`governance-tools/config.py`'s module registry (backed by
+`modules-registry.json`). If it doesn't, stop with a plain "unknown
+module" message and ask whether to register it first via
+`agent1_create_structure.py --auto-register`. This is the only
+validation this command performs — there is no other precondition,
+because backend work has no upstream gate to wait on.
+
+---
+
+## Step 1 — Scan the repo structure
+
+```bash
+find governance/modules/$MODULE/packages/backend-execution -type f -name "*.md" | sort
+find governance/modules/$MODULE/packages/backend-test -type f -name "*.md" | sort
+```
+
+From the scan results:
+- Identify all PHASES (top-level folders under `packages/backend-execution/`)
+- For each PHASE, identify all SUBs (files inside the folder, excluding `index.md`)
+- Preserve the exact filesystem sort order
+- For each SUB file, read the first 40 lines and count the tasks
+
+Expected phases, in strict order (only include ones actually present):
+```
+CORE → DATA-DOM → SVC-API → DOC → INT-C → INT-R → SEC-BE → ALIGN-BE
+```
+
+### Test phase (single phase — no MARK-level split)
+
+`packages/backend-test/` is JUnit-only by construction. Treat it as
+ONE TEST-PHASE named `backend-test`:
+- SUBs = every `.md` file inside, excluding `index.md`, `.gitkeep`, any
+  `*-HEADER.md`, and any `MANDATORY-*.md` (typically `RULE-SCENARIOS`,
+  `API-SCENARIOS`)
+- `*-HEADER.md`/`MANDATORY-*.md` are shared context, read once, not subs
+- Gated by every backend phase that exists for this module
+
+### Weight classification
+
+| Weight | Criteria |
+|--------|----------|
+| LIGHT  | < 5 tasks, single layer |
+| MEDIUM | 5–10 tasks, 1–2 layers |
+| HEAVY  | > 10 tasks, multi-layer (Entity+Repo+Service+Controller) |
+| XL     | Full feature in one sub |
+
+Record weight and task count for every sub found.
+
+---
+
+## Step 2 — Generate `execution-state.json`
+
+Location: `governance/modules/$MODULE/execution-state.json`
+
+```json
+{
+  "module": "[MODULE]",
+  "generated_at": "[today's date]",
+  "current_phase": "[FIRST_PHASE]",
+  "current_sub": "[FIRST_SUB or null]",
+  "api_docs_path": "governance/modules/[MODULE]/api-docs/",
+  "phases": [
+    {
+      "id": "[PHASE_NAME]",
+      "status": "PENDING",
+      "subs": [
+        { "id": "[SUB_NAME]", "status": "PENDING" }
+      ]
+    }
+  ],
+  "test_phase": {
+    "id": "backend-test",
+    "status": "PENDING",
+    "gated_by_phases": ["CORE", "DATA-DOM", "SVC-API", "DOC", "INT-C", "INT-R", "SEC-BE", "ALIGN-BE"],
+    "header_file": "packages/backend-test/RULE-SCENARIOS-HEADER.md",
+    "mandatory_file": "packages/backend-test/MANDATORY-J.md",
+    "subs": [
+      { "id": "RULE-SCENARIOS", "status": "PENDING" },
+      { "id": "API-SCENARIOS", "status": "PENDING" }
+    ]
+  },
+  "blocked": [],
+  "deferred_xm": [],
+  "api_doc_gaps": []
+}
+```
+
+Rules:
+- List only phases actually found in Step 1
+- `gated_by_phases` lists only phases that exist for this module
+- `blocked`, `deferred_xm`, `api_doc_gaps` start empty
+
+### `api_doc_gaps[]` entry format (populated during execution)
+```json
+{
+  "type": "MISSING_IN_DOCS",
+  "phase": "[PHASE]",
+  "sub": "[SUB]",
+  "endpoint": "[METHOD] [path]",
+  "detail": "[what was missing]",
+  "resolution": "resolved via backend source: <path>",
+  "recorded_at": "[timestamp]"
+}
+```
+
+---
+
+## Step 3 — Generate `.claude/commands/execute-backend.md`
+
+```markdown
+# /project:execute-backend
+
+Execute the current phase for the specified module — with context safety check.
+
+## Usage
+/project:execute-backend [MODULE] [PHASE]
+
+---
+
+## STEP 0 — Context Safety Assessment (MANDATORY)
+
+### 0.1 — Read state, identify PENDING subs in the requested phase
+### 0.2 — Look up each sub's weight from the Weight Map below
+### 0.3 — Classify and decide chunking
+
+| Total weight in phase | Action |
+|---|---|
+| All LIGHT/MEDIUM | Execute the whole phase in one pass |
+| Any HEAVY present | Chunk — one sub (or a few LIGHT subs) per pass |
+| Any XL present | That sub alone is one full pass |
+
+### 0.4 — Print assessment, wait for confirmation
+```
+══════════════════════════════════════════════════════
+PHASE ASSESSMENT — [MODULE] / [PHASE]
+══════════════════════════════════════════════════════
+Subs pending : [list, weight + task count each]
+Plan         : [one pass / chunked — list chunks]
+══════════════════════════════════════════════════════
+Proceed? [waits for confirmation]
+```
+
+---
+
+## STEP 1 — Execution (after confirmation)
+
+### Per sub:
+1. Read `packages/backend-execution/[PHASE]/[SUB].md` completely
+2. Identify all tasks
+3. Map each task to the skill routing table in `GOVERNANCE-RULES.md`
+4. Read required skills from `.github/skills/backend/`
+5. Execute all tasks in order
+6. Run the phase's validation skill after the last task
+7. Mark sub COMPLETE in `execution-state.json`
+
+### Blocked items — OQ
+OQ-blocked task → skip, add to `blocked[]`, mark in code:
+`// TODO: OQ-[ID] — pending resolution`. Continue remaining tasks.
+
+---
+
+## STEP 2 — Session Report
+
+Print phase/sub completed, tasks executed, blocked items, any
+api_doc_gaps entries added.
+
+---
+
+## Weight Map — [MODULE]
+[Insert actual weight map from Step 1]
+
+## Phase Map — [MODULE]
+[Insert actual phase → subs map from Step 1]
+
+---
+
+## Constraints (NON-NEGOTIABLE)
+
+- NEVER skip STEP 0
+- NEVER execute without confirmation after assessment
+- NEVER invent field/column/route names — always look up db-script.md
+- NEVER implement a blocked OQ item — mark and skip only
+- NEVER advance phase without explicit instruction
+- ALWAYS update execution-state.json after every sub
+```
+
+---
+
+## Step 3B — Generate `.claude/commands/execute-backend-test.md`
+
+```markdown
+# /project:execute-backend-test
+
+Execute test scenarios for [MODULE] — only for what's actually complete.
+
+> Read `TEST-EXECUTION-AGENT.md` first.
+
+## Usage
+/project:execute-backend-test [MODULE]
+
+---
+
+## STEP 0 — Gate Check + Assessment
+
+### 0.1 — Gate Check (MANDATORY)
+Read `execution-state.json` → `test_phase.gated_by_phases[]`. Confirm
+every listed phase has `status == COMPLETE`. Empty list → gate passes
+automatically.
+
+If not all complete:
+```
+══════════════════════════════════════════════════════
+⛔ TEST GATE FAILED — [MODULE]
+══════════════════════════════════════════════════════
+Waiting on : [PHASE: status], ...
+══════════════════════════════════════════════════════
+```
+STOP. Do not generate or run any test.
+
+### 0.2–0.4 — Same assessment/confirmation pattern as execute-backend.md
+
+---
+
+## STEP 1 — Execution (after confirmation)
+
+### 1.0 — Read `header_file` and `mandatory_file` once
+
+### Per sub:
+1. Read `packages/backend-test/[SUB].md` completely
+2. Identify all scenarios
+3. Generate: Spring Boot test class (`@SpringBootTest`/`@WebMvcTest` +
+   `MockMvc`), file `src/test/java/.../[Scenario]Test.java`
+4. Run: `mvn test -Dtest=[Class]` via bash. `oracle-sql` MCP
+   (read-only) for any DB assertion.
+5. Classify every failure/skip using the shared taxonomy
+6. Update `execution-state.json`
+
+---
+
+## STEP 2 — Session Report
+
+Write to `reports/TEST-REPORT-[MODULE]-backend-[YYYY-MM-DD].md`. Any
+`FAIL` → hand off to `AUTONOMOUS-FULLSTACK-FIXING-AGENT.md` — never fix here.
+
+---
+
+## Constraints (NON-NEGOTIABLE)
+
+- NEVER run before the gate check passes
+- NEVER treat `*-HEADER.md`/`MANDATORY-*.md` as a sub
+- NEVER skip MANDATORY scenarios
+- NEVER modify application source code — report, don't fix
+- NEVER run mutating SQL via oracle-sql
+- ALWAYS classify every failure/skip
+- ALWAYS update execution-state.json after every sub
+```
+
+---
+
+## Step 4 — Verify and report
+
+```
+══════════════════════════════════════════════════════
+BACKEND MODULE SETUP COMPLETE: [MODULE]
+══════════════════════════════════════════════════════
+execution-state.json      ✓  governance/modules/[MODULE]/
+execute-backend.md        ✓  .claude/commands/
+execute-backend-test.md   ✓  .claude/commands/
+
+Phases detected       : [count]
+Total subs detected   : [count]
+Test phase detected   : backend-test [✓ / not found]
+  gated by : [phases found]
+
+Weight map:
+  [PHASE] / [SUB]  → [WEIGHT]  ([N] tasks)
+
+Heavy phases (require chunking): [list or "none"]
+
+To start execution:
+  /project:execute-backend [MODULE] [FIRST_PHASE]
+
+To run tests once implementation is COMPLETE:
+  /project:execute-backend-test [MODULE]
+══════════════════════════════════════════════════════
+```
+
+---
+
+## Constraints (this command itself — NON-NEGOTIABLE)
+
+- NEVER run without MODULE specified
+- NEVER invent a phase, sub, or file path not found in Step 1's scan
+- NEVER reach into `frontend/governance/` for anything — this command
+  and the tools it calls have no concept of a frontend track at all

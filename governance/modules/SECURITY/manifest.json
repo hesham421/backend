@@ -1,0 +1,30 @@
+{
+  "module": "SECURITY",
+  "version": 1,
+  "status": {
+    "archived": false,
+    "split": false,
+    "backend_module_complete": false,
+    "ui_shell_complete": false
+  },
+  "artifacts": {
+    "p0": "/Users/ezzat/my project/backend/governance/modules/SECURITY/P0",
+    "p0_5": "/Users/ezzat/my project/backend/governance/modules/SECURITY/P0_5",
+    "p1": "/Users/ezzat/my project/backend/governance/modules/SECURITY/P1",
+    "p2": "/Users/ezzat/my project/backend/governance/modules/SECURITY/P2",
+    "p2_5": "/Users/ezzat/my project/backend/governance/modules/SECURITY/P2_5",
+    "p3_1": "/Users/ezzat/my project/backend/governance/modules/SECURITY/P3_1",
+    "p3_5_be": "/Users/ezzat/my project/backend/governance/modules/SECURITY/P3_5_BE"
+  },
+  "registries": {
+    "srs": "/Users/ezzat/my project/backend/governance/modules/SECURITY/P1/registry-srs-security.md",
+    "db": "/Users/ezzat/my project/backend/governance/modules/SECURITY/P2/registry-db-security.md",
+    "exec_be": "/Users/ezzat/my project/backend/governance/modules/SECURITY/P3_1/registry-exec-be-security.md",
+    "test_be": "/Users/ezzat/my project/backend/governance/modules/SECURITY/P3_5_BE/registry-test-be-security.md"
+  },
+  "packages": {
+    "backend_execution": "/Users/ezzat/my project/backend/governance/modules/SECURITY/packages/backend-execution",
+    "backend_test": "/Users/ezzat/my project/backend/governance/modules/SECURITY/packages/backend-test"
+  },
+  "created_at": "2026-08-27T16:39:15.503052"
+}

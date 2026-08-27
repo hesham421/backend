@@ -1,0 +1,11 @@
+{
+  "overrides": [
+    {
+      "date": "2026-08-27",
+      "module": "SECURITY",
+      "gates_bypassed": ["BACKEND MODULE COMPLETE", "UI SHELL COMPLETE"],
+      "reason": "i add api docs",
+      "decided_by": "user (documented override)"
+    }
+  ]
+}

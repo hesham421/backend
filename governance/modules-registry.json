@@ -35,6 +35,15 @@
         1
       ],
       "current_version": 1
+    },
+    "SECURITY": {
+      "code": "SECURITY",
+      "description": "Security Module",
+      "registered_at": "2026-08-27T16:36:55.871539",
+      "versions": [
+        1
+      ],
+      "current_version": 1
     }
   }
 }
