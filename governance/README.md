@@ -25,10 +25,9 @@ this repo (see [Sanctioned cross-repo reads](#sanctioned-cross-repo-reads)).
 | Master entity registry | `master-registry.md` |
 | Modules registry | `modules-registry.json` |
 | Module planning + execution artifacts | `modules/<MOD>/` |
-| Governance automation tooling (identical copy of frontend's) | `governance-tools/` |
+| Governance automation tooling (independent, backend-only — NOT synced with frontend's copy) | `governance-tools/` |
 | AI commands (generated setup, launcher prompts) | `.claude/commands/` |
 | Postgres MCP server | `mcp-servers/postgres/` |
-| Playwright MCP server (API integration tests) | `mcp-servers/playwright/` |
 | Reporting / non-impacting markdown (audits, investigation notes) | `project-artifacts/` |
 | Reserved for a future cross-repo shared-content submodule (do not populate) | `governance-shared/` |
 

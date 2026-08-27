@@ -221,8 +221,10 @@ def stage1_parse_and_plan(mod: str, version: int, state: dict, base: Path = None
     print("  ✓ No structural errors — marker hierarchy is valid.")
 
     plan = {
-        "exec_path": str(exec_path) if exec_result else None,
-        "test_path": str(test_path) if test_result else None,
+        # Relative to REPO_BASE_PATH, never absolute — see config.py's
+        # build_manifest() note; this persists into _agent3-state.json.
+        "exec_path": str(exec_path.relative_to(REPO_BASE_PATH)) if exec_result else None,
+        "test_path": str(test_path.relative_to(REPO_BASE_PATH)) if test_result else None,
         "exec_summary": {},
         "test_summary": {},
     }

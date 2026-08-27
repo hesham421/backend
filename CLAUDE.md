@@ -71,7 +71,6 @@ in this repo needs lives inside `backend/governance/`.
 | Module execution state | `governance/modules/[MODULE]/execution-state.json` |
 | Governance tooling (splitter, api-doc-generator, etc.) | `governance/governance-tools/` |
 | Postgres MCP server | `governance/mcp-servers/postgres/` |
-| Playwright MCP server (backend-side copy, for API integration tests) | `governance/mcp-servers/playwright/` |
 | SECURITY module | `governance/modules/SECURITY/` |
 | Reporting / non-impacting markdown (see below) | `governance/project-artifacts/` |
 
@@ -173,6 +172,8 @@ src/
   main/resources/        ← i18n (messages*.properties), db/migration, db/scripts
   test/java/com/erp/     ← including architecture/ (ArchUnit module-boundary tests)
 Dockerfile               ← Multi-stage Maven → JRE image
+docker/
+  docker-compose.yml     ← Local Postgres + Redis, named volumes (see "Running Locally")
 tests/
   masterdata-api-test.ps1
   probe-failures.ps1
@@ -199,6 +200,10 @@ under any other JDK, with a message naming the JDK actually in use. Point `JAVA_
 install before running any `mvn` command below.
 
 ```bash
+# Start Postgres + Redis (named volumes — survives `docker compose down` and
+# machine reboots; only an explicit `down -v` deletes the data)
+docker compose --env-file .env -f docker/docker-compose.yml up -d
+
 # Build and run the Spring Boot application (single module — no -pl needed;
 # mainClass is configured to com.erp.main.ErpMainApplication in pom.xml)
 mvn spring-boot:run
@@ -208,9 +213,14 @@ powershell -ExecutionPolicy Bypass -File tests/masterdata-api-test.ps1
 ```
 
 Copy `.env.example` to `.env` and fill in values before running locally (`.env` is gitignored —
-never commit real secrets). Postgres must be reachable at the connection configured there — this
-repo does not currently contain a `docker-compose.yml`; check with the team for the current local
-Postgres setup if you don't already have one running.
+never commit real secrets). `--env-file .env` points `docker/docker-compose.yml`'s variable
+substitution at that same root `.env` — no separate docker-specific env file to keep in sync,
+and unlike a service-level `env_file:` it does not inject the whole `.env` (JWT_SECRET,
+MAIL_PASSWORD, etc.) into the Postgres/Redis containers. Default credentials
+(`postgres`/`postgres`/`erp_db` on port 5432, Redis on 6379) match `application-dev.properties`'
+own fallbacks, so it works with zero `.env` changes for a first run. **Never run
+`docker compose down -v`** unless you actually mean to delete the database — plain `down`, a
+container restart, or a full machine reboot all preserve the named volumes.
 
 `.mcp.json`'s `DATABASE_URI` and TestSprite `API_KEY` use `${VAR}` substitution, which Claude
 Code resolves from its own process environment — **not** by auto-loading `.env`. Export the
@@ -313,20 +323,20 @@ ownership table below, it almost certainly belongs in
 | `packages/backend-test/` (JUnit scenarios) | `backend/governance/modules/<MOD>/packages/backend-test/` | `frontend/governance/` |
 | `packages/frontend-execution/<PHASE>/` (F1, F2, F3, F4, SEC-FE, ALIGN-FE) | `frontend/governance/modules/<MOD>/packages/frontend-execution/` | `backend/governance/` — backend keeps none of these |
 | `packages/frontend-test/` (Playwright UI/E2E scenarios) | `frontend/governance/modules/<MOD>/packages/frontend-test/` | `backend/governance/` — backend keeps none of these |
-| `P3_2/frontend-execution-plan.md`, `P3_5_FE/frontend-test-plan.md`, `P4_2/` | Natively generated in `frontend/governance/modules/<MOD>/` — never a copy of anything backend-owned | `backend/governance/` |
-| `execution-state.json` | Two SEPARATE files, one per repo: `backend/governance/modules/<MOD>/` (and `SECURITY/gaps/`) AND `frontend/governance/modules/<MOD>/` — never merged, never synced automatically | — |
+| `P3_2/frontend-execution-plan.md`, `P3_5_FE/frontend-test-plan.md` (the only two frontend stages `config.py`'s `FRONTEND_STAGES` actually defines) | Natively generated in `frontend/governance/modules/<MOD>/` — never a copy of anything backend-owned | `backend/governance/` |
+| `execution-state.json` | Two SEPARATE files, one per repo: `backend/governance/modules/<MOD>/` AND `frontend/governance/modules/<MOD>/` — never merged, never synced automatically. Gaps found during execution are tracked inline via the file's own `api_doc_gaps[]` array, not a separate folder. | — |
 | `governance-tools/` (`config.py`, `marker_parser.py`, `agent1_create_structure.py`, `agent2_archive.py`, `agent3_splitter.py`, `api-doc-generator/`) | Independent, repo-specific copy in each — `backend/governance/governance-tools/` (backend-only tooling) and `frontend/governance/governance-tools/` (frontend-only tooling). Neither has a `--track` flag; each tool only ever knows its own repo. No automatic sync, and the two copies are not byte-identical by design. | — |
 | `.claude/commands/generate-module-setup.md` (backend) | `backend/governance/.claude/commands/` — generates backend execution setup only, no track concept | `frontend/governance/` |
 | `.claude/commands/generate-frontend-module-setup.md` (frontend) | `frontend/governance/.claude/commands/` — its own independent command, not a copy of the backend one | `backend/governance/` |
-| `.claude/commands/execute-backend.md`, `execute-backend-test.md` (generated output, not templates) | `backend/governance/.claude/commands/` only | `frontend/governance/` |
-| `.claude/commands/execute-frontend.md`, `execute-frontend-test.md` (generated output, not templates) | `frontend/governance/.claude/commands/` only | `backend/governance/` |
+| `.claude/commands/[MODULE]/execute-backend.md`, `execute-backend-test.md` (generated output, not templates — one subfolder per module, e.g. `.claude/commands/SECURITY/`, never the flat `.claude/commands/execute-backend.md`) | `backend/governance/.claude/commands/[MODULE]/` only | `frontend/governance/` |
+| `.claude/commands/[MODULE]/execute-frontend.md`, `execute-frontend-test.md` (generated output, not templates — same per-module-folder rule) | `frontend/governance/.claude/commands/[MODULE]/` only | `backend/governance/` |
 | `.github/skills/backend/`, `.github/skills/devops/` | `backend/governance/.github/skills/` | `frontend/governance/` |
 | `.github/skills/frontend/` | `frontend/governance/.github/skills/` | `backend/governance/` |
 | `mcp-servers/postgres/` | `backend/governance/mcp-servers/postgres/` only, wired via `backend/.mcp.json` | `frontend/governance/` — no frontend DB access use case |
-| `mcp-servers/playwright/` | Both: `backend/governance/mcp-servers/playwright/` (API integration tests, wired via `backend/.mcp.json`) AND an independent copy at `frontend/governance/mcp-servers/playwright/` (wired via `frontend/.mcp.json`). Same manual-sync caveat as `governance-tools/`. | — |
+| `mcp-servers/playwright/` | `frontend/governance/mcp-servers/playwright/` only (UI/E2E tests, wired via `frontend/.mcp.json`). Backend had its own copy for API integration tests; removed 2026-08-28 as orphaned — the Playwright API test runner it served (`playwright.config.ts`/`package.json`) was removed the same day and nothing in backend still calls it. | `backend/governance/` — do not re-add without a fresh reason; `testsprite_tests/` is backend's current API test suite |
 | `api-docs/` (auto-generated) | `backend/governance/modules/<MOD>/api-docs/` for backend's own use. Frontend keeps a SEPARATE, independent copy at `frontend/governance/modules/<MOD>/api-docs/`, populated after real implementation (manually, or by whatever process publishes them) — **not** a cross-repo read of backend's copy (superseded 2026-08-27; frontend's `config.py` no longer reaches into `backend/governance/` for this at all) | Backend's copy read live from `frontend/governance/`, or vice versa — the two copies are independent and never synced automatically |
 | `shared/modules-registry.json` (published, read-only copy of `modules-registry.json`) | Project root `shared/` — sibling to `backend/` and `frontend/`, **not** inside either `governance/` tree. Written only by backend's `save_modules_registry()` on every registry write (added 2026-08-27). This is frontend's ONLY sanctioned way to learn which modules are registered — it never reads `backend/governance/modules-registry.json` directly. | Treating this as a second source of truth — `backend/governance/modules-registry.json` remains authoritative; `shared/modules-registry.json` is a mechanical publish target only, never hand-edited |
-| Reporting / non-impacting markdown | `backend/governance/project-artifacts/` (this repo's own reports) and `frontend/governance/project-artifacts/frontend/` (frontend's own) | Root of either `governance/` tree, or inside `modules/`/`.claude/commands/` |
+| Reporting / non-impacting markdown | `backend/governance/project-artifacts/` (this repo's own reports, flat — `project-artifacts/backend/` exists but only holds `seed-scripts/`, not reports) and `frontend/governance/project-artifacts/` (frontend's own, same flat layout) | Root of either `governance/` tree, or inside `modules/`/`.claude/commands/` |
 | `governance-shared/` | Empty placeholder in both repos, reserved for a future git submodule | Do not put content in either copy without a separate, explicit human decision |
 
 ### If you are about to do X, the answer is always Y

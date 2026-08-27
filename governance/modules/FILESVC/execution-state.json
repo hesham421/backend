@@ -3,7 +3,7 @@
   "generated_at": "2026-07-12",
   "current_phase": "COMPLETE",
   "current_sub": null,
-  "api_docs_path": "governance-repo/modules/FILESVC/api-docs/",
+  "api_docs_path": "governance/modules/FILESVC/api-docs/",
   "phases": [
     {
       "id": "CORE",

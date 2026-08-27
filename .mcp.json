@@ -4,16 +4,8 @@
       "command": "uvx",
       "args": ["postgres-mcp", "--access-mode=unrestricted"],
       "env": {
-        "DATABASE_URI": "postgresql://${DB_USERNAME:-postgres}:${DB_PASSWORD:-postgres}@localhost:5433/${DB_NAME:-erp_db}"
+        "DATABASE_URI": "postgresql://${DB_USERNAME:-postgres}:${DB_PASSWORD:-postgres}@localhost:5432/${DB_NAME:-erp_db}"
       }
-    },
-    "playwright": {
-      "command": "node",
-      "args": [
-        "governance/mcp-servers/playwright/node_modules/@playwright/mcp/cli.js",
-        "--isolated",
-        "--viewport-size=1280,800"
-      ]
     },
     "TestSprite": {
       "command": "npx",

@@ -7,22 +7,22 @@
     "audited": false
   },
   "artifacts": {
-    "p0": "/Users/ezzat/my project/governance-repo/modules/NOTIFICATION/P0",
-    "p1": "/Users/ezzat/my project/governance-repo/modules/NOTIFICATION/P1",
-    "p2": "/Users/ezzat/my project/governance-repo/modules/NOTIFICATION/P2",
-    "p3": "/Users/ezzat/my project/governance-repo/modules/NOTIFICATION/P3",
-    "p3_5": "/Users/ezzat/my project/governance-repo/modules/NOTIFICATION/P3_5",
-    "p4": "/Users/ezzat/my project/governance-repo/modules/NOTIFICATION/P4"
+    "p0": "modules/NOTIFICATION/P0",
+    "p1": "modules/NOTIFICATION/P1",
+    "p2": "modules/NOTIFICATION/P2",
+    "p3": "modules/NOTIFICATION/P3",
+    "p3_5": "modules/NOTIFICATION/P3_5",
+    "p4": "modules/NOTIFICATION/P4"
   },
   "registries": {
-    "srs": "/Users/ezzat/my project/governance-repo/modules/NOTIFICATION/P1/registry-srs-notification.md",
-    "db": "/Users/ezzat/my project/governance-repo/modules/NOTIFICATION/P2/registry-db-notification.md",
-    "exec": "/Users/ezzat/my project/governance-repo/modules/NOTIFICATION/P3/registry-exec-notification.md",
-    "test": "/Users/ezzat/my project/governance-repo/modules/NOTIFICATION/P3_5/registry-test-notification.md"
+    "srs": "modules/NOTIFICATION/P1/registry-srs-notification.md",
+    "db": "modules/NOTIFICATION/P2/registry-db-notification.md",
+    "exec": "modules/NOTIFICATION/P3/registry-exec-notification.md",
+    "test": "modules/NOTIFICATION/P3_5/registry-test-notification.md"
   },
   "packages": {
-    "execution": "/Users/ezzat/my project/governance-repo/modules/NOTIFICATION/packages/execution",
-    "test": "/Users/ezzat/my project/governance-repo/modules/NOTIFICATION/packages/test"
+    "execution": "modules/NOTIFICATION/packages/execution",
+    "test": "modules/NOTIFICATION/packages/test"
   },
   "created_at": "2026-07-12T22:41:55.527057",
   "archived_at": "2026-07-12T22:50:26.515101",

@@ -3,7 +3,7 @@
   "generated_at": "2026-07-02",
   "current_phase": "INT-C",
   "current_sub": "INT-C",
-  "api_docs_path": "governance-repo/modules/ORG/api-docs/",
+  "api_docs_path": "governance/modules/ORG/api-docs/",
   "phases": [
     {
       "id": "CORE",

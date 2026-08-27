@@ -12,10 +12,15 @@ Invokes    : backend/governance/governance-tools/agent1_create_structure.py,
 ## Your Task
 
 Scan this repo for the specified module and generate three files:
-1. `.claude/commands/execute-backend.md` — implementation phase execution
-2. `.claude/commands/execute-backend-test.md` — test phase execution,
+1. `.claude/commands/[MODULE]/execute-backend.md` — implementation phase execution
+2. `.claude/commands/[MODULE]/execute-backend-test.md` — test phase execution,
    gated on execute-backend.md's phases
 3. `execution-state.json` — state tracker for both
+
+Each module gets its own `.claude/commands/[MODULE]/` folder — never write
+back to the flat `.claude/commands/execute-backend.md` (no module name,
+collides with every other module's setup, and silently overwrites whatever
+module was generated last).
 
 Both generated commands reference `TEST-EXECUTION-AGENT.md` for MCP
 boundaries and the failure taxonomy — shared across modules, not
@@ -139,15 +144,15 @@ Rules:
 
 ---
 
-## Step 3 — Generate `.claude/commands/execute-backend.md`
+## Step 3 — Generate `.claude/commands/[MODULE]/execute-backend.md`
 
 ```markdown
-# /project:execute-backend
+# /[MODULE]/execute-backend
 
-Execute the current phase for the specified module — with context safety check.
+Execute the current phase for [MODULE] — with context safety check.
 
 ## Usage
-/project:execute-backend [MODULE] [PHASE]
+/[MODULE]/execute-backend [PHASE]
 
 ---
 
@@ -220,17 +225,17 @@ api_doc_gaps entries added.
 
 ---
 
-## Step 3B — Generate `.claude/commands/execute-backend-test.md`
+## Step 3B — Generate `.claude/commands/[MODULE]/execute-backend-test.md`
 
 ```markdown
-# /project:execute-backend-test
+# /[MODULE]/execute-backend-test
 
 Execute test scenarios for [MODULE] — only for what's actually complete.
 
 > Read `TEST-EXECUTION-AGENT.md` first.
 
 ## Usage
-/project:execute-backend-test [MODULE]
+/[MODULE]/execute-backend-test
 
 ---
 
@@ -298,8 +303,8 @@ Write to `reports/TEST-REPORT-[MODULE]-backend-[YYYY-MM-DD].md`. Any
 BACKEND MODULE SETUP COMPLETE: [MODULE]
 ══════════════════════════════════════════════════════
 execution-state.json      ✓  governance/modules/[MODULE]/
-execute-backend.md        ✓  .claude/commands/
-execute-backend-test.md   ✓  .claude/commands/
+execute-backend.md        ✓  .claude/commands/[MODULE]/
+execute-backend-test.md   ✓  .claude/commands/[MODULE]/
 
 Phases detected       : [count]
 Total subs detected   : [count]
@@ -312,10 +317,10 @@ Weight map:
 Heavy phases (require chunking): [list or "none"]
 
 To start execution:
-  /project:execute-backend [MODULE] [FIRST_PHASE]
+  /[MODULE]/execute-backend [FIRST_PHASE]
 
 To run tests once implementation is COMPLETE:
-  /project:execute-backend-test [MODULE]
+  /[MODULE]/execute-backend-test
 ══════════════════════════════════════════════════════
 ```
 

@@ -3,7 +3,7 @@
   "generated_at": "2026-07-12",
   "current_phase": "SEC",
   "current_sub": "SEC",
-  "api_docs_path": "governance-repo/modules/NOTIFICATION/api-docs/",
+  "api_docs_path": "governance/modules/NOTIFICATION/api-docs/",
   "phases": [
     { "id": "CORE", "status": "COMPLETE", "subs": [ { "id": "CORE", "status": "COMPLETE" } ] },
     { "id": "DATAOM", "status": "COMPLETE", "subs": [ { "id": "DATAOM", "status": "COMPLETE" } ] },

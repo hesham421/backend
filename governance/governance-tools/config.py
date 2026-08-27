@@ -286,6 +286,15 @@ def ensure_module_structure(mod: str) -> list[Path]:
 
 def build_manifest(mod: str, version: int = 1) -> dict:
     base = get_module_version_path(mod, version)
+
+    # Paths are stored relative to REPO_BASE_PATH, never absolute — an
+    # absolute Path here would bake in the checking-out machine's home
+    # directory and this repo's on-disk folder name at generation time,
+    # both of which are guaranteed to differ across machines and to
+    # drift the moment the repo/folder is renamed or moved.
+    def rel(p: Path) -> str:
+        return str(p.relative_to(REPO_BASE_PATH))
+
     return {
         "module":  mod,
         "version": version,
@@ -296,23 +305,23 @@ def build_manifest(mod: str, version: int = 1) -> dict:
             "ui_shell_complete": False,
         },
         "artifacts": {
-            "p0":      str(base / MODULE_STRUCTURE["P0"]),
-            "p0_5":    str(base / MODULE_STRUCTURE["P0_5"]),
-            "p1":      str(base / MODULE_STRUCTURE["P1"]),
-            "p2":      str(base / MODULE_STRUCTURE["P2"]),
-            "p2_5":    str(base / MODULE_STRUCTURE["P2_5"]),
-            "p3_1":    str(base / MODULE_STRUCTURE["P3_1"]),
-            "p3_5_be": str(base / MODULE_STRUCTURE["P3_5_BE"]),
+            "p0":      rel(base / MODULE_STRUCTURE["P0"]),
+            "p0_5":    rel(base / MODULE_STRUCTURE["P0_5"]),
+            "p1":      rel(base / MODULE_STRUCTURE["P1"]),
+            "p2":      rel(base / MODULE_STRUCTURE["P2"]),
+            "p2_5":    rel(base / MODULE_STRUCTURE["P2_5"]),
+            "p3_1":    rel(base / MODULE_STRUCTURE["P3_1"]),
+            "p3_5_be": rel(base / MODULE_STRUCTURE["P3_5_BE"]),
         },
         "registries": {
-            "srs":     str(base / MODULE_STRUCTURE["P1"] / f"registry-srs-{mod.lower()}.md"),
-            "db":      str(base / MODULE_STRUCTURE["P2"] / f"registry-db-{mod.lower()}.md"),
-            "exec_be": str(base / MODULE_STRUCTURE["P3_1"] / f"registry-exec-be-{mod.lower()}.md"),
-            "test_be": str(base / MODULE_STRUCTURE["P3_5_BE"] / f"registry-test-be-{mod.lower()}.md"),
+            "srs":     rel(base / MODULE_STRUCTURE["P1"] / f"registry-srs-{mod.lower()}.md"),
+            "db":      rel(base / MODULE_STRUCTURE["P2"] / f"registry-db-{mod.lower()}.md"),
+            "exec_be": rel(base / MODULE_STRUCTURE["P3_1"] / f"registry-exec-be-{mod.lower()}.md"),
+            "test_be": rel(base / MODULE_STRUCTURE["P3_5_BE"] / f"registry-test-be-{mod.lower()}.md"),
         },
         "packages": {
-            "backend_execution": str(base / "packages" / "backend-execution"),
-            "backend_test":      str(base / "packages" / "backend-test"),
+            "backend_execution": rel(base / "packages" / "backend-execution"),
+            "backend_test":      rel(base / "packages" / "backend-test"),
         },
     }
 
