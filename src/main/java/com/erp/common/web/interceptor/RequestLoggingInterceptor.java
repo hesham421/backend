@@ -7,17 +7,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
- * Interceptor that logs all HTTP requests/responses with performance metrics.
- * 
- * Features:
- * - Logs request method, URI, and parameters
- * - Measures request execution time
- * - Warns if request takes longer than threshold (1000ms)
- * - Logs exceptions during request processing
- * 
- * Architecture Rule: 15.2 - Request/Response Logging with Performance Metrics
- * 
- * @author ERP Team
+ * Logs HTTP requests/responses with duration; logs at WARN instead of INFO when a request
+ * exceeds {@link #SLOW_REQUEST_THRESHOLD_MS}.
  */
 @Component
 @Slf4j

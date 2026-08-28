@@ -17,18 +17,8 @@ import org.springframework.context.annotation.Primary;
 import java.util.List;
 
 /**
- * OpenAPI/Swagger Configuration for ERP Main Application
- * 
- * ✅ Architecture Compliance (Rule 22.1):
- * - All Swagger grouping defined in erp-main only
- * - Each module has its own group
- * - packages-to-scan used (not paths-to-match)
- * - @Primary to override CommonOpenApiConfig from erp-common-utils
- * 
- * Access Swagger UI at: http://localhost:7272/swagger-ui.html
- * Access OpenAPI JSON at: http://localhost:7272/api-docs
- * 
- * @author ERP Team
+ * OpenAPI/Swagger configuration for the unified ERP Main application — one Swagger group per
+ * module, using packages-to-scan (not paths-to-match).
  */
 @Configuration
 public class OpenApiConfig {
@@ -110,18 +100,8 @@ public class OpenApiConfig {
             ));
     }
 
-    // ========================================
-    // API Groups - Each module gets its own group
-    // ========================================
-
     /**
-     * 🔐 Security Module APIs
-     * - Authentication (login, refresh, logout)
-     * - User Management
-     * - Role Management  
-     * - Permission Management
-     * - Page Management
-     * - Menu Management
+     * Security Module APIs — Authentication, User/Role/Permission/Page/Menu Management.
      */
     @Bean
     public GroupedOpenApi securityApi() {
@@ -147,14 +127,8 @@ public class OpenApiConfig {
     }
 
     /**
-     * 💰 Finance GL Module APIs
-     * - GL Accounts
-     * - Manual Journals
-     * - Journal Queries
-     * - Posting Engine
-     * - Account Balances
-     * - Fiscal Periods
-     * - Financial Reports
+     * Finance GL Module APIs — GL Accounts, Manual Journals, Journal Queries, Posting Engine,
+     * Account Balances, Fiscal Periods, Financial Reports.
      */
     @Bean
     public GroupedOpenApi financeGlApi() {
@@ -166,10 +140,8 @@ public class OpenApiConfig {
     }
 
     /**
-     * 🏢 Organization Module APIs
-     * - Legal Entities, Branches, Regions
-     * - Departments, Cost Centers, Profit Centers
-     * - Location Sites
+     * Organization Module APIs — Legal Entities, Branches, Regions, Departments, Cost Centers,
+     * Profit Centers, Location Sites.
      */
     @Bean
     public GroupedOpenApi organizationApi() {

@@ -24,13 +24,9 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 /**
- * JPA entity for NOTIF_TEMPLATE (ENTITY-NOTIF-002, DBF-0017..0030). PRIVATE (Phase 1).
- * Consumes SHARED ENTITY-FILE-001 (FileDocument) via a DEFERRED hard FK (XM-NOTIF-001,
- * see INT-C/INT-R) — {@code fileFk} stays NULLABLE and unused until File Service's
- * migration path fires. No Business Code — {@code templateCode} is a manually-assigned,
- * lookupKey-like natural code, immutable after creation (RULE-NOTIF-007), enforced at
- * the Service layer (SVCAPI), not the entity. No domain/ package — per CORE.md
- * (3-entity module scale, embedded entity methods).
+ * JPA entity for NOTIF_TEMPLATE. {@code fileFk} stays nullable/unused until File Service's
+ * deferred migration (XM-NOTIF-001). {@code templateCode} is a manually-assigned,
+ * immutable-after-creation natural code, enforced at the Service layer.
  */
 @Entity
 @Table(name = "NOTIF_TEMPLATE",
@@ -118,11 +114,9 @@ public class NotificationTemplate extends AuditableEntity {
     }
 
     /**
-     * RULE-NOTIF-006 — returns the body in the recipient's Security-resolved language
-     * preference. Entity-embedded per CORE.md; a pure fallback-resolution accessor. If a
-     * lookup by {@code templateCode} finds no active template at all, the CALLER (fan-out
-     * processor) substitutes a platform-default template rather than failing (DRV-NOTIF-002)
-     * — that cross-row fallback does not live here.
+     * Returns the body in the recipient's resolved language. If no active template is found at all,
+     * the caller (fan-out processor) substitutes a platform-default template — that fallback does
+     * not live here.
      */
     public String resolveBody(String languageCode) {
         return "AR".equalsIgnoreCase(languageCode) ? templateBodyAr : templateBodyEn;

@@ -1,11 +1,7 @@
 package com.erp.file.exception;
 
 /**
- * Centralized Error Codes for File Service Module.
- *
- * All codes must have corresponding messages in:
- * - erp-main/src/main/resources/i18n/messages.properties (English)
- * - erp-main/src/main/resources/i18n/messages_ar.properties (Arabic)
+ * Centralized error codes for the File Service module; every code needs matching entries in the English and Arabic i18n message files.
  */
 public final class FileErrorCodes {
 
@@ -13,11 +9,9 @@ public final class FileErrorCodes {
         throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
     }
 
-    // ==================== File Category Errors ====================
     // ERR-FILE-0009 (API-FILE-001)
     public static final String FILE_CATEGORY_NOT_FOUND = "FILE_CATEGORY_NOT_FOUND";
 
-    // ==================== File Document Errors ====================
     public static final String FILE_DOCUMENT_NOT_FOUND = "FILE_DOCUMENT_NOT_FOUND";
     // ERR-FILE-0001 (RULE-FILE-001, API-FILE-002)
     public static final String FILE_SIZE_EXCEEDED = "FILE_SIZE_EXCEEDED";
@@ -26,7 +20,6 @@ public final class FileErrorCodes {
     public static final String FILE_UPLOAD_READ_FAILED = "FILE_UPLOAD_READ_FAILED";
     public static final String FILE_NAME_REQUIRED = "FILE_NAME_REQUIRED";
 
-    // ==================== Encrypted Token Errors ====================
     public static final String FILE_TOKEN_ISSUE_FAILED = "FILE_TOKEN_ISSUE_FAILED";
     // ERR-FILE-0002 (RULE-FILE-002)
     public static final String FILE_TOKEN_EXPIRED = "FILE_TOKEN_EXPIRED";
@@ -38,7 +31,6 @@ public final class FileErrorCodes {
     // RULE-FILE-004 (no numbered ERR-ID in SVCAPI.md's API-FILE-001 ERRORS section)
     public static final String FILE_TOKEN_ALREADY_USED = "FILE_TOKEN_ALREADY_USED";
 
-    // ==================== File Access Token Errors ====================
     // New POST /api/v1/files/{fileDocumentPk}/access-token endpoint (added to close the
     // download/delete token-issuance gap — see execution-state.json notes)
     public static final String FILE_ACCESS_TOKEN_ACTION_INVALID = "FILE_ACCESS_TOKEN_ACTION_INVALID";

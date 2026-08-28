@@ -10,13 +10,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Role Entity - Represents system roles for RBAC
- *
- * Governance: BE-REQ-ROLEACCESS-001
- * Contract: role-access.contract.md
- *
- * Roles are the MASTER in the Role-Pages relationship.
- * Each Role can be assigned multiple Pages with VIEW + optional CRUD permissions.
+ * System role; the MASTER side of the Role-Pages relationship (each Role can be assigned
+ * multiple Pages with VIEW + optional CRUD permissions).
  */
 @Entity
 @Table(name = "ROLES",
@@ -31,11 +26,8 @@ import java.util.Set;
 public class Role extends AuditableEntity {
 
     /**
-     * PK constraint name: ROLES_PK (matches the column name below). Naming the
-     * constraint itself isn't expressible via a JPA annotation on @Id (unlike
-     * @ForeignKey for FKs) — Hibernate's naming-strategy hooks only cover
-     * FOREIGN_KEY/UNIQUE_KEY/INDEX, never PRIMARY_KEY — so the constraint name
-     * is enforced in the live DB by 001_rename_pk_fk_to_standard.sql instead.
+     * PK constraint name (ROLES_PK) is set by 001_rename_pk_fk_to_standard.sql, not a
+     * JPA annotation — Hibernate's naming-strategy hooks don't cover PRIMARY_KEY.
      */
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "roles_seq")
@@ -54,12 +46,7 @@ public class Role extends AuditableEntity {
     @Column(name = "DESCRIPTION", length = 500)
     private String description;
 
-    /**
-     * Active status flag.
-     *
-     * Database: IS_ACTIVE NUMBER(1) - 1=Active, 0=Inactive
-     * Java: Boolean - true/false/null
-     */
+    /** Maps to IS_ACTIVE NUMBER(1) in the DB (1=active, 0=inactive). */
     @Column(name = "IS_ACTIVE", nullable = false)
     @Convert(converter = BooleanNumberConverter.class)
     @Builder.Default
@@ -87,10 +74,8 @@ public class Role extends AuditableEntity {
     }
 
     /**
-     * Returns active status with null-safety.
-     * Returns Boolean.TRUE as default if not set.
-     * Note: NOT named isActive() to avoid Hibernate interpreting it as
-     * a boolean property accessor and creating a phantom 'ACTIVE' column mapping.
+     * Not named isActive() deliberately — Hibernate would treat that as a boolean property
+     * accessor and create a phantom 'ACTIVE' column mapping. Defaults to true when unset.
      */
     public Boolean getActiveStatus() {
         return active != null ? active : Boolean.TRUE;

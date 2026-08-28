@@ -8,21 +8,15 @@ import lombok.experimental.SuperBuilder;
 import org.springframework.data.domain.Persistable;
 
 /**
- * SEC_USER_PROFILE (ENTITY-SEC-009) — 1:1 profile/branch-assignment extension of USERS.
- * Shared PK: USER_ID_FK is both the PK and the FK to USERS.USERS_PK — mapped via
- * {@code @MapsId} per execution-plan-SEC-gaps.md Section 3, not a separate surrogate PK.
- * branchIdFk stays a plain scalar (no JPA association to OrgBranch): erp-security has no
- * Maven dependency on erp-org, and RULE-SEC-034's active-branch check is a Service-layer
- * concern (Phase SVC+API) that consumes ORG_BRANCH over its REST API (XM-SEC-001), not a
- * shared JPA object graph. Referential integrity is enforced at the DB layer instead
- * (FK_SEC_USER_PROFILE_BRANCH in the migration script).
+ * 1:1 profile/branch-assignment extension of USERS with a shared PK (USER_ID_FK is both PK
+ * and FK, via {@code @MapsId}). branchIdFk is a plain scalar, not a JPA association — erp-security
+ * has no Maven dependency on erp-org, so the active-branch check goes through ORG_BRANCH's REST API.
  *
- * Implements {@link Persistable} because {@code userIdFk} is manually assigned (never null,
- * even for a brand-new instance) — without this, Spring Data's default {@code isNew()} check
- * sees a non-null @Id and calls {@code merge()} instead of {@code persist()} on save(), which
- * throws {@code org.hibernate.AssertionFailure: null identifier} when merge cascades into the
- * transient {@code @MapsId} "user" association. {@code createdAt} (set only by
- * {@code AuditEntityListener}'s @PrePersist) is a reliable "not yet saved" signal.
+ * <p>Implements {@link Persistable} because {@code userIdFk} is manually assigned and never
+ * null: without it, Spring Data's default {@code isNew()} sees a non-null @Id and calls
+ * {@code merge()} instead of {@code persist()}, which throws {@code AssertionFailure: null
+ * identifier} on the transient {@code @MapsId} association. {@code createdAt} is the "not yet
+ * saved" signal instead.
  */
 @Entity
 @Table(name = "SEC_USER_PROFILE",

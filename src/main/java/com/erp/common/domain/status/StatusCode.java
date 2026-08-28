@@ -1,15 +1,8 @@
 package com.erp.common.domain.status;
 
 /**
- * Contract for all business status codes in the ERP system.
- * 
- * Architecture Rules:
- * - This interface is domain-level (NO HTTP dependencies)
- * - All status enums must implement this interface
- * - Service layer uses StatusCode, not HTTP status codes
- * - HTTP mapping is handled by OperationCode in the web layer
- *
- * @author ERP Team
+ * Contract for business status codes; domain-level, with HTTP mapping handled separately
+ * by OperationCode in the web layer.
  */
 public interface StatusCode {
 

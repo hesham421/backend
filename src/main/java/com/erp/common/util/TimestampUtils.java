@@ -7,12 +7,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
 /**
- * Utility class for working with timestamps and dates.
- * Provides consistent timestamp formatting across all ERP modules.
- * 
- * Architecture Rule: 14.5 - Consistent Timestamp Format
- * 
- * @author ERP Team
+ * Timestamp formatting/parsing; always formats to UTC ISO-8601 for cross-module consistency.
  */
 public final class TimestampUtils {
 
@@ -21,30 +16,18 @@ public final class TimestampUtils {
     }
 
     /**
-     * Get current timestamp as ISO-8601 string in UTC.
      * Format: 2024-01-15T10:30:45.123Z
-     * 
-     * @return ISO-8601 formatted timestamp string
      */
     public static String getCurrentTimestamp() {
         return Instant.now().toString();
     }
 
-    /**
-     * Convert Instant to ISO-8601 string
-     * 
-     * @param instant The instant to format
-     * @return ISO-8601 formatted string
-     */
     public static String format(Instant instant) {
         return instant != null ? instant.toString() : null;
     }
 
     /**
-     * Convert LocalDateTime to ISO-8601 string in UTC
-     * 
-     * @param dateTime The LocalDateTime to format
-     * @return ISO-8601 formatted string in UTC
+     * Interprets {@code dateTime} in the system default zone before converting to UTC.
      */
     public static String format(LocalDateTime dateTime) {
         if (dateTime == null) {
@@ -55,12 +38,6 @@ public final class TimestampUtils {
                        .format(DateTimeFormatter.ISO_INSTANT);
     }
 
-    /**
-     * Convert ZonedDateTime to ISO-8601 string
-     * 
-     * @param zonedDateTime The ZonedDateTime to format
-     * @return ISO-8601 formatted string
-     */
     public static String format(ZonedDateTime zonedDateTime) {
         if (zonedDateTime == null) {
             return null;
@@ -69,21 +46,10 @@ public final class TimestampUtils {
                             .format(DateTimeFormatter.ISO_INSTANT);
     }
 
-    /**
-     * Parse ISO-8601 string to Instant
-     * 
-     * @param timestamp ISO-8601 formatted string
-     * @return Instant
-     */
     public static Instant parse(String timestamp) {
         return timestamp != null ? Instant.parse(timestamp) : null;
     }
 
-    /**
-     * Get current timestamp as Instant
-     * 
-     * @return Current Instant
-     */
     public static Instant now() {
         return Instant.now();
     }

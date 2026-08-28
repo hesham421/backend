@@ -9,12 +9,7 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 
 /**
- * Response DTO for Role Pages Matrix
- * 
- * Governance: BE-REQ-ROLEACCESS-001
  * Contract: role-access.contract.md - GET/PUT /api/roles/{roleId}/pages
- * 
- * Returns the complete page assignments for a role with permission arrays.
  */
 @Data
 @Builder

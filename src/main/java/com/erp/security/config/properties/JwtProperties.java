@@ -5,18 +5,6 @@ import jakarta.validation.constraints.NotBlank;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
-/**
- * JWT Configuration Properties.
- *
- * Bound to properties with prefix: erp.security.jwt
- *
- * Example in application.properties:
- * erp.security.jwt.secret=${JWT_SECRET}
- * erp.security.jwt.access-expiration-seconds=3600
- * erp.security.jwt.refresh-expiration-seconds=86400
- *
- * @author ERP Team
- */
 @Validated
 @ConfigurationProperties(prefix = "erp.security.jwt")
 public record JwtProperties(

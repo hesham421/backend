@@ -9,12 +9,7 @@ import lombok.NoArgsConstructor;
 import java.time.Instant;
 
 /**
- * Role Response DTO - Exposes role information without lazy-loaded collections
- * 
- * Governance: BE-REQ-ROLEACCESS-001
- * Contract: role-access.contract.md
- * 
- * Complies with Rule 4.2 & 7.1: Never expose entities, use DTOs
+ * Role response DTO; deliberately excludes the entity's lazy-loaded collections.
  */
 @Data
 @Builder

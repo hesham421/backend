@@ -12,19 +12,8 @@ import java.util.EnumMap;
 import java.util.Map;
 
 /**
- * Implementation of OperationCode that maps business status codes to HTTP status codes.
- * 
- * Architecture Rules:
- * - This is the ONLY place where HTTP status mapping exists
- * - Service layer must NOT import or depend on this class
- * - All HTTP-specific logic is isolated in the web layer
- *
- * Mapping Strategy:
- * 1. First check for exact Status match in statusMappings
- * 2. Fall back to category-based mapping using categoryMappings
- * 3. Default to INTERNAL_SERVER_ERROR if no mapping found
- *
- * @author ERP Team
+ * Maps business status codes to HTTP status codes: exact {@link Status} match first, falling
+ * back to {@link StatusCategory}, then to the caller-supplied default.
  */
 @Component
 public class OperationCodeImpl implements OperationCode {
@@ -40,7 +29,6 @@ public class OperationCodeImpl implements OperationCode {
     private static final Map<StatusCategory, HttpStatus> categoryMappings = new EnumMap<>(StatusCategory.class);
 
     static {
-        // ==================== Category Mappings (Fallback) ====================
         categoryMappings.put(StatusCategory.SUCCESS, HttpStatus.OK);
         categoryMappings.put(StatusCategory.CLIENT_ERROR, HttpStatus.BAD_REQUEST);
         categoryMappings.put(StatusCategory.BUSINESS_ERROR, HttpStatus.UNPROCESSABLE_ENTITY);
@@ -49,8 +37,6 @@ public class OperationCodeImpl implements OperationCode {
         categoryMappings.put(StatusCategory.SERVER_ERROR, HttpStatus.INTERNAL_SERVER_ERROR);
         categoryMappings.put(StatusCategory.CONFLICT, HttpStatus.CONFLICT);
 
-        // ==================== Exact Status Mappings ====================
-        
         // Success
         statusMappings.put(Status.SUCCESS, HttpStatus.OK);
         statusMappings.put(Status.OK, HttpStatus.OK);
@@ -136,39 +122,18 @@ public class OperationCodeImpl implements OperationCode {
     }
 
     /**
-     * Get the HTTP status for a status code string (convenience method).
-     * Useful when working with error codes from exceptions.
-     *
-     * @param code The status code string (e.g., "NOT_FOUND")
-     * @return The HTTP status, or INTERNAL_SERVER_ERROR if not found
+     * Convenience method for working with error codes from exceptions (e.g., "NOT_FOUND").
      */
     public HttpStatus toHttpStatusFromCode(String code) {
         Status status = Status.fromCode(code);
         return status != null ? toHttpStatus(status) : HttpStatus.INTERNAL_SERVER_ERROR;
     }
 
-    /**
-     * Get the HTTP status for a status code string with default fallback.
-     *
-     * @param code The status code string
-     * @param defaultStatus The default HTTP status if not found
-     * @return The HTTP status
-     */
     public HttpStatus toHttpStatusFromCode(String code, HttpStatus defaultStatus) {
         Status status = Status.fromCode(code);
         return status != null ? toHttpStatus(status) : defaultStatus;
     }
 
-    /**
-     * Translates a ServiceResult to an HTTP ResponseEntity with ApiResponse envelope.
-     * 
-     * Architecture Rule: This is the ONLY translation point from service layer to HTTP.
-     * Controllers MUST use this method instead of manually building responses.
-     *
-     * @param result The service layer result
-     * @param <T> The type of data payload
-     * @return ResponseEntity with appropriate HTTP status and ApiResponse body
-     */
     @Override
     public <T> ResponseEntity<ApiResponse<T>> craftResponse(ServiceResult<T> result) {
         if (result == null) {

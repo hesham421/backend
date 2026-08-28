@@ -24,18 +24,9 @@ class NotificationDispatchApiService implements NotificationDispatchApi {
     private final NotificationEventProcessor notificationEventProcessor;
 
     /**
-     * Post-implementation-audit remediation, skill-alignment item — this performs a write
-     * (persists {@code NotificationLog} rows), so per {@code create-service/SKILL.md}'s
-     * "read → REQUIRED, write → REQUIRES_NEW" rule it takes {@code REQUIRES_NEW} explicitly,
-     * not the default. The only caller today ({@code AuthEventListener}) invokes this from an
-     * {@code AFTER_COMMIT} transactional-event listener — there is no open transaction on the
-     * calling thread at that point, so this was previously left at default {@code REQUIRED},
-     * reasoning it was behaviorally identical to {@code REQUIRES_NEW} in that one case. That
-     * reasoning was correct for today's only caller but silently depended on it never changing:
-     * a future caller invoking this from within an active transaction would have fused this
-     * write to that unrelated transaction's outcome with no compiler or test warning. Declaring
-     * {@code REQUIRES_NEW} explicitly costs nothing today (identical behavior, since there is no
-     * transaction to suspend) and removes that latent hazard outright.
+     * Explicitly {@code REQUIRES_NEW} since this persists NotificationLog rows (create-service/
+     * SKILL.md: writes require REQUIRES_NEW). Behaviorally identical to REQUIRED for today's only
+     * caller, but avoids silently fusing this write to a future caller's transaction.
      */
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)

@@ -23,17 +23,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * REST Controller for SEC_ROLE_BRANCH (DataScope — API-SEC-036..039).
- *
- * Thin controller — all logic, including {@code @PreAuthorize} permission gates
- * (Phase SEC, Section 8.1 Permissions Matrix — reuses the EXISTING {@code PERM_ROLE_*}
- * permissions per CORE-9, no new SEC_PAGES row/permission set for this sub-tab), lives
- * in {@link SecRoleBranchService} per this codebase's A.5.2 service-contract convention
- * (governance-repo enforce-backend-contract skill) — controllers never carry @PreAuthorize.
- *
- * Update/delete use {roleId}/{branchId} rather than the API register's literal "{id}":
- * SEC_ROLE_BRANCH has no surrogate PK (composite key), so a single {id} path variable would
- * require inventing a non-existent column — flagged in the Phase 3 handoff.
+ * Thin controller for SEC_ROLE_BRANCH — all logic, including {@code @PreAuthorize} gates, lives
+ * in {@link SecRoleBranchService}. Update/delete key on {roleId}/{branchId}, not {id}, since
+ * the table has a composite key.
  */
 @RestController
 @RequestMapping("/api/v1/security/role-branches")

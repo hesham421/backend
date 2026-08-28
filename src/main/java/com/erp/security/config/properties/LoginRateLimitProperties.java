@@ -3,18 +3,6 @@ package com.erp.security.config.properties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
-/**
- * Login Rate Limit Configuration Properties.
- *
- * Bound to properties with prefix: erp.security.rate-limit.login
- *
- * Example in application.properties:
- * erp.security.rate-limit.login.max-attempts=5
- * erp.security.rate-limit.login.window-seconds=60
- * erp.security.rate-limit.login.lockout-seconds=300
- *
- * @author ERP Team
- */
 @Validated
 @ConfigurationProperties(prefix = "erp.security.rate-limit.login")
 public record LoginRateLimitProperties(

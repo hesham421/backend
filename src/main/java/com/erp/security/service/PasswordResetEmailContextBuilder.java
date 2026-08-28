@@ -19,18 +19,10 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Assembles the notification contextData for the password-reset email (XM-SEC-005) —
- * called from {@link AuthService#forgotPassword} before the event is published. Never logs the
- * token or the assembled map; the token appears only inside {@code resetUrl}, not as a bare
- * standalone value, to keep its footprint in contextData to one field instead of two.
- *
- * <p>The NOTIF template is now real HTML (dir="rtl"/"ltr" markup) and
- * {@code NotificationEventProcessor.renderBody()} substitutes {{placeholder}} values with a
- * plain, unescaped {@code String.valueOf(...)} — so any value here that can contain
- * user-supplied text (a profile's display name) is HTML-escaped before being put in the map,
- * to stop a name like {@code <script>} from being interpreted as markup in the rendered email.
- * {@code applicationName}/expiry strings are operator config or our own formatting, not
- * user-supplied, and are left as-is.
+ * Assembles the password-reset email contextData. Never logs the token or the assembled map.
+ * User-supplied values (e.g. a profile's display name) are HTML-escaped before insertion,
+ * since the template renderer substitutes placeholders unescaped and could otherwise render
+ * injected markup.
  */
 @Component
 @RequiredArgsConstructor

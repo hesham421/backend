@@ -35,15 +35,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Set;
 
 /**
- * Orchestration for Region (API-ORG-013..018). Business Rule decisions are delegated to
- * {@link OrgRegionDomain}.
- *
- * TODO: OQ-001 — RULE-ORG-006 (block deactivation while active Branches reference this Region)
- * is pending resolution: db-script.md's DBF matrix has no REGION_FK column on ORG_BRANCH, so the
- * guard cannot be implemented against the current schema. {@code deactivate()} below does not
- * call a guard for this reason — {@link OrgRegionDomain} intentionally has no
- * {@code assertCanDeactivate} method. Not enforced until the FK linkage is confirmed at a
- * MODE 1.5 amendment.
+ * Orchestration for Region. Business Rule decisions are delegated to {@link OrgRegionDomain}.
+ * TODO OQ-001: RULE-ORG-006 (block deactivation while active Branches reference this Region) is
+ * pending — ORG_BRANCH has no REGION_FK column, so deactivate() below calls no guard for it.
  */
 @Service
 @RequiredArgsConstructor

@@ -7,16 +7,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Simple message-only response DTO for operations that don't return data.
- * 
- * Used for:
- * - Delete confirmations
- * - Status updates
- * - Simple acknowledgements
- *
- * For full response with data, use ApiResponse instead.
- *
- * @author ERP Team
+ * Simple message-only response DTO for operations that don't return data; use {@link ApiResponse}
+ * when data is returned.
  */
 @Getter
 @Setter

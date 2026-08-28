@@ -15,17 +15,8 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Base class for API-contract search request DTOs.
- *
- * Maps the frontend search format:
- * <pre>{ filters: [{ field, operator, value }], sorts: [{ field, direction }], page, size }</pre>
- * into the common-utils {@link SearchRequest} used by services.
- *
- * Architecture Rules:
- * - Rule 7.1: DTOs for API contract
- * - Eliminates duplicated Filter/Sort classes across search DTOs
- *
- * @author ERP Team
+ * Base class for API-contract search request DTOs; maps the frontend's
+ * {@code { filters, sorts, page, size }} shape into the common-utils {@link SearchRequest}.
  */
 @Data
 @NoArgsConstructor
@@ -44,22 +35,12 @@ public abstract class BaseSearchContractRequest {
     private static final Set<String> CONTAINS_ALIASES = Set.of("CONTAINS", "LIKE");
     private static final Set<String> STARTS_WITH_ALIASES = Set.of("STARTS_WITH");
 
-    /**
-     * Map contract request into common-utils SearchRequest.
-     * Subclasses may override to exclude certain filters.
-     *
-     * @return SearchRequest for service layer
-     */
     public SearchRequest toCommonSearchRequest() {
         return toCommonSearchRequest(Set.of());
     }
 
     /**
-     * Map contract request into common-utils SearchRequest,
-     * excluding filters whose field name matches any entry in {@code excludeFields}.
-     *
-     * @param excludeFields field names to skip (case-insensitive)
-     * @return SearchRequest for service layer
+     * {@code excludeFields} matching is case-insensitive.
      */
     protected SearchRequest toCommonSearchRequest(Set<String> excludeFields) {
         SearchRequest req = new SearchRequest();
@@ -106,13 +87,6 @@ public abstract class BaseSearchContractRequest {
         );
     }
 
-    // =============================================
-    // Shared nested DTOs matching frontend contract
-    // =============================================
-
-    /**
-     * Filter DTO matching frontend contract: { field, operator, value }
-     */
     @Data
     @NoArgsConstructor
     @AllArgsConstructor

@@ -10,36 +10,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Utility class for building JPA {@link Specification} from {@link SearchRequest}.
- * <p>
- * This builder supports:
- * <ul>
- *   <li>Simple field filters: "username", "enabled"</li>
- *   <li>Nested field filters with dot notation: "tenant.id", "profile.email"</li>
- *   <li>Collection joins for ManyToMany/OneToMany: "roles.name", "roles.permissions.name"</li>
- *   <li>Case-insensitive string matching: LIKE, STARTS_WITH, ENDS_WITH</li>
- *   <li>Comparison operators: EQ, NE, GT, GTE, LT, LTE, BETWEEN</li>
- *   <li>Null checks: IS_NULL, IS_NOT_NULL</li>
- *   <li>List matching: IN</li>
- *   <li>Automatic DISTINCT when joins are used</li>
- * </ul>
- * </p>
- *
- * <p><b>Usage Example:</b></p>
- * <pre>
- * AllowedFields allowedFields = new SetAllowedFields(Set.of("username", "roles.name"));
- * FieldValueConverter converter = DefaultFieldValueConverter.INSTANCE;
- * 
- * SearchRequest request = new SearchRequest();
- * request.addFilter(new SearchFilter("username", Op.LIKE, "john"));
- * request.addFilter(new SearchFilter("roles.name", Op.IN, List.of("ADMIN", "USER")));
- * 
- * Specification&lt;User&gt; spec = SpecBuilder.build(request, allowedFields, converter);
- * Page&lt;User&gt; results = userRepository.findAll(spec, pageable);
- * </pre>
- *
- * @author ERP System
- * @since 1.0
+ * Builds a JPA {@link Specification} from a {@link SearchRequest}, including dot-notation
+ * nested/collection joins (with automatic DISTINCT when a join is used).
  */
 public class SpecBuilder {
 
@@ -100,14 +72,8 @@ public class SpecBuilder {
     }
 
     /**
-     * Builds a JPA Specification from a SearchRequest.
-     *
-     * @param <T>           the entity type
-     * @param request       the search request containing filters
-     * @param allowedFields validator for allowed field names
-     * @param converter     converter for field values
-     * @return the constructed Specification, or a match-all spec if no filters
-     * @throws SearchException if validation fails or filter is invalid
+     * @return a match-all spec if {@code request} has no filters
+     * @throws SearchException if validation fails or a filter is invalid
      */
     public static <T> Specification<T> build(
             SearchRequest request,
@@ -383,13 +349,8 @@ public class SpecBuilder {
     }
 
     /**
-     * Gets an expression for a field, handling dot notation and joins.
-     * <p>
-     * For simple fields: root.get("username")
-     * For nested singular: root.get("tenant").get("id")
-     * For collections: root.join("roles").get("name")
-     * For multi-level: root.join("roles").join("permissions").get("name")
-     * </p>
+     * Handles dot notation, resolving each intermediate segment as a property first and
+     * falling back to a join (e.g. "roles.permissions.name" joins roles then permissions).
      */
     @SuppressWarnings("unchecked")
     private static <T> Expression<T> getExpression(Root<?> root, String fieldPath) {

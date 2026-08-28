@@ -22,10 +22,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * SCR-NOTIF-002 (إدارة قوالب الإشعارات) — API-NOTIF-006..010. Search is POST + @RequestBody
- * (not SVCAPI.md's literal GET) for the same A.6.6 reason documented on
- * {@code NotificationInboxController} — {@code NotificationTemplateSearchRequest} extends
- * {@code BaseSearchContractRequest}, which this platform always exposes via POST /search.
+ * Template CRUD (API-NOTIF-006..010); search is POST + @RequestBody, not GET, for the same
+ * {@code BaseSearchContractRequest} reason as {@code NotificationInboxController}.
  */
 @RestController
 @RequestMapping("/api/v1/notifications/templates")

@@ -8,12 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Request DTO for updating an existing Role
- * 
- * Governance: BE-REQ-ROLEACCESS-001
- * Contract: role-access.contract.md - PUT /api/roles/{roleId}
- * 
- * Note: roleCode is immutable and not included in update requests
+ * roleCode is immutable and deliberately not included in this update request.
  */
 @Data
 @Builder

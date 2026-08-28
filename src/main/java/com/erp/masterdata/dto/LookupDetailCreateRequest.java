@@ -9,15 +9,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Request DTO for creating Lookup Detail
- * 
- * Architecture Rules:
- * - Rule 7.1: DTOs for API contract
- * - Rule 7.3: Clear DTO naming (CreateRequest suffix)
- * 
- * @author ERP Team
- */
 @Data
 @Builder
 @NoArgsConstructor

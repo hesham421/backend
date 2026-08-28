@@ -24,18 +24,9 @@ import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 
 /**
- * JPA entity for NOTIF_LOG (ENTITY-NOTIF-001, DBF-0001..0016). SHARED (owner) — consumer:
- * AuditService (SOFT-READ, NOT-YET-ASSIGNED). No Business Code — engine-managed, append-only
- * system log. Create is system-only (at send time); no manual Update/Delete, only the
- * status/retryCount transitions below. No domain/ package — per CORE.md (3-entity module
- * scale, embedded entity methods).
- *
- * <p>{@code recipientId} is a plain scalar FK to Security's {@code USERS.USERS_PK}, not a JPA
- * association — erp-notification has no Maven dependency on erp-security, same
- * cross-module scalar-FK pattern already used elsewhere in this codebase (e.g.
- * {@code SecUserProfile}/{@code SecRoleBranch} → ORG's branch id). The FK is still enforced
- * live at the DB level (FK_NOTIF_LOG_USERS — see DATAOM migration), a documented Security
- * EXCEPTION, not an XM-ID.
+ * JPA entity for NOTIF_LOG — engine-managed, append-only; created only at send time.
+ * {@code recipientId} is a plain scalar FK to Security's USERS table, not a JPA association,
+ * since this module has no Maven dependency on erp-security.
  */
 @Entity
 @Table(name = "NOTIF_LOG")
@@ -157,11 +148,8 @@ public class NotificationLog extends AuditableEntity {
     }
 
     /**
-     * Called by {@code FailedNotificationSweepScheduler} on each failed later re-attempt of an
-     * already-terminal {@link #STATUS_FAILED} row. Does not change {@link #notificationStatusId}
-     * — the row stays {@code FAILED} (queryable, unchanged terminal status) until either a sweep
-     * attempt succeeds ({@link #markSent()}) or {@link #MAX_SWEEP_RETRY_COUNT} is reached, at
-     * which point the scheduler stops selecting it.
+     * Does not change {@link #notificationStatusId} — the row stays FAILED (queryable) until either
+     * a sweep succeeds ({@link #markSent()}) or {@link #MAX_SWEEP_RETRY_COUNT} is reached.
      */
     public void incrementSweepRetry() {
         this.sweepRetryCount = (short) (this.sweepRetryCount + 1);

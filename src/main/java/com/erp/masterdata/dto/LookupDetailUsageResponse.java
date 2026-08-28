@@ -6,13 +6,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Usage information DTO for Lookup Detail
- * 
- * Shows where the lookup detail is being used
- * 
- * @author ERP Team
- */
 @Data
 @Builder
 @NoArgsConstructor

@@ -5,14 +5,9 @@ import com.erp.common.exception.LocalizedException;
 import com.erp.org.entity.OrgRegion;
 
 /**
- * Business Rule owner for {@link OrgRegion}. Plain class — no Spring/JPA, no Repository access.
- * Constructed only via {@code create()}/{@code from()}. See {@code domain-layer.md}.
- *
- * TODO: OQ-001 — RULE-ORG-006 (block deactivation while active Branches reference this Region)
- * is pending resolution: db-script.md's DBF matrix has no REGION_FK column on ORG_BRANCH, so the
- * guard cannot be implemented against the current schema. Not enforced here until the FK linkage
- * is confirmed at a MODE 1.5 amendment. RULE-ORG-017 (SOFT-READ consumer warning) is non-blocking
- * and surfaced at the UI layer only — no Domain guard required.
+ * TODO: OQ-001 — RULE-ORG-006 (block deactivation while Regions still have active Branches)
+ * can't be enforced yet: ORG_BRANCH has no REGION_FK column. RULE-ORG-017 is UI-only; no Domain
+ * guard needed.
  */
 public final class OrgRegionDomain {
 

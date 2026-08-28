@@ -15,17 +15,8 @@ import java.io.IOException;
 import java.util.UUID;
 
 /**
- * Filter that ensures every HTTP request has a unique correlation ID for tracing.
- * The correlation ID is:
- * - Generated if not provided in X-Correlation-Id header
- * - Added to MDC for logging
- * - Included in response header
- * 
- * Usage in logs: [correlationId] will automatically appear when configured in logback.
- * 
- * Architecture Rule: 15.1 - Request Tracing with Correlation ID
- * 
- * @author ERP Team
+ * Ensures every HTTP request has a correlation ID (from the X-Correlation-Id header, or
+ * generated) available in MDC for log correlation and echoed back in the response header.
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)

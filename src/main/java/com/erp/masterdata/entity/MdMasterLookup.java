@@ -13,17 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Master Lookup Entity - نوع القائمة المرجعية
- * 
- * Represents a master lookup type that contains multiple lookup detail values.
- * Examples: COLOR, GRADE, UOM, COUNTRY, CITY, PAYMENT_TERM
- * 
- * Architecture Rules:
- * - Rule 6.1: Entities are module-internal
- * - Rule 9: Database standards (Oracle naming)
- * - Rule 9.2: Primary key naming (_PK suffix)
- * 
- * @author ERP Team
+ * Master Lookup entity (نوع القائمة المرجعية) — a lookup type containing multiple detail
+ * values, e.g. COLOR, UOM, COUNTRY.
  */
 @Entity
 @Table(name = "MD_MASTER_LOOKUP",
@@ -104,10 +95,6 @@ public class MdMasterLookup extends AuditableEntity {
     @Formula("(SELECT COUNT(*) FROM MD_LOOKUP_DETAIL ld WHERE ld.MASTER_LOOKUP_ID_FK = ID_PK)")
     private int detailCountFormula;
 
-    // ============================================
-    // Lifecycle Callbacks (business rules only — audit handled by AuditEntityListener)
-    // ============================================
-
     @PrePersist
     protected void onCreate() {
         if (isActive == null) {
@@ -124,10 +111,6 @@ public class MdMasterLookup extends AuditableEntity {
             lookupKey = lookupKey.toUpperCase();
         }
     }
-
-    // ============================================
-    // Helper Methods
-    // ============================================
 
     /**
      * Activate the master lookup

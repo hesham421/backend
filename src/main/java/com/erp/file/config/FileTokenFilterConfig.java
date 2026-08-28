@@ -11,18 +11,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 
 /**
- * Registers {@link FileTokenFilter} as a plain Servlet filter — deliberately NOT a
- * {@code @Component} (which Spring Boot would additionally auto-register with default
- * {@code /*} patterns, double-registering it), and deliberately NOT wired into erp-security's
- * {@code SecurityConfig} (that would invert the module dependency direction — Security must not
- * depend on File Service). Runs at the highest precedence so it rejects invalid tokens before
- * Spring Security's own chain does any work on these permitAll'd routes.
- *
- * Registered on the Servlet (not Ant) {@code /*} pattern — matches literally every request, not
- * just upload/download/delete — because the delete route ({@code DELETE /{token}}) is a bare
- * single-path-segment root path with no fixed prefix, and Servlet url-patterns cannot express
- * "any single segment" any other way. {@link FileTokenFilter#shouldNotFilter} does the real,
- * cheap (string-prefix / single-regex) narrowing for every other request.
+ * Registered as a plain Servlet filter (not {@code @Component}, which Spring Boot would double-register) on the
+ * Servlet {@code /*} pattern — the single-segment DELETE route can't be matched by an Ant pattern; {@link
+ * FileTokenFilter#shouldNotFilter} does the real narrowing.
  */
 @Configuration
 public class FileTokenFilterConfig {

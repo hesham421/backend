@@ -29,13 +29,9 @@ import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 /**
- * JPA entity for ORG_REGION (ENTITY-ORG-003, DBF-0033..0044). Persistence-only.
- *
- * TODO: OQ-001 — RULE-ORG-006 (block deactivation while active Branches reference this Region)
- * is pending resolution: db-script.md's DBF matrix has no REGION_FK column on ORG_BRANCH, so the
- * guard cannot be implemented against the current schema. Not enforced until the FK linkage is
- * confirmed at a MODE 1.5 amendment. RULE-ORG-017 (SOFT-READ consumer warning) is non-blocking
- * and surfaced at the UI layer only — no Domain guard required.
+ * JPA entity for ORG_REGION — persistence-only. TODO OQ-001: RULE-ORG-006 (block deactivation
+ * while active Branches reference this Region) can't be enforced yet — ORG_BRANCH has no
+ * REGION_FK column.
  */
 @Entity
 @Table(name = "ORG_REGION",

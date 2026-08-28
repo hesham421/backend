@@ -7,17 +7,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 /**
- * Pagination Utilities
- * 
- * Centralizes pagination constraint enforcement to avoid duplication
- * across multiple controllers.
- * 
- * Rules enforced:
- * - Maximum page number: 10,000
- * - Minimum page size: 1
- * - Maximum page size: 100
- * 
- * @author Architecture Review Team
+ * Centralizes pagination constraint enforcement to avoid duplication across controllers.
+ *
  * @see com.erp.common.web.config.CommonWebConfig for default pagination settings
  */
 public final class PageableUtils {
@@ -37,34 +28,11 @@ public final class PageableUtils {
      */
     public static final int MAX_PAGE_SIZE = 100;
 
-    /**
-     * Private constructor to prevent instantiation
-     */
     private PageableUtils() {
         throw new UnsupportedOperationException("Utility class cannot be instantiated");
     }
 
     /**
-     * Enforce pagination constraints on a Pageable object
-     * 
-     * This method ensures that:
-     * - Page number does not exceed MAX_PAGE_NUMBER
-     * - Page size is between MIN_PAGE_SIZE and MAX_PAGE_SIZE
-     * - Sort order is preserved from original Pageable
-     * 
-     * Example usage in controllers:
-     * <pre>
-     * {@code
-     * @GetMapping
-     * public Page<UserResponse> getAllUsers(Pageable pageable) {
-     *     pageable = PageableUtils.enforceConstraints(pageable);
-     *     return userService.getAllUsers(pageable);
-     * }
-     * }
-     * </pre>
-     * 
-     * @param pageable Original Pageable object from request
-     * @return New Pageable with enforced constraints
      * @throws BusinessException if pageable is null
      */
     public static Pageable enforceConstraints(Pageable pageable) {
@@ -86,14 +54,8 @@ public final class PageableUtils {
     }
 
     /**
-     * Enforce pagination constraints with custom maximum page size
-     * 
-     * Useful when a specific endpoint needs a different maximum page size
-     * than the global default.
-     * 
-     * @param pageable Original Pageable object from request
-     * @param customMaxSize Custom maximum page size for this request
-     * @return New Pageable with enforced constraints
+     * For endpoints that need a different maximum page size than the global default.
+     *
      * @throws BusinessException if pageable is null or customMaxSize is invalid
      */
     public static Pageable enforceConstraints(Pageable pageable, int customMaxSize) {
@@ -120,13 +82,7 @@ public final class PageableUtils {
     }
 
     /**
-     * Check if a Pageable object violates constraints
-     * 
-     * Useful for logging or monitoring purposes to identify
-     * clients that are requesting excessive page sizes or numbers.
-     * 
-     * @param pageable Pageable to check
-     * @return true if constraints are violated, false otherwise
+     * For logging/monitoring clients that request excessive page sizes or numbers.
      */
     public static boolean violatesConstraints(Pageable pageable) {
         if (pageable == null) {

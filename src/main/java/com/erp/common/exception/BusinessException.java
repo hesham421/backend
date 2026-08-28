@@ -8,8 +8,6 @@ import lombok.Getter;
  * Exception for business logic violations.
  * HTTP status is resolved from {@link #statusCode} via OperationCode; defaults to
  * {@link Status#BUSINESS_RULE_VIOLATION} (422) for callers that don't specify one.
- *
- * @author ERP Team
  */
 @Getter
 public class BusinessException extends RuntimeException {

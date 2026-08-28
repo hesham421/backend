@@ -5,15 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
 
 /**
- * ERP Master Data Module - Main Application
- * 
- * Manages master data entities like MasterLookup, LookupDetail, etc.
- * 
- * Architecture Rules:
- * - Rule 12.3: Integration with erp-common-utils
- * - Component scanning includes common-utils packages
- * 
- * @author ERP Team
+ * ERP Master Data module entry point — manages master lookup / lookup detail entities.
  */
 @SpringBootApplication
 @ComponentScan(basePackages = {

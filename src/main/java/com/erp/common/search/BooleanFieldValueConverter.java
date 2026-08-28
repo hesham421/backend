@@ -5,59 +5,18 @@ import com.erp.common.converter.BooleanNumberConverter;
 import java.util.Set;
 
 /**
- * FieldValueConverter implementation that converts Boolean values to Integer (0/1)
- * for fields stored as NUMBER(1) in Oracle database.
- * 
- * <h2>Purpose:</h2>
- * When using JPA Specifications for search/filtering, boolean fields mapped to NUMBER(1)
- * columns require proper conversion. This converter handles the Boolean → Integer conversion
- * for specified fields during specification building.
- * 
- * <h2>Usage Example:</h2>
- * <pre>{@code
- * // Define which fields should have Boolean->Integer conversion
- * Set<String> booleanFields = Set.of("isActive", "enabled", "visible");
- * 
- * // Create converter with those fields
- * FieldValueConverter converter = new BooleanFieldValueConverter(booleanFields);
- * 
- * // Use in spec building
- * Specification<MyEntity> spec = SpecBuilder.build(request, allowedFields, converter);
- * }</pre>
- * 
- * <h2>Conversion Rules:</h2>
- * <ul>
- *   <li>{@code Boolean.TRUE} → {@code 1}</li>
- *   <li>{@code Boolean.FALSE} → {@code 0}</li>
- *   <li>{@code null} → {@code null} (allows "ALL" queries when isActive is null)</li>
- *   <li>String "true"/"false" (case insensitive) → converted to Boolean first, then to Integer</li>
- * </ul>
- * 
- * @author ERP Team
- * @since 1.0
- * @see BooleanNumberConverter
- * @see FieldValueConverter
+ * Converts Boolean (and boolean-like String/Number) values to Integer (0/1) for search fields
+ * mapped to NUMBER(1) columns; null passes through unchanged to allow "match all" queries.
  */
 public class BooleanFieldValueConverter implements FieldValueConverter {
 
     private final Set<String> booleanFields;
     private final FieldValueConverter delegate;
 
-    /**
-     * Creates a converter for the specified boolean fields.
-     * 
-     * @param booleanFields set of field names that should be treated as NUMBER(1) booleans
-     */
     public BooleanFieldValueConverter(Set<String> booleanFields) {
         this(booleanFields, DefaultFieldValueConverter.INSTANCE);
     }
 
-    /**
-     * Creates a converter for the specified boolean fields with a delegate for other fields.
-     * 
-     * @param booleanFields set of field names that should be treated as NUMBER(1) booleans
-     * @param delegate converter to use for non-boolean fields
-     */
     public BooleanFieldValueConverter(Set<String> booleanFields, FieldValueConverter delegate) {
         this.booleanFields = booleanFields != null ? booleanFields : Set.of();
         this.delegate = delegate != null ? delegate : DefaultFieldValueConverter.INSTANCE;
@@ -74,12 +33,6 @@ public class BooleanFieldValueConverter implements FieldValueConverter {
         return delegate.convert(field, rawValue, op);
     }
 
-    /**
-     * Converts a value to Integer for NUMBER(1) boolean columns.
-     * 
-     * @param rawValue the raw value (Boolean, String, or null)
-     * @return Integer (1, 0, or null)
-     */
     private Integer convertBooleanField(Object rawValue) {
         if (rawValue == null) {
             return null;
@@ -156,12 +109,6 @@ public class BooleanFieldValueConverter implements FieldValueConverter {
         ));
     }
 
-    /**
-     * Factory method with custom delegate.
-     * 
-     * @param delegate the delegate converter for non-boolean fields
-     * @return converter configured for standard boolean field names
-     */
     public static BooleanFieldValueConverter forActiveFields(FieldValueConverter delegate) {
         return new BooleanFieldValueConverter(Set.of(
             "isActive",

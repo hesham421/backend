@@ -6,16 +6,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 /**
- * API Contract Request DTO for Permission search.
- *
- * Matches the standard search contract:
- * <pre>{ filters: [{ field, operator, value }], sorts: [{ field, direction }], page, size }</pre>
- *
- * Allowed filter fields:
- * - name (EQUALS, CONTAINS, STARTS_WITH)
- * - module (EQUALS)
- *
- * @author ERP Team
+ * Search contract for Permission: filters on name (EQUALS/CONTAINS/STARTS_WITH) and module (EQUALS).
  */
 @Data
 @NoArgsConstructor

@@ -9,9 +9,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Request DTO for creating a new Role
- * 
- * Governance: BE-REQ-ROLEACCESS-001
  * Contract: role-access.contract.md - POST /api/roles
  */
 @Data

@@ -33,12 +33,7 @@ public class MenuService {
     private static final String PERM_PREFIX = "PERM_";
     private static final String VIEW_SUFFIX = "_VIEW";
 
-    /**
-     * جلب القائمة الكاملة للمستخدم الحالي بناءً على صلاحيات VIEW من SEC_PAGES
-     * يبني شجرة Menu (Tree Structure)
-     *
-     * يستخدم SEC_PAGES مباشرة - لا حاجة لـ SEC_MENU_ITEM
-     */
+    /** Builds the menu tree directly from SEC_PAGES; no SEC_MENU_ITEM table needed. */
     @Transactional(readOnly = true)
     public ServiceResult<List<MenuItemDto>> getUserMenu() {
         String username = SecurityContextHelper.requireUsername();

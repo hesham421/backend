@@ -13,37 +13,15 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Repository for Master Lookup Entity — Tenant-Agnostic
- * 
- * Architecture Rules:
- * - Rule 6.5: Repositories are module-internal
- * - Rule 6.2: Use findById() + custom exception pattern
- * - Tenant is managed ONLY in erp-security module
- * 
- * @author ERP Team
- */
 @Repository
 public interface MasterLookupRepository extends JpaRepository<MdMasterLookup, Long>, 
                                                   JpaSpecificationExecutor<MdMasterLookup> {
 
-    /**
-     * Find master lookup by lookup key
-     * 
-     * @param lookupKey Lookup key
-     * @return Optional of MasterLookup
-     */
     Optional<MdMasterLookup> findByLookupKey(String lookupKey);
 
     /**
-     * Find lookup values by master lookup key using native query with JOIN
-     * Returns master lookup info and all active detail values in a single query
-     * 
-     * Performance optimization: Single query with JOIN instead of separate queries
-     * 
-     * @param lookupKey Master lookup key
-     * @param isActive Active status filter (1 for active)
-     * @return List of lookup value projections
+     * Single native query with JOIN — master lookup status + all active detail values in one
+     * round-trip (avoids N+1).
      */
     @Query(value = """
             SELECT 
@@ -66,23 +44,11 @@ public interface MasterLookupRepository extends JpaRepository<MdMasterLookup, Lo
             @Param("lookupKey") String lookupKey,
             @Param("isActive") Integer isActive);
 
-    /**
-     * Check if master lookup exists by lookup key
-     * 
-     * @param lookupKey Lookup key
-     * @return true if exists
-     */
     boolean existsByLookupKey(String lookupKey);
 
     /**
-     * Single-query validation: check if a lookup detail code exists and is active
-     * under an active master lookup key.
-     *
-     * Performance: executes ONE query with JOIN instead of two separate queries.
-     *
-     * @param lookupKey Master lookup key (must be UPPERCASE)
-     * @param code      Detail code to validate
-     * @return 1 if valid, 0 otherwise
+     * Single query with JOIN validates the code exists and is active under an active master lookup
+     * key, in one round-trip.
      */
     @Query(value = """
             SELECT COUNT(*)
@@ -98,30 +64,11 @@ public interface MasterLookupRepository extends JpaRepository<MdMasterLookup, Lo
             @Param("lookupKey") String lookupKey,
             @Param("code") String code);
 
-    /**
-     * Find all active master lookups
-     * 
-     * @param isActive Active status
-     * @param pageable Pagination
-     * @return Page of MasterLookups
-     */
     Page<MdMasterLookup> findByIsActive(Boolean isActive, Pageable pageable);
 
-    /**
-     * Count lookup details for a master lookup
-     * 
-     * @param masterLookupId Master lookup ID
-     * @return Count of lookup details
-     */
     @Query("SELECT COUNT(ld) FROM MdLookupDetail ld WHERE ld.masterLookup.id = :masterLookupId")
     long countLookupDetails(@Param("masterLookupId") Long masterLookupId);
 
-    /**
-     * Count active lookup details for a master lookup
-     * 
-     * @param masterLookupId Master lookup ID
-     * @return Count of active lookup details
-     */
     @Query("SELECT COUNT(ld) FROM MdLookupDetail ld " +
            "WHERE ld.masterLookup.id = :masterLookupId AND ld.isActive = true")
     long countActiveLookupDetails(@Param("masterLookupId") Long masterLookupId);

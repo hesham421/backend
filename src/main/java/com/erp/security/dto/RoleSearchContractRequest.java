@@ -6,15 +6,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 /**
- * API Contract Request DTO for Role search.
- *
- * Matches the standard search contract:
- * <pre>{ filters: [{ field, operator, value }], sorts: [{ field, direction }], page, size }</pre>
- *
- * Allowed filter fields:
- * - roleName (EQUALS, CONTAINS, STARTS_WITH)
- *
- * @author ERP Team
+ * Search contract for Role: filters on roleName (EQUALS/CONTAINS/STARTS_WITH).
  */
 @Data
 @NoArgsConstructor

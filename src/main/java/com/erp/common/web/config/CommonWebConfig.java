@@ -13,36 +13,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import java.util.List;
 
 /**
- * ✅ CENTRALIZED Web MVC Configuration for ALL ERP modules
- * 
- * This @Configuration is automatically picked up by @ComponentScan in all modules.
- * NO NEED to create WebConfig.java in each module!
- * 
- * Provides:
- * - Pagination defaults (Rule 17.1, 17.2): default=20, max=100
- * - CORS configuration for Angular frontend
- * - Request/Response logging interceptor (Rule 15.2)
- * 
- * Architecture Rules:
- * - Rule 12: Common configurations belong in erp-common-utils
- * - Rule 15.2: Request/Response logging
- * - Rule 17.1: Use Spring Data Pageable
- * - Rule 17.2: Enforce max page size = 100
- * 
- * Usage:
- * Just add @ComponentScan("com.erp.common.web") in your module's main class:
- * 
- * <pre>
- * &#64;SpringBootApplication
- * &#64;ComponentScan(basePackages = {
- *     "com.erp.your.module",
- *     "com.erp.common.web",        // ← This picks up CommonWebConfig
- *     "com.erp.common.multitenancy"
- * })
- * public class YourModuleApplication { }
- * </pre>
- * 
- * @author ERP Team
+ * Web MVC configuration shared by all ERP modules; picked up automatically via
+ * {@code @ComponentScan("com.erp.common.web")}, so modules should not define their own WebConfig.
  */
 @Configuration
 @RequiredArgsConstructor

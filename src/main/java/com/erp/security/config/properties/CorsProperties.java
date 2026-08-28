@@ -6,16 +6,6 @@ import org.springframework.validation.annotation.Validated;
 
 import java.util.List;
 
-/**
- * CORS Configuration Properties.
- * 
- * Bound to properties with prefix: erp.security.cors
- * 
- * Example in application.properties:
- * erp.security.cors.allowed-origins=http://localhost:4200,http://127.0.0.1:4200
- * 
- * @author ERP Team
- */
 @Validated
 @ConfigurationProperties(prefix = "erp.security.cors")
 public record CorsProperties(

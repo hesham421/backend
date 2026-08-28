@@ -11,24 +11,9 @@ import org.springframework.stereotype.Service;
 import static com.erp.notification.config.NotificationAsyncConfig.DISPATCH_EXECUTOR;
 
 /**
- * Post-persist dispatch orchestration (CORE.md): "for each PENDING row, attempt channel send;
- * on failure, incrementRetry() up to 5 (RULE-NOTIF-004), then markFailed(); on success,
- * markSent()." Runs off the request thread ({@link Async}) so RULE-NOTIF-004's exponential
- * backoff never blocks a caller of API-NOTIF-001/002.
- *
- * <p>A distinct {@code @Service} bean (not a method on {@link NotificationEventProcessor}) —
- * {@code @Async} only takes effect through Spring's proxy on a call from a DIFFERENT bean;
- * self-invocation from within the same class would silently run synchronously.
- *
- * <p><b>Deliberate A.5.2 exception:</b> {@link #dispatchAsync} carries no {@code @PreAuthorize}.
- * It is not a new authorization boundary — it is a continuation of work already authorized at
- * the REST/Event ingress ({@code NotificationEventProcessor.send()}/{@code schedule()}'s own
- * {@code isAuthenticated()} gate, or the Spring Event listener's same-process trust), reached
- * only via {@code NotificationDispatchTrigger}'s post-commit event, never directly by a
- * controller or another module. It also could not practically carry one: Spring Security's
- * context does not propagate to the {@code @Async} executor thread in this codebase (no
- * {@code DelegatingSecurityContextExecutor} configured), so evaluating any SpEL authorization
- * expression here would fail closed on every dispatch regardless of the original caller.
+ * Post-persist dispatch, run off the request thread via {@code @Async} — a distinct bean since
+ * {@code @Async} only works via Spring's proxy on cross-bean calls. {@link #dispatchAsync}
+ * deliberately carries no {@code @PreAuthorize}: it continues work already authorized at ingress.
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -53,10 +38,9 @@ public class NotificationDispatchService {
     }
 
     /**
-     * No method-level {@code @Transactional} here on purpose: {@link NotificationLogRepository
-     * #save} is itself transactional (Spring Data's {@code SimpleJpaRepository}), so each
-     * attempt's outcome commits independently — a DB connection is never held open across the
-     * multi-second backoff sleeps between attempts.
+     * No method-level {@code @Transactional} here — {@code NotificationLogRepository#save} is
+     * itself transactional, so each attempt commits independently without holding a connection
+     * across the backoff sleeps.
      */
     private void dispatchWithRetry(NotificationLog logEntry) {
         while (true) {

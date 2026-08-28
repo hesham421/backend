@@ -23,10 +23,8 @@ import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 /**
- * JPA entity for FILE_DOCUMENT (ENTITY-FILE-001, DBF-0013..0027). SHARED (owner) — central
- * binary file storage for all platform modules. No Update operation — replacement is
- * delete+re-upload. No domain/ package — per CORE.md, {@code purgeContent()} below is a small,
- * entity-local behavior, same reasoning as {@code FileCategory.resolveMaxSizeBytes()}.
+ * JPA entity for FILE_DOCUMENT (ENTITY-FILE-001) — central binary storage for all platform
+ * modules. No Update operation; replacement is delete+re-upload.
  */
 @Entity
 @Table(name = "FILE_DOCUMENT",
@@ -115,11 +113,8 @@ public class FileDocument extends AuditableEntity {
     }
 
     /**
-     * RULE-FILE-006 — permanent, irreversible content purge. Sets fileContent = null and
-     * fileStatusId = DELETED; the FILE_DOCUMENT row itself is retained (metadata + audit trail),
-     * per OQ-001's resolution, so any consumer HARD-FK stays valid. Called only from the Service
-     * delete flow after RULE-FILE-007's ownership/Admin check (an authorization concern, resolved
-     * against Security's role/permission model, not an entity-local decision) has already passed.
+     * RULE-FILE-006 — irreversible content purge: clears {@code fileContent} and sets DELETED
+     * status, but the row itself is retained (metadata/audit trail) so consumer FKs stay valid.
      */
     public void purgeContent() {
         this.fileContent = null;

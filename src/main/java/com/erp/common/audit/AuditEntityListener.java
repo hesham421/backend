@@ -8,16 +8,8 @@ import jakarta.persistence.PreUpdate;
 import java.time.Instant;
 
 /**
- * JPA EntityListener that automatically populates audit fields on
- * any entity extending {@link AuditableEntity}.
- * <p>
- * Replaces Spring Data JPA's {@code AuditingEntityListener} with a
- * framework-independent, purely JPA-based approach.
- * <p>
- * Uses {@link SecurityContextHelper#getUsernameOrSystem()} to resolve
- * the current user (falls back to "system" when no security context exists).
- *
- * @author ERP Team
+ * Populates audit fields on {@link AuditableEntity} instances; replaces Spring Data's
+ * {@code AuditingEntityListener} to avoid that dependency.
  */
 public class AuditEntityListener {
 

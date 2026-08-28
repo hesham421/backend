@@ -9,13 +9,9 @@ import org.springframework.stereotype.Component;
 import java.util.function.Predicate;
 
 /**
- * TODO: XM-ORG-1 DEFERRED — replace with a call to NumberingEngine's
- * {@code POST /api/numbering/generate} (RULE-ORG-013, DRV-ORG-008) once the NumberingEngine
- * module is READY. Per master-registry.md (L1-4, "NumberingEngine — NOT STARTED"), no such
- * endpoint exists anywhere in this workspace yet, so this component is a local,
- * functionally-equivalent stand-in: sequential, zero-padded, collision-checked against the
- * repository. It is the single call point every entity's Service uses for RULE-ORG-013
- * ("Business Code via NumberingEngine only") so the eventual swap touches one class.
+ * TODO XM-ORG-1 DEFERRED: stand-in for NumberingEngine's generate endpoint, which doesn't exist
+ * yet anywhere in this workspace. Sequential, zero-padded, collision-checked — the single call
+ * point every entity's Service uses, so the eventual swap touches one class.
  */
 @Component
 @Slf4j
@@ -25,13 +21,9 @@ public class OrgNumberGenerator {
     private static final int MAX_ATTEMPTS = 20;
 
     /**
-     * Generates the next {@code <prefix><NNNNN>} code not already taken, per {@code existsByCode}.
-     *
-     * @param prefix      business-code prefix, e.g. {@code "LE-"} or {@code "BR-LE-00001-"}
-     * @param seed        starting sequence value — typically the current row count in scope
-     * @param existsByCode repository existence check scoped to the same uniqueness boundary
-     *                    as the entity's unique constraint
-     * @return a generated code guaranteed unused at generation time
+     * Generates the next <prefix><NNNNN> code not already taken. seed is typically the current row
+     * count in scope; existsByCode must be scoped to the same uniqueness boundary as the entity's
+     * unique constraint.
      */
     public String next(String prefix, long seed, Predicate<String> existsByCode) {
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
@@ -45,11 +37,9 @@ public class OrgNumberGenerator {
     }
 
     /**
-     * Every generated code ends in a {@value #SEQUENCE_WIDTH}-digit sequence by construction, so
-     * this extracts a parent's own suffix rather than its full code. Deeper entities (e.g.
-     * Department under Branch) build their prefix from this instead of the parent's complete
-     * code, otherwise the prefix grows with hierarchy depth and overflows the VARCHAR(20) column
-     * (e.g. "DEP-" + full Branch code + "-" + own sequence exceeded 20 chars).
+     * Extracts a parent's own suffix (not its full code) since every generated code ends in a
+     * fixed-width sequence — deeper entities build their prefix from this to avoid the prefix
+     * growing with hierarchy depth and overflowing VARCHAR(20).
      */
     public String parentSuffix(String parentCode) {
         return parentCode.length() >= SEQUENCE_WIDTH

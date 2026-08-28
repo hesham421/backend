@@ -13,12 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * JWT Token Service.
- *
- * Generates and validates JWT access and refresh tokens.
- * Configuration is loaded from {@link JwtProperties}.
- *
- * @author ERP Team
+ * Generates and validates JWT access/refresh tokens; config loaded from {@link JwtProperties}.
  */
 @Service
 public class JwtService {

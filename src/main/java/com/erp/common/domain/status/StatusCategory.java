@@ -1,13 +1,8 @@
 package com.erp.common.domain.status;
 
 /**
- * Categorization of business status codes.
- * Used to group related statuses for consistent handling.
- * 
- * Architecture Rule: This is a domain-level concept with NO HTTP dependencies.
- * HTTP mapping is handled separately in OperationCodeImpl.
- *
- * @author ERP Team
+ * Domain-level grouping of business status codes; has no HTTP dependencies (HTTP mapping
+ * is handled separately in OperationCodeImpl).
  */
 public enum StatusCategory {
 

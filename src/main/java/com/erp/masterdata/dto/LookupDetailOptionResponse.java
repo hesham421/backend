@@ -6,12 +6,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Simple DTO for dropdown options
- * Used for dropdowns in UI
- * 
- * @author ERP Team
- */
 @Data
 @Builder
 @NoArgsConstructor

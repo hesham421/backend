@@ -40,11 +40,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Orchestration for CostCenter flat CRUD (API-ORG-026,028..032) and the recursive tree read
- * (API-ORG-027, QR-ORG-015, mirrors QR-ORG-012). Business Rule decisions (RULE-ORG-019
- * parent-active create guard; RULE-ORG-008 cycle prevention) are delegated to
- * {@link OrgCostCenterDomain}. RULE-ORG-010 (SUMMARY blocked on transactional records) is
- * enforced by consuming modules, not here.
+ * Orchestration for CostCenter CRUD and the recursive tree read (API-ORG-027). Business Rule
+ * decisions (parent-active create guard, cycle prevention) are delegated to {@link
+ * OrgCostCenterDomain}; RULE-ORG-010 is enforced by consuming modules, not here.
  */
 @Service
 @RequiredArgsConstructor
@@ -134,10 +132,9 @@ public class CostCenterService {
     }
 
     /**
-     * API-ORG-027 — full subtree for {@code branchFk} (QR-ORG-015). Fetches the flat row set from
-     * the recursive CTE, then assembles the nested tree in this layer (per SVC-API-TREE.md — the
-     * DB returns rows, not nesting). {@code isActiveFl} is optional; when a node's parent was
-     * filtered out at the DB level, the node surfaces as a root of the returned forest.
+     * Fetches the flat row set from the recursive CTE (QR-ORG-015), then assembles the nested tree
+     * in this layer. When a node's parent is filtered out at the DB level, the node surfaces as a
+     * root of the returned forest.
      */
     @Transactional(readOnly = true)
     @PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).COST_CENTER_VIEW)")

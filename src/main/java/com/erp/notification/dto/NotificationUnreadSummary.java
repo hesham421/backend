@@ -9,10 +9,8 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 
 /**
- * Response DTO for API-NOTIF-004 (Unread Notifications). Contract shell only per SVCAPI.md —
- * the endpoint always throws {@code NOTIF_READ_TRACKING_UNAVAILABLE} today (DRV-NOTIF-003, no
- * read/unread column exists); this DTO documents the intended shape for when that SRS/DB
- * amendment lands.
+ * Contract shell only — the endpoint always throws {@code NOTIF_READ_TRACKING_UNAVAILABLE} today
+ * (no read/unread column exists yet); this documents the intended shape.
  */
 @Data
 @Builder

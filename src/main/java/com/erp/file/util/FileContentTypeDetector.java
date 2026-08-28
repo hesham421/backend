@@ -6,13 +6,9 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 /**
- * RULE-FILE-005 — server-side MIME/file-type detection from content only, never from the
- * client-supplied Content-Type header. Pure JDK (magic-byte sniffing + {@code java.util.zip}
- * entry inspection for OOXML formats) — no PDFBox/Tika, per RESOLUTION-03 ("PDFBox excluded
- * permanently, not deferred") and RESOLUTION-04's broader "no extra integration libraries"
- * spirit. Anything unrecognized correctly falls back to {@code application/octet-stream} /
- * {@code OTHER} — that IS honest content-sniffing, not a stub (e.g. plain text/CSV has no
- * reliable magic number to key off of).
+ * RULE-FILE-005 — server-side MIME detection from content only (magic bytes / OOXML zip entry
+ * inspection), never the client-supplied Content-Type header. Unrecognized content honestly
+ * falls back to {@code application/octet-stream} / {@code OTHER} rather than guessing.
  */
 public final class FileContentTypeDetector {
 

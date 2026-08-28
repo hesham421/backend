@@ -13,12 +13,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import static java.lang.Math.max;
 
 /**
- * In-memory login-attempt rate limiter, keyed by "ip|username".
- *
- * Not shared across instances — acceptable for the current single-instance
- * deployment (deploy/docker-compose.yml runs exactly one backend container).
- * If the backend is ever horizontally scaled, this must move to Redis
- * (erp.security already depends on spring-boot-starter-data-redis).
+ * In-memory login-attempt rate limiter, keyed by "ip|username". Not shared across instances —
+ * fine for the current single-instance deployment, but must move to Redis if ever scaled out.
  */
 @Component
 @RequiredArgsConstructor
@@ -29,13 +25,7 @@ public class LoginRateLimiterService {
     private final ConcurrentHashMap<String, Bucket> buckets = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Instant> lockedUntil = new ConcurrentHashMap<>();
 
-    /**
-     * Attempts to record one login attempt for the given key (IP+username).
-     *
-     * @return true if the attempt is allowed to proceed, false if the key is
-     *         currently rate-limited (either it just exceeded maxAttempts, or
-     *         it is still serving out a prior lockout).
-     */
+    /** @return false if the key just exceeded maxAttempts or is still serving a prior lockout. */
     public boolean tryConsume(String key) {
         Instant blockedUntil = lockedUntil.get(key);
         if (blockedUntil != null) {

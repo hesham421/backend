@@ -33,16 +33,9 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Service for SEC_ROLE_BRANCH CRUD (API-SEC-036..039, execution-plan-SEC-gaps.md Phase SVC+API).
- *
- * {@code @PreAuthorize} per Phase SEC (Section 8.1 Permissions Matrix) reuses the EXISTING
- * {@code PERM_ROLE_*} permissions — CORE-9, no new SEC_PAGES row/permission set for this sub-tab.
- *
- * Update/delete take (roleId, branchId) rather than a single {id}: SEC_ROLE_BRANCH has no
- * surrogate PK (composite key per execution-plan-SEC-gaps.md Section 3 / db-script-SEC-gaps.md
- * BLOCK 5a) — a single {id} path variable would require inventing a non-existent column,
- * which the governing high-precision rules prohibit. Flagged in the Phase 3 handoff as a
- * deliberate adaptation of the API register's literal "{id}" shorthand.
+ * SEC_ROLE_BRANCH CRUD; {@code @PreAuthorize} reuses existing {@code PERM_ROLE_*} permissions.
+ * Update/delete take (roleId, branchId), not a single {id}, since the table has a composite
+ * key with no surrogate PK.
  */
 @Service
 @RequiredArgsConstructor
@@ -145,12 +138,8 @@ public class SecRoleBranchService {
     }
 
     /**
-     * RULE-SEC-035 — dataAccessLevel must be one of the active LOV-SEC-002 codes
-     * (BRANCH_ONLY / BRANCH_AND_CHILDREN / ALL). Throws LocalizedException(ERR-SEC-1035)
-     * if not — the plan binds exactly one ERR-ID to RULE-SEC-035, covering both the
-     * "missing" and "not a valid LOV code" scenarios. The validity check itself stays here
-     * (this Service's own business decision) — {@link MasterDataLookupApi} only supplies the
-     * raw active-values data, per the Domain Delegation split in create-service's SKILL.md.
+     * RULE-SEC-035: dataAccessLevel must be one of the active LOV-SEC-002 codes. The validity
+     * check stays here; {@link MasterDataLookupApi} only supplies the raw active-values data.
      */
     private void assertValidDataAccessLevel(String dataAccessLevel) {
         if (dataAccessLevel == null || dataAccessLevel.isBlank()) {

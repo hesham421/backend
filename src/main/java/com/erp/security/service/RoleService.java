@@ -32,12 +32,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Service for Role CRUD operations
- *
- * Governance: BE-REQ-ROLEACCESS-001
- * Contract: role-access.contract.md
- */
+/** Contract: role-access.contract.md (BE-REQ-ROLEACCESS-001). */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -62,9 +57,6 @@ public class RoleService {
     );
 
     /**
-     * POST /api/roles
-     * Create a new role
-     *
      * Contract: role-access.contract.md - Endpoint 3
      */
     @Transactional
@@ -95,9 +87,6 @@ public class RoleService {
     }
 
     /**
-     * GET /api/roles
-     * List all roles with optional filters
-     *
      * Contract: role-access.contract.md - Endpoint 1
      */
     @Transactional(readOnly = true)
@@ -132,9 +121,6 @@ public class RoleService {
     }
 
     /**
-     * GET /api/roles/{roleId}
-     * Get role by ID
-     *
      * Contract: role-access.contract.md - Endpoint 2
      */
     @Transactional(readOnly = true)
@@ -146,9 +132,6 @@ public class RoleService {
     }
 
     /**
-     * PUT /api/roles/{roleId}
-     * Update role (roleCode is immutable)
-     *
      * Contract: role-access.contract.md - Endpoint 4
      */
     @Transactional
@@ -174,13 +157,6 @@ public class RoleService {
     }
 
     /**
-     * DELETE /api/roles/{roleId}
-     * Delete role
-     *
-     * Business Prevention:
-     * - Cannot delete role that is assigned to users
-     * - Pre-check via hasUserAssignments() query
-     *
      * Contract: role-access.contract.md - Endpoint 5
      */
     @Transactional
@@ -200,9 +176,6 @@ public class RoleService {
     }
 
     /**
-     * PUT /api/roles/{roleId}/activate
-     * Activate a role
-     *
      * Contract: role-access.contract.md - Endpoint 11 (activate)
      */
     @Transactional
@@ -219,9 +192,6 @@ public class RoleService {
     }
 
     /**
-     * PUT /api/roles/{roleId}/deactivate
-     * Deactivate a role
-     *
      * Contract: role-access.contract.md - Endpoint 11 (deactivate)
      */
     @Transactional

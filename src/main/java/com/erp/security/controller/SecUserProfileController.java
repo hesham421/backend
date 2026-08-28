@@ -22,12 +22,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * REST Controller for SEC_USER_PROFILE (DataScope — API-SEC-032..035).
- *
- * Thin controller — all logic, including {@code @PreAuthorize} permission gates
- * (Phase SEC, Section 8.1 Permissions Matrix), lives in {@link SecUserProfileService}
- * per this codebase's A.5.2 service-contract convention (governance-repo
- * enforce-backend-contract skill) — controllers never carry @PreAuthorize.
+ * Thin controller for SEC_USER_PROFILE — all logic, including {@code @PreAuthorize} gates,
+ * lives in {@link SecUserProfileService}.
  */
 @RestController
 @RequestMapping("/api/v1/security/user-profiles")

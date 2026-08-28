@@ -5,21 +5,8 @@ import org.springframework.cache.Cache;
 import org.springframework.cache.interceptor.CacheErrorHandler;
 
 /**
- * Redis Cache Fallback Error Handler
- *
- * <p>When Redis is unavailable, this handler suppresses the connection failure
- * and allows the application to fall back to the DB. Without this handler,
- * any Redis connection error would propagate as a 500 Internal Server Error.
- *
- * <p>Behaviour per operation:
- * <ul>
- *   <li>GET  — logs WARN, returns null (treated as cache miss → method executes)</li>
- *   <li>PUT  — logs WARN, no-op (method result already returned to caller)</li>
- *   <li>EVICT — logs WARN, no-op</li>
- *   <li>CLEAR — logs WARN, no-op</li>
- * </ul>
- *
- * @author ERP Team
+ * Suppresses Redis connection failures (logs WARN, no-op / cache-miss) instead of letting them
+ * propagate as a 500 error, so the app falls back to the DB.
  */
 @Slf4j
 public class RedisFallbackCacheErrorHandler implements CacheErrorHandler {

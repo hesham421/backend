@@ -20,19 +20,9 @@ import java.io.UnsupportedEncodingException;
 import java.util.Optional;
 
 /**
- * EMAIL-channel adapter (AQ-010/AQ-011 RESOLVED — Email only via Gmail SMTP, free tier).
- * Sends MIME/HTML (not {@link org.springframework.mail.SimpleMailMessage}) so templates can use
- * real markup (dir="rtl"/"ltr" sections, inline CSS) — {@code notif_log.body_preview} is the
- * literal content emailed, widened to TEXT in V13 so it isn't truncated mid-tag.
- *
- * <p>Sender identity (DRV-SEC-NOTIF-005 — Security has no code path that sets a From header;
- * this lives entirely in NOTIF's own {@link NotificationChannelConfig}) is read from the EMAIL
- * row's {@code configJson}: {@code {"mailFrom": "...", "mailFromName": "..."}}. Both keys are
- * optional — unset/unparsable config falls back to {@code spring.mail.username} with no display
- * name, and a bad value never fails the send (same best-effort philosophy as the rest of this
- * class). Note: Gmail's SMTP relay generally only accepts a From *address* that matches the
- * authenticated account (or a verified "Send As" alias) — {@code mailFrom} is therefore only
- * useful once a verified alias exists; {@code mailFromName} (the display name) always works.
+ * EMAIL-channel adapter — sends MIME/HTML so templates can use real markup. Sender identity comes from the EMAIL
+ * row's configJson ({@code mailFrom}/{@code mailFromName}); Gmail's SMTP relay only accepts a From address matching
+ * the authenticated account, so {@code mailFrom} often silently won't apply.
  */
 @Slf4j
 @Component

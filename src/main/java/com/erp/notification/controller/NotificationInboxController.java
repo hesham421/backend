@@ -22,11 +22,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * SCR-NOTIF-001 (لوحة إشعاراتي) — API-NOTIF-003 (History), API-NOTIF-004 (Unread), API-NOTIF-005
- * (Mark as Read). History's method is POST + @RequestBody, not the GET SVCAPI.md's prose names
- * for it — {@code NotificationHistorySearchRequest extends BaseSearchContractRequest}, and this
- * platform's own enforce-backend-contract A.6.6 rule mandates POST /search + @RequestBody for
- * any BaseSearchContractRequest-shaped search, never GET (see execution-state.json note).
+ * SCR-NOTIF-001 — History/Unread/Mark-as-Read. History is POST + @RequestBody, not GET, because
+ * {@code NotificationHistorySearchRequest} extends {@code BaseSearchContractRequest} (A.6.6).
  */
 @RestController
 @RequestMapping("/api/v1/notifications")

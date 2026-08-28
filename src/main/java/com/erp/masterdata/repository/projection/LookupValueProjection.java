@@ -1,13 +1,5 @@
 package com.erp.masterdata.repository.projection;
 
-/**
- * Projection interface for lookup values with native query
- * Returns master lookup validation info and detail values in one query
- * 
- * Architecture Rule 27: Use projections for performance optimization
- * 
- * @author ERP Team
- */
 public interface LookupValueProjection {
     
     /**

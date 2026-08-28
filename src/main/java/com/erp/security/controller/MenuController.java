@@ -11,10 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * Controller for Menu Management - User Menu Retrieval
- * 
- * ⚠️ NOTE: After SEC_MENU_ITEM removal, this controller only handles user menu retrieval.
- * Admin menu management is now done via Page Management (PageController).
+ * User menu retrieval only — since SEC_MENU_ITEM removal, admin menu management lives in PageController.
  */
 @RestController
 @RequestMapping("/api/menu")
@@ -25,14 +22,6 @@ public class MenuController {
     private final MenuService menuService;
     private final OperationCode operationCode;
 
-    /**
-     * 🎯 PRIMARY API: Get menu for current logged-in user
-     * 
-     * Returns hierarchical menu structure based on VIEW permissions from SEC_PAGES.
-     * Called immediately after login to build Angular menu.
-     * 
-     * @return List of root menu items with nested children
-     */
     @GetMapping("/user-menu")
     @Operation(
         summary = "Get user menu based on permissions", 
@@ -42,12 +31,6 @@ public class MenuController {
         return operationCode.craftResponse(menuService.getUserMenu());
     }
 
-    /**
-     * Get menu for specific user (Admin use)
-     * 
-     * @param userId User ID to retrieve menu for
-     * @return List of root menu items for that user
-     */
     @GetMapping("/user-menu/{userId}")
     @Operation(
         summary = "Get menu for specific user (Admin)", 

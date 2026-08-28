@@ -10,17 +10,8 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 /**
- * Lookup Detail Entity - قيمة القائمة المرجعية
- * 
- * Represents individual values within a master lookup type.
- * Examples: RED (under COLOR), METER (under UOM), EGYPT (under COUNTRY)
- * 
- * Architecture Rules:
- * - Rule 6.1: Entities are module-internal
- * - Rule 9: Database standards (Oracle naming)
- * - Rule 9.2: Foreign key naming (_FK suffix)
- * 
- * @author ERP Team
+ * Lookup Detail entity (قيمة القائمة المرجعية) — an individual value within a master lookup
+ * type, e.g. RED under COLOR, METER under UOM.
  */
 @Entity
 @Table(name = "MD_LOOKUP_DETAIL",
@@ -106,10 +97,6 @@ public class MdLookupDetail extends AuditableEntity {
     @Convert(converter = BooleanNumberConverter.class)
     private Boolean isActive = Boolean.TRUE;
 
-    // ============================================
-    // Lifecycle Callbacks (business rules only — audit handled by AuditEntityListener)
-    // ============================================
-
     @PrePersist
     protected void onCreate() {
         if (isActive == null) {
@@ -119,10 +106,6 @@ public class MdLookupDetail extends AuditableEntity {
             sortOrder = 0;
         }
     }
-
-    // ============================================
-    // Helper Methods
-    // ============================================
 
     /**
      * Activate the lookup detail

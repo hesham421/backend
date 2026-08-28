@@ -9,16 +9,6 @@ import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 
-/**
- * Response DTO for Master Lookup
- * 
- * Architecture Rules:
- * - Rule 4.2: Never expose entities (use DTOs)
- * - Rule 7.1: DTOs for API contract
- * - Rule 7.3: Clear DTO naming (Response suffix)
- * 
- * @author ERP Team
- */
 @Data
 @Builder
 @NoArgsConstructor

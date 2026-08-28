@@ -4,20 +4,9 @@ import com.erp.security.entity.Permission;
 import com.erp.security.dto.PermissionDto;
 import lombok.experimental.UtilityClass;
 
-/**
- * Mapper for Permission entity to PermissionDto
- * 
- * Complies with Rule 7.2: Centralize mapping in dedicated mapper classes
- */
 @UtilityClass
 public class PermissionMapper {
 
-    /**
-     * Convert Permission entity to PermissionDto
-     * 
-     * @param entity Permission entity
-     * @return PermissionDto safe for JSON serialization
-     */
     public static PermissionDto toDto(Permission entity) {
         if (entity == null) {
             return null;

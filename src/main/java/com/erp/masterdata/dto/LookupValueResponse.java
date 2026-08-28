@@ -5,12 +5,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Lightweight DTO for lookup consumption.
- * Used by all ERP modules for dropdown lists.
- *
- * @author ERP Team
- */
 @Data
 @Builder
 @NoArgsConstructor

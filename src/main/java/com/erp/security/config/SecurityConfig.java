@@ -27,12 +27,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.List;
 
 /**
- * Spring Security Configuration.
- * 
- * Configures JWT-based stateless authentication, CORS, and authorization rules.
- * CORS configuration loaded from {@link CorsProperties}.
- * 
- * @author ERP Team
+ * Configures JWT-based stateless authentication, CORS, and authorization rules; CORS config
+ * loaded from {@link CorsProperties}.
  */
 @Configuration
 @EnableMethodSecurity

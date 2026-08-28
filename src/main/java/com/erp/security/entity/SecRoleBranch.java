@@ -7,11 +7,9 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 /**
- * SEC_ROLE_BRANCH (ENTITY-SEC-010) — role branch scope for DataScope. Composite key
- * (roleIdFk, branchIdFk) via {@code @IdClass}, mirroring FIELD-SEC-0012/0013's plain
- * scalar Java types rather than navigable associations — no existing composite-key
- * precedent in this module to follow otherwise, and RI is enforced at the DB level
- * (FK_SEC_ROLE_BRANCH_ROLE / FK_SEC_ROLE_BRANCH_BRANCH in the migration script).
+ * Role branch scope for DataScope. Composite key (roleIdFk, branchIdFk) via {@code @IdClass}
+ * using plain scalar FKs, not navigable associations; referential integrity is enforced at
+ * the DB level instead.
  */
 @Entity
 @Table(name = "SEC_ROLE_BRANCH",

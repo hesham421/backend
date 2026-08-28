@@ -29,11 +29,9 @@ import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 /**
- * JPA entity for ORG_COST_CENTER (ENTITY-ORG-005, DBF-0058..0071). Hierarchical tree per Branch.
- * Persistence-only — creation guard (RULE-ORG-019) and cycle prevention (RULE-ORG-008, mirrors
- * RULE-ORG-007) live on {@link com.erp.org.domain.OrgCostCenterDomain}. RULE-ORG-010
- * (SUMMARY nodes blocked on transactional records) is enforced by consuming modules, not here —
- * informational only.
+ * JPA entity for ORG_COST_CENTER — hierarchical tree per Branch, persistence-only. Creation
+ * guard and cycle prevention live on {@link com.erp.org.domain.OrgCostCenterDomain};
+ * RULE-ORG-010 (SUMMARY nodes on transactional records) is enforced by consumers, not here.
  */
 @Entity
 @Table(name = "ORG_COST_CENTER",

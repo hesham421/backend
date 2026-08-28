@@ -32,10 +32,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Set;
 
 /**
- * Orchestration for ProfitCenter (API-ORG-033..038). No {@code OrgProfitCenterDomain} exists —
- * per its entity Javadoc, no RULE-ID for this entity answers "is this operation allowed?" (no
- * parent-active create guard, no internal deactivation guard). Only the standard
- * RULE-ORG-011..016 code/name/audit set applies, satisfied here and at the DTO/Repository layers.
+ * Orchestration for ProfitCenter. No OrgProfitCenterDomain exists — no RULE-ID answers "is this
+ * allowed?" for this entity; only the standard code/name/audit checks apply, satisfied at the
+ * DTO/Repository layers.
  */
 @Service
 @RequiredArgsConstructor

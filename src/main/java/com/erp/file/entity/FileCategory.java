@@ -23,12 +23,9 @@ import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 /**
- * JPA entity for FILE_CATEGORY (ENTITY-FILE-002, DBF-0001..0012). Reference Table
- * (module_code-scoped, &gt;15 values platform-wide — master-registry Lookup Governance Rule),
- * parent FK of FILE_DOCUMENT. Admin-managed Create/Read/Update/Deactivate. No domain/ package —
- * per CORE.md ("small, entity-local behaviors — no separate domain/ class package is warranted
- * for a 2-entity Foundation module. Consistent with DBS-ORG-001 precedent scale reasoning"),
- * same precedent as {@code OrgRegionType}.
+ * JPA entity for FILE_CATEGORY (ENTITY-FILE-002). Reference table, parent FK of FILE_DOCUMENT,
+ * Admin-managed Create/Read/Update/Deactivate. No domain/ package — per CORE.md, same precedent
+ * as {@code OrgRegionType}.
  */
 @Entity
 @Table(name = "FILE_CATEGORY",

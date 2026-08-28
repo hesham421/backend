@@ -4,24 +4,9 @@ import com.erp.masterdata.dto.*;
 import com.erp.masterdata.entity.MdMasterLookup;
 import org.springframework.stereotype.Component;
 
-/**
- * Mapper for Master Lookup Entity <-> DTOs
- * 
- * Architecture Rules:
- * - Rule 7.2: One mapper per entity
- * - Rule 7.2: Centralize mapping in dedicated mapper classes
- * 
- * @author ERP Team
- */
 @Component
 public class MasterLookupMapper {
 
-    /**
-     * Convert Create Request to Entity
-     * 
-     * @param request Create request
-     * @return MasterLookup entity
-     */
     public MdMasterLookup toEntity(MasterLookupCreateRequest request) {
         if (request == null) {
             return null;
@@ -37,12 +22,7 @@ public class MasterLookupMapper {
     }
 
     /**
-     * Update entity from Update Request
-     * 
-     * Note: lookupKey is immutable and should not be updated
-     * 
-     * @param entity Existing entity
-     * @param request Update request
+     * lookupKey is immutable and must not be updated here.
      */
     public void updateEntityFromRequest(MdMasterLookup entity, MasterLookupUpdateRequest request) {
         if (entity == null || request == null) {
@@ -55,12 +35,6 @@ public class MasterLookupMapper {
         entity.setDescription(request.getDescription());
     }
 
-    /**
-     * Convert Entity to Response DTO
-     * 
-     * @param entity Master lookup entity
-     * @return Response DTO
-     */
     public MasterLookupResponse toResponse(MdMasterLookup entity) {
         if (entity == null) {
             return null;
@@ -81,14 +55,6 @@ public class MasterLookupMapper {
                 .build();
     }
 
-    /**
-     * Convert Entity to Usage Response DTO
-     * 
-     * @param entity Master lookup entity
-     * @param totalDetailsCount Total lookup details count
-     * @param activeDetailsCount Active lookup details count
-     * @return Usage response DTO
-     */
     public MasterLookupUsageResponse toUsageResponse(
             MdMasterLookup entity,
             long totalDetailsCount,

@@ -4,14 +4,7 @@ import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
 
 /**
- * Explicit converter for Oracle CHAR(1) / VARCHAR2(1) boolean flags.
- *
- * Mapping (Y/N):
- * - 'Y' -> true
- * - 'N' -> false
- * - null -> null
- *
- * Any other value is rejected (fail-fast).
+ * Maps Oracle CHAR(1)/VARCHAR2(1) Y/N flags to Boolean; any other value throws (fail-fast).
  */
 @Converter(autoApply = false)
 public class BooleanCharYNConverter implements AttributeConverter<Boolean, String> {

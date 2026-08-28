@@ -24,11 +24,8 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 /**
- * JPA entity for NOTIF_CHANNEL_CONFIG (ENTITY-NOTIF-003, DBF-0031..0038). PRIVATE
- * (Configuration) — no lifecycle, no Business Code. 5 seed rows (one per channel),
- * Read/Update only — no Create/Delete from the user (module-registry-notif.md
- * AUTO-DECISIONS). No domain/ package — per CORE.md ("Domain behavior: embedded in
- * Entity methods" — 3-entity module scale, File Service precedent).
+ * JPA entity for NOTIF_CHANNEL_CONFIG — 5 fixed seed rows (one per channel), Read/Update only,
+ * no Create/Delete.
  */
 @Entity
 @Table(name = "NOTIF_CHANNEL_CONFIG",

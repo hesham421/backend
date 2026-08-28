@@ -19,22 +19,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Set;
 
 /**
- * Orchestrates the new {@code POST /api/v1/files/{fileDocumentPk}/access-token} endpoint —
- * added to close a plan gap: API-FILE-003/004 both require a token whose payload carries
- * {@code fileDocumentPk}, but the plan's only defined token-issuing endpoint (API-FILE-001)
- * is scoped to pre-upload {@code fileCategoryFk} tokens and cannot address an existing file.
- * See execution-state.json notes for the full writeup and user sign-off.
- *
- * Unlike {@link FileUploadService}/{@link FileDownloadService}, this route is a standard
- * {@code /api/v1/files/...} endpoint — NOT permitAll'd — so a real JWT principal exists and
- * {@code @PreAuthorize("isAuthenticated()")} is meaningful here, same posture as
- * {@link FileUploadTokenService}.
- *
- * RULE-FILE-007 (owner-or-Admin delete restriction) is enforced HERE, at issuance time, not at
- * the actual {@code DELETE /{token}} consumption endpoint — that route is permitAll'd/token-only
- * (POLICY-CLI-06), so it has no JWT principal to check against. Possessing a valid DELETE
- * token IS the authorization from that point on, same pattern as the upload token already being
- * "pre-authorized intent". User-approved resolution (2026-07-13), see execution-state.json.
+ * Issues the access token for {@code POST /api/v1/files/{fileDocumentPk}/access-token}, closing a plan gap. Unlike
+ * upload/download this route requires a real JWT principal; RULE-FILE-007's owner-or-Admin check is enforced here at
+ * issuance, not at the token-only delete endpoint.
  */
 @Service
 @RequiredArgsConstructor
@@ -42,11 +29,8 @@ import java.util.Set;
 public class FileAccessTokenService {
 
     /**
-     * String-literal reference to {@code com.erp.security.constants.SecurityPermissions
-     * .SYSTEM_ADMIN} — same no-compile-dependency convention this codebase already uses for
-     * cross-module permission references via {@code @PreAuthorize} SpEL (e.g. erp-finance-gl's
-     * {@code AccountsChartService}); this check needs a plain boolean in a method body instead
-     * of an annotation, so the literal is held here rather than in a SpEL string.
+     * String-literal reference to {@code SecurityPermissions.SYSTEM_ADMIN} (no compile dependency) —
+     * needed as a plain boolean in a method body, not a SpEL annotation.
      */
     private static final String PERMISSION_SYSTEM_ADMIN = "PERM_SYSTEM_ADMIN";
 
@@ -86,13 +70,9 @@ public class FileAccessTokenService {
     }
 
     /**
-     * RULE-FILE-007 — Admin half only. The "owning entity's authorized actor" half cannot be
-     * resolved: {@code FileDocument.ownerId} addresses a business record in another module (no
-     * FK, no data dependency by design — module-registry-filesvc.md), and the only user-identity
-     * trail on the entity ({@code createdBy}) is always "system" because upload itself happens
-     * on the permitAll'd, token-only {@code /upload/{token}} route with no JWT principal to
-     * record. Answering "is this user authorized on the owning record" would require a
-     * cross-module callback this plan never defines.
+     * RULE-FILE-007 — Admin half only. The owning-actor half can't be resolved: uploads always run
+     * on the permitAll'd, token-only route with no JWT principal, so {@code createdBy} is always
+     * "system" — that check would need a cross-module callback this plan doesn't define.
      */
     private void assertCanDelete() {
         if (!SecurityContextHelper.hasAuthority(PERMISSION_SYSTEM_ADMIN)) {

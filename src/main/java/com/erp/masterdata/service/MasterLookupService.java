@@ -22,16 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Set;
 
-/**
- * Service for Master Lookup business logic
- * 
- * Architecture Rules:
- * - Rule 5.1: Business logic container
- * - Rule 5.2: Transaction management
- * - Rule 5.4: Return DTOs, not entities
- * 
- * @author ERP Team
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -50,14 +40,7 @@ public class MasterLookupService {
     );
 
     /**
-     * Create new master lookup
-     * 
-     * Business Rules:
-     * - Lookup key must be unique
-     * - Lookup key is converted to uppercase
-     * 
-     * @param request Create request
-     * @return Created master lookup
+     * Lookup key must be unique; it is converted to uppercase.
      */
     @org.springframework.cache.annotation.CacheEvict(cacheNames = "lookupValues", allEntries = true)
     @Transactional
@@ -85,15 +68,7 @@ public class MasterLookupService {
     }
 
     /**
-     * Update existing master lookup
-     * 
-     * Business Rules:
-     * - lookupKey is immutable and cannot be changed
-     * - Only lookupName, lookupNameEn, and description can be updated
-     * 
-     * @param id Master lookup ID
-     * @param request Update request
-     * @return Updated master lookup
+     * lookupKey is immutable; only lookupName, lookupNameEn, and description can be updated.
      */
     @org.springframework.cache.annotation.CacheEvict(cacheNames = "lookupValues", allEntries = true)
     @Transactional
@@ -119,12 +94,6 @@ public class MasterLookupService {
         return ServiceResult.success(masterLookupMapper.toResponse(updated), Status.UPDATED);
     }
 
-    /**
-     * Get master lookup by ID
-     * 
-     * @param id Master lookup ID
-     * @return Master lookup response
-     */
     @Transactional(readOnly = true)
     @PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).MASTER_LOOKUP_VIEW)")
     public ServiceResult<MasterLookupResponse> getById(Long id) {
@@ -140,15 +109,6 @@ public class MasterLookupService {
         return ServiceResult.success(masterLookupMapper.toResponse(entity));
     }
 
-    /**
-     * Search master lookups with filtering, sorting, and pagination
-     * 
-     * Uses common-utils SearchRequest for dynamic filtering
-     * Rule 10.7: Standard CRUD operations with search
-     * 
-     * @param searchRequest Search criteria
-     * @return Page of master lookups
-     */
     @Transactional(readOnly = true)
     @PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).MASTER_LOOKUP_VIEW)")
     public ServiceResult<Page<MasterLookupResponse>> search(SearchRequest searchRequest) {
@@ -172,14 +132,7 @@ public class MasterLookupService {
     }
 
     /**
-     * Toggle active status of master lookup
-     * 
-     * Business Rule: Cannot deactivate if there are active lookup details
-     * Rule 19.5: Unified toggle-active endpoint
-     * 
-     * @param id Master lookup ID
-     * @param active Target active status
-     * @return Updated master lookup
+     * Cannot deactivate if there are active lookup details.
      */
     @org.springframework.cache.annotation.CacheEvict(cacheNames = "lookupValues", allEntries = true)
     @Transactional
@@ -216,12 +169,7 @@ public class MasterLookupService {
     }
 
     /**
-     * Delete master lookup
-     * 
-     * Business Rule: Cannot delete if it has any lookup details
-     * Returns HTTP 409 CONFLICT if deletion fails due to FK constraint
-     * 
-     * @param id Master lookup ID
+     * Cannot delete if it has any lookup details — returns HTTP 409 CONFLICT.
      */
     @Transactional
     @PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).MASTER_LOOKUP_DELETE)")
@@ -250,14 +198,6 @@ public class MasterLookupService {
         log.info("Master lookup deleted: {}", id);
     }
 
-    /**
-     * Get usage information for master lookup
-     * 
-     * Shows where the master lookup is being used and whether it can be deleted/deactivated
-     * 
-     * @param id Master lookup ID
-     * @return Usage information
-     */
     @Transactional(readOnly = true)
     @PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).MASTER_LOOKUP_VIEW)")
     public ServiceResult<MasterLookupUsageResponse> getUsage(Long id) {

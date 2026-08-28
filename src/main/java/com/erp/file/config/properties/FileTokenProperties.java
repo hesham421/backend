@@ -6,13 +6,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
 /**
- * Encrypted Upload/Download/Delete Token configuration (ARCH-REF-1.10 AD-FILE-02/03).
- *
- * Bound to properties with prefix: erp.file.token
- *
- * Example in application.properties:
- * erp.file.token.secret=${FILE_TOKEN_SECRET}
- * erp.file.token.ttl-minutes=100
+ * Encrypted Upload/Download/Delete Token configuration (ARCH-REF-1.10 AD-FILE-02/03),
+ * bound to the {@code erp.file.token} property prefix.
  */
 @Validated
 @ConfigurationProperties(prefix = "erp.file.token")

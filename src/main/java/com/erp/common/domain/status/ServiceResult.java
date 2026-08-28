@@ -3,28 +3,8 @@ package com.erp.common.domain.status;
 import lombok.Getter;
 
 /**
- * Generic result wrapper for service layer operations.
- * 
- * Architecture Rules:
- * - This class has NO HTTP dependencies
- * - Service layer returns ServiceResult, controller maps to HTTP response
- * - Contains StatusCode for business status, not HTTP status
- *
- * Usage Example:
- * <pre>
- * public ServiceResult&lt;CustomerDto&gt; createCustomer(CreateRequest request) {
- *     // validation
- *     if (invalid) {
- *         return ServiceResult.failure(Status.VALIDATION_ERROR, "Invalid input");
- *     }
- *     // business logic
- *     CustomerDto created = ...;
- *     return ServiceResult.success(created, Status.CREATED);
- * }
- * </pre>
- *
- * @param <T> The type of data payload
- * @author ERP Team
+ * Generic result wrapper for service layer operations; carries a business {@link StatusCode}
+ * rather than an HTTP status, keeping the service layer free of HTTP dependencies.
  */
 @Getter
 public class ServiceResult<T> {
@@ -55,8 +35,6 @@ public class ServiceResult<T> {
         this.data = data;
         this.details = details;
     }
-
-    // ==================== Success Factory Methods ====================
 
     /**
      * Create a successful result with data
@@ -100,8 +78,6 @@ public class ServiceResult<T> {
         return new ServiceResult<>(Status.OK, message, null, null);
     }
 
-    // ==================== Failure Factory Methods ====================
-
     /**
      * Create a failure result with status and message
      */
@@ -136,8 +112,6 @@ public class ServiceResult<T> {
     public static <T> ServiceResult<T> businessError(String message) {
         return failure(Status.BUSINESS_RULE_VIOLATION, message);
     }
-
-    // ==================== Query Methods ====================
 
     /**
      * Check if this result indicates success

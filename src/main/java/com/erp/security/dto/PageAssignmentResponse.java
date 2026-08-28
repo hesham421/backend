@@ -9,18 +9,7 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 
 /**
- * Response DTO for a single Page Assignment
- * 
- * Governance: BE-REQ-ROLEACCESS-001
- * Contract: role-access.contract.md
- * 
- * Used in:
- * - GET /api/roles/{roleId}/pages (as part of RolePagesMatrixResponse)
- * - POST /api/roles/{roleId}/pages (as direct response)
- * - PUT /api/roles/{roleId}/pages (as part of RolePagesMatrixResponse)
- * 
- * Note: VIEW permission is implicit and NOT included in permissions array.
- * Only CRUD permissions (CREATE, UPDATE, DELETE) are returned.
+ * VIEW permission is implicit and NOT included in {@code permissions} — only CREATE/UPDATE/DELETE are returned.
  */
 @Data
 @Builder

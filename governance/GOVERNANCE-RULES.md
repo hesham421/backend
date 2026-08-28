@@ -123,6 +123,20 @@ Skill files are at `.github/skills/<category>/<skill-name>/SKILL.md`.
   `.github/context/domain-layer.md`. This is a Governance requirement, not a prescription of
   which Backend Skill produces the Domain object — that remains an implementation detail of
   the Backend Skills.
+- NEVER write banner/section-divider comments (`// ==== Section ====`, `// ─────...─────`,
+  or any repeated-character line used to slice one file into visual sections). If a class has
+  grown enough sections to need dividers, that is a signal to split the class, not to add ASCII
+  art.
+- NEVER write a Javadoc block longer than ~5 lines. No `@author` tags, no embedded usage
+  examples, no restated "Architecture Rules" prose — that content belongs in
+  `.github/context/` or a `project-artifacts/` doc, not repeated inside every class that
+  touches the concept. A Javadoc comment states the one non-obvious thing a reader couldn't
+  get from the method/class signature and name; if there isn't one, omit the Javadoc entirely.
+- NEVER create or modify a JUnit test file (anything under `src/test/java/` or
+  `packages/backend-test/`) unless the user explicitly asked for tests, or the dedicated
+  `execute-backend-test` phase is what's currently running. Implementing or fixing a feature
+  is not, on its own, a request for tests — `packages/backend-test/` is a separate, gated
+  phase for a reason (see `generate-module-setup.md`'s Step 1).
 
 ---
 

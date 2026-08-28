@@ -6,12 +6,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 /**
- * API Contract Request DTO for SEC_USER_PROFILE search.
- *
- * Allowed filter/sort fields: userIdFk, branchIdFk, isActiveFl (per
- * execution-plan-SEC-gaps.md Section 2, PHASE CORE).
- *
- * @author ERP Team
+ * Search contract for SEC_USER_PROFILE: filters/sorts on userIdFk, branchIdFk, isActiveFl.
  */
 @Data
 @NoArgsConstructor

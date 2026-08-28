@@ -10,43 +10,14 @@ import org.springframework.web.servlet.i18n.AcceptHeaderLocaleResolver;
 import java.util.Locale;
 
 /**
- * Internationalization (i18n) configuration for all ERP modules.
- * 
- * Provides:
- * - LocaleResolver: Resolves locale from Accept-Language header
- * - MessageSource: Loads i18n messages from classpath:messages.properties
- * 
- * Default locale: English
- * Supported locales: en, ar (configured in messages.properties, messages_ar.properties)
- * 
- * Usage in modules:
- * 1. Create messages.properties in src/main/resources/
- * 2. Create messages_ar.properties for Arabic
- * 3. Inject LocalizationService to get localized messages
- * 
- * Example messages.properties:
- * <pre>
- * USER_NOT_FOUND=User not found
- * VALIDATION_ERROR=Validation failed
- * </pre>
- * 
- * Example messages_ar.properties:
- * <pre>
- * USER_NOT_FOUND=المستخدم غير موجود
- * VALIDATION_ERROR=فشل التحقق من صحة البيانات
- * </pre>
- * 
- * @author ERP Team
- * @see com.erp.common.i18n.LocalizationService
+ * i18n configuration; default locale is English, with locales resolved from the
+ * Accept-Language header rather than falling back to the JVM's system locale.
  */
 @Configuration
 public class LocaleConfig {
 
     /**
-     * LocaleResolver that extracts locale from Accept-Language HTTP header.
-     * Falls back to English if no header is present.
-     * 
-     * @return configured LocaleResolver
+     * Falls back to English if no Accept-Language header is present.
      */
     @Bean
     public LocaleResolver localeResolver() {
@@ -56,14 +27,7 @@ public class LocaleConfig {
     }
 
     /**
-     * MessageSource for loading internationalized messages.
-     * 
-     * Configuration:
-     * - Base name: "messages" (searches for messages.properties)
-     * - Encoding: UTF-8 (supports Arabic and special characters)
-     * - No system locale fallback (uses default locale)
-     * 
-     * @return configured MessageSource
+     * Uses base name "messages" with no system-locale fallback.
      */
     @Bean
     public MessageSource messageSource() {

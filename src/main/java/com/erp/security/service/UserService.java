@@ -89,12 +89,7 @@ public class UserService {
         return ServiceResult.success(users.map(UserMapper::toDto));
     }
 
-    /**
-     * ربط مستخدم بأدوار (استبدال كامل للأدوار الحالية)
-     * @param userId معرّف المستخدم
-     * @param roleNames قائمة أسماء الأدوار
-     * @return UserDto المستخدم بعد التحديث
-     */
+    /** Full replace: roleNames overwrites the user's current roles entirely, not a merge. */
     @Transactional
     @PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).USER_MANAGE_ROLES)")
     @CacheEvict(cacheNames = {"users", "userRoles"}, allEntries = true)
@@ -122,15 +117,7 @@ public class UserService {
         return ServiceResult.success(UserMapper.toDto(saved), Status.UPDATED);
     }
 
-    /**
-     * الحصول على أسماء أدوار المستخدم (Role Names Only)
-     *
-     * Returns list of role names for a user without exposing Role entities.
-     * This method is preferred for API responses to avoid entity exposure.
-     *
-     * @param userId معرف المستخدم
-     * @return قائمة أسماء الأدوار
-     */
+    /** Returns role names only, not Role entities, to avoid entity exposure in API responses. */
     @Transactional(readOnly = true)
     @PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).USER_VIEW)")
     public ServiceResult<List<String>> getUserRoleNames(Long userId) {
@@ -174,16 +161,7 @@ public class UserService {
         return ServiceResult.success(users.map(UserMapper::toDto));
     }
 
-    /**
-     * Delete user after checking for child relationships
-     *
-     * Business Prevention:
-     * - Cannot delete user with active refresh tokens
-     * - Pre-check via countByUser_Id() query
-     *
-     * @param userId User ID to delete
-     * @throws LocalizedException if user has active refresh tokens or other child relationships
-     */
+    /** @throws LocalizedException if the user has active refresh tokens (409 Conflict). */
     @Transactional
     @PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).USER_DELETE)")
     @CacheEvict(cacheNames = {"users", "userRoles"}, allEntries = true)
@@ -210,12 +188,6 @@ public class UserService {
         repo.delete(user);
     }
 
-    /**
-     * Update user information
-     * @param userId User ID to update
-     * @param req Update request containing optional username, password, enabled status, and roles
-     * @return Updated UserDto
-     */
     @Transactional
     @PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).USER_UPDATE)")
     @CacheEvict(cacheNames = {"users", "userRoles"}, allEntries = true)

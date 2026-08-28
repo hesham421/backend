@@ -6,16 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Represents a single field validation error.
- * Used in ApiError to provide detailed field-level validation feedback.
- * 
- * Example:
- * {
- *   "field": "email",
- *   "message": "must be a valid email address"
- * }
- * 
- * @author ERP Team
+ * A single field validation error, used in {@link ApiError} for field-level feedback.
  */
 @Getter
 @Setter

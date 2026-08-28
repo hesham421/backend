@@ -16,12 +16,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * Controller for managing Pages (UI screens)
- * 
- * Pages are the DETAIL in RBAC model (Role is MASTER)
- * Each Page auto-generates 4 CRUD permissions: VIEW, CREATE, UPDATE, DELETE
- * 
- * @see PageService
+ * Manages Pages (UI screens) — the DETAIL side of the RBAC model (Role is MASTER).
+ * Each page auto-generates 4 CRUD permissions.
  */
 @RestController
 @RequestMapping("/api/pages")

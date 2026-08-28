@@ -43,24 +43,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Global exception handler that standardizes all error responses
- * using the ApiResponse envelope pattern.
- *
- * All exceptions are caught and transformed into:
- * {
- *   "success": false,
- *   "message": "Human-readable error message",
- *   "data": null,
- *   "error": {
- *     "code": "ERROR_CODE",
- *     "details": "Additional context",
- *     "fieldErrors": [...],
- *     "timestamp": "2025-12-27T10:30:00Z",
- *     "path": "/api/users"
- *   }
- * }
- *
- * @author ERP Team
+ * Global exception handler that standardizes all error responses using the ApiResponse envelope.
  */
 @RestControllerAdvice
 @RequiredArgsConstructor
@@ -69,8 +52,6 @@ public class GlobalExceptionHandler {
 
     private final LocalizationService localizationService;
     private final OperationCode operationCode;
-
-    // ============== Validation Errors (HTTP 400) ==============
 
     /**
      * Handle Bean Validation errors from @Valid on @RequestBody
@@ -244,8 +225,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
-    // ============== Not Found (HTTP 404) ==============
-
     /**
      * Handle resource not found
      */
@@ -294,8 +273,6 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
-
-    // ============== Authentication & Authorization (HTTP 401, 403) ==============
 
     /**
      * Handle authentication errors (not authenticated)
@@ -349,8 +326,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
     }
 
-    // ============== Method Not Allowed & Unsupported Media Type (HTTP 405, 415) ==============
-
     /**
      * Handle HTTP method not supported (e.g., POST to GET-only endpoint)
      */
@@ -397,8 +372,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).body(response);
     }
 
-    // ============== Business Logic Errors (HTTP 422) ==============
-
     /**
      * Handle business rule violations
      */
@@ -436,8 +409,6 @@ public class GlobalExceptionHandler {
         HttpStatus httpStatus = operationCode.toHttpStatus(ex.getStatusCode(), ex.getStatus());
         return ResponseEntity.status(httpStatus).body(response);
     }
-
-    // ============== Database Errors (HTTP 409, 500) ==============
 
     /**
      * Handle data integrity violations (unique constraints, foreign keys, not null)
@@ -481,8 +452,6 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
-
-    // ============== Generic Error Handler (HTTP 500) ==============
 
     /**
      * Client aborted the connection (browser navigated away, cancelled request, etc).
@@ -544,8 +513,6 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
-
-    // ============== Helper Methods ==============
 
     /**
      * Create ApiError with timestamp and path

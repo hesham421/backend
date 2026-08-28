@@ -25,17 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Set;
 
 /**
- * Orchestrates API-FILE-005 (List Files for Owner Record) — {@code GET /api/v1/files/{ownerId}}.
- * A standard, non-token, JWT-authenticated route (unlike upload/download/delete), so
- * {@code @PreAuthorize("isAuthenticated()")} reflects a real principal here — same posture as
- * API-FILE-001, deferring the fine-grained PERM_FILE_ATTACHMENT_VIEW check to Phase SEC (not yet
- * run for this module; the permission constant doesn't exist in SecurityPermissions yet).
- *
- * The endpoint is a plain GET with path/query params (create-controller A.6.6: no GET +
- * @ModelAttribute) — {@link SearchRequest} (the plain internal DTO SpecBuilder/PageableBuilder
- * consume) is built manually here from those params rather than bound automatically, so this
- * still satisfies A.5.7's "search uses SpecBuilder + PageableBuilder" without a body-oriented
- * BaseSearchContractRequest DTO the transport shape doesn't actually match.
+ * Orchestrates API-FILE-005 — a standard JWT-authenticated GET with query params. {@link
+ * SearchRequest} is built manually from those params rather than bound via {@code @ModelAttribute}
+ * (create-controller A.6.6), still satisfying A.5.7's SpecBuilder + PageableBuilder requirement.
  */
 @Service
 @RequiredArgsConstructor

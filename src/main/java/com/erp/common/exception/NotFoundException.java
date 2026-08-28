@@ -3,13 +3,8 @@ package com.erp.common.exception;
 import lombok.Getter;
 
 /**
- * Exception thrown when a requested resource is not found.
- * Results in HTTP 404 with error code NOT_FOUND.
- *
  * @deprecated Use {@link LocalizedException} with {@link com.erp.common.domain.status.Status#NOT_FOUND}
  *             and the appropriate module ErrorCodes constant instead.
- *             Example: {@code throw new LocalizedException(Status.NOT_FOUND, SecurityErrorCodes.ROLE_NOT_FOUND, id)}
- * @author ERP Team
  */
 @Deprecated
 @Getter

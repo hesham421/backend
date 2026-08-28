@@ -22,20 +22,9 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Brute-force protection for the login endpoint(s).
- *
- * Rate-limit key is IP + an identifier field from the request body (not IP alone), so a
- * single noisy IP cannot lock out every account and a single targeted account cannot be
- * hammered from many rotating IPs without also tripping the per-IP component of the key.
- *
- * Generic by design (matches on {@link #PROTECTED_PATH_IDENTIFIER_FIELD}'s keys) — covers
- * login/signup (username), forgot-password (email, per RULE-SEC-038/execution-plan-SEC-gaps.md
- * Section 8.3), and reset-password. Reset-password is a deliberate deviation from the plan's
- * literal "email" instruction: {@link com.erp.security.dto.ResetPasswordRequest} has no
- * email field at all (only token + newPassword) — using the reset token itself as the
- * identifier instead, since it's the only user-identifying value in that body and still
- * achieves the goal (rate-limiting scripted token-guessing from a single IP). Flagged in
- * HANDOFF-PHASE-10-SEC.md.
+ * Brute-force protection keyed on IP + an identifier field from the request body (not IP
+ * alone), so neither a single noisy IP nor rotating IPs targeting one account can bypass it.
+ * reset-password has no email field, so it deliberately keys on the reset token instead.
  */
 @Slf4j
 @Component

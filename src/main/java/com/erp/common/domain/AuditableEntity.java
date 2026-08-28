@@ -14,17 +14,8 @@ import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 
 /**
- * Base entity providing standard audit fields via {@link AuditEntityListener}.
- * <p>
- * Use this for all business entities.
- * <p>
- * Audit fields populated automatically by {@link AuditEntityListener}:
- * <ul>
- *   <li>{@code createdAt} / {@code createdBy} — set on @PrePersist</li>
- *   <li>{@code updatedAt} / {@code updatedBy} — set on @PrePersist and @PreUpdate</li>
- * </ul>
- *
- * @author ERP Team
+ * Base entity for standard audit fields; populated automatically by {@link AuditEntityListener}
+ * rather than being set manually.
  */
 @MappedSuperclass
 @EntityListeners(AuditEntityListener.class)

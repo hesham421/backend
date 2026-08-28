@@ -8,11 +8,9 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.Instant;
 
 /**
- * ACCOUNT_ACTIVATION_TOKEN (ENTITY-SEC-012) — single-use self-registration activation
- * token. Infrastructure table, no soft-delete (usedFl flips true on consumption per
- * RULE-SEC-033); modeled on {@link RefreshToken}'s plain-audit-field style (not
- * AuditableEntity), consistent with db-script-SEC-gaps.md BLOCK 3 giving this table only
- * CREATED_AT/EXPIRES_AT, no CREATED_BY/UPDATED_AT/UPDATED_BY.
+ * Single-use self-registration activation token (usedFl flips true on consumption, no
+ * soft-delete). Deliberately plain-audit-field style like {@link RefreshToken}, not
+ * AuditableEntity — no CREATED_BY/UPDATED_AT/UPDATED_BY on this table.
  */
 @Entity
 @Table(name = "ACCOUNT_ACTIVATION_TOKEN",

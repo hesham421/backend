@@ -3,15 +3,9 @@ package com.erp.security.crossmodule;
 import java.util.Optional;
 
 /**
- * Cross-module read surface for erp-security's SEC_USER_PROFILE data (mirrors {@code GET
- * /api/v1/security/user-profiles/{userId}}). Injected directly by other modules in the same
- * JVM — see governance/.github/skills/backend/create-service/SKILL.md's "Cross-Module Calls
- * (XM)" section. This is the ONLY erp-security user-profile surface another module may depend
- * on; never inject {@code SecUserProfileService} or any other internal class directly.
- *
- * <p>Known, pre-existing gap carried over unchanged from the old REST-loopback client: this
- * requires {@code USER_PROFILE_VIEW}, and the calling principal may not hold it (see
- * {@code SecUserProfileApiService}). This migration does not fix or worsen that.
+ * The ONLY cross-module surface other modules may depend on for SEC_USER_PROFILE data — never
+ * inject {@code SecUserProfileService} directly. Pre-existing gap: this requires
+ * {@code USER_PROFILE_VIEW}, which the calling principal may not hold.
  */
 public interface SecUserProfileApi {
 

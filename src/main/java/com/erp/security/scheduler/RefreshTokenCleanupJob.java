@@ -11,13 +11,8 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
 /**
- * Scheduled cleanup of stale REFRESH_TOKENS rows.
- *
- * Each run removes:
- * 1) Expired tokens (EXPIRES_AT in the past) — regardless of revoked status.
- * 2) Revoked tokens older than the configured retention window, using
- *    CREATED_AT as the age reference (REFRESH_TOKENS has no separate
- *    "revoked at" timestamp).
+ * Removes expired tokens plus revoked tokens past the retention window, aged off CREATED_AT
+ * since REFRESH_TOKENS has no separate "revoked at" timestamp.
  */
 @Slf4j
 @Component

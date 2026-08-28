@@ -9,12 +9,7 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 
 /**
- * Response DTO for Copy Permissions operation
- * 
- * Governance: BE-REQ-ROLEACCESS-001
  * Contract: role-access.contract.md - POST /api/roles/{roleId}/copy-from/{sourceRoleId}
- * 
- * Returns the target role with copied assignments and source role info.
  */
 @Data
 @Builder

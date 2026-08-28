@@ -40,10 +40,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Orchestration for Department flat CRUD (API-ORG-019,021..025) and the recursive tree read
- * (API-ORG-020, QR-ORG-012). Business Rule decisions (RULE-ORG-019 parent-active create guard;
- * RULE-ORG-007 cycle prevention) are delegated to {@link OrgDepartmentDomain}. RULE-ORG-009
- * (SUMMARY blocked on transactional records) is enforced by consuming modules, not here.
+ * Orchestration for Department CRUD and the recursive tree read (API-ORG-020). Business Rule
+ * decisions (parent-active create guard, cycle prevention) are delegated to {@link
+ * OrgDepartmentDomain}; RULE-ORG-009 is enforced by consuming modules, not here.
  */
 @Service
 @RequiredArgsConstructor
@@ -133,10 +132,9 @@ public class DepartmentService {
     }
 
     /**
-     * API-ORG-020 — full subtree for {@code branchFk} (QR-ORG-012). Fetches the flat row set from
-     * the recursive CTE, then assembles the nested tree in this layer (per SVC-API-TREE.md — the
-     * DB returns rows, not nesting). {@code isActiveFl} is optional; when a node's parent was
-     * filtered out at the DB level, the node surfaces as a root of the returned forest.
+     * Fetches the flat row set from the recursive CTE (QR-ORG-012), then assembles the nested tree
+     * in this layer. When a node's parent is filtered out at the DB level, the node surfaces as a
+     * root of the returned forest.
      */
     @Transactional(readOnly = true)
     @PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).DEPARTMENT_VIEW)")

@@ -47,12 +47,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Authentication Service.
- *
- * Handles login, refresh, and logout operations.
- * Configuration loaded from {@link JwtProperties} and {@link CookieProperties}.
- *
- * @author ERP Team
+ * Handles login, refresh, and logout; config loaded from {@link JwtProperties} and {@link CookieProperties}.
  */
 @Slf4j
 @Service
@@ -214,14 +209,10 @@ public class AuthService {
     }
 
     /**
-     * RULE-SEC-037 — derives the JWT allowedBranches[] claim from the user's active
-     * SEC_ROLE_BRANCH assignments across their active roles.
-     * <p>
-     * DRV-SEC-004 "ALL" sentinel: if any active assignment has dataAccessLevel = ALL,
-     * the claim is represented as the single element {@code ["ALL"]} instead of
-     * enumerating every branch — an implementation-level optimization (not SRS-mandated,
-     * see execution-plan-SEC-gaps.md Derivation Log), avoiding an unbounded claim size
-     * for users with company-wide access.
+     * RULE-SEC-037: derives the JWT allowedBranches[] claim from the user's active
+     * SEC_ROLE_BRANCH assignments. DRV-SEC-004: if any assignment has dataAccessLevel = ALL,
+     * returns the single sentinel {@code ["ALL"]} instead of enumerating every branch, to
+     * bound claim size for company-wide access.
      */
     private List<String> resolveAllowedBranches(UserAccount userEntity) {
         List<Long> activeRoleIds = userEntity.getRoles().stream()
@@ -302,10 +293,9 @@ public class AuthService {
     }
 
     /**
-     * Self-registration (API-SEC-040, SCR-SEC-008).
-     * RULE-SEC-040/041: username/email must be globally unique. RULE-SEC-030: account MUST
-     * start disabled. RULE-SEC-031: publishes AccountActivationRequestedEvent instead of
-     * calling NotificationService directly.
+     * Self-registration (API-SEC-040, SCR-SEC-008). RULE-SEC-040/041: username/email must be
+     * globally unique. RULE-SEC-030: account starts disabled. RULE-SEC-031: publishes
+     * AccountActivationRequestedEvent instead of calling NotificationService directly.
      */
     @Transactional
     public SignupResponse signup(SignupRequest req) {
@@ -371,12 +361,10 @@ public class AuthService {
     }
 
     /**
-     * Forgot Password (API-SEC-042, SCR-SEC-009).
-     * RULE-SEC-038 (anti-enumeration): ALWAYS behaves identically to the caller regardless of
-     * whether the email exists — the lookup below only changes internal side effects (token
-     * issuance + event publish), never the method's outcome/response.
-     * RULE-SEC-039: invalidates any prior unexpired token for the same user when issuing a new one.
-     * RULE-SEC-031: publishes PasswordResetRequestedEvent instead of calling NotificationService.
+     * Forgot Password (API-SEC-042, SCR-SEC-009). RULE-SEC-038 (anti-enumeration): behaves
+     * identically to the caller regardless of whether the email exists — only internal side
+     * effects differ. RULE-SEC-039: invalidates any prior unexpired token. RULE-SEC-031:
+     * publishes PasswordResetRequestedEvent instead of calling NotificationService directly.
      */
     @Transactional
     public void forgotPassword(ForgotPasswordRequest req) {

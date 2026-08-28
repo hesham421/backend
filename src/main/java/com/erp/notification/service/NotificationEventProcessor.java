@@ -28,11 +28,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Shared internal orchestration for the INTERNAL EVENT PROCESSING block in SVCAPI.md — invoked
- * by both the synchronous REST ingress (API-NOTIF-001/002, via {@link #send}/{@link #schedule})
- * and the same-process Spring Event ingress (via {@code NotificationRequestedEventListener}),
- * per CORE.md's "both ingress forms invoke the identical validation/fan-out/persist sequence
- * declared once ... not duplicated per ingress path."
+ * Shared orchestration invoked by both the REST ingress (send/schedule) and the Spring-Event
+ * ingress, so validation/fan-out/persist logic is declared once, not duplicated per path.
  */
 @Slf4j
 @Service
@@ -74,10 +71,9 @@ public class NotificationEventProcessor {
     }
 
     /**
-     * DRV-NOTIF-004 (see {@link NotificationScheduleRequest} javadoc) — no durable column exists
-     * for {@code scheduledAt}, so this processes identically to {@link #send} (immediate
-     * dispatch) rather than silently building an in-memory-only timer that would lose scheduled
-     * notifications on restart.
+     * No durable column exists for {@code scheduledAt}, so this processes identically to
+     * {@link #send} (immediate dispatch) rather than silently building an in-memory-only timer that
+     * would lose scheduled notifications on restart.
      */
     @Transactional
     @PreAuthorize("isAuthenticated()")
@@ -90,24 +86,9 @@ public class NotificationEventProcessor {
     }
 
     /**
-     * Gated by {@link InternalCaller#AUTHORITY}, not {@code isAuthenticated()} — this is this
-     * codebase's pattern for "trusted in-process caller, no HTTP principal needed" (see
-     * {@code create-service/SKILL.md}'s "Cross-Module Calls (XM)"). The Spring Event ingress
-     * ({@code NotificationRequestedEventListener}) and
-     * {@code com.erp.notification.crossmodule.NotificationDispatchApiService} both call this
-     * wrapped in {@link InternalCaller#call}/{@link InternalCaller#run} — neither has an HTTP/JWT
-     * principal to satisfy the {@code @PreAuthorize("isAuthenticated()")} gate on
-     * {@link #send}/{@link #schedule}. Unlike the old fully-ungated version of this method, an
-     * external HTTP request cannot satisfy this check under any authentication: no JWT filter or
-     * login path ever grants {@link InternalCaller#AUTHORITY}, and
-     * {@code CrossModuleBoundaryArchTest.no_controller_reaches_the_internal_caller_gated_processor}
-     * fails the build if any {@code @RestController}/{@code @Controller} class ever references
-     * this class directly, as an additional build-time guard.
-     *
-     * <p>The literal below MUST equal {@link InternalCaller#AUTHORITY} — a plain string literal
-     * is used instead of a {@code T(com.erp.common.security.InternalCaller)} SpEL type reference
-     * on purpose, so this doesn't itself become a second, untracked instance of the
-     * cross-module SpEL bypass {@code CrossModuleBoundaryArchTest} otherwise watches for.
+     * Gated on {@link InternalCaller#AUTHORITY}, not {@code isAuthenticated()}, since Spring Event/cross-module callers
+     * have no HTTP principal — no external request can satisfy this under any authentication. The literal below MUST
+     * equal {@link InternalCaller#AUTHORITY} as a plain string, not a SpEL type reference.
      */
     @PreAuthorize("hasAuthority('INTERNAL_TRUSTED_CALLER')")
     public List<Long> process(NotificationSendRequest request) {
@@ -145,11 +126,9 @@ public class NotificationEventProcessor {
     }
 
     /**
-     * RULE-NOTIF-006 language resolution. Formerly {@code SecUserProfileClient}'s own
-     * DEFAULT_LANGUAGE-fallback logic — moved here since it's this Service's own decision,
-     * per the Domain Delegation split in create-service's SKILL.md: {@link SecUserProfileApi}
-     * only supplies the raw profile data (or empty on not-found/access-denied), never fails
-     * the send — matching this method's existing "never fails for a missing signal" spirit.
+     * Moved here from the old {@code SecUserProfileClient}'s DEFAULT_LANGUAGE-fallback logic since
+     * this is this Service's own decision — {@code SecUserProfileApi} only supplies raw profile
+     * data, never fails the send.
      */
     private String resolvePreferredLanguage(Long recipientId) {
         return secUserProfileApi.findById(recipientId)

@@ -4,43 +4,19 @@ import com.erp.common.domain.status.Status;
 import com.erp.common.exception.BusinessException;
 
 /**
- * Exception thrown when search/filter operations fail validation or processing.
- * <p>
- * Extends {@link BusinessException} per Rule 31.1 - only approved exception types allowed.
- * This exception is used throughout the dynamic search framework to signal
- * configuration errors, validation failures, or unsupported operations. All scenarios below
- * are client-input errors, so this always carries {@link Status#VALIDATION_ERROR} (HTTP 400)
- * rather than the {@link BusinessException} default of 422.
- * </p>
- *
- * <p><b>Common scenarios:</b></p>
- * <ul>
- *   <li>Invalid field name or field not in allowed list</li>
- *   <li>Unsupported operator for field type</li>
- *   <li>Invalid value format (e.g., BETWEEN without exactly 2 values)</li>
- *   <li>Invalid sort field</li>
- * </ul>
- *
- * @author ERP System
- * @since 1.0
+ * Thrown when search/filter operations fail validation; always carries
+ * {@link Status#VALIDATION_ERROR} (HTTP 400) rather than the {@link BusinessException} default of 422,
+ * since these are always client-input errors.
  */
 public class SearchException extends BusinessException {
 
-    /**
-     * Constructs a new SearchException with the specified error code and message.
-     *
-     * @param code    the error code (Rule 31.3 format)
-     * @param message the detail message
-     */
     public SearchException(String code, String message) {
         super(Status.VALIDATION_ERROR, code, message);
     }
 
     /**
-     * Constructs a new SearchException with the specified detail message.
      * Uses SEARCH_ERROR as default error code for backward compatibility.
      *
-     * @param message the detail message
      * @deprecated Use {@link #SearchException(String, String)} with explicit error code
      */
     @Deprecated
@@ -49,11 +25,8 @@ public class SearchException extends BusinessException {
     }
 
     /**
-     * Constructs a new SearchException with the specified detail message and cause.
      * Uses SEARCH_ERROR as default error code for backward compatibility.
      *
-     * @param message the detail message
-     * @param cause   the cause of this exception
      * @deprecated Use constructor with explicit error code
      */
     @Deprecated

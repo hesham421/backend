@@ -15,12 +15,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Orchestrates API-FILE-004 (Delete File). See {@link FileUploadService}'s class-level javadoc
- * for why {@code @PreAuthorize("true")} is deliberate here too — {@code /{token}} (delete) is
- * permitAll'd; the token layer is the sole gate. RULE-FILE-007 (owner-or-Admin) was already
- * enforced when the DELETE-action token was issued ({@link FileAccessTokenService}) — a caller
- * holding a valid token here has already passed that check; it is not re-checked at consumption
- * time.
+ * Orchestrates API-FILE-004 (Delete File). {@code /{token}} is permitAll'd — the token layer is
+ * the sole gate; RULE-FILE-007 (owner-or-Admin) was already enforced when the token was issued
+ * ({@link FileAccessTokenService}), not re-checked at consumption time.
  */
 @Service
 @RequiredArgsConstructor

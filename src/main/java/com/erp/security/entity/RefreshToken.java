@@ -13,12 +13,8 @@ import java.time.Instant;
 public class RefreshToken {
 
     /**
-     * PK constraint name: REFRESH_TOKENS_PK (matches the column name below).
-     * Naming the constraint itself isn't expressible via a JPA annotation on
-     * @Id (unlike @ForeignKey for FKs) — Hibernate's naming-strategy hooks
-     * only cover FOREIGN_KEY/UNIQUE_KEY/INDEX, never PRIMARY_KEY — so the
-     * constraint name is enforced in the live DB by
-     * 001_rename_pk_fk_to_standard.sql instead.
+     * PK constraint name (REFRESH_TOKENS_PK) is set by 001_rename_pk_fk_to_standard.sql, not a
+     * JPA annotation — Hibernate's naming-strategy hooks don't cover PRIMARY_KEY.
      */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

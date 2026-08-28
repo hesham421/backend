@@ -3,10 +3,8 @@ package com.erp.notification.channel;
 import com.erp.notification.entity.NotificationLog;
 
 /**
- * Channel dispatch adapter contract (CORE.md — "Channel dispatch adapters ... live in a
- * module-local channel/ package ... invoked by the retry/dispatch orchestration in service/").
- * One implementation is registered per deployment; see {@link StubChannelSender} for the
- * current Phase-1 registration and why real per-provider adapters are not built yet.
+ * Channel dispatch adapter contract; one implementation is registered per deployment — see
+ * {@link StubChannelSender} for why real per-provider adapters aren't built yet.
  */
 public interface ChannelSender {
 

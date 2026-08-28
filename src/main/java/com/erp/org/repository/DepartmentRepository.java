@@ -20,11 +20,9 @@ public interface DepartmentRepository
     long countByBranch_IdAndIsActiveFlTrue(@Param("branchId") Long branchId);
 
     /**
-     * API-ORG-020 — full subtree for a Branch (QR-ORG-012 recursive CTE, PostgreSQL syntax).
-     * Returns the flat row set; the Service assembles the nested tree DTO (recursive assembly
-     * happens in Java, not the DB — per SVC-API-TREE.md). {@code isActiveFl} is nullable
-     * (pass {@code null} for "all") — when provided, filters both the anchor and every
-     * recursive step so the whole subtree is scoped to matching nodes.
+     * API-ORG-020 — full subtree for a Branch via recursive CTE (QR-ORG-012); returns the flat row
+     * set, the Service assembles the nested tree in Java. isActiveFl is nullable (null = all) and
+     * filters both the anchor and every recursive step.
      */
     @Query(value = """
         WITH RECURSIVE dept_tree AS (

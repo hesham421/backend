@@ -3,15 +3,9 @@ package com.erp.security.crossmodule;
 import java.util.Optional;
 
 /**
- * Cross-module read surface for erp-security's user directory (mirrors {@code POST
- * /api/users/search}). Injected directly by other modules in the same JVM — see
- * governance/.github/skills/backend/create-service/SKILL.md's "Cross-Module Calls (XM)"
- * section. This is the ONLY erp-security user-directory surface another module may depend on;
- * never inject {@code UserService} or any other internal class directly.
- *
- * <p>Known, pre-existing gap carried over unchanged from the old REST-loopback client: both
- * methods require {@code USER_VIEW}, and the calling principal may not hold it (see
- * {@code SecurityUserApiService}). This migration does not fix or worsen that.
+ * The ONLY cross-module surface other modules may depend on for the erp-security user directory
+ * — never inject {@code UserService} directly. Pre-existing gap: both methods require
+ * {@code USER_VIEW}, which the calling principal may not hold.
  */
 public interface SecurityUserApi {
 

@@ -11,31 +11,9 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 /**
- * Post-implementation-audit remediation, Item 2 — the durable-retry half of the mechanism the
- * approved recommendation
- * ({@code governance/project-artifacts/INTERFACE-VS-REST-AND-POM-STRUCTURE-RECOMMENDATION.md})
- * said must be retained, which the audit found absent from the delivered code entirely (not
- * merely orphaned — never carried over).
- *
- * <p><b>Why this shape, not a resurrected generic {@code FailedCallRecordBase}/outbox:</b> the
- * audit's premise was a GENERIC, reusable, cross-module outbox. Checked directly: the only
- * current call site with a genuinely network-shaped failure mode is
- * {@link com.erp.notification.channel.EmailChannelSender}'s real Gmail SMTP send — the 5
- * interface-injection call sites this recommendation was originally about no longer have one (a
- * same-JVM method call doesn't fail over the network). Building a generic, multi-module,
- * polymorphic retry-registry abstraction today would have exactly one consumer and would
- * duplicate state {@link NotificationLog} already tracks (status, retry count) in a second,
- * parallel table — worse, not better, than reusing what's there. This sweep instead reuses
- * {@code NOTIF_LOG} directly: {@code sweepRetryCount} (V15 migration) is a second, independent
- * counter from RULE-NOTIF-004's fast in-process {@code retryCount}, so this slower, later sweep
- * doesn't disturb that existing ceiling. If a second genuinely network-shaped call site appears
- * later, extracting a shared base at that point (two real consumers, not a hypothetical one) is
- * the point at which a generic mechanism stops being speculative.
- *
- * <p>Reuses the same {@link ChannelSender} bean {@link NotificationDispatchService} uses — see
- * that interface's only current implementation, {@code EmailChannelSender}'s javadoc, for why a
- * single unqualified bean is this codebase's deliberate simplification (only one channel is
- * currently enabled).
+ * Durable-retry sweep for failed sends — reuses {@code NOTIF_LOG} directly rather than a generic outbox, since
+ * EmailChannelSender's Gmail SMTP call is the only call site with a real network failure mode; {@code
+ * sweepRetryCount} is a second counter, independent of RULE-NOTIF-004's fast retryCount.
  */
 @Slf4j
 @Component

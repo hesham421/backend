@@ -20,25 +20,9 @@ import java.io.IOException;
 import java.time.Instant;
 
 /**
- * Pre-controller Encrypted Token gate (CORE.md "Encrypted Token layer" — NOT part of the
- * controller/service/domain/repository layering) for {@code /upload/{token}},
- * {@code /download/{token}}, and {@code DELETE /{token}}. These 3 routes are permitAll'd in
- * erp-security's SecurityConfig (POLICY-CLI-06 — no JWT validation for these routes; the
- * Encrypted Token IS the auth mechanism), so this filter — not Spring Security, not
- * GlobalExceptionHandler — is the only thing standing between an unauthorized request and the
- * controller.
- *
- * {@code DELETE /{token}} is a bare, single-path-segment root route (no fixed prefix like
- * upload/download have) — matched here as "DELETE method + exactly one path segment", grep-
- * verified against every controller in this codebase as unambiguous (no other module defines a
- * root-level single-segment mapping for any HTTP method). Registered on Servlet pattern
- * {@code /*} (see FileTokenFilterConfig) rather than a path prefix, since Servlet url-patterns
- * cannot express "any single segment" directly.
- *
- * Runs outside the normal Spring MVC dispatch pipeline, so a thrown {@link LocalizedException}
- * would never reach {@code GlobalExceptionHandler} — it is caught here and the standard
- * {@code ApiResponse} envelope is written directly, same technique as erp-security's
- * CustomAuthenticationEntryPoint/CustomAccessDeniedHandler use for the same structural reason.
+ * Pre-controller Encrypted Token gate for the permitAll'd token routes (POLICY-CLI-06) — the token IS the auth
+ * mechanism, so this filter is the sole guard, and (running outside the MVC pipeline) writes a thrown {@link
+ * LocalizedException} as the standard {@code ApiResponse} itself.
  */
 @RequiredArgsConstructor
 public class FileTokenFilter extends OncePerRequestFilter {

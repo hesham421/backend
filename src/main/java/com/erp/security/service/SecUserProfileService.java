@@ -32,10 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Set;
 
 /**
- * Service for SEC_USER_PROFILE CRUD (API-SEC-032..035, execution-plan-SEC-gaps.md Phase SVC+API).
- *
- * {@code @PreAuthorize} per Phase SEC (Section 8.1 Permissions Matrix) — no DELETE method
- * exists (profiles deactivate via isActiveFl through UPDATE, never DELETE).
+ * SEC_USER_PROFILE CRUD. No DELETE method exists — profiles deactivate via isActiveFl
+ * through UPDATE, never DELETE.
  */
 @Service
 @RequiredArgsConstructor
@@ -137,11 +135,8 @@ public class SecUserProfileService {
     }
 
     /**
-     * RULE-SEC-034 — reject if the referenced ORG_BRANCH does not exist or is not active.
-     * Throws LocalizedException(ERR-SEC-1034) in both cases — the not-found/not-active
-     * decision itself stays here (this Service's own business decision); {@link OrgBranchApi}
-     * only supplies the raw branch data, per the Domain Delegation split in
-     * create-service's SKILL.md.
+     * RULE-SEC-034: rejects if the referenced ORG_BRANCH doesn't exist or isn't active. The
+     * decision stays here; {@link OrgBranchApi} only supplies the raw branch data.
      */
     private void assertActiveBranch(Long branchId) {
         OrgBranchView branch = orgBranchApi.findBranch(branchId).orElse(null);

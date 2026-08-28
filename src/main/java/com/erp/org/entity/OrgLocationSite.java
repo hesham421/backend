@@ -29,11 +29,9 @@ import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 /**
- * JPA entity for ORG_LOCATION_SITE (ENTITY-ORG-007, DBF-0083..0094). Persistence-only —
- * creation guard (RULE-ORG-019) lives on {@link com.erp.org.domain.OrgLocationSiteDomain}.
- * No deactivation guard on this entity — RULE-ORG-005 is the Branch-side guard already enforced
- * by {@link com.erp.org.domain.OrgBranchDomain}; retained here only as a documentation
- * cross-link, not a new validation.
+ * JPA entity for ORG_LOCATION_SITE — persistence-only; creation guard lives on {@link
+ * com.erp.org.domain.OrgLocationSiteDomain}. No deactivation guard here — RULE-ORG-005 is the
+ * Branch-side guard.
  */
 @Entity
 @Table(name = "ORG_LOCATION_SITE",

@@ -20,28 +20,9 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Service for generic lookup consumption.
- *
- * <p>Provides read-only access to lookup values for all ERP modules
- * with aggressive caching for performance.
- *
- * <p>All data is fetched using a single native JOIN query
- * ({@code findLookupValuesByKey}) that returns both the master lookup
- * status and all active detail rows in one round-trip.</p>
- *
- * <h3>Architecture Rules:</h3>
- * <ul>
- *   <li>Rule 2: Exposed to the frontend via this module's own REST API
- *       ({@code GET /api/lookups/{lookupCode}}, see {@code LookupConsumptionController}).
- *       Other in-JVM modules consume lookups via {@link com.erp.masterdata.crossmodule.MasterDataLookupApi}
- *       instead — never by injecting this class directly.</li>
- *   <li>Rule 5.4: Return DTOs, not entities</li>
- *   <li>Rule 7: Clear public API per module</li>
- *   <li>Rule 23: Cache read-heavy / stable reference data</li>
- *   <li>Rule 25: No N+1 — single JOIN query for fetch &amp; validation</li>
- * </ul>
- *
- * @author ERP Team
+ * Provides generic, cached, read-only lookup-value access from one native JOIN query (avoids
+ * N+1). Other in-JVM modules must go through {@link
+ * com.erp.masterdata.crossmodule.MasterDataLookupApi} instead of injecting this class directly.
  */
 @Service
 @RequiredArgsConstructor
@@ -62,16 +43,9 @@ public class LookupConsumptionService {
     // ── Public API ─────────────────────────────────────────────
 
     /**
-     * Fetch all active lookup values for a lookup code.
-     *
-     * <p>Delegates to {@link #loadCachedEntry(String)} through the Spring
-     * proxy so that the {@code @Cacheable} annotation is actually intercepted.
-     * This avoids caching the {@code ServiceResult} wrapper (which Jackson
-     * cannot deserialize from Redis) and instead caches a plain
-     * {@link LookupCacheEntry} that is fully serializable.</p>
-     *
-     * @param lookupCode Master lookup key (case-insensitive)
-     * @return ServiceResult with list of values, or NOT_FOUND on error
+     * Delegates to {@link #loadCachedEntry(String)} through the Spring proxy so {@code @Cacheable}
+     * is actually intercepted, caching a plain {@link LookupCacheEntry} instead of the
+     * non-serializable {@code ServiceResult} wrapper.
      */
     public ServiceResult<List<LookupValueResponse>> fetchLookupValues(String lookupCode) {
         String key = normalize(lookupCode);
@@ -95,17 +69,8 @@ public class LookupConsumptionService {
     }
 
     /**
-     * Cache-layer helper — returns a {@link LookupCacheEntry} that Jackson can
-     * serialize/deserialize without issues.
-     *
-     * <p>States:</p>
-     * <ul>
-     *   <li>{@code null}                       – key not found (not cached)</li>
-     *   <li>{@code inactive=true, values=[]}   – master exists but is inactive</li>
-     *   <li>{@code inactive=false, values=[..]}– master active (list may be empty)</li>
-     * </ul>
-     *
-     * @param key Normalised (upper-case) lookup code
+     * Returns a {@link LookupCacheEntry} (null = not found; inactive flag; or values) so Jackson can
+     * (de)serialize the Redis cache entry.
      */
     @Cacheable(cacheNames = "lookupValues", key = "#key")
     public LookupCacheEntry loadCachedEntry(String key) {
@@ -128,14 +93,7 @@ public class LookupConsumptionService {
     }
 
     /**
-     * Validate whether a lookup detail code exists and is active
-     * under the given master lookup key.
-     *
-     * <p>Executes a single COUNT query with JOIN — no N+1.</p>
-     *
-     * @param lookupCode Master lookup key (case-insensitive)
-     * @param value      Detail code to validate (e.g., "DEBIT", "TOTAL")
-     * @return true if valid and active
+     * Single COUNT query with JOIN — no N+1.
      */
     public boolean isValid(String lookupCode, String value) {
         if (lookupCode == null || value == null || value.isBlank()) {
@@ -148,12 +106,6 @@ public class LookupConsumptionService {
         return masterLookupRepository.countActiveByKeyAndCode(key, code) > 0;
     }
 
-    /**
-     * Validate or throw {@link LocalizedException} with LOOKUP_VALUE_INVALID.
-     *
-     * @param lookupCode Master lookup key
-     * @param value      Detail code to validate
-     */
     public void validateOrThrow(String lookupCode, String value) {
         if (!isValid(lookupCode, value)) {
             throw new LocalizedException(
@@ -167,16 +119,6 @@ public class LookupConsumptionService {
 
     // ── Private helpers ──────────────────────────────────────────
 
-    /**
-     * Get the SORT_ORDER for a specific lookup detail code.
-     *
-     * <p>Queries the lookup projection directly to find the SORT_ORDER for
-     * a specific detail code under the given master lookup key.</p>
-     *
-     * @param lookupCode Master lookup key (e.g., "GL_ACCOUNT_TYPE")
-     * @param detailCode Lookup detail code (e.g., "ASSET", "LIABILITY")
-     * @return Optional containing the sort order if found, empty otherwise
-     */
     public Optional<Integer> getSortOrder(String lookupCode, String detailCode) {
         if (lookupCode == null || detailCode == null) {
             return Optional.empty();

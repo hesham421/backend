@@ -17,10 +17,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Orchestrates API-FILE-001 (Issue Upload Token). No persistence — the token is stateless
- * (CORE.md), so this is the one exception to the standard create()/find()/save() Service
- * template: it validates {@code FileCategory} existence (QR-FILE-001), then delegates
- * encoding to the module-local {@link FileTokenService} security component.
+ * Orchestrates API-FILE-001. No persistence — the token is stateless, so this is the one
+ * exception to the standard create()/find()/save() Service template.
  */
 @Service
 @RequiredArgsConstructor

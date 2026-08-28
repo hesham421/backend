@@ -10,7 +10,6 @@ public final class SecurityPermissions {
         throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
     }
     
-    // ==================== User Permissions ====================
     
     /** عرض المستخدمين */
     public static final String USER_VIEW = "PERM_USER_VIEW";
@@ -27,7 +26,6 @@ public final class SecurityPermissions {
     /** إدارة أدوار المستخدم */
     public static final String USER_MANAGE_ROLES = "PERM_USER_UPDATE";
 
-    // ==================== Role Permissions ====================
     
     /** عرض الأدوار */
     public static final String ROLE_VIEW = "PERM_ROLE_VIEW";
@@ -42,7 +40,6 @@ public final class SecurityPermissions {
     public static final String ROLE_DELETE = "PERM_ROLE_DELETE";
     
 
-    // ==================== Permission Management ====================
     
     /** عرض الصلاحيات */
     public static final String PERMISSION_VIEW = "PERM_PERMISSION_VIEW";
@@ -56,7 +53,6 @@ public final class SecurityPermissions {
     /** حذف صلاحية */
     public static final String PERMISSION_DELETE = "PERM_PERMISSION_DELETE";
     
-    // ==================== Menu Permissions ====================
     
     /** عرض عناصر القائمة */
     public static final String MENU_VIEW = "PERM_MENU_VIEW";
@@ -70,7 +66,6 @@ public final class SecurityPermissions {
     /** حذف عنصر قائمة */
     public static final String MENU_DELETE = "PERM_MENU_DELETE";
     
-    // ==================== Page Permissions (NEW) ====================
     
     /** عرض الصفحات */
     public static final String PAGE_VIEW = "PERM_PAGE_VIEW";
@@ -84,7 +79,6 @@ public final class SecurityPermissions {
     /** حذف صفحة */
     public static final String PAGE_DELETE = "PERM_PAGE_DELETE";
 
-    // ==================== Master Lookup Permissions ====================
     
     /** عرض قوائم البحث الرئيسية */
     public static final String MASTER_LOOKUP_VIEW = "PERM_MASTER_LOOKUP_VIEW";
@@ -98,7 +92,6 @@ public final class SecurityPermissions {
     /** حذف قائمة بحث رئيسية */
     public static final String MASTER_LOOKUP_DELETE = "PERM_MASTER_LOOKUP_DELETE";
 
-    // ==================== Lookup Detail Permissions ====================
     
     /** عرض تفاصيل قوائم البحث */
     public static final String LOOKUP_DETAIL_VIEW = "PERM_LOOKUP_DETAIL_VIEW";
@@ -112,8 +105,6 @@ public final class SecurityPermissions {
     /** حذف تفصيل قائمة بحث */
     public static final String LOOKUP_DETAIL_DELETE = "PERM_LOOKUP_DETAIL_DELETE";
 
-    // ==================== GL Account Permissions ====================
-
     /** عرض دليل الحسابات */
     public static final String GL_ACCOUNT_VIEW = "PERM_GL_ACCOUNT_VIEW";
 
@@ -126,8 +117,6 @@ public final class SecurityPermissions {
     /** إلغاء تفعيل حساب */
     public static final String GL_ACCOUNT_DELETE = "PERM_GL_ACCOUNT_DELETE";
 
-    // ==================== GL Rule Permissions ====================
-
     /** عرض القواعد المحاسبية */
     public static final String GL_RULE_VIEW = "PERM_GL_RULE_VIEW";
 
@@ -139,8 +128,6 @@ public final class SecurityPermissions {
 
     /** إلغاء تفعيل قاعدة محاسبية */
     public static final String GL_RULE_DELETE = "PERM_GL_RULE_DELETE";
-
-    // ==================== GL Journal Permissions ====================
 
     /** عرض قيود اليومية */
     public static final String GL_JOURNAL_VIEW = "PERM_GL_JOURNAL_VIEW";
@@ -166,8 +153,6 @@ public final class SecurityPermissions {
     /** إلغاء قيد يومية */
     public static final String GL_JOURNAL_CANCEL = "PERM_GL_JOURNAL_CANCEL";
 
-    // ==================== GL Posting Engine Permissions ====================
-
     /** عرض مستندات الترحيل */
     public static final String GL_POSTING_VIEW = "PERM_GL_POSTING_VIEW";
 
@@ -177,12 +162,8 @@ public final class SecurityPermissions {
     /** تعديل/تنفيذ ترحيل */
     public static final String GL_POSTING_UPDATE = "PERM_GL_POSTING_UPDATE";
 
-    // ==================== System Admin ====================
-
     /** صلاحية مدير النظام الكاملة */
     public static final String SYSTEM_ADMIN = "PERM_SYSTEM_ADMIN";
-
-    // ==================== Legal Entity Permissions ====================
 
     /** عرض الكيانات القانونية */
     public static final String LEGAL_ENTITY_VIEW = "PERM_LEGAL_ENTITY_VIEW";
@@ -196,8 +177,6 @@ public final class SecurityPermissions {
     /** حذف كيان قانوني */
     public static final String LEGAL_ENTITY_DELETE = "PERM_LEGAL_ENTITY_DELETE";
 
-    // ==================== Region Permissions ====================
-
     /** عرض المناطق */
     public static final String REGION_VIEW = "PERM_REGION_VIEW";
 
@@ -209,8 +188,6 @@ public final class SecurityPermissions {
 
     /** حذف منطقة */
     public static final String REGION_DELETE = "PERM_REGION_DELETE";
-
-    // ==================== Branch Permissions ====================
 
     /** عرض الفروع */
     public static final String BRANCH_VIEW = "PERM_BRANCH_VIEW";
@@ -224,8 +201,6 @@ public final class SecurityPermissions {
     /** حذف فرع */
     public static final String BRANCH_DELETE = "PERM_BRANCH_DELETE";
 
-    // ==================== Department Permissions ====================
-
     /** عرض الأقسام */
     public static final String DEPARTMENT_VIEW = "PERM_DEPARTMENT_VIEW";
 
@@ -237,8 +212,6 @@ public final class SecurityPermissions {
 
     /** حذف قسم */
     public static final String DEPARTMENT_DELETE = "PERM_DEPARTMENT_DELETE";
-
-    // ==================== Cost Center Permissions ====================
 
     /** عرض مراكز التكلفة */
     public static final String COST_CENTER_VIEW = "PERM_COST_CENTER_VIEW";
@@ -252,8 +225,6 @@ public final class SecurityPermissions {
     /** حذف مركز تكلفة */
     public static final String COST_CENTER_DELETE = "PERM_COST_CENTER_DELETE";
 
-    // ==================== Profit Center Permissions ====================
-
     /** عرض مراكز الربح */
     public static final String PROFIT_CENTER_VIEW = "PERM_PROFIT_CENTER_VIEW";
 
@@ -265,8 +236,6 @@ public final class SecurityPermissions {
 
     /** حذف مركز ربح */
     public static final String PROFIT_CENTER_DELETE = "PERM_PROFIT_CENTER_DELETE";
-
-    // ==================== Location Site Permissions ====================
 
     /** عرض مواقع العمل */
     public static final String LOCATION_SITE_VIEW = "PERM_LOCATION_SITE_VIEW";
@@ -280,8 +249,6 @@ public final class SecurityPermissions {
     /** حذف موقع عمل */
     public static final String LOCATION_SITE_DELETE = "PERM_LOCATION_SITE_DELETE";
 
-    // ==================== Region Type Permissions ====================
-
     /** عرض أنواع المناطق */
     public static final String REGION_TYPE_VIEW = "PERM_REGION_TYPE_VIEW";
 
@@ -294,7 +261,6 @@ public final class SecurityPermissions {
     /** حذف نوع منطقة */
     public static final String REGION_TYPE_DELETE = "PERM_REGION_TYPE_DELETE";
 
-    // ==================== User Profile / DataScope Permissions (PLAN-SEC-002) ====================
     // SCR-SEC-006 — no DELETE constant: profiles deactivate via isActiveFl
     // through UPDATE, never DELETE (Section 8.1 Permissions Matrix).
 
@@ -307,7 +273,6 @@ public final class SecurityPermissions {
     /** تعديل ملف تعريف مستخدم */
     public static final String USER_PROFILE_UPDATE = "PERM_USER_PROFILE_UPDATE";
 
-    // ==================== Notification Permissions (NOTIF, SVCAPI Layer 2) ====================
     // Seeded by dbs-notif-001.md Block "SECURITY SEED — SEC_PAGES + PERMISSIONS".
 
     /** عرض صندوق الإشعارات */

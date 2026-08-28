@@ -6,25 +6,9 @@ import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
 /**
- * Localized exception with i18n support.
- * Contains a message key for translation instead of a fixed message.
- * 
- * Architecture Rules:
- * - Service layer should use constructors with StatusCode (domain-level)
- * - HttpStatus constructors are deprecated for internal use only
- * - Message resolution happens in GlobalExceptionHandler via LocalizationService
- * 
- * Usage in Service Layer:
- * <pre>
- * // Preferred: Using StatusCode (Clean Architecture compliant)
- * throw new LocalizedException(Status.NOT_FOUND, "user.not.found", userId);
- * throw new LocalizedException(Status.ALREADY_EXISTS, "username.duplicate", username);
- * 
- * // Simple: Using just message key (defaults to BAD_REQUEST)
- * throw new LocalizedException("validation.failed", fieldName);
- * </pre>
- * 
- * @author ERP Team
+ * Localized exception carrying an i18n message key instead of a fixed message; message
+ * resolution happens in {@code GlobalExceptionHandler} via {@code LocalizationService}.
+ * Prefer the {@link StatusCode} constructors — the {@link HttpStatus} ones are deprecated.
  */
 @Getter
 public class LocalizedException extends RuntimeException {
@@ -42,15 +26,6 @@ public class LocalizedException extends RuntimeException {
     private final String messageKey;
     private final Object[] args;
     
-    /**
-     * Creates a localized exception with a domain StatusCode.
-     * This is the PREFERRED constructor for service layer usage.
-     * HTTP status is derived from StatusCode category in the web layer.
-     * 
-     * @param statusCode Domain-level status code (e.g., Status.NOT_FOUND)
-     * @param messageKey i18n message key
-     * @param args Optional message arguments
-     */
     public LocalizedException(StatusCode statusCode, String messageKey, Object... args) {
         super(messageKey);
         this.statusCode = statusCode;
@@ -61,11 +36,7 @@ public class LocalizedException extends RuntimeException {
     }
     
     /**
-     * Creates a localized exception with just a message key.
-     * Defaults to BAD_REQUEST status.
-     * 
-     * @param messageKey i18n message key
-     * @param args Optional message arguments
+     * Defaults to {@link Status#BAD_REQUEST}.
      */
     public LocalizedException(String messageKey, Object... args) {
         this(Status.BAD_REQUEST, messageKey, args);

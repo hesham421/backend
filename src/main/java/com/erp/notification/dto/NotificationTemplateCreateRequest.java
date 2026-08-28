@@ -9,14 +9,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Request DTO for API-NOTIF-007 (Create Template). {@code fileFk} is deliberately never
- * accepted here — DEFERRED/unused Phase 1 (XM-NOTIF-001).
- *
- * <p>{@code templateBodyAr}/{@code templateBodyEn} intentionally have no {@code @NotBlank} —
- * RULE-NOTIF-006's bilingual-completeness check is enforced explicitly in {@code
- * NotificationTemplateService} with the plan's own ERR-NOTIF-0002 code (same precedent as
- * erp-file's {@code FILE_NAME_REQUIRED}), not the generic framework {@code VALIDATION_ERROR}
- * that a bean-validation annotation would produce instead.
+ * {@code fileFk} is never accepted here (deferred, XM-NOTIF-001). {@code templateBodyAr}/
+ * {@code templateBodyEn} skip {@code @NotBlank} — RULE-NOTIF-006's bilingual check is enforced
+ * explicitly in {@code NotificationTemplateService} instead.
  */
 @Data
 @Builder

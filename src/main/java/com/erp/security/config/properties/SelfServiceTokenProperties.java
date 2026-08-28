@@ -4,15 +4,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
 /**
- * Self-service token expiration configuration (PASSWORD_RESET_TOKEN / ACCOUNT_ACTIVATION_TOKEN).
- *
- * Bound to properties with prefix: erp.security.self-service-token
- *
- * TTL values are an agent implementation detail (not mandated by execution-plan-SEC-gaps.md
- * Section 3, which leaves token generation/lifetime to the implementer) — defaults follow
- * common industry practice: 24h for account activation, 1h for password reset.
- *
- * @author ERP Team
+ * Self-service token expiration config. TTL defaults (24h activation, 1h reset) are an
+ * implementation choice, not mandated by execution-plan-SEC-gaps.md Section 3.
  */
 @Validated
 @ConfigurationProperties(prefix = "erp.security.self-service-token")

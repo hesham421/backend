@@ -23,17 +23,9 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 
 /**
- * Orchestrates API-FILE-002 (Upload File). {@code tokenPayload} comes from
- * {@link com.erp.file.security.FileTokenFilter}, already decoded/validated
- * (RULE-FILE-002/003/004) before this method is ever reached.
- *
- * {@code @PreAuthorize("true")} is deliberate, not a placeholder: {@code /upload/{token}} is
- * permitAll'd in Security's central filter chain (POLICY-CLI-06 — no JWT on this route), so
- * there is no authenticated principal for Spring method security to evaluate here. The token
- * layer is the sole authorization gate for this method — governance's "every public method
- * needs @PreAuthorize" is satisfied honestly, not bypassed. The PERM_FILE_ATTACHMENT_CREATE
- * check SVCAPI.md's SECURITY line calls for is structurally impossible on a token-only route
- * and is flagged as a Phase SEC gap (execution-state.json notes), not silently implemented here.
+ * Orchestrates API-FILE-002; {@code tokenPayload} is already decoded/validated by {@link
+ * com.erp.file.security.FileTokenFilter}. {@code @PreAuthorize("true")} is deliberate: {@code /upload/{token}} is
+ * permitAll'd, so the token layer is the sole auth gate (PERM_FILE_ATTACHMENT_CREATE is a tracked gap).
  */
 @Service
 @RequiredArgsConstructor

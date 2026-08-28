@@ -7,14 +7,8 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 /**
- * Permission Entity - Represents a single permission in the RBAC system
- *
- * Each page permission is linked to a Page via PAGE_ID_FK for:
- * - Better query performance (JOIN instead of string parsing)
- * - Referential integrity (FK constraint)
- * - Cleaner architecture (proper relational model)
- *
- * System permissions (not linked to pages) have PAGE_ID_FK = null
+ * A single RBAC permission. Page-scoped permissions link to a Page via PAGE_ID_FK (for FK
+ * integrity and JOIN-based queries instead of string parsing); system permissions leave it null.
  */
 @Entity
 @Table(name = "PERMISSIONS",
@@ -28,12 +22,8 @@ import lombok.experimental.SuperBuilder;
 public class Permission extends AuditableEntity {
 
     /**
-     * PK constraint name: PERMISSIONS_PK (matches the column name below).
-     * Naming the constraint itself isn't expressible via a JPA annotation on
-     * @Id (unlike @ForeignKey for FKs) — Hibernate's naming-strategy hooks
-     * only cover FOREIGN_KEY/UNIQUE_KEY/INDEX, never PRIMARY_KEY — so the
-     * constraint name is enforced in the live DB by
-     * 001_rename_pk_fk_to_standard.sql instead.
+     * PK constraint name (PERMISSIONS_PK) is set by 001_rename_pk_fk_to_standard.sql, not a
+     * JPA annotation — Hibernate's naming-strategy hooks don't cover PRIMARY_KEY.
      */
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "permissions_seq")

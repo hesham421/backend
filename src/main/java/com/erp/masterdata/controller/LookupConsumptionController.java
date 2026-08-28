@@ -15,18 +15,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * Lookup Consumption REST Controller
- * 
- * Provides generic read-only access to lookup values
- * for consumption by all ERP modules
- * 
- * Architecture Rules:
- * - Rule 4.1: Thin controllers (NO business logic)
- * - Rule 4.2: Never expose entities
- * - Rule 10.7: Standard read operations
- * - CLEAN ARCHITECTURE: Controller translates ServiceResult → HTTP via OperationCode
- * 
- * @author ERP Team
+ * Generic read-only lookup-value access for consumption by all ERP modules; responses are
+ * cached for performance.
  */
 @RestController
 @RequestMapping("/api/lookups")
@@ -38,19 +28,7 @@ public class LookupConsumptionController {
     private final OperationCode operationCode;
 
     /**
-     * Get lookup values by lookup code
-     * 
-     * Returns only ACTIVE lookup details ordered by sortOrder
-     * Response is cached for optimal performance
-     * 
-     * This endpoint is used by all ERP modules to populate
-     * dropdown lists and validate lookup values
-     * 
-     * Architecture: Uses OperationCode.craftResponse to translate
-     * ServiceResult → ResponseEntity<ApiResponse> (ZERO business logic here)
-     * 
-     * @param lookupCode Master lookup code (e.g., "ACCOUNT_TYPE", "STATUS", "COUNTRY")
-     * @return ResponseEntity with ApiResponse containing list of lookup values
+     * Returns only ACTIVE lookup details, ordered by sortOrder; response is cached.
      */
     @GetMapping("/{lookupCode}")
     @Operation(

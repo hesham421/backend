@@ -20,10 +20,9 @@ public interface CostCenterRepository
     long countByBranch_IdAndIsActiveFlTrue(@Param("branchId") Long branchId);
 
     /**
-     * API-ORG-027 — full subtree for a Branch (QR-ORG-015 recursive CTE, PostgreSQL syntax,
-     * mirrors QR-ORG-012). Returns the flat row set; the Service assembles the nested tree DTO.
-     * {@code isActiveFl} is nullable (pass {@code null} for "all") — when provided, filters both
-     * the anchor and every recursive step so the whole subtree is scoped to matching nodes.
+     * API-ORG-027 — full subtree for a Branch via recursive CTE (QR-ORG-015); returns the flat row
+     * set, the Service assembles the nested tree. isActiveFl is nullable (null = all) and filters
+     * both the anchor and every recursive step.
      */
     @Query(value = """
         WITH RECURSIVE cc_tree AS (

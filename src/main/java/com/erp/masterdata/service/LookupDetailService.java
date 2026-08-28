@@ -28,16 +28,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/**
- * Service for Lookup Detail business logic
- * 
- * Architecture Rules:
- * - Rule 5.1: Business logic container
- * - Rule 5.2: Transaction management
- * - Rule 5.4: Return DTOs, not entities
- * 
- * @author ERP Team
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -57,14 +47,7 @@ public class LookupDetailService {
     );
 
     /**
-     * Create new lookup detail
-     * 
-     * Business Rules:
-     * - Code must be unique within same master lookup
-     * - Master lookup must exist
-     * 
-     * @param request Create request
-     * @return Created lookup detail
+     * Code must be unique within the same master lookup; master lookup must exist.
      */
     @org.springframework.cache.annotation.CacheEvict(cacheNames = "lookupValues", allEntries = true)
     @Transactional
@@ -98,16 +81,8 @@ public class LookupDetailService {
     }
 
     /**
-     * Update existing lookup detail
-     * 
-     * Business Rules:
-     * - masterLookupId is immutable and cannot be changed
-     * - code is immutable and cannot be changed
-     * - Only nameAr, nameEn, extraValue, and sortOrder can be updated
-     * 
-     * @param id Lookup detail ID
-     * @param request Update request
-     * @return Updated lookup detail
+     * masterLookupId and code are immutable; only nameAr, nameEn, extraValue, and sortOrder can be
+     * updated.
      */
     @org.springframework.cache.annotation.CacheEvict(cacheNames = "lookupValues", allEntries = true)
     @Transactional
@@ -133,12 +108,6 @@ public class LookupDetailService {
         return ServiceResult.success(lookupDetailMapper.toResponse(updated), Status.UPDATED);
     }
 
-    /**
-     * Get lookup detail by ID
-     * 
-     * @param id Lookup detail ID
-     * @return Lookup detail response
-     */
     @Transactional(readOnly = true)
     @PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).MASTER_LOOKUP_VIEW)")
     public ServiceResult<LookupDetailResponse> getById(Long id) {
@@ -155,18 +124,9 @@ public class LookupDetailService {
     }
 
     /**
-     * Search lookup details with filtering, sorting, and pagination
-     * 
-     * Best Practices for Master-Detail:
-     * 1. Uses explicit JOIN instead of implicit path navigation
-     * 2. Uses repository method directly when no dynamic filters exist
-     * 3. Uses Specification with explicit Join for dynamic filters
-     * 
-     * Rule 10.7: Standard CRUD operations with search
-     * 
-     * @param masterLookupId Master lookup ID to filter details (required for parent-child relationship)
-     * @param searchRequest Search criteria (excluding masterLookupId filter)
-     * @return Page of lookup details
+     * Uses the repository method directly when there are no dynamic filters; otherwise builds a
+     * Specification with an explicit JOIN (not implicit path navigation) for masterLookupId plus
+     * the dynamic filters.
      */
     @Transactional(readOnly = true)
     @PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).MASTER_LOOKUP_VIEW)")
@@ -219,13 +179,6 @@ public class LookupDetailService {
         return ServiceResult.success(page.map(lookupDetailMapper::toResponse));
     }
 
-    /**
-     * Build Specification for master-detail relationship with explicit JOIN
-     * Best Practice: Use explicit Join instead of implicit path navigation
-     * 
-     * @param masterLookupId Parent master lookup ID
-     * @return Specification with masterLookup filter
-     */
     private Specification<MdLookupDetail> buildMasterDetailSpecification(Long masterLookupId) {
         return (root, query, cb) -> {
             // Explicit JOIN on masterLookup relationship
@@ -235,14 +188,6 @@ public class LookupDetailService {
         };
     }
 
-    /**
-     * Get lookup detail options by master lookup key
-     * Used for dropdown options in UI
-     * 
-     * @param lookupKey Master lookup key (e.g., COLOR, UOM)
-     * @param activeOnly Filter by active status
-     * @return List of lookup detail options
-     */
     @Transactional(readOnly = true)
     @PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).MASTER_LOOKUP_VIEW)")
     public ServiceResult<List<LookupDetailOptionResponse>> getOptionsByLookupKey(String lookupKey, Boolean activeOnly) {
@@ -258,15 +203,6 @@ public class LookupDetailService {
             .collect(Collectors.toList()));
     }
 
-    /**
-     * Toggle active status of lookup detail
-     * 
-     * Rule 19.5: Unified toggle-active endpoint
-     * 
-     * @param id Lookup detail ID
-     * @param active Target active status
-     * @return Updated lookup detail
-     */
     @org.springframework.cache.annotation.CacheEvict(cacheNames = "lookupValues", allEntries = true)
     @Transactional
     @PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).MASTER_LOOKUP_UPDATE)")
@@ -293,12 +229,7 @@ public class LookupDetailService {
     }
 
     /**
-     * Delete lookup detail
-     * 
-     * Business Rule: Cannot delete if referenced by any active entity
-     * Returns HTTP 409 CONFLICT if deletion fails due to FK constraint
-     * 
-     * @param id Lookup detail ID
+     * Cannot delete if referenced by any active entity — returns HTTP 409 CONFLICT.
      */
     @Transactional
     @PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).MASTER_LOOKUP_DELETE)")
@@ -317,14 +248,6 @@ public class LookupDetailService {
         log.info("Lookup detail deleted: {}", id);
     }
 
-    /**
-     * Get usage information for lookup detail
-     * 
-     * Shows where the lookup detail is being used and whether it can be deleted
-     * 
-     * @param id Lookup detail ID
-     * @return Usage information
-     */
     @Transactional(readOnly = true)
     @PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).MASTER_LOOKUP_VIEW)")
     public ServiceResult<LookupDetailUsageResponse> getUsage(Long id) {

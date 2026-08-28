@@ -11,21 +11,6 @@ import java.time.Instant;
 
 /**
  * Standard API response envelope for all REST endpoints.
- * Ensures consistent response structure across the entire ERP system.
- *
- * Every response includes:
- * <pre>
- * {
- *   "success": true|false,
- *   "message": "...",
- *   "data": { ... },
- *   "error": { ... },
- *   "timestamp": "2025-06-27T12:00:00Z"
- * }
- * </pre>
- *
- * @param <T> The type of data payload
- * @author ERP Team
  */
 @Getter
 @Setter
@@ -67,8 +52,6 @@ public class ApiResponse<T> {
      */
     private String correlationId = currentCorrelationId();
 
-    // ============== Constructors ==============
-
     /**
      * Backward-compatible 4-arg constructor.
      * Automatically sets timestamp to current time.
@@ -97,8 +80,6 @@ public class ApiResponse<T> {
     private static String currentCorrelationId() {
         return MDC.get(CorrelationIdFilter.CORRELATION_ID_MDC_KEY);
     }
-
-    // ============== Static Factory Methods ==============
 
     /**
      * Create a success response with data and message

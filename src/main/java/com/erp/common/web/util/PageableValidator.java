@@ -14,11 +14,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Utility for validating and sanitizing pagination and sorting parameters.
- * 
- * Implements Rule 17.3: Sort field whitelist to prevent SQL injection and performance issues.
- * 
- * @author ERP Team
+ * Validates sort fields against a whitelist to prevent SQL injection and sorting on
+ * non-indexed columns.
  */
 public final class PageableValidator {
 
@@ -27,12 +24,6 @@ public final class PageableValidator {
     }
 
     /**
-     * Validate that all sort fields are in the whitelist.
-     * Prevents SQL injection and performance issues from sorting on non-indexed columns.
-     * 
-     * @param pageable The pageable to validate
-     * @param allowedFields Set of allowed field names for sorting
-     * @return Validated pageable
      * @throws BusinessException if sort field not in whitelist
      */
     public static Pageable validateSortFields(Pageable pageable, Set<String> allowedFields) {
@@ -40,14 +31,9 @@ public final class PageableValidator {
     }
 
     /**
-     * Validate sort fields against a whitelist, while also allowing clients to use aliases.
+     * {@code aliases} maps client-facing sort field names to canonical ones (e.g. accepting
+     * {@code sort=name,asc} while mapping it to {@code roleName}).
      *
-     * Example: accepting sort=name,asc while mapping it to roleName.
-     *
-     * @param pageable The pageable to validate
-     * @param allowedFields Set of allowed field names for sorting (include aliases if you want them listed as allowed)
-     * @param aliases Map of client-facing sort field -> canonical sort field
-     * @return Validated pageable with cleaned + mapped sort
      * @throws BusinessException if sort field not in whitelist
      */
     public static Pageable validateSortFields(Pageable pageable, Set<String> allowedFields, Map<String, String> aliases) {
@@ -111,14 +97,6 @@ public final class PageableValidator {
         return cleaned.trim();
     }
 
-    /**
-     * Validate sort fields and enforce pagination limits.
-     * 
-     * @param pageable The pageable to validate
-     * @param allowedFields Set of allowed field names for sorting
-     * @param maxPageSize Maximum page size (e.g., 100)
-     * @return Validated and limited pageable
-     */
     public static Pageable validateAndLimit(Pageable pageable, Set<String> allowedFields, int maxPageSize) {
         // Validate sort fields first
         Pageable validated = validateSortFields(pageable, allowedFields);
@@ -135,17 +113,6 @@ public final class PageableValidator {
         return validated;
     }
 
-    /**
-     * Create whitelist from entity field names.
-     * Use this in controllers/services to define allowed sort fields.
-     * 
-     * Example:
-     * <pre>
-     * private static final Set&lt;String&gt; ALLOWED_SORT_FIELDS = Set.of(
-     *     "id", "username", "createdAt", "updatedAt"
-     * );
-     * </pre>
-     */
     public static Set<String> allowedFields(String... fields) {
         return Set.of(fields);
     }

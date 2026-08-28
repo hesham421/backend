@@ -10,17 +10,9 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * API Contract Request DTO for Lookup Detail search.
- *
- * Converts frontend format to backend SearchRequest format.
- * Frontend sends: { filters: [{ field, operator, value }], sorts, page, size }
- * Backend expects: SearchFilter with Op enum
- *
- * Architecture Rules:
- * - Rule 7.1: DTOs for API contract
- * - Rule 7.3: Clear DTO naming
- *
- * @author ERP Team
+ * API contract DTO for Lookup Detail search — converts the frontend's
+ * {@code {filters:[{field,operator,value}], sorts, page, size}} shape into the backend's
+ * {@code SearchFilter}/{@code Op} format.
  */
 @Data
 @NoArgsConstructor

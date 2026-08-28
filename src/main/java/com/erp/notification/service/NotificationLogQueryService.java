@@ -77,12 +77,9 @@ public class NotificationLogQueryService {
     }
 
     /**
-     * SVCAPI.md: "recipientId defaults to caller's own id unless caller has an Admin-level
-     * permission to query other recipients." No distinct admin-tier permission is seeded for
-     * this page (only PERM_NOTIFICATION_INBOX_VIEW exists in dbs-notif-001.md) — see
-     * execution-state.json's svcapi_layer2 note. Until a real admin-scope permission exists,
-     * any caller holding NOTIFICATION_INBOX_VIEW (already required above) may pass an explicit
-     * recipientId; this is a known, flagged gap, not a silent security decision.
+     * recipientId defaults to the caller's own id unless the caller holds an Admin-level permission
+     * to query others — no distinct admin-tier permission is seeded yet, so any
+     * NOTIFICATION_INBOX_VIEW holder may currently pass an explicit recipientId (known, flagged gap).
      */
     private Long resolveEffectiveRecipientId(Long requestedRecipientId) {
         if (requestedRecipientId != null) {
@@ -96,10 +93,9 @@ public class NotificationLogQueryService {
     }
 
     /**
-     * TODO: DRV-NOTIF-003 — QR-NOTIF-005 is BLOCKED (no read/unread predicate column on
-     * NOTIF_LOG). Per the Escalation Note in SVCAPI.md, this is NOT implemented against an
-     * invented column (e.g. treating notificationStatusId IN ('PENDING','SENT') as "unread" was
-     * explicitly rejected as semantically wrong). Pending an SRS/DB amendment.
+     * QR-NOTIF-005 is BLOCKED — no read/unread column exists on NOTIF_LOG; deliberately not
+     * implemented against an invented column (e.g. treating PENDING/SENT as "unread" was rejected
+     * as semantically wrong).
      */
     @Transactional(readOnly = true)
     @PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).NOTIFICATION_INBOX_VIEW)")

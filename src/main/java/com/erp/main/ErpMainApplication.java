@@ -13,19 +13,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import java.util.Locale;
 
 /**
- * ERP System - Unified Main Application
- *
- * Aggregates all ERP modules:
- * - Security & Authentication (Port 7272 standalone)
- * - Master Data Management (Port 7373 standalone)
- * - Finance - General Ledger (Port 7474 standalone)
- *
- * All APIs accessible through single Swagger UI at port 7272
- *
- * Architecture: Rule 6 - One-Way Dependencies (DAG)
- * common-utils → security → masterdata → finance-gl → main
- *
- * @author ERP Team
+ * ERP System — unified Spring Boot entry point aggregating all ERP modules behind a single Swagger UI.
  */
 @Import(JpaConfig.class)
 @SpringBootApplication(

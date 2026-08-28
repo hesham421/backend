@@ -7,14 +7,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Request DTO for toggling active status
- * 
- * Architecture Rules:
- * - Rule 19.5: Toggle endpoint request body
- * 
- * @author ERP Team
- */
 @Data
 @Builder
 @NoArgsConstructor

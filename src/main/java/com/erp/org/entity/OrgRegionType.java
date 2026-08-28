@@ -24,10 +24,9 @@ import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 /**
- * JPA entity for ORG_REGION_TYPE (ENTITY-ORG-008, DBF-0024..0032). PRIVATE reference table
- * (parent FK of ORG_REGION). Admin-only Create/Read/Update — no Deactivate API in this plan
- * (DRV-ORG-015). No RULE-IDs answer "is this operation allowed?" for this entity, so it has no
- * Domain companion object — see {@code create-entity} skill, "pure reference/lookup table".
+ * JPA entity for ORG_REGION_TYPE — private reference table (parent FK of ORG_REGION), Admin-only
+ * Create/Read/Update, no Deactivate API. No Domain companion — no RULE-ID governs "is this
+ * allowed" for this entity.
  */
 @Entity
 @Table(name = "ORG_REGION_TYPE",

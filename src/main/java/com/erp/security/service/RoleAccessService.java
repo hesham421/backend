@@ -23,17 +23,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Service for managing Role-Page assignments and permissions
- *
- * Governance: BE-REQ-ROLEACCESS-001
- * Contract: role-access.contract.md
- *
- * Core Rules:
- * 1. Role is MASTER, Pages are DETAIL
- * 2. VIEW permission is ALWAYS added when a Page is assigned to a Role
- * 3. VIEW is NOT selectable in UI and cannot be removed while Page is assigned
- * 4. CRUD permissions (CREATE, UPDATE, DELETE) are optional
- * 5. VIEW is implicit and NOT returned in API responses
+ * Manages Role-Page assignments. VIEW is always added when a page is assigned to a role and
+ * can't be removed while the page stays assigned; VIEW itself is never returned in responses.
  */
 @Service
 @RequiredArgsConstructor
@@ -44,13 +35,7 @@ public class RoleAccessService {
     private final PageRepository pageRepository;
     private final PermissionRepository permissionRepository;
 
-    /**
-     * GET /api/roles/{roleId}/pages
-     * Get all pages assigned to a role with their CRUD permission flags
-     *
-     * Contract: role-access.contract.md - Endpoint 6
-     * Returns: RolePagesMatrixResponse with assignments (VIEW excluded from permissions array)
-     */
+    /** Contract: role-access.contract.md - Endpoint 6 (VIEW excluded from the permissions array). */
     @Transactional(readOnly = true)
     @PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).ROLE_VIEW)")
     public ServiceResult<RolePagesMatrixResponse> getRolePages(Long roleId) {
@@ -67,14 +52,7 @@ public class RoleAccessService {
                 .build());
     }
 
-    /**
-     * POST /api/roles/{roleId}/pages
-     * Add a Page to a Role with specific CRUD permissions
-     * VIEW permission is ALWAYS added automatically
-     *
-     * Contract: role-access.contract.md - Endpoint 7
-     * Returns: PageAssignmentResponse (201 Created)
-     */
+    /** Contract: role-access.contract.md - Endpoint 7. VIEW is always added automatically. */
     @Transactional
     @PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).ROLE_UPDATE)")
     public ServiceResult<PageAssignmentResponse> addPageToRole(Long roleId, AddPageToRoleRequest request) {
@@ -136,16 +114,8 @@ public class RoleAccessService {
     }
 
     /**
-     * PUT /api/roles/{roleId}/pages
-     * SYNC MODE: Replace all page assignments for a role (FULL REPLACE)
-     *
-     * Contract: role-access.contract.md - Endpoint 8
-     * Returns: RolePagesMatrixResponse
-     *
-     * Rules:
-     * - Every listed page MUST keep VIEW (auto-added)
-     * - CRUD permissions must match exactly the request
-     * - Empty assignments array removes all page access
+     * Contract: role-access.contract.md - Endpoint 8. FULL REPLACE: an empty assignments array
+     * removes all page access for this role.
      */
     @Transactional
     @PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).ROLE_UPDATE)")
@@ -233,14 +203,7 @@ public class RoleAccessService {
         return resolved;
     }
 
-    /**
-     * DELETE /api/roles/{roleId}/pages/{pageCode}
-     * Remove a Page from a Role completely
-     * Removes VIEW + CREATE + UPDATE + DELETE for that page
-     *
-     * Contract: role-access.contract.md - Endpoint 9
-     * Returns: void (204 No Content)
-     */
+    /** Contract: role-access.contract.md - Endpoint 9. Removes VIEW + all CRUD for that page. */
     @Transactional
     @PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).ROLE_UPDATE)")
     public void removePageFromRole(Long roleId, String pageCode) {
@@ -281,16 +244,9 @@ public class RoleAccessService {
     }
 
     /**
-     * POST /api/roles/{roleId}/copy-from/{sourceRoleId}
-     * Copy page-scoped CRUD permissions (VIEW + optional CRUD) from
-     * source role to target role. Only permissions linked to a Page
-     * (PAGE_ID_FK IS NOT NULL) are copied; the target's system-level
-     * permissions (PAGE_ID_FK IS NULL, e.g. PERM_SYSTEM_ADMIN) are left
-     * untouched, to avoid silently escalating privileges the source
-     * role happens to hold.
-     *
-     * Contract: role-access.contract.md - Endpoint 10
-     * Returns: CopyPermissionsResponse
+     * Contract: role-access.contract.md - Endpoint 10. Only page-scoped permissions are copied;
+     * the target's system-level permissions (e.g. PERM_SYSTEM_ADMIN) are left untouched, to
+     * avoid silently escalating privileges the source role happens to hold.
      */
     @Transactional
     @PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).ROLE_UPDATE)")
@@ -347,13 +303,7 @@ public class RoleAccessService {
                 .build());
     }
 
-    /**
-     * Helper method to build page assignments from role permissions
-     * Excludes VIEW from permissions array per contract
-     *
-     * OPTIMIZED: Uses PAGE_ID_FK foreign key for direct JOIN - no string parsing!
-     * Performance: Single query with JOIN instead of regex parsing + batch load
-     */
+    /** Excludes VIEW from the permissions array per contract. */
     private List<PageAssignmentResponse> buildPageAssignments(Role role) {
         // Group permissions by page - using the direct FK relationship
         Map<Long, Page> pageMap = new HashMap<>();

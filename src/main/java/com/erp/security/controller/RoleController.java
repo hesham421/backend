@@ -16,12 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * REST Controller for Role Access Control
- * 
- * Governance: BE-REQ-ROLEACCESS-001
- * Contract: role-access.contract.md
- */
+/** Contract: role-access.contract.md (BE-REQ-ROLEACCESS-001). */
 @RestController
 @RequestMapping("/api/roles")
 @RequiredArgsConstructor
@@ -32,15 +27,10 @@ public class RoleController {
     private final RoleAccessService roleAccessService;
     private final OperationCode operationCode;
 
-    // ========================================
     // ROLE CRUD OPERATIONS
     // Contract: role-access.contract.md - Endpoints 1-5
-    // ========================================
 
     /**
-     * POST /api/roles
-     * Create new role
-     * 
      * Contract: role-access.contract.md - Endpoint 3
      */
     @PostMapping
@@ -50,9 +40,6 @@ public class RoleController {
     }
 
     /**
-     * POST /api/roles/search
-     * Search roles with dynamic filtering, sorting, and pagination
-     * 
      * Contract: role-access.contract.md - Endpoint 1
      */
     @PostMapping("/search")
@@ -67,9 +54,6 @@ public class RoleController {
     }
 
     /**
-     * GET /api/roles/{roleId}
-     * Get role by ID
-     * 
      * Contract: role-access.contract.md - Endpoint 2
      */
     @GetMapping("/{roleId}")
@@ -79,9 +63,6 @@ public class RoleController {
     }
 
     /**
-     * PUT /api/roles/{roleId}
-     * Update role (roleCode is immutable)
-     * 
      * Contract: role-access.contract.md - Endpoint 4
      */
     @PutMapping("/{roleId}")
@@ -94,9 +75,6 @@ public class RoleController {
     }
 
     /**
-     * DELETE /api/roles/{roleId}
-     * Delete role
-     * 
      * Contract: role-access.contract.md - Endpoint 5
      */
     @DeleteMapping("/{roleId}")
@@ -107,9 +85,6 @@ public class RoleController {
     }
 
     /**
-     * PUT /api/roles/{roleId}/activate
-     * Activate role
-     *
      * Contract: role-access.contract.md - Endpoint 11 (activate)
      */
     @PutMapping("/{roleId}/activate")
@@ -119,9 +94,6 @@ public class RoleController {
     }
 
     /**
-     * PUT /api/roles/{roleId}/deactivate
-     * Deactivate role
-     *
      * Contract: role-access.contract.md - Endpoint 11 (deactivate)
      */
     @PutMapping("/{roleId}/deactivate")
@@ -130,15 +102,10 @@ public class RoleController {
         return operationCode.craftResponse(roleService.deactivate(roleId));
     }
 
-    // ========================================
     // ROLE → PAGES PERMISSIONS (MASTER/DETAIL)
     // Contract: role-access.contract.md - Endpoints 6-10
-    // ========================================
 
     /**
-     * GET /api/roles/{roleId}/pages
-     * Get role pages matrix
-     * 
      * Contract: role-access.contract.md - Endpoint 6
      */
     @GetMapping("/{roleId}/pages")
@@ -151,9 +118,6 @@ public class RoleController {
     }
 
     /**
-     * POST /api/roles/{roleId}/pages
-     * Add page to role
-     * 
      * Contract: role-access.contract.md - Endpoint 7
      */
     @PostMapping("/{roleId}/pages")
@@ -169,9 +133,6 @@ public class RoleController {
     }
 
     /**
-     * PUT /api/roles/{roleId}/pages
-     * Bulk update role pages (FULL REPLACE)
-     * 
      * Contract: role-access.contract.md - Endpoint 8
      */
     @PutMapping("/{roleId}/pages")
@@ -187,9 +148,6 @@ public class RoleController {
     }
 
     /**
-     * DELETE /api/roles/{roleId}/pages/{pageCode}
-     * Remove page from role
-     * 
      * Contract: role-access.contract.md - Endpoint 9
      */
     @DeleteMapping("/{roleId}/pages/{pageCode}")
@@ -206,9 +164,6 @@ public class RoleController {
     }
 
     /**
-     * POST /api/roles/{roleId}/copy-from/{sourceRoleId}
-     * Copy page-scoped permissions from another role
-     *
      * Contract: role-access.contract.md - Endpoint 10
      */
     @PostMapping("/{roleId}/copy-from/{sourceRoleId}")

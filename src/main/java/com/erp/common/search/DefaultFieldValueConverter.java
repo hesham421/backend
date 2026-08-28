@@ -1,14 +1,7 @@
 package com.erp.common.search;
 
 /**
- * Default implementation of {@link FieldValueConverter} that returns values unchanged.
- * <p>
- * This no-op converter is used when no custom conversion logic is needed.
- * Entity modules can provide their own implementations for specific type conversions.
- * </p>
- *
- * @author ERP System
- * @since 1.0
+ * No-op {@link FieldValueConverter} used when no custom conversion logic is needed.
  */
 public class DefaultFieldValueConverter implements FieldValueConverter {
 

@@ -4,20 +4,8 @@ import org.springdoc.core.utils.SpringDocUtils;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * ✅ Common OpenAPI (Swagger) Utilities for ERP modules
- * 
- * Provides:
- * - Pageable parameter handling (fixes ["string"] issue in Swagger UI)
- * 
- * Architecture Rules:
- * - Rule 12: Common configurations belong in erp-common-utils
- * - Rule 22.1: OpenAPI bean definitions MUST be in erp-main only
- * 
- * ⚠️ NOTE: This class does NOT define OpenAPI bean. 
- * erp-main/OpenApiConfig.java provides the main OpenAPI configuration
- * with API grouping and JWT security.
- * 
- * @author ERP Team
+ * Fixes Pageable parameter display in Swagger UI; does NOT define the OpenAPI bean itself —
+ * that lives in erp-main/OpenApiConfig.java.
  */
 @Configuration
 public class CommonOpenApiConfig {

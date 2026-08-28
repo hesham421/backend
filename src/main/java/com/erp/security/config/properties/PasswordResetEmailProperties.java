@@ -4,11 +4,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
 /**
- * Password-reset email composition configuration — Security-owned. Notification never sees
- * these values directly; it only receives the already-rendered contextData placeholders (see
- * {@link com.erp.security.service.PasswordResetEmailContextBuilder}).
- *
- * Bound to properties with prefix: erp.security.password-reset
+ * Password-reset email config, Security-owned. Notification never sees these values directly —
+ * only the rendered contextData from {@link com.erp.security.service.PasswordResetEmailContextBuilder}.
  */
 @Validated
 @ConfigurationProperties(prefix = "erp.security.password-reset")

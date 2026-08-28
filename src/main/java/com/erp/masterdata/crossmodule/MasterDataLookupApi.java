@@ -3,12 +3,9 @@ package com.erp.masterdata.crossmodule;
 import java.util.List;
 
 /**
- * Cross-module read surface for erp-masterdata's generic lookup-value consumption (mirrors
- * {@code GET /api/lookups/{lookupCode}}, master-registry.md Section 8 "LOOKUP CONSUMPTION
- * RULES"). Injected directly by other modules in the same JVM — see
- * governance/.github/skills/backend/create-service/SKILL.md's "Cross-Module Calls (XM)"
- * section. This is the ONLY erp-masterdata surface another module may depend on; never inject
- * {@code LookupConsumptionService} or any other internal class directly.
+ * Cross-module read surface for erp-masterdata's lookup consumption (mirrors {@code GET
+ * /api/lookups/{lookupCode}}). The ONLY erp-masterdata surface another module may depend on —
+ * never inject {@code LookupConsumptionService} directly.
  */
 public interface MasterDataLookupApi {
 

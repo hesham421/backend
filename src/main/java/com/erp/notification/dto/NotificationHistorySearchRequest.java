@@ -13,12 +13,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Request DTO for API-NOTIF-003 (Notification History). {@code notificationTypeId}/{@code
- * notificationStatusId} are first-class optional fields (per SVCAPI.md), folded into the
- * inherited filter list by {@link #toCommonSearchRequest()} — the "child search request"
- * pattern (create-dto skill). {@code recipientId} is deliberately NOT handled here: resolving
- * "defaults to caller's own id, unless caller may query others" is server-side authorization,
- * not a DTO concern — see {@code NotificationLogQueryService}.
+ * {@code recipientId} is deliberately not a field here — resolving it (default to caller, unless
+ * authorized to query others) is server-side authorization, handled in
+ * {@code NotificationLogQueryService}, not a DTO concern.
  */
 @Data
 @EqualsAndHashCode(callSuper = true)

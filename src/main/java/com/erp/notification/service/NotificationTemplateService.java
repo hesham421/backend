@@ -28,10 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Set;
 
 /**
- * API-NOTIF-006 (Search), 007 (Create), 008 (Update), 009 (Deactivate), 010 (Get by ID).
- * No {@code <Entity>Domain} object — CORE.md declares this module's domain behavior embedded in
- * entity methods; RULE-NOTIF-006/007 here are completeness/uniqueness guards (structural,
- * per domain-layer.md's Decision Test), not "is this operation allowed?" invariants.
+ * No {@code <Entity>Domain} object — RULE-NOTIF-006/007 here are completeness/uniqueness guards
+ * (structural), not "is this operation allowed?" invariants.
  */
 @Slf4j
 @Service
@@ -105,10 +103,8 @@ public class NotificationTemplateService {
     }
 
     /**
-     * API-NOTIF-009. No usage/reference guard: NOTIF_LOG.TEMPLATE_CODE is a natural-key
-     * soft-reference with NO physical FK (db-script.md governance note, RULE-NOTIF-006's own
-     * fallback design) — deactivating an in-use template cannot violate referential integrity,
-     * it just makes the fan-out processor's fallback path apply on the next send.
+     * No usage/reference guard — TEMPLATE_CODE is a natural-key soft-reference with no physical FK,
+     * so deactivating an in-use template just makes the fan-out fallback path apply on the next send.
      */
     @Transactional
     @PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).NOTIFICATION_TEMPLATE_DELETE)")

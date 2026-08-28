@@ -37,11 +37,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * File Service controller. Endpoint paths deliberately do NOT share one {@code @RequestMapping}
- * prefix — API-FILE-002/003/004 use the token-embedded {@code /upload/{token}},
- * {@code /download/{token}}, {@code /{token}} routes per the documented STACK-1 deviation
- * (srs-file-001.md B5, ARCH-REF-1.10 AD-FILE-02/03); only API-FILE-001/005 (and the new
- * access-token endpoint) use the standard {@code /api/v1/files/...} pattern.
+ * File Service controller. Endpoint paths deliberately don't share one {@code @RequestMapping}
+ * prefix: API-FILE-002/003/004 use token-embedded routes per the documented STACK-1 deviation;
+ * only API-FILE-001/005 (and the access-token endpoint) use the standard {@code /api/v1/files/...} pattern.
  */
 @RestController
 @RequiredArgsConstructor

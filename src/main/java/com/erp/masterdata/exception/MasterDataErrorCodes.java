@@ -1,11 +1,7 @@
 package com.erp.masterdata.exception;
 
 /**
- * Centralized Error Codes for MasterData Module
- * 
- * All codes must have corresponding messages in:
- * - erp-main/src/main/resources/i18n/messages.properties (English)
- * - erp-main/src/main/resources/i18n/messages_ar.properties (Arabic)
+ * Centralized error codes for the MasterData module; every code needs matching entries in the English and Arabic i18n message files.
  */
 public final class MasterDataErrorCodes {
 
@@ -13,7 +9,6 @@ public final class MasterDataErrorCodes {
         throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
     }
 
-    // ==================== Master Lookup Errors ====================
     public static final String MASTER_LOOKUP_NOT_FOUND = "MASTER_LOOKUP_NOT_FOUND";
     public static final String MASTER_LOOKUP_ACCESS_DENIED = "MASTER_LOOKUP_ACCESS_DENIED";
     public static final String MASTER_LOOKUP_IN_USE = "MASTER_LOOKUP_IN_USE";
@@ -24,7 +19,6 @@ public final class MasterDataErrorCodes {
     public static final String MASTER_LOOKUP_INACTIVE = "MASTER_LOOKUP_INACTIVE";
     public static final String LOOKUP_VALUE_INVALID = "LOOKUP_VALUE_INVALID";
 
-    // ==================== Lookup Detail Errors ====================
     public static final String LOOKUP_DETAIL_NOT_FOUND = "LOOKUP_DETAIL_NOT_FOUND";
     public static final String LOOKUP_DETAIL_ACCESS_DENIED = "LOOKUP_DETAIL_ACCESS_DENIED";
     public static final String LOOKUP_DETAIL_CODE_DUPLICATE = "LOOKUP_DETAIL_CODE_DUPLICATE";

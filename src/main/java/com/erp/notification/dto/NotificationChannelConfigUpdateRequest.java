@@ -8,11 +8,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Request DTO for API-NOTIF-012 (Update Channel Config). No {@code channelTypeId} — one fixed
- * row per channel already seeded (CORE.md: "no create/delete — only isEnabledFl toggle").
- * Toggling {@code isEnabledFl} to false is how RULE-NOTIF-005 (disabled-channel handling)
- * gets triggered downstream in {@code NotificationEventProcessor} — no rejection rule fires
- * on this toggle itself, per SVCAPI.md.
+ * No {@code channelTypeId} — rows are pre-seeded, one per channel. Toggling {@code isEnabledFl}
+ * to false is what triggers RULE-NOTIF-005's disabled-channel handling downstream.
  */
 @Data
 @Builder

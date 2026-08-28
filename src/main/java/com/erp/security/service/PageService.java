@@ -28,37 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 
 /**
- * Service for managing Pages (UI Screens Registry)
- *
- * ====================================================
- * FINAL AGREED RBAC DESIGN
- * ====================================================
- *
- * Core responsibilities:
- * 1) Register and manage UI Pages (pageCode, route, icon, menu structure, active flag)
- * 2) Create Permission RECORDS in database (PERM_<CODE>_VIEW/CREATE/UPDATE/DELETE)
- * 3) Enforce uniqueness constraints (pageCode, route)
- *
- * IMPORTANT DISTINCTIONS:
- * -------------------------
- * - Permission RECORD: Database entry in PERMISSIONS table (definition only)
- * - Permission ASSIGNMENT: Linking Permission to a Role (happens ONLY in RoleAccessService)
- *
- * PageService is NOT responsible for:
- * - Assigning permissions to Roles
- * - Managing Role-Permission relationships
- * - Determining which permissions are granted to users
- *
- * VIEW Permission Rule:
- * - VIEW permission is created as a RECORD during page registration
- * - VIEW is ALWAYS assigned automatically when a page is added to a role (in RoleAccessService)
- * - VIEW is NOT selectable in UI (implicit and mandatory)
- * - VIEW controls: screen access, menu visibility, search/query access
- *
- * CREATE/UPDATE/DELETE Permissions:
- * - Created as RECORDS during page registration
- * - Assigned to roles ONLY if explicitly selected by user (in RoleAccessService)
- * - User has full control over these permissions via UI
+ * Manages the UI Page registry and creates permission RECORDS (PERM_&lt;CODE&gt;_VIEW/CREATE/UPDATE/DELETE)
+ * for each page. Never assigns permissions to a role — that happens only in RoleAccessService.
  */
 @Service
 @RequiredArgsConstructor
@@ -79,21 +50,8 @@ public class PageService {
     );
 
     /**
-     * Create a new Page and auto-create 4 permission RECORDS
-     *
-     * IMPORTANT: This method creates:
-     * 1) Page entity in SEC_PAGES table
-     * 2) Permission RECORDS in PERMISSIONS table (definitions only)
-     *
-     * This method does NOT:
-     * - Assign permissions to any Role
-     * - Grant access to any user
-     * - Imply that CRUD permissions are granted automatically
-     *
-     * Permission ASSIGNMENT to Roles happens via RoleAccessService.addPageToRole()
-     *
-     * @param request CreatePageRequest with page details
-     * @return PageResponse with generated permission keys (for reference only)
+     * Creates the page plus its 4 permission records; assignment to a role happens separately
+     * via RoleAccessService.addPageToRole().
      */
     @Transactional
     @PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).PAGE_CREATE)")
@@ -163,13 +121,7 @@ public class PageService {
     }
 
     /**
-     * Update an existing Page
-     *
-     * Note: pageCode cannot be changed (it's the stable identifier)
-     *
-     * @param id Page ID
-     * @param request UpdatePageRequest
-     * @return Updated PageResponse
+     * Updates a page; pageCode is immutable and cannot be changed here.
      */
     @Transactional
     @PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).PAGE_UPDATE)")
@@ -310,15 +262,7 @@ public class PageService {
     }
 
     /**
-     * Deactivate a Page (soft delete - RECOMMENDED)
-     *
-     * Inactive pages:
-     * - Will NOT appear in getActivePages() dropdown
-     * - Will NOT appear in user menu even if user has VIEW permission
-     * - Can be reactivated later if needed
-     *
-     * @param id Page ID
-     * @return Updated PageResponse with active=false
+     * Soft-deletes a page; inactive pages drop out of getActivePages() and user menus but can be reactivated.
      */
     @Transactional
     @PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).PAGE_DELETE)")
@@ -326,12 +270,6 @@ public class PageService {
         return setPageActive(id, false);
     }
 
-    /**
-     * Reactivate a previously deactivated Page
-     *
-     * @param id Page ID
-     * @return Updated PageResponse with active=true
-     */
     @Transactional
     @PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).PAGE_UPDATE)")
     public ServiceResult<PageResponse> reactivatePage(Long id) {
@@ -356,41 +294,12 @@ public class PageService {
         return ServiceResult.success(toResponse(updated, permissionKeys), Status.UPDATED);
     }
 
-    // ==============================
     // Helper Methods
-    // ==============================
 
     /**
-     * Create Permission RECORDS in database for a page
+     * Creates permission RECORDS only (never assigns them to a role — see RoleAccessService.addPageToRole()).
      *
-     * ====================================================
-     * CRITICAL DISTINCTION
-     * ====================================================
-     *
-     * This method creates Permission RECORDS (definitions) in PERMISSIONS table:
-     * - PERM_<CODE>_VIEW
-     * - PERM_<CODE>_CREATE
-     * - PERM_<CODE>_UPDATE
-     * - PERM_<CODE>_DELETE
-     *
-     * This method does NOT:
-     * - Assign these permissions to any Role
-     * - Grant access to any User
-     * - Link permissions to Role-Permission join table
-     *
-     * Permission ASSIGNMENT to Roles happens ONLY in RoleAccessService:
-     * - RoleAccessService.addPageToRole() assigns VIEW + selected CRUD permissions to a Role
-     * - VIEW is ALWAYS assigned (implicit, mandatory)
-     * - CREATE/UPDATE/DELETE are assigned ONLY if user explicitly selects them
-     *
-     * This separation ensures:
-     * 1) Pages Registry manages UI screen definitions
-     * 2) RoleAccessService manages access control (who can do what)
-     *
-     * @param page The Page entity to link permissions to
-     * @param suppressTypes Permission types to skip generating for this page (e.g. a
-     *        page with no delete action doesn't need a DELETE permission record)
-     * @return Map of permission type -> permission key (e.g., "VIEW" -> "PERM_USER_VIEW")
+     * @param suppressTypes permission types to skip (e.g. omit DELETE for a page with no delete action)
      */
     private Map<String, String> createPermissionRecords(Page page, Set<PermissionType> suppressTypes) {
         Map<String, String> permissionKeys = new LinkedHashMap<>();
@@ -433,13 +342,7 @@ public class PageService {
     }
 
     /**
-     * Build permission keys map for a given pageCode
-     *
-     * Returns reference keys without creating or modifying any database records.
-     * Used for displaying permission keys in UI responses.
-     *
-     * @param pageCode Page code
-     * @return Map of permission type -> permission key
+     * Builds reference-only permission keys; does not create or modify any database records.
      */
     private Map<String, String> buildPermissionKeys(String pageCode) {
         Map<String, String> keys = new LinkedHashMap<>();

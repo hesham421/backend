@@ -6,10 +6,9 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 /**
- * Minimal repository stood up ahead of RegionType's own Admin-only CRUD sub (DRV-ORG-015) solely
- * to let {@link com.erp.org.service.RegionService} resolve/validate the parent
- * RegionType FK on Region create. Extended with full CRUD support when RegionType's own sub
- * is executed.
+ * Minimal repository stood up ahead of RegionType's own Admin CRUD sub (DRV-ORG-015), solely so
+ * {@link com.erp.org.service.RegionService} can resolve/validate the parent RegionType FK on
+ * Region create.
  */
 @Repository
 public interface RegionTypeRepository

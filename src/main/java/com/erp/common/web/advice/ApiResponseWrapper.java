@@ -12,26 +12,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 
 /**
- * Automatically wraps all REST API responses in the standard ApiResponse envelope.
- * 
- * This ensures consistent response structure across all endpoints:
- * {
- *   "success": true,
- *   "message": "OK",
- *   "data": { ... actual response ... },
- *   "error": null
- * }
- * 
- * Exceptions:
- * - Already wrapped responses (ApiResponse)
- * - Error responses (handled by GlobalExceptionHandler)
- * - File downloads (binary content)
- * - Swagger/OpenAPI documentation
- * - Actuator endpoints
- * 
- * Architecture Rule: 14.2 - Automatic Response Wrapping
- * 
- * @author ERP Team
+ * Automatically wraps REST API responses in the standard ApiResponse envelope, skipping
+ * already-wrapped/error/binary responses and Swagger/actuator endpoints.
  */
 @RestControllerAdvice
 public class ApiResponseWrapper implements ResponseBodyAdvice<Object> {

@@ -1,19 +1,6 @@
 /**
- * JPA persistence entities for the Organization module.
- *
- * <h2>Architecture Rules</h2>
- * <ul>
- *   <li>Every entity extends {@code AuditableEntity} — uniform across all 8 entities
- *       (LegalEntity, Branch, Region, Department, CostCenter, ProfitCenter, LocationSite,
- *       RegionType)</li>
- *   <li>Persistence responsibility ONLY — business rules live in the sibling
- *       {@code org.domain} package, never on the entity itself (see domain-layer.md)</li>
- *   <li>Optimistic locking is not used — no VERSION column</li>
- *   <li>Deactivation via {@code isActiveFl = false}, exposed through {@code activate()} /
- *       {@code deactivate()} helpers — never a direct setter</li>
- * </ul>
- *
- * @see com.erp.common.domain.AuditableEntity
- * @see com.erp.org.domain
+ * JPA persistence entities for the Organization module — all extend AuditableEntity. Persistence
+ * responsibility only; business rules live in the sibling org.domain package. Deactivation is
+ * via isActiveFl, exposed through activate()/deactivate() helpers, never a direct setter.
  */
 package com.erp.org.entity;

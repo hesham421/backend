@@ -6,27 +6,11 @@ import org.springframework.validation.annotation.Validated;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 
-/**
- * Refresh Token Cleanup Configuration Properties.
- *
- * Bound to properties with prefix: erp.security.token-cleanup
- *
- * Example in application.properties:
- * erp.security.token-cleanup.cron=0 0 3 * * *
- * erp.security.token-cleanup.revoked-retention-days=30
- *
- * @author ERP Team
- */
 @Validated
 @ConfigurationProperties(prefix = "erp.security.token-cleanup")
 public record RefreshTokenCleanupProperties(
 
-    /**
-     * Cron expression for the scheduled cleanup job.
-     * Removes expired refresh tokens, and revoked refresh tokens older
-     * than revokedRetentionDays, in the same run.
-     * Default: daily at 03:00
-     */
+    /** Also removes revoked refresh tokens older than revokedRetentionDays, in the same run. */
     @NotBlank(message = "Token cleanup cron expression is required")
     String cron,
 

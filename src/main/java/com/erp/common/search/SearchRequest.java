@@ -5,25 +5,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Request DTO for dynamic searching with pagination and sorting.
- * <p>
- * Encapsulates a list of filters (applied with AND logic), along with
- * pagination parameters (page, size) and sorting options (sortBy, sortDir).
- * </p>
- *
- * <p><b>Usage Example:</b></p>
- * <pre>
- * SearchRequest request = new SearchRequest();
- * request.addFilter(new SearchFilter("username", Op.LIKE, "john"));
- * request.addFilter(new SearchFilter("enabled", Op.EQ, true));
- * request.setPage(0);
- * request.setSize(20);
- * request.setSortBy("username");
- * request.setSortDir("ASC");
- * </pre>
- *
- * @author ERP System
- * @since 1.0
+ * Request DTO for dynamic searching; filters are combined with AND logic.
  */
 public class SearchRequest {
 
@@ -56,10 +38,7 @@ public class SearchRequest {
     }
 
     /**
-     * Adds a filter to this search request.
-     *
-     * @param filter the filter to add
-     * @return this SearchRequest for method chaining
+     * A null {@code filter} is silently ignored.
      */
     public SearchRequest addFilter(SearchFilter filter) {
         if (filter != null) {

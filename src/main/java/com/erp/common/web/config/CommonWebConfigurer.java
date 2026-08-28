@@ -8,42 +8,14 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import java.util.List;
 
 /**
- * Base Web MVC Configuration helper for all ERP modules.
- * 
- * Provides:
- * - Standard pagination configuration
- * - Request interceptor registration helper
- * 
- * Each module's WebConfig should call these methods to ensure consistency.
- * 
- * Architecture Rules:
- * - Rule 17.1: Default page size = 20
- * - Rule 17.2: Maximum page size = 100
- * 
- * Usage in module WebConfig:
- * <pre>
- * &#64;Configuration
- * public class WebConfig implements WebMvcConfigurer {
- *     
- *     &#64;Override
- *     public void addArgumentResolvers(List&lt;HandlerMethodArgumentResolver&gt; resolvers) {
- *         resolvers.add(CommonWebConfigurer.createPageableResolver());
- *     }
- * }
- * </pre>
- * 
- * @author ERP Team
+ * Standard pagination helpers each module's WebConfig should call for consistency
+ * (default page size 20, max 100).
  */
 public class CommonWebConfigurer {
 
     private static final int DEFAULT_PAGE_SIZE = 20;
     private static final int MAX_PAGE_SIZE = 100;
 
-    /**
-     * Create standard PageableHandlerMethodArgumentResolver with ERP defaults.
-     * 
-     * @return Configured PageableHandlerMethodArgumentResolver
-     */
     public static PageableHandlerMethodArgumentResolver createPageableResolver() {
         PageableHandlerMethodArgumentResolver resolver = new PageableHandlerMethodArgumentResolver();
         
@@ -56,12 +28,6 @@ public class CommonWebConfigurer {
         return resolver;
     }
 
-    /**
-     * Validate that requested page size doesn't exceed maximum.
-     * 
-     * @param pageable The pageable to validate
-     * @return Validated pageable (size capped at MAX_PAGE_SIZE)
-     */
     public static Pageable enforcePaginationLimits(Pageable pageable) {
         if (pageable.getPageSize() > MAX_PAGE_SIZE) {
             return PageRequest.of(

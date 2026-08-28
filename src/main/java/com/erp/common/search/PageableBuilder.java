@@ -7,48 +7,9 @@ import org.springframework.data.domain.Sort;
 import java.util.Set;
 
 /**
- * Utility class for building {@link Pageable} from {@link SearchRequest}.
- * <p>
- * This builder validates sort fields against an allowed list and provides
- * sensible defaults for pagination parameters.
- * </p>
- *
- * <p><b>Security:</b></p>
- * <ul>
- *   <li>Sorting is restricted to whitelisted fields only to prevent SQL injection</li>
- *   <li>Never passes raw sortBy values directly to JPA without validation</li>
- *   <li>Collection-based sort paths (e.g., "roles.name") are not allowed as they can cause
- *       unexpected Cartesian products and performance issues</li>
- * </ul>
- *
- * <p><b>Features:</b></p>
- * <ul>
- *   <li>Validates sortBy field against allowed sort fields</li>
- *   <li>Falls back to default sort field "id" if not specified or invalid</li>
- *   <li>Enforces maximum page size of {@value #MAX_PAGE_SIZE} to prevent excessive memory usage</li>
- *   <li>Supports ASC/DESC sort directions (case-insensitive)</li>
- *   <li>Defaults to DESC sorting if sortDir is null or invalid</li>
- * </ul>
- *
- * <p><b>Sorting Restrictions:</b></p>
- * Only simple or nested non-collection fields are allowed for sorting.
- * Collection-based paths like "roles.name" are rejected because:
- * <ul>
- *   <li>They can produce duplicate results (one row per collection element)</li>
- *   <li>They cause Cartesian product expansion</li>
- *   <li>Sorting behavior becomes unpredictable with multiple collection elements</li>
- *   <li>Performance degrades significantly with large collections</li>
- * </ul>
- *
- * <p><b>Usage Example:</b></p>
- * <pre>
- * Set&lt;String&gt; allowedSortFields = Set.of("id", "username", "createdAt", "customer.name");
- * Pageable pageable = PageableBuilder.from(request, allowedSortFields);
- * Page&lt;User&gt; results = userRepository.findAll(spec, pageable);
- * </pre>
- *
- * @author ERP System
- * @since 1.0
+ * Builds {@link Pageable} from {@link SearchRequest}, validating sortBy against an allowed-field
+ * whitelist (rejecting collection-based paths like "roles.name", which cause Cartesian-product
+ * duplication) and defaulting to DESC sort when sortDir is null or invalid.
  */
 public class PageableBuilder {
 
@@ -72,11 +33,6 @@ public class PageableBuilder {
     }
 
     /**
-     * Builds a Pageable from a SearchRequest with validation.
-     *
-     * @param request           the search request
-     * @param allowedSortFields set of allowed field names for sorting
-     * @return the constructed Pageable
      * @throws SearchException if sort field is not allowed or page size exceeds maximum
      */
     public static Pageable from(SearchRequest request, Set<String> allowedSortFields) {
@@ -92,12 +48,6 @@ public class PageableBuilder {
     }
 
     /**
-     * Builds a Pageable with a default sort field if not in allowed list.
-     *
-     * @param request           the search request
-     * @param allowedSortFields set of allowed field names for sorting
-     * @param defaultSortField  the default field to sort by if not specified or invalid
-     * @return the constructed Pageable
      * @throws SearchException if sort field is not allowed or page size exceeds maximum
      */
     public static Pageable from(SearchRequest request, Set<String> allowedSortFields, String defaultSortField) {
@@ -173,10 +123,7 @@ public class PageableBuilder {
     }
 
     /**
-     * Creates unsorted pageable (useful for count queries).
-     *
-     * @param request the search request
-     * @return the constructed Pageable without sorting
+     * Useful for count queries, which don't need sorting.
      */
     public static Pageable unsorted(SearchRequest request) {
         if (request == null) {

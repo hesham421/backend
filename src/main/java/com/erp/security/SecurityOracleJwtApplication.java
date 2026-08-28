@@ -9,10 +9,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import java.util.Locale;
 
 /**
- * Security Module Application
- *
- * Note: @EnableJpaRepositories is configured in JpaConfig to avoid duplicate bean definitions.
- * This ensures proper entity/repository scanning without bean override warnings.
+ * @EnableJpaRepositories is deliberately configured in JpaConfig instead of here, to avoid
+ * duplicate bean definitions.
  */
 @EnableCaching
 @EnableScheduling

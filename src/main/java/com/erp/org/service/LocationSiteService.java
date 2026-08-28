@@ -33,10 +33,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Set;
 
 /**
- * Orchestration for LocationSite (API-ORG-039..044). Business Rule decisions (RULE-ORG-019
- * parent-active create guard) are delegated to {@link OrgLocationSiteDomain}. No entity-specific
- * deactivation guard exists here — RULE-ORG-005 is the Branch-side guard, already enforced by
- * {@link com.erp.org.domain.OrgBranchDomain} in {@link BranchService}.
+ * Orchestration for LocationSite. Business Rule decisions (parent-active create guard) are
+ * delegated to {@link OrgLocationSiteDomain}; no entity-specific deactivation guard exists here
+ * — RULE-ORG-005 is the Branch-side guard, already enforced by {@code OrgBranchDomain}.
  */
 @Service
 @RequiredArgsConstructor

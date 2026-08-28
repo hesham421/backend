@@ -6,17 +6,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 /**
- * API Contract Request DTO for User search.
- *
- * Matches the standard search contract:
- * <pre>{ filters: [{ field, operator, value }], sorts: [{ field, direction }], page, size }</pre>
- *
- * Allowed filter fields:
- * - username (EQUALS, CONTAINS, STARTS_WITH)
- * - enabled (EQUALS)
- * - createdAt (EQUALS)
- *
- * @author ERP Team
+ * Search contract for User: filters on username (EQUALS/CONTAINS/STARTS_WITH), enabled and createdAt (EQUALS).
  */
 @Data
 @NoArgsConstructor

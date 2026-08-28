@@ -7,22 +7,9 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 
 /**
- * Cacheable wrapper for lookup consumption data.
- *
- * <p>Holds a status flag and the resolved list so that the cache can
- * distinguish three states without storing {@code null} (which Redis
- * cannot cache when {@code disableCachingNullValues} is set):</p>
- * <ul>
- *   <li>Key not found — returned as {@code null} (not cached)</li>
- *   <li>Master inactive — {@code inactive = true, values = []}</li>
- *   <li>Master active — {@code inactive = false, values = [...]}</li>
- * </ul>
- *
- * <p>Fully serializable by Jackson (no-args constructor + getters from
- * {@code @Data}) so {@code GenericJackson2JsonRedisSerializer} can
- * round-trip the object without errors.</p>
- *
- * @author ERP Team
+ * Cacheable wrapper for lookup consumption — distinguishes three states without storing {@code null} (which Redis
+ * can't cache): not-found (null), inactive master ({@code values=[]}), active master ({@code values=[...]}). Fully
+ * Jackson-serializable for Redis round-tripping.
  */
 @Data
 @NoArgsConstructor

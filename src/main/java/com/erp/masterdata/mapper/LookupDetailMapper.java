@@ -5,28 +5,12 @@ import com.erp.masterdata.entity.MdLookupDetail;
 import com.erp.masterdata.entity.MdMasterLookup;
 import org.springframework.stereotype.Component;
 
-/**
- * Mapper for Lookup Detail Entity <-> DTOs
- * 
- * Architecture Rules:
- * - Rule 7.2: One mapper per entity
- * - Rule 7.2: Centralize mapping in dedicated mapper classes
- * 
- * @author ERP Team
- */
 @Component
 public class LookupDetailMapper {
 
     /**
-     * Convert Create Request to Entity with explicit parent FK
-     * 
-     * Architecture: Parent entity is a required parameter — enforces FK
-     * at compile-time rather than relying on the caller to remember
-     * calling setMasterLookup() afterwards.
-     * 
-     * @param request       Create request
-     * @param masterLookup  Parent master lookup entity (FK)
-     * @return LookupDetail entity with parent relationship set
+     * Parent entity is a required parameter — enforces the FK at compile time rather than relying
+     * on the caller to remember calling {@code setMasterLookup()} afterwards.
      */
     public MdLookupDetail toEntity(LookupDetailCreateRequest request, MdMasterLookup masterLookup) {
         if (request == null) {
@@ -45,11 +29,7 @@ public class LookupDetailMapper {
     }
 
     /**
-     * Update entity from Update Request
-     * Note: masterLookupId and code are immutable and should NOT be updated
-     * 
-     * @param entity Existing entity
-     * @param request Update request
+     * masterLookupId and code are immutable and must not be updated here.
      */
     public void updateEntityFromRequest(MdLookupDetail entity, LookupDetailUpdateRequest request) {
         if (entity == null || request == null) {
@@ -66,12 +46,6 @@ public class LookupDetailMapper {
         }
     }
 
-    /**
-     * Convert Entity to Response DTO
-     * 
-     * @param entity Lookup detail entity
-     * @return Response DTO
-     */
     public LookupDetailResponse toResponse(MdLookupDetail entity) {
         if (entity == null) {
             return null;
@@ -97,12 +71,6 @@ public class LookupDetailMapper {
                 .build();
     }
 
-    /**
-     * Convert Entity to Option Response DTO (for dropdowns)
-     * 
-     * @param entity Lookup detail entity
-     * @return Option response DTO
-     */
     public LookupDetailOptionResponse toOptionResponse(MdLookupDetail entity) {
         if (entity == null) {
             return null;
@@ -118,12 +86,6 @@ public class LookupDetailMapper {
                 .build();
     }
 
-    /**
-     * Convert Entity to Usage Response DTO
-     * 
-     * @param entity Lookup detail entity
-     * @return Usage response DTO
-     */
     public LookupDetailUsageResponse toUsageResponse(MdLookupDetail entity) {
         
         if (entity == null) {

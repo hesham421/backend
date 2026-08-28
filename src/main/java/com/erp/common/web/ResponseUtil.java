@@ -4,10 +4,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 /**
- * Utility class for creating standardized ResponseEntity objects
- * with ApiResponse envelope.
- *
- * @author ERP Team
+ * Creates standardized ResponseEntity objects wrapped in the ApiResponse envelope.
  */
 public final class ResponseUtil {
 

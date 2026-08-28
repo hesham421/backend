@@ -22,20 +22,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Module-local security component (CORE.md "Encrypted Token layer" deviation, sourced from
- * ARCH-REF-1.10 AD-FILE-02/03): issues and validates the Encrypted Token embedded in the
- * {@code /upload/{token}}, {@code /download/{token}}, {@code /{token}} URL paths.
- *
- * AES/256-GCM, 12-byte random IV, 128-bit auth tag. NOT a JWT (POLICY-CLI-02/03/06) — this
- * token carries its own payload and TTL and is never validated by Security's filter chain.
- *
- * Payload shape (pipe-delimited, matches CORE.md "self-contained AES/GCM payload"):
- * {@code ownerId|ownerType|moduleCode|action|issuedAtEpochMilli|targetId}
- *
- * The single-use "consumed token" cache (RULE-FILE-004, POLICY-CLI-02) is an in-memory
- * {@link ConcurrentHashMap}, same acceptable-for-single-instance-deployment precedent as
- * {@code LoginRateLimiterService} in erp-security (deploy/docker-compose.yml runs exactly one
- * backend container) — if the backend is ever horizontally scaled, this must move to Redis.
+ * Issues/validates the Encrypted Token (AES/256-GCM, 12-byte IV) embedded in the token-based URL
+ * paths — NOT a JWT. The single-use consumed-token cache is an in-memory {@link ConcurrentHashMap},
+ * fine for the current single-instance deployment; move to Redis if ever scaled horizontally.
  */
 @Service
 public class FileTokenService {
@@ -76,10 +65,8 @@ public class FileTokenService {
     }
 
     /**
-     * Decodes, validates (RULE-FILE-002 TTL, RULE-FILE-003 tamper/action-mismatch, RULE-FILE-004
-     * single-use), and marks the token consumed — all in one pass, since a token that fails any
-     * check must never be treated as consumed (that would let a legitimate retry with the
-     * correct token get spuriously rejected).
+     * Validates TTL/tamper/action-mismatch/single-use and marks the token consumed in one pass, so a
+     * failing check never marks a legitimate retry's token as already consumed.
      */
     public FileTokenPayload decodeAndConsume(String encryptedToken, String expectedAction) {
         String plaintext = decrypt(encryptedToken);

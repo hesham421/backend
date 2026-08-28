@@ -5,10 +5,9 @@ import com.erp.notification.entity.NotificationLog;
 import org.springframework.stereotype.Component;
 
 /**
- * Entity <-> DTO mapping for ENTITY-NOTIF-001 (NotificationLog). No {@code toEntity()}/{@code
- * updateEntityFromRequest()} — NotificationLog is system-created only, by {@code
- * NotificationEventProcessor}'s own builder usage (Phase SVCAPI Layer 1), never from a public
- * CreateRequest DTO (CORE.md: "Create (system-only, at send time) ... NO manual Update/Delete").
+ * No {@code toEntity()}/{@code updateEntityFromRequest()} — NotificationLog is system-created
+ * only, via {@code NotificationEventProcessor}'s own builder usage, never from a public
+ * CreateRequest DTO.
  */
 @Component
 public class NotificationLogMapper {

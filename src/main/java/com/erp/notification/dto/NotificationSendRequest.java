@@ -15,23 +15,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Request DTO for API-NOTIF-001 (Send Immediate) and the base of API-NOTIF-002 (Schedule).
- * Field completeness is RULE-NOTIF-001 (ERR-NOTIF-0001) — re-checked in
- * {@code NotificationEventProcessor} itself (not just here) because the same validation must
- * fire for every ingress path (REST, Spring Event), not only the REST one that {@code @Valid}
- * covers (SVCAPI.md: "Trigger: On publish of any NotificationEvent (any ingress)").
- *
- * <p>{@code moduleCode}/{@code referenceId}/{@code referenceType} are NOT listed in SVCAPI.md's
- * literal Request DTO field set for API-NOTIF-001, but {@code NOTIF_LOG.MODULE_CODE} is NOT
- * NULL (DBF-0010) with no other source for it (no service-to-service credential/principal
- * carries a caller module identity in this codebase) — added here as a documented plan gap,
- * matching this module's own MISSING_IN_DOCS convention. referenceId/referenceType are
- * genuinely OPTIONAL columns (DBF-0011/0012) and are exposed for the same reason.
- *
- * <p>Uses {@code @SuperBuilder} (not the DTO-standard {@code @Builder}) because
- * {@link NotificationScheduleRequest} extends this class — the plan itself mandates that
- * inheritance ("NotificationScheduleRequest extends NotificationSendRequest + {scheduledAt}"),
- * which requires an inheritance-safe builder, same reasoning as entity builders.
+ * Base of {@link NotificationScheduleRequest}. Field completeness (RULE-NOTIF-001) is re-validated in {@code
+ * NotificationEventProcessor} since the Spring-Event path bypasses {@code @Valid}. Uses {@code @SuperBuilder}, not
+ * {@code @Builder}, since the schedule subclass extends this.
  */
 @Data
 @SuperBuilder

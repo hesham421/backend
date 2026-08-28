@@ -7,15 +7,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Enum for CRUD permission types
- * Maps to permission keys: PERM_<CODE>_<TYPE>
- * 
- * Permission Naming Convention:
- * - Format: PERM_{PAGE_CODE}_{TYPE}
- * - PAGE_CODE may contain underscores (e.g., MASTER_LOOKUP)
- * - TYPE is always one of: VIEW, CREATE, UPDATE, DELETE
- * 
- * Performance: Uses compiled regex pattern for O(1) parsing
+ * CRUD permission type; maps to permission keys formatted PERM_{PAGE_CODE}_{TYPE}, where
+ * PAGE_CODE may itself contain underscores (e.g. MASTER_LOOKUP).
  */
 public enum PermissionType {
     VIEW,
@@ -40,11 +33,7 @@ public enum PermissionType {
     }
 
     /**
-     * Parse permission name and extract both page code and type in single operation.
-     * Optimized for ERP systems with many permissions - uses compiled regex.
-     * 
-     * @param permissionName Full permission name (e.g., "PERM_MASTER_LOOKUP_CREATE")
-     * @return ParsedPermission containing pageCode and type, or null if invalid
+     * @return the parsed pageCode/type, or null (not Optional/exception) if permissionName doesn't match.
      */
     public static ParsedPermission parse(String permissionName) {
         if (permissionName == null) {

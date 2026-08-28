@@ -7,11 +7,8 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 /**
- * Page Entity - Represents UI screens/pages in the system
- * Each Page auto-generates 4 CRUD permissions: VIEW, CREATE, UPDATE, DELETE
- *
- * Pages are the DETAIL in the RBAC model, with Roles as MASTER.
- * A Role is assigned Pages, and each Page assignment automatically includes VIEW permission.
+ * UI screen/page; auto-generates 4 CRUD permissions. Pages are the DETAIL in the RBAC model
+ * (Roles are MASTER) — assigning a page to a role always includes VIEW.
  */
 @Entity
 @Table(name = "SEC_PAGES",
@@ -27,12 +24,8 @@ import lombok.experimental.SuperBuilder;
 public class Page extends AuditableEntity {
 
     /**
-     * PK constraint name: SEC_PAGES_PK (matches the column name below).
-     * Naming the constraint itself isn't expressible via a JPA annotation on
-     * @Id (unlike @ForeignKey for FKs, or @SequenceGenerator's sequenceName
-     * below) — Hibernate's naming-strategy hooks only cover
-     * FOREIGN_KEY/UNIQUE_KEY/INDEX, never PRIMARY_KEY — so the constraint name
-     * is enforced in the live DB by 001_rename_pk_fk_to_standard.sql instead.
+     * PK constraint name (SEC_PAGES_PK) is set by 001_rename_pk_fk_to_standard.sql, not a
+     * JPA annotation — Hibernate's naming-strategy hooks don't cover PRIMARY_KEY.
      */
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "page_seq")
@@ -83,10 +76,8 @@ public class Page extends AuditableEntity {
     private String description;
 
     /**
-     * Returns active status.
-     * Note: NOT named isActive() to avoid Hibernate interpreting it as
-     * a boolean property accessor and creating a phantom 'ACTIVE' column mapping.
-     * Use Lombok's getActive() for the raw field value.
+     * Not named isActive() deliberately — Hibernate would treat that as a boolean property
+     * accessor and create a phantom 'ACTIVE' column mapping.
      */
     public Boolean getActiveStatus() {
         return active;

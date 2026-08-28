@@ -23,18 +23,12 @@ class SecUserProfileApiService implements SecUserProfileApi {
     private final SecUserProfileService secUserProfileService;
 
     /**
-     * {@code NOT_SUPPORTED}, not the default {@code REQUIRED}: this read can throw (via
-     * {@link SecUserProfileService#getById}'s not-found {@code orElseThrow}), and this method
-     * deliberately catches that exception and returns {@link Optional#empty()} instead of
-     * propagating it. Under {@code REQUIRED} that's not actually safe — Spring's transactional
-     * advice for the nested {@code getById} call marks the *shared* transaction rollback-only
-     * the moment the exception crosses its proxy boundary, regardless of it being caught here
-     * afterward. A caller that writes nothing itself never notices; a caller that later commits
-     * a write in the same transaction (e.g. {@code NotificationEventProcessor.process}) gets an
-     * {@code UnexpectedRollbackException} on commit even though this method "handled" the
-     * not-found case. {@code NOT_SUPPORTED} suspends any caller transaction for the duration of
-     * this call so a not-found/access-denied result here can never poison the caller's own
-     * transaction.
+     * {@code NOT_SUPPORTED}, not {@code REQUIRED}: this method catches the not-found/access-denied
+     * exception from the nested {@link SecUserProfileService#getById} call and returns empty, but
+     * under {@code REQUIRED} that nested call would already mark the *shared* transaction
+     * rollback-only before the catch runs — poisoning any caller that later commits a write in the
+     * same transaction with an {@code UnexpectedRollbackException}. {@code NOT_SUPPORTED} suspends
+     * the caller's transaction so that can't happen.
      */
     @Override
     @Transactional(propagation = Propagation.NOT_SUPPORTED)

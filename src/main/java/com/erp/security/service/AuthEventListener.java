@@ -12,17 +12,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * RULE-SEC-031 — reacts to {@link AccountActivationRequestedEvent} and
- * {@link PasswordResetRequestedEvent}, published by {@link AuthService} via
- * {@code ApplicationEventPublisher} instead of calling erp-notification directly. The listener
- * stays in this module (the module that defines the events, per this codebase's event-isolation
- * convention — see {@code create-service}'s "Publishing Domain Events") and reaches
- * erp-notification only via {@link NotificationDispatchApi}, injected directly — never by
- * importing erp-notification's service/entity classes.
- *
- * <p>{@code AFTER_COMMIT} — mirrors erp-notification's own
- * {@code NotificationDispatchTrigger} pattern: the listener only fires once the triggering
- * signup/reset-request transaction has actually committed.
+ * RULE-SEC-031: reacts to events published by {@link AuthService}, reaching erp-notification
+ * only via {@link NotificationDispatchApi} — never its service/entity classes directly.
+ * {@code AFTER_COMMIT} so the listener only fires once the triggering transaction has committed.
  */
 @Component
 @RequiredArgsConstructor

@@ -29,12 +29,9 @@ import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 /**
- * JPA entity for ORG_PROFIT_CENTER (ENTITY-ORG-006, DBF-0072..0082). Persistence-only. No
- * internal dependency guard on deactivate (per SRS A6 lifecycle table) and no parent-active
- * create guard — only the standard RULE-ORG-011..016 set applies, all of which are handled at
- * the DTO/Mapper/Service/Repository layers (code immutability, uniqueness). No Domain companion
- * is required — see {@code create-entity} skill, "pure reference/lookup table" exemption
- * (same reasoning applies here: no RULE-ID requires a Domain-level "is this allowed" decision).
+ * JPA entity for ORG_PROFIT_CENTER — persistence-only, no Domain companion. No
+ * deactivate/parent-active-create guard applies; only the standard RULE-ORG-011..016 code/name/
+ * audit checks, handled at the DTO/Mapper/Service/Repository layers.
  */
 @Entity
 @Table(name = "ORG_PROFIT_CENTER",

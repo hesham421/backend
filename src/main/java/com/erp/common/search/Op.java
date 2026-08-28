@@ -1,14 +1,7 @@
 package com.erp.common.search;
 
 /**
- * Enumeration of supported search operators for dynamic filtering.
- * <p>
- * These operators are used in {@link SearchFilter} to define comparison logic
- * when building JPA Specifications dynamically.
- * </p>
- *
- * @author ERP System
- * @since 1.0
+ * Supported search operators, used by {@link SearchFilter} when building JPA Specifications.
  */
 public enum Op {
     /**

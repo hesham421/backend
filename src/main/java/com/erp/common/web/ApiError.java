@@ -10,9 +10,7 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * Error details included in ApiResponse when success=false
- *
- * @author ERP Team
+ * Error details included in ApiResponse when success=false.
  */
 @Getter
 @Setter
