@@ -1,5 +1,6 @@
 package com.erp.notification.service;
 
+import com.erp.common.security.InternalCaller;
 import com.erp.notification.channel.ChannelSender;
 import com.erp.notification.entity.NotificationLog;
 import com.erp.notification.repository.NotificationLogRepository;
@@ -41,7 +42,9 @@ public class FailedNotificationSweepScheduler {
     }
 
     private void retryOne(NotificationLog logEntry) {
-        boolean sent = channelSender.send(logEntry);
+        // Scheduled tasks run on a background thread with no SecurityContext; channelSender.send()
+        // reaches into SecurityUserApi -> UserService.searchUsers(), which is @PreAuthorize-gated.
+        boolean sent = InternalCaller.call(() -> channelSender.send(logEntry));
         if (sent) {
             logEntry.markSent();
             log.info("Failed-notification sweep recovered NOTIF_LOG id={}", logEntry.getId());

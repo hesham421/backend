@@ -192,12 +192,31 @@ def find_server_port(backend_root: Path, default: str = "8080") -> str:
 
 def find_module_source_root(backend_root: Path, packages: list[str]) -> Optional[Path]:
     """Given the controller package(s) a matched OpenAPI group scans, finds
-    which Maven module's src/main/java actually contains that package --
-    i.e. --source, without ever hardcoding a module directory name."""
-    for java_root in sorted(backend_root.glob("*/src/main/java")):
+    which Maven module's src/main/java actually contains that package, then
+    returns the module's own domain-root directory rather than the whole
+    src/main/java tree -- so module-own best-effort extractors (error codes,
+    throw-site Status associations, controller/service lookup) only ever see
+    this module's own code, never another module's. This matters most under a
+    single consolidated POM layout (src/main/java directly under
+    backend_root, e.g. this platform's own erp-system, as opposed to one
+    Maven module directory per domain) where every module's code shares one
+    physical src/main/java tree and would otherwise all be visible at once.
+
+    Every GroupedOpenApi bean on this platform scans a "<domain>.controller"
+    leaf package (e.g. "com.erp.security.controller"), not the module's
+    whole domain package -- but the domain's other code (service/,
+    exception/, dto/, ...) lives one level up, as siblings of controller/,
+    not inside it. So when the matched package's last segment is literally
+    "controller", scope to its parent (the domain root) instead of the
+    controller subpackage itself; otherwise scope to the matched package
+    directory as-is, in case a future module doesn't follow that convention."""
+    candidate_roots = [backend_root / "src" / "main" / "java"]
+    candidate_roots += sorted(backend_root.glob("*/src/main/java"))
+    for java_root in candidate_roots:
         for package in packages:
-            if (java_root / Path(*package.split("."))).is_dir():
-                return java_root
+            package_dir = java_root / Path(*package.split("."))
+            if package_dir.is_dir():
+                return package_dir.parent if package_dir.name == "controller" else package_dir
     return None
 
 
@@ -214,13 +233,32 @@ def find_common_source_roots(backend_root: Path, module_source_root: Path) -> li
     """Resolves every OTHER reactor module that module_source_root's own
     module actually declares as a Maven dependency -- the real, versioned,
     build-enforced link to shared/common code, as opposed to guessing a name
-    like "common-utils". Works for any number of shared modules, not just one."""
+    like "common-utils". Works for any number of shared modules, not just one.
+
+    module_source_root is now package-scoped (see find_module_source_root),
+    so its owning Maven module directory (the one with the pom.xml) is found
+    by walking upward until a pom.xml turns up, rather than assuming a fixed
+    number of parent hops -- that walk naturally lands on backend_root itself
+    under a single consolidated POM layout (this platform's own erp-system),
+    where no nearer pom.xml exists between the package directory and the
+    repo root."""
     root_pom = backend_root / "pom.xml"
     if not root_pom.exists():
         return []
     reactor_modules = set(_MODULE_RE.findall(root_pom.read_text(encoding="utf-8")))
 
-    module_root = module_source_root.parent.parent.parent  # src/main/java -> src/main -> src -> module dir
+    module_root = module_source_root
+    while module_root != backend_root and not (module_root / "pom.xml").exists():
+        module_root = module_root.parent
+
+    if module_root == backend_root:
+        # Single consolidated POM (no <modules> reactor split) -- there is no
+        # separate shared module to resolve, since shared/common code
+        # (com.erp.common, GlobalExceptionHandler, OperationCodeImpl, ...)
+        # already lives inside this same src/main/java tree. Search that
+        # whole tree rather than just this module's own package.
+        return [backend_root / "src" / "main" / "java"]
+
     module_pom = module_root / "pom.xml"
     if not module_pom.exists():
         return []

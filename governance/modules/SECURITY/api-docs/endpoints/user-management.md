@@ -48,6 +48,7 @@ Shape: `UserDto`
 |---|---|---|---|---|
 | id | integer (int64) | No |  |  |
 | username | string | No |  |  |
+| email | string | No |  |  |
 | enabled | boolean | No |  |  |
 | roles | array<string> | No |  |  |
 | permissions | array<string> | No |  |  |
@@ -157,6 +158,7 @@ Shape: `UserDto`
 |---|---|---|---|---|
 | id | integer (int64) | No |  |  |
 | username | string | No |  |  |
+| email | string | No |  |  |
 | enabled | boolean | No |  |  |
 | roles | array<string> | No |  |  |
 | permissions | array<string> | No |  |  |
@@ -201,6 +203,7 @@ Shape: `paginated list of UserDto (see Pagination Envelope in index.md)`
 |---|---|---|---|---|
 | id | integer (int64) | No |  |  |
 | username | string | No |  |  |
+| email | string | No |  |  |
 | enabled | boolean | No |  |  |
 | roles | array<string> | No |  |  |
 | permissions | array<string> | No |  |  |
@@ -246,6 +249,7 @@ Shape: `UserDto`
 |---|---|---|---|---|
 | id | integer (int64) | No |  |  |
 | username | string | No |  |  |
+| email | string | No |  |  |
 | enabled | boolean | No |  |  |
 | roles | array<string> | No |  |  |
 | permissions | array<string> | No |  |  |
@@ -330,6 +334,7 @@ Shape: `paginated list of UserDto (see Pagination Envelope in index.md)`
 |---|---|---|---|---|
 | id | integer (int64) | No |  |  |
 | username | string | No |  |  |
+| email | string | No |  |  |
 | enabled | boolean | No |  |  |
 | roles | array<string> | No |  |  |
 | permissions | array<string> | No |  |  |

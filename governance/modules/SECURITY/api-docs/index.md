@@ -79,18 +79,18 @@ Schema: `PageSecUserProfileDto`
 |---|---|---|---|---|
 | totalPages | integer (int32) | No |  |  |
 | totalElements | integer (int64) | No |  |  |
-| pageable | Pageable | No |  |  |
 | first | boolean | No |  |  |
 | last | boolean | No |  |  |
 | numberOfElements | integer (int32) | No |  |  |
+| pageable | Pageable | No |  |  |
+| sort | Sortnull | No |  |  |
 | size | integer (int32) | No |  |  |
 | number | integer (int32) | No |  |  |
-| sort | Sortnull | No |  |  |
 | empty | boolean | No |  |  |
 
 ## Pagination Constraints
 
-Source: `com/example/erp/common/dto/BaseSearchContractRequest.java`
+Source: `com/erp/common/dto/BaseSearchContractRequest.java`
 
 | Constraint | Value |
 |---|---|
@@ -101,69 +101,69 @@ Source: `com/example/erp/common/dto/BaseSearchContractRequest.java`
 
 | Code | Value | Source | Status | HTTP Status |
 |---|---|---|---|---|
-| USER_NOT_FOUND | `USER_NOT_FOUND` | com/example/security/exception/SecurityErrorCodes.java | NOT_FOUND | NOT_FOUND |
-| USER_ENTITY_NOT_FOUND | `USER_ENTITY_NOT_FOUND` | com/example/security/exception/SecurityErrorCodes.java | NOT_FOUND | NOT_FOUND |
-| USERNAME_ALREADY_EXISTS | `USERNAME_ALREADY_EXISTS` | com/example/security/exception/SecurityErrorCodes.java | ALREADY_EXISTS | CONFLICT |
-| USER_HAS_ACTIVE_REFRESH_TOKENS | `USER_HAS_ACTIVE_REFRESH_TOKENS` | com/example/security/exception/SecurityErrorCodes.java | CONFLICT |  |
-| USER_HAS_DEPENDENCIES | `USER_HAS_DEPENDENCIES` | com/example/security/exception/SecurityErrorCodes.java |  |  |
-| INVALID_CREDENTIALS | `INVALID_CREDENTIALS` | com/example/security/exception/SecurityErrorCodes.java |  |  |
-| ROLE_NOT_FOUND | `ROLE_NOT_FOUND` | com/example/security/exception/SecurityErrorCodes.java | NOT_FOUND | NOT_FOUND |
-| ROLE_ALREADY_EXISTS | `ROLE_ALREADY_EXISTS` | com/example/security/exception/SecurityErrorCodes.java |  |  |
-| DUPLICATE_ROLE_CODE | `DUPLICATE_ROLE_CODE` | com/example/security/exception/SecurityErrorCodes.java | ALREADY_EXISTS | CONFLICT |
-| DUPLICATE_ROLE_NAME | `DUPLICATE_ROLE_NAME` | com/example/security/exception/SecurityErrorCodes.java | ALREADY_EXISTS | CONFLICT |
-| ROLE_IN_USE | `ROLE_IN_USE` | com/example/security/exception/SecurityErrorCodes.java | CONFLICT |  |
-| PERMISSION_NOT_FOUND | `PERMISSION_NOT_FOUND` | com/example/security/exception/SecurityErrorCodes.java | NOT_FOUND | NOT_FOUND |
-| PERMISSION_ALREADY_EXISTS | `PERMISSION_ALREADY_EXISTS` | com/example/security/exception/SecurityErrorCodes.java | ALREADY_EXISTS | CONFLICT |
-| PERMISSION_NOT_ASSIGNED_TO_ROLE | `PERMISSION_NOT_ASSIGNED_TO_ROLE` | com/example/security/exception/SecurityErrorCodes.java |  |  |
-| PERMISSIONS_NOT_FOUND | `PERMISSIONS_NOT_FOUND` | com/example/security/exception/SecurityErrorCodes.java | NOT_FOUND | NOT_FOUND |
-| INVALID_PERMISSION_TYPE | `INVALID_PERMISSION_TYPE` | com/example/security/exception/SecurityErrorCodes.java | BAD_REQUEST | BAD_REQUEST |
-| PAGE_NOT_FOUND | `PAGE_NOT_FOUND` | com/example/security/exception/SecurityErrorCodes.java | NOT_FOUND | NOT_FOUND |
-| PAGE_NOT_FOUND_BY_CODE | `PAGE_NOT_FOUND_BY_CODE` | com/example/security/exception/SecurityErrorCodes.java | NOT_FOUND | NOT_FOUND |
-| DUPLICATE_PAGE_CODE | `DUPLICATE_PAGE_CODE` | com/example/security/exception/SecurityErrorCodes.java | ALREADY_EXISTS | CONFLICT |
-| DUPLICATE_ROUTE | `DUPLICATE_ROUTE` | com/example/security/exception/SecurityErrorCodes.java | ALREADY_EXISTS | CONFLICT |
-| INVALID_PAGE_CODE_FORMAT | `INVALID_PAGE_CODE_FORMAT` | com/example/security/exception/SecurityErrorCodes.java | BAD_REQUEST | BAD_REQUEST |
-| INVALID_PAGE_CODE_LENGTH | `INVALID_PAGE_CODE_LENGTH` | com/example/security/exception/SecurityErrorCodes.java | BAD_REQUEST | BAD_REQUEST |
-| INVALID_ROUTE_FORMAT | `INVALID_ROUTE_FORMAT` | com/example/security/exception/SecurityErrorCodes.java | BAD_REQUEST | BAD_REQUEST |
-| PARENT_PAGE_NOT_FOUND | `PARENT_PAGE_NOT_FOUND` | com/example/security/exception/SecurityErrorCodes.java | NOT_FOUND | NOT_FOUND |
-| INVALID_PARENT_PAGE | `INVALID_PARENT_PAGE` | com/example/security/exception/SecurityErrorCodes.java | BAD_REQUEST | BAD_REQUEST |
-| CANNOT_REMOVE_VIEW_PERMISSION | `CANNOT_REMOVE_VIEW_PERMISSION` | com/example/security/exception/SecurityErrorCodes.java |  |  |
-| PAGE_ALREADY_ASSIGNED_TO_ROLE | `PAGE_ALREADY_ASSIGNED_TO_ROLE` | com/example/security/exception/SecurityErrorCodes.java | ALREADY_EXISTS | CONFLICT |
-| PAGE_NOT_ASSIGNED_TO_ROLE | `PAGE_NOT_ASSIGNED_TO_ROLE` | com/example/security/exception/SecurityErrorCodes.java | NOT_FOUND | NOT_FOUND |
-| NO_REFRESH_COOKIE | `NO_REFRESH_COOKIE` | com/example/security/exception/SecurityErrorCodes.java | UNAUTHORIZED | UNAUTHORIZED |
-| REFRESH_REVOKED | `REFRESH_REVOKED` | com/example/security/exception/SecurityErrorCodes.java | UNAUTHORIZED | UNAUTHORIZED |
-| REFRESH_EXPIRED_OR_REVOKED | `REFRESH_EXPIRED_OR_REVOKED` | com/example/security/exception/SecurityErrorCodes.java | UNAUTHORIZED | UNAUTHORIZED |
-| RATE_LIMIT_LOGIN_EXCEEDED | `RATE_LIMIT_LOGIN_EXCEEDED` | com/example/security/exception/SecurityErrorCodes.java |  |  |
-| INVALID_OPERATION | `INVALID_OPERATION` | com/example/security/exception/SecurityErrorCodes.java | BAD_REQUEST | BAD_REQUEST |
-| NO_PERMISSIONS_TO_COPY | `NO_PERMISSIONS_TO_COPY` | com/example/security/exception/SecurityErrorCodes.java | CONFLICT |  |
-| DB_CONSTRAINT_VIOLATION | `DB_CONSTRAINT_VIOLATION` | com/example/security/exception/SecurityErrorCodes.java |  |  |
-| SEC_USER_PROFILE_NOT_FOUND | `SEC_USER_PROFILE_NOT_FOUND` | com/example/security/exception/SecurityErrorCodes.java | NOT_FOUND | NOT_FOUND |
-| SEC_USER_PROFILE_ALREADY_EXISTS | `SEC_USER_PROFILE_ALREADY_EXISTS` | com/example/security/exception/SecurityErrorCodes.java | ALREADY_EXISTS | CONFLICT |
-| SEC_ROLE_BRANCH_NOT_FOUND | `SEC_ROLE_BRANCH_NOT_FOUND` | com/example/security/exception/SecurityErrorCodes.java | NOT_FOUND | NOT_FOUND |
-| SEC_USER_PROFILE_BRANCH_INACTIVE | `SEC_USER_PROFILE_BRANCH_INACTIVE` | com/example/security/exception/SecurityErrorCodes.java | BAD_REQUEST | BAD_REQUEST |
-| SEC_ROLE_BRANCH_DATA_ACCESS_LEVEL_REQUIRED | `SEC_ROLE_BRANCH_DATA_ACCESS_LEVEL_REQUIRED` | com/example/security/exception/SecurityErrorCodes.java | BAD_REQUEST | BAD_REQUEST |
-| SEC_ROLE_BRANCH_DUPLICATE_ASSIGNMENT | `SEC_ROLE_BRANCH_DUPLICATE_ASSIGNMENT` | com/example/security/exception/SecurityErrorCodes.java | CONFLICT |  |
-| ACTIVATION_TOKEN_INVALID_OR_EXPIRED | `ACTIVATION_TOKEN_INVALID_OR_EXPIRED` | com/example/security/exception/SecurityErrorCodes.java | BAD_REQUEST | BAD_REQUEST |
-| TOKEN_ALREADY_USED | `TOKEN_ALREADY_USED` | com/example/security/exception/SecurityErrorCodes.java | BAD_REQUEST | BAD_REQUEST |
-| RESET_TOKEN_INVALID_OR_EXPIRED | `RESET_TOKEN_INVALID_OR_EXPIRED` | com/example/security/exception/SecurityErrorCodes.java | BAD_REQUEST | BAD_REQUEST |
-| SIGNUP_USERNAME_ALREADY_EXISTS | `SIGNUP_USERNAME_ALREADY_EXISTS` | com/example/security/exception/SecurityErrorCodes.java | ALREADY_EXISTS | CONFLICT |
-| SIGNUP_EMAIL_ALREADY_EXISTS | `SIGNUP_EMAIL_ALREADY_EXISTS` | com/example/security/exception/SecurityErrorCodes.java | ALREADY_EXISTS | CONFLICT |
-| VALIDATION_ERROR | `VALIDATION_ERROR` | com/example/erp/common/web/GlobalExceptionHandler.java |  | BAD_REQUEST |
-| BINDING_ERROR | `BINDING_ERROR` | com/example/erp/common/web/GlobalExceptionHandler.java |  | BAD_REQUEST |
-| INVALID_JSON | `INVALID_JSON` | com/example/erp/common/web/GlobalExceptionHandler.java |  | BAD_REQUEST |
-| MISSING_PARAMETER | `MISSING_PARAMETER` | com/example/erp/common/web/GlobalExceptionHandler.java |  | BAD_REQUEST |
-| TYPE_MISMATCH | `TYPE_MISMATCH` | com/example/erp/common/web/GlobalExceptionHandler.java |  | BAD_REQUEST |
-| BAD_REQUEST | `BAD_REQUEST` | com/example/erp/common/web/GlobalExceptionHandler.java |  | BAD_REQUEST |
-| NOT_FOUND | `NOT_FOUND` | com/example/erp/common/web/GlobalExceptionHandler.java |  | NOT_FOUND |
-| ENDPOINT_NOT_FOUND | `ENDPOINT_NOT_FOUND` | com/example/erp/common/web/GlobalExceptionHandler.java |  | NOT_FOUND |
-| USER_NOT_FOUND | `USER_NOT_FOUND` | com/example/erp/common/web/GlobalExceptionHandler.java |  | NOT_FOUND |
-| UNAUTHORIZED | `UNAUTHORIZED` | com/example/erp/common/web/GlobalExceptionHandler.java |  | UNAUTHORIZED |
-| INVALID_CREDENTIALS | `INVALID_CREDENTIALS` | com/example/erp/common/web/GlobalExceptionHandler.java |  | UNAUTHORIZED |
-| FORBIDDEN | `FORBIDDEN` | com/example/erp/common/web/GlobalExceptionHandler.java |  | FORBIDDEN |
-| METHOD_NOT_ALLOWED | `METHOD_NOT_ALLOWED` | com/example/erp/common/web/GlobalExceptionHandler.java |  | METHOD_NOT_ALLOWED |
-| UNSUPPORTED_MEDIA_TYPE | `UNSUPPORTED_MEDIA_TYPE` | com/example/erp/common/web/GlobalExceptionHandler.java |  | UNSUPPORTED_MEDIA_TYPE |
-| DB_CONSTRAINT_VIOLATION | `DB_CONSTRAINT_VIOLATION` | com/example/erp/common/web/GlobalExceptionHandler.java |  | CONFLICT |
-| DB_ERROR | `DB_ERROR` | com/example/erp/common/web/GlobalExceptionHandler.java |  | INTERNAL_SERVER_ERROR |
-| INTERNAL_ERROR | `INTERNAL_ERROR` | com/example/erp/common/web/GlobalExceptionHandler.java |  | INTERNAL_SERVER_ERROR |
+| USER_NOT_FOUND | `USER_NOT_FOUND` | exception/SecurityErrorCodes.java | NOT_FOUND | NOT_FOUND |
+| USER_ENTITY_NOT_FOUND | `USER_ENTITY_NOT_FOUND` | exception/SecurityErrorCodes.java | NOT_FOUND | NOT_FOUND |
+| USERNAME_ALREADY_EXISTS | `USERNAME_ALREADY_EXISTS` | exception/SecurityErrorCodes.java | ALREADY_EXISTS | CONFLICT |
+| USER_HAS_ACTIVE_REFRESH_TOKENS | `USER_HAS_ACTIVE_REFRESH_TOKENS` | exception/SecurityErrorCodes.java | CONFLICT |  |
+| USER_HAS_DEPENDENCIES | `USER_HAS_DEPENDENCIES` | exception/SecurityErrorCodes.java |  |  |
+| INVALID_CREDENTIALS | `INVALID_CREDENTIALS` | exception/SecurityErrorCodes.java |  |  |
+| ROLE_NOT_FOUND | `ROLE_NOT_FOUND` | exception/SecurityErrorCodes.java | NOT_FOUND | NOT_FOUND |
+| ROLE_ALREADY_EXISTS | `ROLE_ALREADY_EXISTS` | exception/SecurityErrorCodes.java |  |  |
+| DUPLICATE_ROLE_CODE | `DUPLICATE_ROLE_CODE` | exception/SecurityErrorCodes.java | ALREADY_EXISTS | CONFLICT |
+| DUPLICATE_ROLE_NAME | `DUPLICATE_ROLE_NAME` | exception/SecurityErrorCodes.java | ALREADY_EXISTS | CONFLICT |
+| ROLE_IN_USE | `ROLE_IN_USE` | exception/SecurityErrorCodes.java | CONFLICT |  |
+| PERMISSION_NOT_FOUND | `PERMISSION_NOT_FOUND` | exception/SecurityErrorCodes.java | NOT_FOUND | NOT_FOUND |
+| PERMISSION_ALREADY_EXISTS | `PERMISSION_ALREADY_EXISTS` | exception/SecurityErrorCodes.java | ALREADY_EXISTS | CONFLICT |
+| PERMISSION_NOT_ASSIGNED_TO_ROLE | `PERMISSION_NOT_ASSIGNED_TO_ROLE` | exception/SecurityErrorCodes.java |  |  |
+| PERMISSIONS_NOT_FOUND | `PERMISSIONS_NOT_FOUND` | exception/SecurityErrorCodes.java | NOT_FOUND | NOT_FOUND |
+| INVALID_PERMISSION_TYPE | `INVALID_PERMISSION_TYPE` | exception/SecurityErrorCodes.java | BAD_REQUEST | BAD_REQUEST |
+| PAGE_NOT_FOUND | `PAGE_NOT_FOUND` | exception/SecurityErrorCodes.java | NOT_FOUND | NOT_FOUND |
+| PAGE_NOT_FOUND_BY_CODE | `PAGE_NOT_FOUND_BY_CODE` | exception/SecurityErrorCodes.java | NOT_FOUND | NOT_FOUND |
+| DUPLICATE_PAGE_CODE | `DUPLICATE_PAGE_CODE` | exception/SecurityErrorCodes.java | ALREADY_EXISTS | CONFLICT |
+| DUPLICATE_ROUTE | `DUPLICATE_ROUTE` | exception/SecurityErrorCodes.java | ALREADY_EXISTS | CONFLICT |
+| INVALID_PAGE_CODE_FORMAT | `INVALID_PAGE_CODE_FORMAT` | exception/SecurityErrorCodes.java | BAD_REQUEST | BAD_REQUEST |
+| INVALID_PAGE_CODE_LENGTH | `INVALID_PAGE_CODE_LENGTH` | exception/SecurityErrorCodes.java | BAD_REQUEST | BAD_REQUEST |
+| INVALID_ROUTE_FORMAT | `INVALID_ROUTE_FORMAT` | exception/SecurityErrorCodes.java | BAD_REQUEST | BAD_REQUEST |
+| PARENT_PAGE_NOT_FOUND | `PARENT_PAGE_NOT_FOUND` | exception/SecurityErrorCodes.java | NOT_FOUND | NOT_FOUND |
+| INVALID_PARENT_PAGE | `INVALID_PARENT_PAGE` | exception/SecurityErrorCodes.java | BAD_REQUEST | BAD_REQUEST |
+| CANNOT_REMOVE_VIEW_PERMISSION | `CANNOT_REMOVE_VIEW_PERMISSION` | exception/SecurityErrorCodes.java | BAD_REQUEST | BAD_REQUEST |
+| PAGE_ALREADY_ASSIGNED_TO_ROLE | `PAGE_ALREADY_ASSIGNED_TO_ROLE` | exception/SecurityErrorCodes.java | ALREADY_EXISTS | CONFLICT |
+| PAGE_NOT_ASSIGNED_TO_ROLE | `PAGE_NOT_ASSIGNED_TO_ROLE` | exception/SecurityErrorCodes.java | NOT_FOUND | NOT_FOUND |
+| NO_REFRESH_COOKIE | `NO_REFRESH_COOKIE` | exception/SecurityErrorCodes.java | UNAUTHORIZED | UNAUTHORIZED |
+| REFRESH_REVOKED | `REFRESH_REVOKED` | exception/SecurityErrorCodes.java | UNAUTHORIZED | UNAUTHORIZED |
+| REFRESH_EXPIRED_OR_REVOKED | `REFRESH_EXPIRED_OR_REVOKED` | exception/SecurityErrorCodes.java | UNAUTHORIZED | UNAUTHORIZED |
+| RATE_LIMIT_LOGIN_EXCEEDED | `RATE_LIMIT_LOGIN_EXCEEDED` | exception/SecurityErrorCodes.java |  |  |
+| INVALID_OPERATION | `INVALID_OPERATION` | exception/SecurityErrorCodes.java | BAD_REQUEST | BAD_REQUEST |
+| NO_PERMISSIONS_TO_COPY | `NO_PERMISSIONS_TO_COPY` | exception/SecurityErrorCodes.java | CONFLICT |  |
+| DB_CONSTRAINT_VIOLATION | `DB_CONSTRAINT_VIOLATION` | exception/SecurityErrorCodes.java |  |  |
+| SEC_USER_PROFILE_NOT_FOUND | `SEC_USER_PROFILE_NOT_FOUND` | exception/SecurityErrorCodes.java | NOT_FOUND | NOT_FOUND |
+| SEC_USER_PROFILE_ALREADY_EXISTS | `SEC_USER_PROFILE_ALREADY_EXISTS` | exception/SecurityErrorCodes.java | ALREADY_EXISTS | CONFLICT |
+| SEC_ROLE_BRANCH_NOT_FOUND | `SEC_ROLE_BRANCH_NOT_FOUND` | exception/SecurityErrorCodes.java | NOT_FOUND | NOT_FOUND |
+| SEC_USER_PROFILE_BRANCH_INACTIVE | `SEC_USER_PROFILE_BRANCH_INACTIVE` | exception/SecurityErrorCodes.java | BAD_REQUEST | BAD_REQUEST |
+| SEC_ROLE_BRANCH_DATA_ACCESS_LEVEL_REQUIRED | `SEC_ROLE_BRANCH_DATA_ACCESS_LEVEL_REQUIRED` | exception/SecurityErrorCodes.java | BAD_REQUEST | BAD_REQUEST |
+| SEC_ROLE_BRANCH_DUPLICATE_ASSIGNMENT | `SEC_ROLE_BRANCH_DUPLICATE_ASSIGNMENT` | exception/SecurityErrorCodes.java | CONFLICT |  |
+| ACTIVATION_TOKEN_INVALID_OR_EXPIRED | `ACTIVATION_TOKEN_INVALID_OR_EXPIRED` | exception/SecurityErrorCodes.java | BAD_REQUEST | BAD_REQUEST |
+| TOKEN_ALREADY_USED | `TOKEN_ALREADY_USED` | exception/SecurityErrorCodes.java | BAD_REQUEST | BAD_REQUEST |
+| RESET_TOKEN_INVALID_OR_EXPIRED | `RESET_TOKEN_INVALID_OR_EXPIRED` | exception/SecurityErrorCodes.java | BAD_REQUEST | BAD_REQUEST |
+| SIGNUP_USERNAME_ALREADY_EXISTS | `SIGNUP_USERNAME_ALREADY_EXISTS` | exception/SecurityErrorCodes.java | ALREADY_EXISTS | CONFLICT |
+| SIGNUP_EMAIL_ALREADY_EXISTS | `SIGNUP_EMAIL_ALREADY_EXISTS` | exception/SecurityErrorCodes.java | ALREADY_EXISTS | CONFLICT |
+| VALIDATION_ERROR | `VALIDATION_ERROR` | com/erp/common/web/GlobalExceptionHandler.java |  | BAD_REQUEST |
+| BINDING_ERROR | `BINDING_ERROR` | com/erp/common/web/GlobalExceptionHandler.java |  | BAD_REQUEST |
+| INVALID_JSON | `INVALID_JSON` | com/erp/common/web/GlobalExceptionHandler.java |  | BAD_REQUEST |
+| MISSING_PARAMETER | `MISSING_PARAMETER` | com/erp/common/web/GlobalExceptionHandler.java |  | BAD_REQUEST |
+| TYPE_MISMATCH | `TYPE_MISMATCH` | com/erp/common/web/GlobalExceptionHandler.java |  | BAD_REQUEST |
+| BAD_REQUEST | `BAD_REQUEST` | com/erp/common/web/GlobalExceptionHandler.java |  | BAD_REQUEST |
+| NOT_FOUND | `NOT_FOUND` | com/erp/common/web/GlobalExceptionHandler.java |  | NOT_FOUND |
+| ENDPOINT_NOT_FOUND | `ENDPOINT_NOT_FOUND` | com/erp/common/web/GlobalExceptionHandler.java |  | NOT_FOUND |
+| USER_NOT_FOUND | `USER_NOT_FOUND` | com/erp/common/web/GlobalExceptionHandler.java |  | NOT_FOUND |
+| UNAUTHORIZED | `UNAUTHORIZED` | com/erp/common/web/GlobalExceptionHandler.java |  | UNAUTHORIZED |
+| INVALID_CREDENTIALS | `INVALID_CREDENTIALS` | com/erp/common/web/GlobalExceptionHandler.java |  | UNAUTHORIZED |
+| FORBIDDEN | `FORBIDDEN` | com/erp/common/web/GlobalExceptionHandler.java |  | FORBIDDEN |
+| METHOD_NOT_ALLOWED | `METHOD_NOT_ALLOWED` | com/erp/common/web/GlobalExceptionHandler.java |  | METHOD_NOT_ALLOWED |
+| UNSUPPORTED_MEDIA_TYPE | `UNSUPPORTED_MEDIA_TYPE` | com/erp/common/web/GlobalExceptionHandler.java |  | UNSUPPORTED_MEDIA_TYPE |
+| DB_CONSTRAINT_VIOLATION | `DB_CONSTRAINT_VIOLATION` | com/erp/common/web/GlobalExceptionHandler.java |  | CONFLICT |
+| DB_ERROR | `DB_ERROR` | com/erp/common/web/GlobalExceptionHandler.java |  | INTERNAL_SERVER_ERROR |
+| INTERNAL_ERROR | `INTERNAL_ERROR` | com/erp/common/web/GlobalExceptionHandler.java |  | INTERNAL_SERVER_ERROR |
 
 ## Status -> HTTP Status Reference
 
@@ -253,10 +253,11 @@ Shared, module-independent mapping every business error code's `Status` resolves
 | GET | `/api/roles/{roleId}` | Get role by ID | [getRoleById](endpoints/role-access-control.md#get-apirolesroleid) |
 | PUT | `/api/roles/{roleId}` | Update role | [updateRole](endpoints/role-access-control.md#put-apirolesroleid) |
 | DELETE | `/api/roles/{roleId}` | Delete role | [deleteRole](endpoints/role-access-control.md#delete-apirolesroleid) |
-| PUT | `/api/roles/{roleId}/toggle-active` | Toggle role active status | [toggleRoleActive](endpoints/role-access-control.md#put-apirolesroleidtoggle-active) |
 | GET | `/api/roles/{roleId}/pages` | Get role pages matrix | [getRolePages](endpoints/role-access-control.md#get-apirolesroleidpages) |
 | PUT | `/api/roles/{roleId}/pages` | Bulk update role pages (replace mode) | [syncRolePages](endpoints/role-access-control.md#put-apirolesroleidpages) |
 | POST | `/api/roles/{roleId}/pages` | Add page to role | [addPageToRole](endpoints/role-access-control.md#post-apirolesroleidpages) |
+| PUT | `/api/roles/{roleId}/deactivate` | Deactivate role | [deactivateRole](endpoints/role-access-control.md#put-apirolesroleiddeactivate) |
+| PUT | `/api/roles/{roleId}/activate` | Activate role | [activateRole](endpoints/role-access-control.md#put-apirolesroleidactivate) |
 | POST | `/api/roles` | Create new role | [createRole](endpoints/role-access-control.md#post-apiroles) |
 | POST | `/api/roles/{roleId}/copy-from/{sourceRoleId}` | Copy page permissions from another role | [copyFromRole](endpoints/role-access-control.md#post-apirolesroleidcopy-fromsourceroleid) |
 | POST | `/api/roles/search` | Search roles | [searchRoles](endpoints/role-access-control.md#post-apirolessearch) |

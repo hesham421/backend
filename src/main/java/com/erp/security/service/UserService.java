@@ -139,7 +139,7 @@ public class UserService {
      * @return Page of UserDto matching the search criteria
      */
     @Transactional(readOnly = true)
-    @PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).USER_VIEW)")
+    @PreAuthorize("hasAnyAuthority(T(com.erp.security.constants.SecurityPermissions).USER_VIEW, 'INTERNAL_TRUSTED_CALLER')")
     public ServiceResult<Page<UserDto>> searchUsers(SearchRequest request) {
         // Build JPA Specification from filters
         Specification<UserAccount> spec = SpecBuilder.build(

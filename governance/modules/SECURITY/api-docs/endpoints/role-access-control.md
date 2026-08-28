@@ -6,10 +6,11 @@
 - [GET /api/roles/{roleId}](#get-apirolesroleid)
 - [PUT /api/roles/{roleId}](#put-apirolesroleid)
 - [DELETE /api/roles/{roleId}](#delete-apirolesroleid)
-- [PUT /api/roles/{roleId}/toggle-active](#put-apirolesroleidtoggle-active)
 - [GET /api/roles/{roleId}/pages](#get-apirolesroleidpages)
 - [PUT /api/roles/{roleId}/pages](#put-apirolesroleidpages)
 - [POST /api/roles/{roleId}/pages](#post-apirolesroleidpages)
+- [PUT /api/roles/{roleId}/deactivate](#put-apirolesroleiddeactivate)
+- [PUT /api/roles/{roleId}/activate](#put-apirolesroleidactivate)
 - [POST /api/roles](#post-apiroles)
 - [POST /api/roles/{roleId}/copy-from/{sourceRoleId}](#post-apirolesroleidcopy-fromsourceroleid)
 - [POST /api/roles/search](#post-apirolessearch)
@@ -184,74 +185,6 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 |---|---|---|
 | UNAUTHORIZED | UNAUTHORIZED | Endpoint requires authentication (global security requirement); GlobalExceptionHandler maps AuthenticationException to this status for every such endpoint. |
 | FORBIDDEN | FORBIDDEN | A specific permission check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
-
-## PUT /api/roles/{roleId}/toggle-active
-
-**Toggle role active status**
-
-Activate or deactivate a role. Pass {active: true} to activate, {active: false} to deactivate.
-
-Operation ID: `toggleRoleActive`
-
-**Authentication**
-
-Required (Bearer Authentication).
-
-**Required permission(s)**: ROLE_UPDATE (found on service:RoleService)
-
-### Path Parameters
-
-| Name | Type | Required | Description |
-|---|---|---|---|
-| roleId | integer | Yes |  |
-
-### Request Body
-
-Schema: `ToggleRoleActiveRequest` (application/json)
-
-| Field | Type | Required | Constraints | Description |
-|---|---|---|---|---|
-| active | boolean | Yes |  |  |
-
-### Response `200` — OK
-
-Shape: `RoleDto`
-
-| Field | Type | Required | Constraints | Description | Example |
-|---|---|---|---|---|---|
-| id | integer (int64) | No |  | Role ID | 1 |
-| roleCode | string | No |  | Unique role code (uppercase) | ADMIN |
-| roleName | string | No |  | Role display name | System Administrator |
-| description | string | No |  | Role description | Full system access role |
-| active | boolean | No |  | Active status | True |
-| createdAt | string (date-time) | No |  | Creation timestamp |  |
-| createdBy | string | No |  | Created by username |  |
-| updatedAt | string (date-time) | No |  | Last update timestamp |  |
-| updatedBy | string | No |  | Updated by username |  |
-
-**Response Example**
-
-_(partial — only fields with a documented example are shown)_
-
-```json
-{
-  "id": 1,
-  "roleCode": "ADMIN",
-  "roleName": "System Administrator",
-  "description": "Full system access role",
-  "active": "True"
-}
-```
-
-### Other Possible Responses
-
-Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
-
-| HTTP Status | Code | Why |
-|---|---|---|
-| UNAUTHORIZED | UNAUTHORIZED | Endpoint requires authentication (global security requirement); GlobalExceptionHandler maps AuthenticationException to this status for every such endpoint. |
-| FORBIDDEN | FORBIDDEN | A specific permission check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
-| BAD_REQUEST | INVALID_JSON | Endpoint accepts a JSON request body; GlobalExceptionHandler maps HttpMessageNotReadableException (malformed JSON) to this status for any @RequestBody, unconditionally. |
 
 ## GET /api/roles/{roleId}/pages
 
@@ -466,6 +399,118 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 | UNAUTHORIZED | UNAUTHORIZED | Endpoint requires authentication (global security requirement); GlobalExceptionHandler maps AuthenticationException to this status for every such endpoint. |
 | FORBIDDEN | FORBIDDEN | A specific permission check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
 | BAD_REQUEST | INVALID_JSON | Endpoint accepts a JSON request body; GlobalExceptionHandler maps HttpMessageNotReadableException (malformed JSON) to this status for any @RequestBody, unconditionally. |
+
+## PUT /api/roles/{roleId}/deactivate
+
+**Deactivate role**
+
+إلغاء تفعيل الدور
+
+Operation ID: `deactivateRole`
+
+**Authentication**
+
+Required (Bearer Authentication).
+
+### Path Parameters
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| roleId | integer | Yes |  |
+
+### Response `200` — OK
+
+Shape: `RoleDto`
+
+| Field | Type | Required | Constraints | Description | Example |
+|---|---|---|---|---|---|
+| id | integer (int64) | No |  | Role ID | 1 |
+| roleCode | string | No |  | Unique role code (uppercase) | ADMIN |
+| roleName | string | No |  | Role display name | System Administrator |
+| description | string | No |  | Role description | Full system access role |
+| active | boolean | No |  | Active status | True |
+| createdAt | string (date-time) | No |  | Creation timestamp |  |
+| createdBy | string | No |  | Created by username |  |
+| updatedAt | string (date-time) | No |  | Last update timestamp |  |
+| updatedBy | string | No |  | Updated by username |  |
+
+**Response Example**
+
+_(partial — only fields with a documented example are shown)_
+
+```json
+{
+  "id": 1,
+  "roleCode": "ADMIN",
+  "roleName": "System Administrator",
+  "description": "Full system access role",
+  "active": "True"
+}
+```
+
+### Other Possible Responses
+
+Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
+
+| HTTP Status | Code | Why |
+|---|---|---|
+| UNAUTHORIZED | UNAUTHORIZED | Endpoint requires authentication (global security requirement); GlobalExceptionHandler maps AuthenticationException to this status for every such endpoint. |
+
+## PUT /api/roles/{roleId}/activate
+
+**Activate role**
+
+تفعيل الدور
+
+Operation ID: `activateRole`
+
+**Authentication**
+
+Required (Bearer Authentication).
+
+### Path Parameters
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| roleId | integer | Yes |  |
+
+### Response `200` — OK
+
+Shape: `RoleDto`
+
+| Field | Type | Required | Constraints | Description | Example |
+|---|---|---|---|---|---|
+| id | integer (int64) | No |  | Role ID | 1 |
+| roleCode | string | No |  | Unique role code (uppercase) | ADMIN |
+| roleName | string | No |  | Role display name | System Administrator |
+| description | string | No |  | Role description | Full system access role |
+| active | boolean | No |  | Active status | True |
+| createdAt | string (date-time) | No |  | Creation timestamp |  |
+| createdBy | string | No |  | Created by username |  |
+| updatedAt | string (date-time) | No |  | Last update timestamp |  |
+| updatedBy | string | No |  | Updated by username |  |
+
+**Response Example**
+
+_(partial — only fields with a documented example are shown)_
+
+```json
+{
+  "id": 1,
+  "roleCode": "ADMIN",
+  "roleName": "System Administrator",
+  "description": "Full system access role",
+  "active": "True"
+}
+```
+
+### Other Possible Responses
+
+Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
+
+| HTTP Status | Code | Why |
+|---|---|---|
+| UNAUTHORIZED | UNAUTHORIZED | Endpoint requires authentication (global security requirement); GlobalExceptionHandler maps AuthenticationException to this status for every such endpoint. |
 
 ## POST /api/roles
 

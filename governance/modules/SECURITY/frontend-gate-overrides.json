@@ -6,6 +6,13 @@
       "gates_bypassed": ["BACKEND MODULE COMPLETE", "UI SHELL COMPLETE"],
       "reason": "i add api docs",
       "decided_by": "user (documented override)"
+    },
+    {
+      "date": "2026-08-28",
+      "module": "SECURITY",
+      "gates_bypassed": ["ALIGN-FE"],
+      "reason": "Backend live, sign-off just not recorded",
+      "decided_by": "user (documented override)"
     }
   ]
 }

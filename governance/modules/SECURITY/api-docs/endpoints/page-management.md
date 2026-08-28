@@ -258,7 +258,7 @@ Operation ID: `deactivatePage`
 
 Required (Bearer Authentication).
 
-**Required permission(s)**: PAGE_UPDATE (found on service:PageService)
+**Required permission(s)**: PAGE_DELETE (found on service:PageService)
 
 ### Path Parameters
 
@@ -344,6 +344,7 @@ Schema: `CreatePageRequest` (application/json)
 | displayOrder | integer (int32) | No |  | Display order for sorting | 10 |
 | active | boolean | No |  | Active status | True |
 | description | string | No | maxLength: 500 | Optional description |  |
+| suppressPermissionTypes | array<string> | No |  | Permission types to skip when auto-generating this page's CRUD permission records (e.g. a page with no delete action doesn't need a DELETE permission). VIEW cannot be suppressed. |  |
 
 **Request Example**
 

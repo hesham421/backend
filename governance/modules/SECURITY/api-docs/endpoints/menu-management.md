@@ -57,8 +57,6 @@ Operation ID: `getUserMenuById`
 
 Required (Bearer Authentication).
 
-**Required permission(s)**: USER_VIEW (found on controller)
-
 ### Path Parameters
 
 | Name | Type | Required | Description |
@@ -91,4 +89,3 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 | HTTP Status | Code | Why |
 |---|---|---|
 | UNAUTHORIZED | UNAUTHORIZED | Endpoint requires authentication (global security requirement); GlobalExceptionHandler maps AuthenticationException to this status for every such endpoint. |
-| FORBIDDEN | FORBIDDEN | A specific permission check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
