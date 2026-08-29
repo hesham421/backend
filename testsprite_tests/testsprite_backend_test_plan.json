@@ -1,0 +1,7 @@
+[
+  {
+    "id": "TC001",
+    "title": "test_login_with_valid_credentials_returns_access_token",
+    "description": "Verify that POST /api/auth/login with valid username and password returns HTTP 200 with a JSON response containing a nested data object with accessToken and expiresIn fields, and that the accessToken can be used to access protected endpoints successfully."
+  }
+]

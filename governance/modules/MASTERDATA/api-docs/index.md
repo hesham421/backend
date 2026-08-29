@@ -80,12 +80,12 @@ Schema: `PageMasterLookupResponse`
 | totalPages | integer (int32) | No |  |  |
 | totalElements | integer (int64) | No |  |  |
 | pageable | Pageable | No |  |  |
+| sort | Sortnull | No |  |  |
 | first | boolean | No |  |  |
 | last | boolean | No |  |  |
 | numberOfElements | integer (int32) | No |  |  |
 | size | integer (int32) | No |  |  |
 | number | integer (int32) | No |  |  |
-| sort | Sortnull | No |  |  |
 | empty | boolean | No |  |  |
 
 ## Pagination Constraints
@@ -102,37 +102,37 @@ Source: `com/erp/common/search/PageableBuilder.java`
 
 | Code | Value | Source | Status | HTTP Status |
 |---|---|---|---|---|
-| MASTER_LOOKUP_NOT_FOUND | `MASTER_LOOKUP_NOT_FOUND` | com/example/masterdata/exception/MasterDataErrorCodes.java | NOT_FOUND | NOT_FOUND |
-| MASTER_LOOKUP_ACCESS_DENIED | `MASTER_LOOKUP_ACCESS_DENIED` | com/example/masterdata/exception/MasterDataErrorCodes.java |  |  |
-| MASTER_LOOKUP_IN_USE | `MASTER_LOOKUP_IN_USE` | com/example/masterdata/exception/MasterDataErrorCodes.java |  |  |
-| MASTER_LOOKUP_KEY_DUPLICATE | `MASTER_LOOKUP_KEY_DUPLICATE` | com/example/masterdata/exception/MasterDataErrorCodes.java | ALREADY_EXISTS | CONFLICT |
-| MASTER_LOOKUP_ACTIVE_DETAILS_EXIST | `MASTER_LOOKUP_ACTIVE_DETAILS_EXIST` | com/example/masterdata/exception/MasterDataErrorCodes.java | CONFLICT |  |
-| MASTER_LOOKUP_DETAILS_EXIST | `MASTER_LOOKUP_DETAILS_EXIST` | com/example/masterdata/exception/MasterDataErrorCodes.java | CONFLICT |  |
-| MASTER_LOOKUP_FK_VIOLATION | `MASTER_LOOKUP_FK_VIOLATION` | com/example/masterdata/exception/MasterDataErrorCodes.java |  |  |
-| MASTER_LOOKUP_INACTIVE | `MASTER_LOOKUP_INACTIVE` | com/example/masterdata/exception/MasterDataErrorCodes.java |  |  |
-| LOOKUP_VALUE_INVALID | `LOOKUP_VALUE_INVALID` | com/example/masterdata/exception/MasterDataErrorCodes.java | BAD_REQUEST | BAD_REQUEST |
-| LOOKUP_DETAIL_NOT_FOUND | `LOOKUP_DETAIL_NOT_FOUND` | com/example/masterdata/exception/MasterDataErrorCodes.java | NOT_FOUND | NOT_FOUND |
-| LOOKUP_DETAIL_ACCESS_DENIED | `LOOKUP_DETAIL_ACCESS_DENIED` | com/example/masterdata/exception/MasterDataErrorCodes.java |  |  |
-| LOOKUP_DETAIL_CODE_DUPLICATE | `LOOKUP_DETAIL_CODE_DUPLICATE` | com/example/masterdata/exception/MasterDataErrorCodes.java | ALREADY_EXISTS | CONFLICT |
-| LOOKUP_DETAIL_IN_USE | `LOOKUP_DETAIL_IN_USE` | com/example/masterdata/exception/MasterDataErrorCodes.java |  |  |
-| LOOKUP_DETAIL_FK_VIOLATION | `LOOKUP_DETAIL_FK_VIOLATION` | com/example/masterdata/exception/MasterDataErrorCodes.java |  |  |
-| VALIDATION_ERROR | `VALIDATION_ERROR` | com/example/erp/common/web/GlobalExceptionHandler.java |  | BAD_REQUEST |
-| BINDING_ERROR | `BINDING_ERROR` | com/example/erp/common/web/GlobalExceptionHandler.java |  | BAD_REQUEST |
-| INVALID_JSON | `INVALID_JSON` | com/example/erp/common/web/GlobalExceptionHandler.java |  | BAD_REQUEST |
-| MISSING_PARAMETER | `MISSING_PARAMETER` | com/example/erp/common/web/GlobalExceptionHandler.java |  | BAD_REQUEST |
-| TYPE_MISMATCH | `TYPE_MISMATCH` | com/example/erp/common/web/GlobalExceptionHandler.java |  | BAD_REQUEST |
-| BAD_REQUEST | `BAD_REQUEST` | com/example/erp/common/web/GlobalExceptionHandler.java |  | BAD_REQUEST |
-| NOT_FOUND | `NOT_FOUND` | com/example/erp/common/web/GlobalExceptionHandler.java |  | NOT_FOUND |
-| ENDPOINT_NOT_FOUND | `ENDPOINT_NOT_FOUND` | com/example/erp/common/web/GlobalExceptionHandler.java |  | NOT_FOUND |
-| USER_NOT_FOUND | `USER_NOT_FOUND` | com/example/erp/common/web/GlobalExceptionHandler.java |  | NOT_FOUND |
-| UNAUTHORIZED | `UNAUTHORIZED` | com/example/erp/common/web/GlobalExceptionHandler.java |  | UNAUTHORIZED |
-| INVALID_CREDENTIALS | `INVALID_CREDENTIALS` | com/example/erp/common/web/GlobalExceptionHandler.java |  | UNAUTHORIZED |
-| FORBIDDEN | `FORBIDDEN` | com/example/erp/common/web/GlobalExceptionHandler.java |  | FORBIDDEN |
-| METHOD_NOT_ALLOWED | `METHOD_NOT_ALLOWED` | com/example/erp/common/web/GlobalExceptionHandler.java |  | METHOD_NOT_ALLOWED |
-| UNSUPPORTED_MEDIA_TYPE | `UNSUPPORTED_MEDIA_TYPE` | com/example/erp/common/web/GlobalExceptionHandler.java |  | UNSUPPORTED_MEDIA_TYPE |
-| DB_CONSTRAINT_VIOLATION | `DB_CONSTRAINT_VIOLATION` | com/example/erp/common/web/GlobalExceptionHandler.java |  | CONFLICT |
-| DB_ERROR | `DB_ERROR` | com/example/erp/common/web/GlobalExceptionHandler.java |  | INTERNAL_SERVER_ERROR |
-| INTERNAL_ERROR | `INTERNAL_ERROR` | com/example/erp/common/web/GlobalExceptionHandler.java |  | INTERNAL_SERVER_ERROR |
+| MASTER_LOOKUP_NOT_FOUND | `MASTER_LOOKUP_NOT_FOUND` | exception/MasterDataErrorCodes.java | NOT_FOUND | NOT_FOUND |
+| MASTER_LOOKUP_ACCESS_DENIED | `MASTER_LOOKUP_ACCESS_DENIED` | exception/MasterDataErrorCodes.java |  |  |
+| MASTER_LOOKUP_IN_USE | `MASTER_LOOKUP_IN_USE` | exception/MasterDataErrorCodes.java |  |  |
+| MASTER_LOOKUP_KEY_DUPLICATE | `MASTER_LOOKUP_KEY_DUPLICATE` | exception/MasterDataErrorCodes.java | ALREADY_EXISTS | CONFLICT |
+| MASTER_LOOKUP_ACTIVE_DETAILS_EXIST | `MASTER_LOOKUP_ACTIVE_DETAILS_EXIST` | exception/MasterDataErrorCodes.java | CONFLICT |  |
+| MASTER_LOOKUP_DETAILS_EXIST | `MASTER_LOOKUP_DETAILS_EXIST` | exception/MasterDataErrorCodes.java | CONFLICT |  |
+| MASTER_LOOKUP_FK_VIOLATION | `MASTER_LOOKUP_FK_VIOLATION` | exception/MasterDataErrorCodes.java |  |  |
+| MASTER_LOOKUP_INACTIVE | `MASTER_LOOKUP_INACTIVE` | exception/MasterDataErrorCodes.java |  |  |
+| LOOKUP_VALUE_INVALID | `LOOKUP_VALUE_INVALID` | exception/MasterDataErrorCodes.java | BAD_REQUEST | BAD_REQUEST |
+| LOOKUP_DETAIL_NOT_FOUND | `LOOKUP_DETAIL_NOT_FOUND` | exception/MasterDataErrorCodes.java | NOT_FOUND | NOT_FOUND |
+| LOOKUP_DETAIL_ACCESS_DENIED | `LOOKUP_DETAIL_ACCESS_DENIED` | exception/MasterDataErrorCodes.java |  |  |
+| LOOKUP_DETAIL_CODE_DUPLICATE | `LOOKUP_DETAIL_CODE_DUPLICATE` | exception/MasterDataErrorCodes.java | ALREADY_EXISTS | CONFLICT |
+| LOOKUP_DETAIL_IN_USE | `LOOKUP_DETAIL_IN_USE` | exception/MasterDataErrorCodes.java |  |  |
+| LOOKUP_DETAIL_FK_VIOLATION | `LOOKUP_DETAIL_FK_VIOLATION` | exception/MasterDataErrorCodes.java |  |  |
+| VALIDATION_ERROR | `VALIDATION_ERROR` | com/erp/common/web/GlobalExceptionHandler.java |  | BAD_REQUEST |
+| BINDING_ERROR | `BINDING_ERROR` | com/erp/common/web/GlobalExceptionHandler.java |  | BAD_REQUEST |
+| INVALID_JSON | `INVALID_JSON` | com/erp/common/web/GlobalExceptionHandler.java |  | BAD_REQUEST |
+| MISSING_PARAMETER | `MISSING_PARAMETER` | com/erp/common/web/GlobalExceptionHandler.java |  | BAD_REQUEST |
+| TYPE_MISMATCH | `TYPE_MISMATCH` | com/erp/common/web/GlobalExceptionHandler.java |  | BAD_REQUEST |
+| BAD_REQUEST | `BAD_REQUEST` | com/erp/common/web/GlobalExceptionHandler.java |  | BAD_REQUEST |
+| NOT_FOUND | `NOT_FOUND` | com/erp/common/web/GlobalExceptionHandler.java |  | NOT_FOUND |
+| ENDPOINT_NOT_FOUND | `ENDPOINT_NOT_FOUND` | com/erp/common/web/GlobalExceptionHandler.java |  | NOT_FOUND |
+| USER_NOT_FOUND | `USER_NOT_FOUND` | com/erp/common/web/GlobalExceptionHandler.java |  | NOT_FOUND |
+| UNAUTHORIZED | `UNAUTHORIZED` | com/erp/common/web/GlobalExceptionHandler.java |  | UNAUTHORIZED |
+| INVALID_CREDENTIALS | `INVALID_CREDENTIALS` | com/erp/common/web/GlobalExceptionHandler.java |  | UNAUTHORIZED |
+| FORBIDDEN | `FORBIDDEN` | com/erp/common/web/GlobalExceptionHandler.java |  | FORBIDDEN |
+| METHOD_NOT_ALLOWED | `METHOD_NOT_ALLOWED` | com/erp/common/web/GlobalExceptionHandler.java |  | METHOD_NOT_ALLOWED |
+| UNSUPPORTED_MEDIA_TYPE | `UNSUPPORTED_MEDIA_TYPE` | com/erp/common/web/GlobalExceptionHandler.java |  | UNSUPPORTED_MEDIA_TYPE |
+| DB_CONSTRAINT_VIOLATION | `DB_CONSTRAINT_VIOLATION` | com/erp/common/web/GlobalExceptionHandler.java |  | CONFLICT |
+| DB_ERROR | `DB_ERROR` | com/erp/common/web/GlobalExceptionHandler.java |  | INTERNAL_SERVER_ERROR |
+| INTERNAL_ERROR | `INTERNAL_ERROR` | com/erp/common/web/GlobalExceptionHandler.java |  | INTERNAL_SERVER_ERROR |
 
 ## Status -> HTTP Status Reference
 

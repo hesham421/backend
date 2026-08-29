@@ -2,6 +2,8 @@ package com.erp.masterdata.dto;
 
 import com.erp.common.dto.BaseSearchContractRequest;
 import com.erp.common.search.SearchRequest;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -23,8 +25,13 @@ public class LookupDetailSearchRequest extends BaseSearchContractRequest {
     private static final String MASTER_LOOKUP_ID_FIELD = "masterLookupId";
 
     /**
-     * Extract masterLookupId from filters (required for parent-child relationship)
+     * Extract masterLookupId from filters (required for parent-child relationship). Not a real
+     * request field — send it as a filter entry ({"field":"masterLookupId","operator":"EQUALS",
+     * "value":...}), not a top-level property; hidden from serialization/schema so it isn't
+     * mistaken for one.
      */
+    @JsonIgnore
+    @Schema(hidden = true)
     public Long getMasterLookupId() {
         List<ContractFilter> allFilters = getFilters();
         if (allFilters == null) {

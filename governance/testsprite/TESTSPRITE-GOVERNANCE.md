@@ -47,7 +47,7 @@ TestSprite twice without a governance step in between and `testsprite_tests/`
 accumulates multiple unrelated files all named `TC001_*`, `TC002_*`, etc.,
 from different runs, with no way to tell from the filename alone which ones
 still match the current `testsprite_backend_test_plan.json`. This exact
-situation was found and cleaned up on 2026-08-29 (see §5 below) — the rules
+situation was found and cleaned up on 2026-08-29 (see §6 below) — the rules
 in §2–§4 exist so it doesn't recur.
 
 ---
@@ -133,9 +133,11 @@ the same pass — don't leave newly-generated tests unclassifiable.
 
 **Never**:
 - Hand-edit a `.py` file already archived under
-  `governance/modules/<MOD>/testsprite/tests/` — it is generated output; if
-  the scenario needs to change, regenerate it through TestSprite and
-  re-archive, don't patch it by hand.
+  `governance/modules/<MOD>/testsprite/tests/` to change what scenario it
+  tests, or to make a genuinely new flow pass — that's what regenerating
+  through TestSprite is for. The one sanctioned exception — keeping an
+  existing test's assertions/payloads in sync after a real code change so
+  it keeps passing — is §5, not a loophole to rewrite scenarios by hand.
 - Leave a run's PRD/plan/report sitting at the root of `testsprite_tests/`
   once the run is closed out — it belongs in a dated `runs/` folder.
 - Invent a different folder shape than §2 — if this structure doesn't fit a
@@ -144,7 +146,47 @@ the same pass — don't leave newly-generated tests unclassifiable.
 
 ---
 
-## 5. 2026-08-29 — one-time cleanup (event log)
+## 5. Keeping archived tests in sync with code changes
+
+The whole point of §2's durable archive is that any test in it can be
+re-run at any time (`governance/testsprite/prompts/rerun-tests.md`) and
+still mean something. A backend change that quietly breaks an archived
+test's assumptions — without anyone touching the test — defeats that.
+
+**Before finishing any backend code change**, check whether it touches
+something an archived test exercises:
+
+1. Identify the module the change belongs to (per `master-registry.md` /
+   §3's endpoint table).
+2. Search that module's `governance/modules/<MOD>/testsprite/tests/*.py`
+   for the endpoint path, request/response field name, status code, or
+   error code you're changing (`grep -rl` for the path or field is enough
+   — these are small, flat, self-contained scripts).
+3. If nothing matches, there's nothing to do.
+4. If a test matches and your change alters what it asserts — a renamed
+   or restructured request/response field, a changed status code or
+   error-code string, a new required field, a moved/renamed endpoint, a
+   changed auth requirement — **update that test file's payload/assertions
+   in the same change**, minimally, to match the new contract. This is a
+   direct edit to the archived `.py` file — allowed specifically for this
+   case, unlike the general "never hand-edit" rule in §4.
+5. Re-run the updated test (via `rerun-tests.md`, scoped to that file or
+   module) against the changed code before considering the code change
+   done. A patched-but-never-executed test is not verified.
+6. If the change is big enough that patching would mean rewriting the
+   scenario's actual flow (not just updated values) — e.g. the endpoint's
+   purpose changed, a multi-step flow gained/lost a step — prefer
+   regenerating that scenario through TestSprite (`start-tests.md`) over
+   hand-authoring a new flow. Say so instead of forcing a hand patch.
+
+Never ship a backend change that leaves an archived test asserting on a
+contract that no longer exists — either fix the test in the same change or
+flag it explicitly as a known, intentional break for the human to resolve.
+Silently leaving it to fail on the next re-run is not acceptable.
+
+---
+
+## 6. 2026-08-29 — one-time cleanup (event log)
 
 On this date, `backend/testsprite_tests/` held the combined, unarchived
 output of at least two separate runs (files dated 2026-08-25 and
@@ -170,11 +212,13 @@ this cleanup is never needed again.
 
 ---
 
-## 6. Related
+## 7. Related
 
-- Ready prompts: `governance/testsprite/prompts/start-tests.md` (fresh run)
-  and `governance/testsprite/prompts/rerun-tests.md` (re-execute already
-  generated tests, no regeneration).
+- Ready prompts: `governance/testsprite/prompts/start-tests.md` (fresh
+  run), `governance/testsprite/prompts/rerun-tests.md` (re-execute already
+  generated tests, no regeneration), and
+  `governance/testsprite/prompts/fix-bugs.md` (diagnose → fix → re-run
+  loop for failures reported by either of the above, per §5's sync rule).
 - Module ownership authority: `governance/master-registry.md`.
 - Routing table cross-reference: `governance/GOVERNANCE-RULES.md`'s
   "Governance Content Map".

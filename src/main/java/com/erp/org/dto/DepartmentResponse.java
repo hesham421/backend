@@ -31,6 +31,9 @@ public class DepartmentResponse {
     @Schema(description = "Parent Branch ID - معرف الفرع الأب")
     private Long branchFk;
 
+    @Schema(description = "Parent Branch business code - رمز الفرع الأب")
+    private String branchCode;
+
     @Schema(description = "Parent Department ID — null for a root node - معرف القسم الأب")
     private Long parentDepartmentFk;
 

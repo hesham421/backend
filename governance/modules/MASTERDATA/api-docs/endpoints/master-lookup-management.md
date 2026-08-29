@@ -295,6 +295,8 @@ Operation ID: `getDetailById`
 
 Required (Bearer Authentication).
 
+**Required permission(s)**: MASTER_LOOKUP_VIEW (found on service:LookupDetailService)
+
 ### Path Parameters
 
 | Name | Type | Required | Description |
@@ -350,6 +352,7 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 | HTTP Status | Code | Why |
 |---|---|---|
 | UNAUTHORIZED | UNAUTHORIZED | Endpoint requires authentication (global security requirement); GlobalExceptionHandler maps AuthenticationException to this status for every such endpoint. |
+| FORBIDDEN | FORBIDDEN | A specific permission check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
 
 ## PUT /api/masterdata/master-lookups/details/{id}
 
@@ -362,6 +365,8 @@ Operation ID: `updateDetail`
 **Authentication**
 
 Required (Bearer Authentication).
+
+**Required permission(s)**: MASTER_LOOKUP_UPDATE (found on service:LookupDetailService)
 
 ### Path Parameters
 
@@ -440,6 +445,7 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 | HTTP Status | Code | Why |
 |---|---|---|
 | UNAUTHORIZED | UNAUTHORIZED | Endpoint requires authentication (global security requirement); GlobalExceptionHandler maps AuthenticationException to this status for every such endpoint. |
+| FORBIDDEN | FORBIDDEN | A specific permission check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
 | BAD_REQUEST | INVALID_JSON | Endpoint accepts a JSON request body; GlobalExceptionHandler maps HttpMessageNotReadableException (malformed JSON) to this status for any @RequestBody, unconditionally. |
 
 ## DELETE /api/masterdata/master-lookups/details/{id}
@@ -453,6 +459,8 @@ Operation ID: `deleteDetail`
 **Authentication**
 
 Required (Bearer Authentication).
+
+**Required permission(s)**: MASTER_LOOKUP_DELETE (found on service:LookupDetailService)
 
 ### Path Parameters
 
@@ -469,6 +477,7 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 | HTTP Status | Code | Why |
 |---|---|---|
 | UNAUTHORIZED | UNAUTHORIZED | Endpoint requires authentication (global security requirement); GlobalExceptionHandler maps AuthenticationException to this status for every such endpoint. |
+| FORBIDDEN | FORBIDDEN | A specific permission check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
 
 ## PUT /api/masterdata/master-lookups/details/{id}/toggle-active
 
@@ -481,6 +490,8 @@ Operation ID: `toggleDetailActive`
 **Authentication**
 
 Required (Bearer Authentication).
+
+**Required permission(s)**: MASTER_LOOKUP_UPDATE (found on service:LookupDetailService)
 
 ### Path Parameters
 
@@ -553,6 +564,7 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 | HTTP Status | Code | Why |
 |---|---|---|
 | UNAUTHORIZED | UNAUTHORIZED | Endpoint requires authentication (global security requirement); GlobalExceptionHandler maps AuthenticationException to this status for every such endpoint. |
+| FORBIDDEN | FORBIDDEN | A specific permission check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
 | BAD_REQUEST | INVALID_JSON | Endpoint accepts a JSON request body; GlobalExceptionHandler maps HttpMessageNotReadableException (malformed JSON) to this status for any @RequestBody, unconditionally. |
 
 ## POST /api/masterdata/master-lookups
@@ -593,7 +605,7 @@ Schema: `MasterLookupCreateRequest` (application/json)
 }
 ```
 
-### Response `200` — OK
+### Response `201` — Created
 
 Shape: `MasterLookupResponse`
 
@@ -727,6 +739,8 @@ Operation ID: `createDetail`
 
 Required (Bearer Authentication).
 
+**Required permission(s)**: MASTER_LOOKUP_CREATE (found on service:LookupDetailService)
+
 ### Request Body
 
 Schema: `LookupDetailCreateRequest` (application/json)
@@ -755,7 +769,7 @@ Schema: `LookupDetailCreateRequest` (application/json)
 }
 ```
 
-### Response `200` — OK
+### Response `201` — Created
 
 Shape: `LookupDetailResponse`
 
@@ -804,6 +818,7 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 | HTTP Status | Code | Why |
 |---|---|---|
 | UNAUTHORIZED | UNAUTHORIZED | Endpoint requires authentication (global security requirement); GlobalExceptionHandler maps AuthenticationException to this status for every such endpoint. |
+| FORBIDDEN | FORBIDDEN | A specific permission check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
 | BAD_REQUEST | INVALID_JSON | Endpoint accepts a JSON request body; GlobalExceptionHandler maps HttpMessageNotReadableException (malformed JSON) to this status for any @RequestBody, unconditionally. |
 
 ## POST /api/masterdata/master-lookups/details/search
@@ -817,6 +832,8 @@ Operation ID: `searchDetails`
 **Authentication**
 
 Required (Bearer Authentication).
+
+**Required permission(s)**: MASTER_LOOKUP_VIEW (found on service:LookupDetailService)
 
 ### Request Body
 
@@ -833,7 +850,6 @@ Schema: `LookupDetailSearchRequest` (application/json)
 | sorts[].direction | string | No |  |  |
 | page | integer (int32) | No |  |  |
 | size | integer (int32) | No |  |  |
-| masterLookupId | integer (int64) | No |  |  |
 
 ### Response `200` — OK
 
@@ -884,6 +900,7 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 | HTTP Status | Code | Why |
 |---|---|---|
 | UNAUTHORIZED | UNAUTHORIZED | Endpoint requires authentication (global security requirement); GlobalExceptionHandler maps AuthenticationException to this status for every such endpoint. |
+| FORBIDDEN | FORBIDDEN | A specific permission check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
 | BAD_REQUEST | INVALID_JSON | Endpoint accepts a JSON request body; GlobalExceptionHandler maps HttpMessageNotReadableException (malformed JSON) to this status for any @RequestBody, unconditionally. |
 
 ## GET /api/masterdata/master-lookups/{id}/usage
@@ -953,6 +970,8 @@ Operation ID: `getDetailUsage`
 
 Required (Bearer Authentication).
 
+**Required permission(s)**: MASTER_LOOKUP_VIEW (found on service:LookupDetailService)
+
 ### Path Parameters
 
 | Name | Type | Required | Description |
@@ -991,6 +1010,7 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 | HTTP Status | Code | Why |
 |---|---|---|
 | UNAUTHORIZED | UNAUTHORIZED | Endpoint requires authentication (global security requirement); GlobalExceptionHandler maps AuthenticationException to this status for every such endpoint. |
+| FORBIDDEN | FORBIDDEN | A specific permission check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
 
 ## GET /api/masterdata/master-lookups/details/options/{lookupKey}
 
@@ -1003,6 +1023,8 @@ Operation ID: `getDetailOptions`
 **Authentication**
 
 Required (Bearer Authentication).
+
+**Required permission(s)**: MASTER_LOOKUP_VIEW (found on service:LookupDetailService)
 
 ### Path Parameters
 
@@ -1049,3 +1071,4 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 | HTTP Status | Code | Why |
 |---|---|---|
 | UNAUTHORIZED | UNAUTHORIZED | Endpoint requires authentication (global security requirement); GlobalExceptionHandler maps AuthenticationException to this status for every such endpoint. |
+| FORBIDDEN | FORBIDDEN | A specific permission check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |

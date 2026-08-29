@@ -51,6 +51,7 @@ public class DepartmentMapper {
                 .nameAr(entity.getNameAr())
                 .nameEn(entity.getNameEn())
                 .branchFk(branch != null ? branch.getId() : null)
+                .branchCode(branch != null ? branch.getBranchCode() : null)
                 .parentDepartmentFk(parent != null ? parent.getId() : null)
                 .nodeTypeId(entity.getNodeTypeId())
                 .isActive(Boolean.TRUE.equals(entity.getIsActiveFl()))

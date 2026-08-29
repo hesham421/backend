@@ -1,5 +1,6 @@
 package com.erp.notification.service;
 
+import com.erp.common.security.InternalCaller;
 import com.erp.notification.channel.ChannelSender;
 import com.erp.notification.entity.NotificationLog;
 import com.erp.notification.repository.NotificationLogRepository;
@@ -14,6 +15,15 @@ import static com.erp.notification.config.NotificationAsyncConfig.DISPATCH_EXECU
  * Post-persist dispatch, run off the request thread via {@code @Async} — a distinct bean since
  * {@code @Async} only works via Spring's proxy on cross-bean calls. {@link #dispatchAsync}
  * deliberately carries no {@code @PreAuthorize}: it continues work already authorized at ingress.
+ *
+ * <p>"Ingress" context is only ever propagated, never guaranteed present: {@code
+ * NotificationAsyncConfig}'s task decorator carries over whatever {@code SecurityContext} existed
+ * when the notification was queued, but public/unauthenticated endpoints (forgot-password, signup
+ * activation) queue with an empty context. {@link ChannelSender#send} reaches into {@code
+ * SecurityUserApi -> UserService.searchUsers()}, which is {@code @PreAuthorize}-gated — with no
+ * real principal and no fallback, that lookup was silently denied and logged as "no email on
+ * file" for every notification triggered by an unauthenticated flow. Same fix as {@link
+ * FailedNotificationSweepScheduler#retryOne}: wrap the dispatch in {@link InternalCaller}.
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -34,7 +44,7 @@ public class NotificationDispatchService {
             // CHANNEL_DISABLED at persist time, or the row was removed/changed concurrently.
             return;
         }
-        dispatchWithRetry(logEntry);
+        InternalCaller.run(() -> dispatchWithRetry(logEntry));
     }
 
     /**

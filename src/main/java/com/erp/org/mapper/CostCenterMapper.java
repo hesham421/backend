@@ -55,6 +55,7 @@ public class CostCenterMapper {
                 .nameAr(entity.getNameAr())
                 .nameEn(entity.getNameEn())
                 .branchFk(branch != null ? branch.getId() : null)
+                .branchCode(branch != null ? branch.getBranchCode() : null)
                 .parentCostCenterFk(parent != null ? parent.getId() : null)
                 .nodeTypeId(entity.getNodeTypeId())
                 .costCenterTypeId(entity.getCostCenterTypeId())

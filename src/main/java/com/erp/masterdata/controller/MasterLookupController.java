@@ -35,6 +35,7 @@ public class MasterLookupController {
 
     @PostMapping
     @Operation(summary = "Create Master Lookup", description = "إنشاء نوع قائمة مرجعية جديد")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Created")
     public ResponseEntity<ApiResponse<MasterLookupResponse>> create(@Valid @RequestBody MasterLookupCreateRequest request) {
         ServiceResult<MasterLookupResponse> result = masterLookupService.create(request);
         return operationCode.craftResponse(result);
@@ -103,6 +104,7 @@ public class MasterLookupController {
 
     @PostMapping("/details")
     @Operation(summary = "Create Lookup Detail", description = "إنشاء قيمة مرجعية جديدة")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Created")
     public ResponseEntity<ApiResponse<LookupDetailResponse>> createDetail(@Valid @RequestBody LookupDetailCreateRequest request) {
         ServiceResult<LookupDetailResponse> result = lookupDetailService.create (request);
         return operationCode.craftResponse(result);

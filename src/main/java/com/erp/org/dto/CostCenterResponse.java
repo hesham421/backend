@@ -31,6 +31,9 @@ public class CostCenterResponse {
     @Schema(description = "Parent Branch ID - معرف الفرع الأب")
     private Long branchFk;
 
+    @Schema(description = "Parent Branch business code - رمز الفرع الأب")
+    private String branchCode;
+
     @Schema(description = "Parent Cost Center ID — null for a root node - معرف مركز التكلفة الأب")
     private Long parentCostCenterFk;
 

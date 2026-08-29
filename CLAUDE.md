@@ -74,7 +74,7 @@ in this repo needs lives inside `backend/governance/`.
 | SECURITY module | `governance/modules/SECURITY/` |
 | Reporting / non-impacting markdown (see below) | `governance/project-artifacts/` |
 | TestSprite mechanism, folder rules, module classification | `governance/testsprite/TESTSPRITE-GOVERNANCE.md` |
-| TestSprite ready prompts (start / re-run) | `governance/testsprite/prompts/` |
+| TestSprite ready prompts (start / re-run / fix-bugs) | `governance/testsprite/prompts/` |
 | TestSprite durable per-module test archive | `governance/modules/[MODULE]/testsprite/tests/` |
 | TestSprite dated run bundles (PRD + plan + report) | `governance/testsprite/runs/<date>-backend/` |
 
@@ -356,6 +356,7 @@ ownership table below, it almost certainly belongs in
 - **About to edit `governance-tools/*.py` or `.claude/commands/generate-module-setup.md`?** → These are backend-only; edit them in `backend/governance/` only. Do not assume a change here needs mirroring into `frontend/governance/` — its tooling is a separate, independently maintained copy.
 - **About to write a report, investigation note, or audit writeup?** → `governance/project-artifacts/`. Never the root of `governance/`, never inside `modules/`.
 - **About to run TestSprite, or file a TestSprite-generated test?** → Read `governance/testsprite/TESTSPRITE-GOVERNANCE.md` first. Generated `.py` files are archived per-module under `governance/modules/[MODULE]/testsprite/tests/`, never left sitting in root `testsprite_tests/` past the end of the run.
+- **About to change backend code that an archived TestSprite test already covers** (endpoint path, request/response fields, status/error codes, auth requirements)? → Before calling the change done, check `governance/modules/[MODULE]/testsprite/tests/` for a test exercising it and update that test's payload/assertions to match — don't leave it silently broken for the next re-run. Full procedure and the one sanctioned exception to "never hand-edit a generated test" in `governance/testsprite/TESTSPRITE-GOVERNANCE.md` §5.
 - **Found yourself wanting to copy a NEW file from `backend/` into `frontend/` (or vice versa) that isn't already an established dual-copy pattern (the Playwright MCP server)?** → STOP. This requires an explicit human decision, not silent duplication. Ask first.
 - **About to regenerate frontend package content (`packages/frontend-execution/`, `packages/frontend-test/`) from this repo?** → Not possible by design. `agent3_splitter.py` in this repo only ever knows the backend and only runs meaningfully against this repo's own artifacts — there's nothing here to regenerate frontend content from.
 - **About to write to `governance-shared/` or initialize a submodule there?** → Forbidden until a separate, explicit human decision authorizes it.

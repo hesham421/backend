@@ -21,9 +21,18 @@ inside the method body, matched back to a `private final X xxxService;`
 field) and check the same-named method on that service class.
 
 This is a heuristic over source text (regex-based), not a real Java parser.
-It only works because this codebase consistently uses one delegate call per
-controller method under the same method name. If it can't confidently
-resolve a permission, it returns nothing — never guesses.
+The common case is one delegate call per controller method under the same
+method name (e.g. `MasterLookupController.create` -> `MasterLookupService.
+create`), tried first. Some controllers in this codebase legitimately use a
+differently-named delegate instead — e.g. `MasterLookupController.
+createDetail` calls `LookupDetailService.create`, not `.createDetail` — so a
+same-name-only match would silently drop the permission for every one of
+those endpoints. As a fallback, when exactly one call is made against one of
+the controller's own `private final XxxService` fields (matched by type name
+ending in "Service", the convention every service field in this codebase
+follows), that call is treated as the delegate regardless of its method name.
+If more than one such call exists (genuine ambiguity) or none does, it
+returns nothing — never guesses.
 """
 
 import re
@@ -33,6 +42,7 @@ from typing import Optional
 PREAUTH_RE = re.compile(r'@(?:PreAuthorize|Secured)\s*\(\s*"([^"]*)"\s*\)')
 PERMISSION_CONST_RE = re.compile(r"SecurityPermissions\)\.([A-Z0-9_]+)")
 FIELD_DECL_TEMPLATE = r"private\s+final\s+(\w+)\s+{name}\s*;"
+SERVICE_FIELD_DECL_RE = re.compile(r"private\s+final\s+(\w+Service)\s+(\w+)\s*;")
 
 CLASS_REQUEST_MAPPING_RE = re.compile(r'@RequestMapping\(\s*"([^"]*)"\s*\)')
 MAPPING_ANNOTATION_RE = re.compile(
@@ -137,15 +147,29 @@ def _method_body_span(lines: list[str], decl_index: int) -> tuple[int, int]:
     return start, len(lines) - 1
 
 
-def _find_delegate_class(source: str, lines: list[str], decl_index: int, method_name: str) -> Optional[str]:
+def _find_delegate(source: str, lines: list[str], decl_index: int, method_name: str) -> tuple[Optional[str], Optional[str]]:
+    """Returns (service_class_name, service_method_name). Tries the same-name
+    call first, then falls back to the single call made against a known
+    `XxxService`-typed field, whatever its method name — see module
+    docstring for why the fallback is needed."""
     start, end = _method_body_span(lines, decl_index)
     body = "\n".join(lines[start:end + 1])
-    call_match = re.search(rf"\b(\w+)\.{re.escape(method_name)}\s*\(", body)
-    if not call_match:
-        return None
-    var_name = call_match.group(1)
-    field_match = re.search(FIELD_DECL_TEMPLATE.format(name=re.escape(var_name)), source)
-    return field_match.group(1) if field_match else None
+
+    same_name_match = re.search(rf"\b(\w+)\.{re.escape(method_name)}\s*\(", body)
+    if same_name_match:
+        var_name = same_name_match.group(1)
+        field_match = re.search(FIELD_DECL_TEMPLATE.format(name=re.escape(var_name)), source)
+        if field_match:
+            return field_match.group(1), method_name
+
+    service_fields = SERVICE_FIELD_DECL_RE.findall(source)
+    candidates = []
+    for field_type, field_name in service_fields:
+        for m in re.finditer(rf"\b{re.escape(field_name)}\.(\w+)\s*\(", body):
+            candidates.append((field_type, m.group(1)))
+    if len(candidates) == 1:
+        return candidates[0]
+    return None, None
 
 
 def find_preauthorize(source: str, method_name: str) -> Optional[str]:
@@ -160,12 +184,12 @@ def find_preauthorize(source: str, method_name: str) -> Optional[str]:
     return None
 
 
-def find_delegate_class_name(source: str, method_name: str) -> Optional[str]:
+def find_delegate(source: str, method_name: str) -> tuple[Optional[str], Optional[str]]:
     lines = source.splitlines()
     decl_index = _find_declaration_index(lines, method_name)
     if decl_index is None:
-        return None
-    return _find_delegate_class(source, lines, decl_index, method_name)
+        return None, None
+    return _find_delegate(source, lines, decl_index, method_name)
 
 
 def extract_permission_constants(spel_expression: str) -> list[str]:
@@ -180,8 +204,8 @@ def resolve_permission(controller_source: str, method_name: str, source_root: Pa
     if expr:
         return extract_permission_constants(expr), "controller"
 
-    service_class = find_delegate_class_name(controller_source, method_name)
-    if not service_class:
+    service_class, service_method = find_delegate(controller_source, method_name)
+    if not service_class or not service_method:
         return [], None
 
     matches = list(source_root.rglob(f"{service_class}.java"))
@@ -189,7 +213,7 @@ def resolve_permission(controller_source: str, method_name: str, source_root: Pa
         return [], None
 
     service_source = matches[0].read_text(encoding="utf-8")
-    expr = find_preauthorize(service_source, method_name)
+    expr = find_preauthorize(service_source, service_method)
     if not expr:
         return [], None
     return extract_permission_constants(expr), f"service:{service_class}"
