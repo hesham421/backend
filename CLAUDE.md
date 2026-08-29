@@ -73,6 +73,10 @@ in this repo needs lives inside `backend/governance/`.
 | Postgres MCP server | `governance/mcp-servers/postgres/` |
 | SECURITY module | `governance/modules/SECURITY/` |
 | Reporting / non-impacting markdown (see below) | `governance/project-artifacts/` |
+| TestSprite mechanism, folder rules, module classification | `governance/testsprite/TESTSPRITE-GOVERNANCE.md` |
+| TestSprite ready prompts (start / re-run) | `governance/testsprite/prompts/` |
+| TestSprite durable per-module test archive | `governance/modules/[MODULE]/testsprite/tests/` |
+| TestSprite dated run bundles (PRD + plan + report) | `governance/testsprite/runs/<date>-backend/` |
 
 ---
 
@@ -178,7 +182,11 @@ tests/
   masterdata-api-test.ps1
   probe-failures.ps1
 governance/               ← internal AI governance copy (see above)
-testsprite_tests/        ← Python API test suite (TestSprite-generated)
+testsprite_tests/        ← TestSprite's own scratch working directory (ephemeral —
+                            the durable, module-organized copy lives under
+                            governance/modules/[MODULE]/testsprite/tests/ and
+                            governance/testsprite/runs/, see
+                            governance/testsprite/TESTSPRITE-GOVERNANCE.md)
 .env.example             ← Environment variable template
 ```
 
@@ -338,6 +346,8 @@ ownership table below, it almost certainly belongs in
 | `shared/modules-registry.json` (published, read-only copy of `modules-registry.json`) | Project root `shared/` — sibling to `backend/` and `frontend/`, **not** inside either `governance/` tree. Written only by backend's `save_modules_registry()` on every registry write (added 2026-08-27). This is frontend's ONLY sanctioned way to learn which modules are registered — it never reads `backend/governance/modules-registry.json` directly. | Treating this as a second source of truth — `backend/governance/modules-registry.json` remains authoritative; `shared/modules-registry.json` is a mechanical publish target only, never hand-edited |
 | Reporting / non-impacting markdown | `backend/governance/project-artifacts/` (this repo's own reports, flat — `project-artifacts/backend/` exists but only holds `seed-scripts/`, not reports) and `frontend/governance/project-artifacts/` (frontend's own, same flat layout) | Root of either `governance/` tree, or inside `modules/`/`.claude/commands/` |
 | `governance-shared/` | Empty placeholder in both repos, reserved for a future git submodule | Do not put content in either copy without a separate, explicit human decision |
+| TestSprite governance (`TESTSPRITE-GOVERNANCE.md`, `prompts/`, dated `runs/<date>-<repo>/` bundles) — new category, added 2026-08-29 by explicit human request | Independent copy in each repo: `backend/governance/testsprite/` and `frontend/governance/testsprite/` — mirrored content (same rules, repo-specific mechanism/paths), same pattern as `governance-tools/` | The other repo's `testsprite/` folder; `testsprite_tests/` itself stays repo-root (TestSprite's fixed working path, not relocatable) |
+| TestSprite durable per-module test archive (generated `.py` files, current run only) | `backend/governance/modules/<MOD>/testsprite/tests/` and `frontend/governance/modules/<MOD>/testsprite/tests/` — independent per repo | Confusing with backend's pre-existing, unrelated `modules/<MOD>/test-api/` (hand-written legacy pytest suite, not TestSprite output) |
 
 ### If you are about to do X, the answer is always Y
 
@@ -345,6 +355,7 @@ ownership table below, it almost certainly belongs in
 - **About to add a new Playwright scenario, frontend skill, or a generated `execute-frontend*.md` command?** → `frontend/governance/`. Never `backend/governance/`.
 - **About to edit `governance-tools/*.py` or `.claude/commands/generate-module-setup.md`?** → These are backend-only; edit them in `backend/governance/` only. Do not assume a change here needs mirroring into `frontend/governance/` — its tooling is a separate, independently maintained copy.
 - **About to write a report, investigation note, or audit writeup?** → `governance/project-artifacts/`. Never the root of `governance/`, never inside `modules/`.
+- **About to run TestSprite, or file a TestSprite-generated test?** → Read `governance/testsprite/TESTSPRITE-GOVERNANCE.md` first. Generated `.py` files are archived per-module under `governance/modules/[MODULE]/testsprite/tests/`, never left sitting in root `testsprite_tests/` past the end of the run.
 - **Found yourself wanting to copy a NEW file from `backend/` into `frontend/` (or vice versa) that isn't already an established dual-copy pattern (the Playwright MCP server)?** → STOP. This requires an explicit human decision, not silent duplication. Ask first.
 - **About to regenerate frontend package content (`packages/frontend-execution/`, `packages/frontend-test/`) from this repo?** → Not possible by design. `agent3_splitter.py` in this repo only ever knows the backend and only runs meaningfully against this repo's own artifacts — there's nothing here to regenerate frontend content from.
 - **About to write to `governance-shared/` or initialize a submodule there?** → Forbidden until a separate, explicit human decision authorizes it.

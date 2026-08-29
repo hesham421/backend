@@ -22,6 +22,8 @@ reference this document, not restate it.
 | AI commands | `.claude/commands/` |
 | Governance automation tools | `governance-tools/` |
 | Module execution plans | `modules/` |
+| Backend TestSprite governance (mechanism, prompts, module archive) | `backend/governance/testsprite/` |
+| Frontend TestSprite governance (mechanism, prompts, module archive) | `frontend/governance/testsprite/` |
 
 ---
 
