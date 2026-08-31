@@ -187,7 +187,7 @@ Proceed? [waits for confirmation]
 1. Read `packages/backend-execution/[PHASE]/[SUB].md` completely
 2. Identify all tasks
 3. Map each task to the skill routing table in `GOVERNANCE-RULES.md`
-4. Read required skills from `.github/skills/backend/`
+4. Read required skills from the repo-root `.claude/skills/` (moved 2026-08-31 from `.github/skills/backend/`; not under `governance/`)
 5. Execute all tasks in order
 6. Run the phase's validation skill after the last task
 7. Mark sub COMPLETE in `execution-state.json`

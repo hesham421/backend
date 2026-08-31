@@ -406,7 +406,7 @@ bump and Section 13 event-log entry below):
   external HTTP request can satisfy it. Pair with an @ArchTest guard (real example:
   CrossModuleBoundaryArchTest.no_controller_reaches_the_internal_caller_gated_processor) that
   fails the build if a controller ever calls the gated method directly. Full pattern documented
-  in governance/.github/skills/backend/create-service/SKILL.md's "Internal trusted-caller calls"
+  in .claude/skills/create-service/SKILL.md's "Internal trusted-caller calls"
   subsection.
 - DURABLE RETRY / OUTBOX: the design proposed in
   governance/project-artifacts/RESILIENT-FAILURE-HANDLING-DESIGN-REPORT.md (generic

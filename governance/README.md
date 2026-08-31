@@ -18,7 +18,7 @@ this repo (see [Sanctioned cross-repo reads](#sanctioned-cross-repo-reads)).
 | Content | Path |
 |---|---|
 | Single source of truth for skill routing (both backend and frontend tasks) | [`GOVERNANCE-RULES.md`](GOVERNANCE-RULES.md) |
-| Backend skills | `.github/skills/backend/` |
+| Backend skills | repo-root `.claude/skills/` (not under `governance/` — moved 2026-08-31 so they auto-load via the Skill tool every session) |
 | DevOps / deploy skill | `.github/skills/devops/` |
 | Frontend skills (frontend code, but skills are frontend-repo-owned) | `frontend/governance/.github/skills/frontend/` — not here |
 | Architecture context (backend, domain layer, API contract, frontend) | `.github/context/` |

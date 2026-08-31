@@ -1,8 +1,11 @@
 # Skills: backend
 
 Skill pack for the ERP backend (Spring Boot / JPA). This directory is the
-governance home for every backend skill — read this file first when working
-under `governance/.github/skills/backend/`.
+home for every backend skill — read this file first when working under
+`.claude/skills/`. Moved here 2026-08-31 from
+`governance/.github/skills/backend/` so these skills auto-load via the
+Skill tool in every session; `governance/GOVERNANCE-RULES.md` remains the
+authoritative routing table for which skill to use and when.
 
 ## Build skills (Phase 1, per entity — in order)
 

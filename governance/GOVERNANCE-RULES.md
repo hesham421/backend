@@ -12,7 +12,7 @@ reference this document, not restate it.
 
 | Artifact | Path in this repository |
 |----------|------------------------|
-| Backend skills | `.github/skills/backend/` |
+| Backend skills | repo-root `.claude/skills/` (not under `governance/` — moved 2026-08-31 so they auto-load via the Skill tool every session; this table still governs which skill to use and when) |
 | Frontend skills | `.github/skills/frontend/` |
 | DevOps / deploy skill | `.github/skills/devops/deploy/` |
 | Backend architecture context | `.github/context/backend.md` |

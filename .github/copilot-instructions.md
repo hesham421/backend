@@ -10,7 +10,7 @@ are defined in the **governance-repo** repository.
 **Before generating any code:**
 1. Confirm `governance-repo` is available in the workspace.
 2. Read `governance-repo/.github/copilot-instructions.md` — it contains the full skill routing table.
-3. Load the required skill from `governance-repo/.github/skills/backend/<skill-name>/SKILL.md`.
+3. Load the required skill from repo-root `.claude/skills/<skill-name>/SKILL.md` (moved 2026-08-31 out of `governance-repo`).
 4. Load architecture context from `governance-repo/.github/context/backend.md`.
 
 If `governance-repo` is not available: **stop and report the missing dependency.**
@@ -33,7 +33,7 @@ tests/                   ← Playwright API integration tests
 
 ## Quick Skill Reference
 
-> Full skill files are in `governance-repo/.github/skills/backend/`
+> Full skill files are in the repo-root `.claude/skills/`
 
 | Task | Skill |
 |------|-------|
