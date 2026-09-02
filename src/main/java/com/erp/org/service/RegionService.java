@@ -13,6 +13,7 @@ import com.erp.org.domain.OrgRegionDomain;
 import com.erp.org.dto.RegionCreateRequest;
 import com.erp.org.dto.RegionResponse;
 import com.erp.org.dto.RegionSearchRequest;
+import com.erp.org.dto.RegionTypeResponse;
 import com.erp.org.dto.RegionUpdateRequest;
 import com.erp.org.entity.OrgLegalEntity;
 import com.erp.org.entity.OrgRegion;
@@ -32,6 +33,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -143,6 +145,19 @@ public class RegionService {
 
         log.info("Deactivated Region ID: {}", saved.getId());
         return ServiceResult.success(regionMapper.toResponse(saved), Status.UPDATED);
+    }
+
+    @PreAuthorize("hasAuthority(T(com.erp.security.constants.SecurityPermissions).REGION_VIEW)")
+    public ServiceResult<List<RegionTypeResponse>> listActiveRegionTypes() {
+        List<RegionTypeResponse> types = regionTypeRepository.findByIsActiveFlTrueOrderByNameEnAsc().stream()
+            .map(t -> RegionTypeResponse.builder()
+                .id(t.getId())
+                .code(t.getRegionTypeCode())
+                .nameAr(t.getNameAr())
+                .nameEn(t.getNameEn())
+                .build())
+            .toList();
+        return ServiceResult.success(types);
     }
 
     private OrgRegion findOrThrow(Long id) {

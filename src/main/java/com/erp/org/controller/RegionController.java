@@ -6,11 +6,13 @@ import com.erp.common.web.OperationCode;
 import com.erp.org.dto.RegionCreateRequest;
 import com.erp.org.dto.RegionResponse;
 import com.erp.org.dto.RegionSearchRequest;
+import com.erp.org.dto.RegionTypeResponse;
 import com.erp.org.dto.RegionUpdateRequest;
 import com.erp.org.service.RegionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
@@ -52,6 +54,13 @@ public class RegionController {
     @Operation(operationId = "API-ORG-018", summary = "Get Region by ID", description = "جلب منطقة بالمعرف")
     public ResponseEntity<ApiResponse<RegionResponse>> getById(@PathVariable Long id) {
         ServiceResult<RegionResponse> result = regionService.getById(id);
+        return operationCode.craftResponse(result);
+    }
+
+    @GetMapping("/region-types")
+    @Operation(summary = "List Active Region Types", description = "قائمة أنواع المناطق النشطة - يُستخدم في نموذج إنشاء/تعديل المنطقة")
+    public ResponseEntity<ApiResponse<List<RegionTypeResponse>>> listActiveRegionTypes() {
+        ServiceResult<List<RegionTypeResponse>> result = regionService.listActiveRegionTypes();
         return operationCode.craftResponse(result);
     }
 

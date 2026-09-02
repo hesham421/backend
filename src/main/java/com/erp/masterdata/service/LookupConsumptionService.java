@@ -72,7 +72,7 @@ public class LookupConsumptionService {
      * Returns a {@link LookupCacheEntry} (null = not found; inactive flag; or values) so Jackson can
      * (de)serialize the Redis cache entry.
      */
-    @Cacheable(cacheNames = "lookupValues", key = "#key")
+    @Cacheable(cacheNames = "lookupValues", key = "#key", unless = "#result == null")
     public LookupCacheEntry loadCachedEntry(String key) {
         List<LookupValueProjection> rows = masterLookupRepository.findLookupValuesByKey(key, 1);
 

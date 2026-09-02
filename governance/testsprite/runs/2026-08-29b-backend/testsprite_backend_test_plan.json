@@ -1,0 +1,12 @@
+[
+  {
+    "id": "TC001",
+    "title": "post_api_v1_org_regions_id_get_should_return_region_with_regiontype",
+    "description": "Verify that GET /api/v1/org/regions/{id} returns the region including the persisted region type information as expected."
+  },
+  {
+    "id": "TC002",
+    "title": "put_api_v1_org_departments_id_deactivate_should_flip_isactive_flag",
+    "description": "Verify that PUT /api/v1/org/departments/{id}/deactivate flips the isActive flag to false and that subsequent GET or search calls reflect the updated inactive state."
+  }
+]

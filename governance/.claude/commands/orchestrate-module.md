@@ -220,6 +220,33 @@ Before writing the dispatch prompt, read:
     aspirational project-structure diagram alone if the *actual* codebase
     already diverges from it in a consistent way — real, consistent
     precedent in the checked-out code wins over the doc when they disagree.
+- **Deferred wiring is a plan gap until a named phase owns it — never
+  inherited precedent.** If this sub's spec, or the real precedent you're
+  about to mirror, defers something structurally load-bearing (most
+  commonly: a page/controller never actually importing or calling the real
+  data-layer hook/service this pipeline already built for it, staying on a
+  mock/static/stub source instead) to "a later phase," or just leaves it
+  unstated, do not accept that deferral only because an earlier sub in this
+  module already made the same call — repetition is not confirmation, it's
+  the same unexamined gap propagating. Check, by name, against this
+  module's own phase/weight map (read in STEP 0.3): is there a concrete
+  phase/sub that will actually close this? If yes, cite it explicitly in
+  your own prep notes before proceeding. If no such phase exists anywhere
+  in the plan, this is a **plan gap**, not settled precedent — surface it to
+  the user directly, in this conversation, before dispatching this sub (same
+  urgency as a blocked `api_doc_gaps` entry, but put to the user as a
+  question/report rather than a state-file record, since only they can
+  decide whether to fix it now, schedule it, or accept it as a documented,
+  deliberate limitation). Do not let a 3rd, 10th, or 30th sub cite the same
+  absence as further evidence it was intentional. (Concrete incident, ORG
+  module, 2026-08-29: F2 built a real TanStack Query facade hook per entity;
+  every page kept using an old mock store instead; this was treated as an
+  increasingly "established boundary" across F2→F3→F4→SEC-FE→ALIGN-FE — 30
+  subs, never once re-examined — because no phase in the plan was ever
+  actually going to wire it. TestSprite caught it after the fact, and
+  investigating it further surfaced a cascade of real, previously-invisible
+  backend bugs the mock pages had never exercised; it should have been
+  caught at F2 or F4, not by an external test run weeks later.)
 - Whether this sub needs something an **earlier sub in this phase** already
   built (a cross-entity FK "options" hook or shared type on the frontend; a
   shared repository method, mapper, or lookup on the backend). If so,
@@ -399,6 +426,40 @@ When the last sub in a phase completes and every gap is resolved:
    filter, a deferred picker, etc.) — help them decide, don't just narrate.
 3. Print the next phase's assessment and wait for explicit confirmation
    before dispatching anything in it.
+4. **When the phase just closed is the module's LAST pre-test phase** — i.e.
+   completing it makes every entry in `execution-state.json`'s
+   `test_phase.gated_by_phases` list read `COMPLETE` (`ALIGN-FE` on the
+   frontend side, its backend equivalent otherwise) — do one more mandatory
+   pass before reporting the module "done" to the user:
+   - **Data-Wiring Reality Check** (mechanical, cheap, read-only, do it
+     yourself — this is inspection, not "execution"). For every SCR-ID/
+     entity this module built a real data-layer hook for (the F2 facade hook
+     on the frontend; the equivalent repository/service call chain on the
+     backend), grep the actual page/controller file that's supposed to use
+     it and confirm the import/call is really there — do not trust an F4 or
+     routing-phase doc's "Facade Hook: useXFacade()" line as proof; that
+     line documents the hook's existence, not that anything calls it (this
+     is exactly how the ORG-module incident above went undetected for 30
+     subs — the spec kept restating the hook's name every phase without
+     anyone re-checking the actual page file). If the module built any
+     structural stand-in (a mock store, a stub, a hardcoded dataset) that
+     was supposed to be retired and no phase in the plan actually retired
+     it, that is a blocking finding — report it to the user explicitly and
+     by name, separately from and above any list of genuinely deliberate,
+     spec-documented deferrals (a CORE-9-style gap, an SRS-confirmed OQ).
+     Do not fold the two together into one "outstanding minor issues" list.
+   - **Push `frontend-test` (or the backend equivalent) as the required next
+     step, not an optional aside the user can take or leave.** It is the one
+     thing in this whole pipeline that exercises the built code end-to-end
+     against something other than the plan's own self-consistency — which is
+     all `ALIGN-FE` actually checks, despite its name (its own scope note
+     says so explicitly: internal-plan consistency, not implementation
+     correctness). The Data-Wiring Reality Check above is a cheap
+     grep-level substitute for what a real test run would catch anyway, not
+     a replacement for actually running it. Do not summarize the module to
+     the user as "complete" with the test phase framed as a separate,
+     skippable track — frame it as the last remaining step before the
+     module is actually verified to work, and recommend running it now.
 
 ---
 
