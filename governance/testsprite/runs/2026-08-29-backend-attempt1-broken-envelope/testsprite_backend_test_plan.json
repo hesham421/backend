@@ -1,0 +1,52 @@
+[
+  {
+    "id": "TC001",
+    "title": "postapiv1orgregionsidgetregionbyid",
+    "description": "Verify GET /api/v1/org/regions/{id} returns 200 with the region data including the persisted region type information."
+  },
+  {
+    "id": "TC002",
+    "title": "putapiv1orgregionsiddeactivate",
+    "description": "Verify PUT /api/v1/org/regions/{id}/deactivate rejects deactivation with error if active branches reference the region, enforcing business rules."
+  },
+  {
+    "id": "TC003",
+    "title": "postapiv1orgdepartments",
+    "description": "Verify POST /api/v1/org/departments creates a department with valid hierarchy and data, and rejects circular parentDepartmentFk references."
+  },
+  {
+    "id": "TC004",
+    "title": "putapiv1orgdepartmentsiddeactivate",
+    "description": "Verify PUT /api/v1/org/departments/{id}/deactivate flips isActive to false and the change is reflected on subsequent GET and search calls."
+  },
+  {
+    "id": "TC005",
+    "title": "postapiv1orgcostcenters",
+    "description": "Verify POST /api/v1/org/cost-centers creates a cost center with valid hierarchy and classification, and rejects circular parentCostCenterFk references."
+  },
+  {
+    "id": "TC006",
+    "title": "putapiv1orgcostcentersiddeactivate",
+    "description": "Verify PUT /api/v1/org/cost-centers/{id}/deactivate rejects deactivation with error if dependent child cost centers exist, enforcing business rules."
+  },
+  {
+    "id": "TC007",
+    "title": "postapiv1orglegalentities",
+    "description": "Verify POST /api/v1/org/legal-entities creates a legal entity with valid data and returns the expected response."
+  },
+  {
+    "id": "TC008",
+    "title": "putapiv1orglegalentitiesiddeactivate",
+    "description": "Verify PUT /api/v1/org/legal-entities/{id}/deactivate rejects deactivation with error if dependent branches exist, enforcing business rules."
+  },
+  {
+    "id": "TC009",
+    "title": "putapiv1orgbranchesiddeactivate",
+    "description": "Verify PUT /api/v1/org/branches/{id}/deactivate rejects deactivation with 409 conflict if dependent departments, cost centers, or location sites exist."
+  },
+  {
+    "id": "TC010",
+    "title": "postapiv1orgregions",
+    "description": "Verify POST /api/v1/org/regions with valid legalEntityFk, regionTypeIdFk, and names creates a region and returns 200 with correct region type data."
+  }
+]

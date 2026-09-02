@@ -1,0 +1,27 @@
+[
+  {
+    "id": "TC001",
+    "title": "postapiv1orgregionscreateandverifyregiontype",
+    "description": "Test creating a region with a valid regionTypeIdFk and verify that the returned region data includes the persisted region type information."
+  },
+  {
+    "id": "TC002",
+    "title": "putapiv1orgregionsidupdateandverifyregiontype",
+    "description": "Test updating a region's attributes and verify that the regionTypeIdFk and related region type information remain consistent and correctly persisted."
+  },
+  {
+    "id": "TC003",
+    "title": "putapiv1orgregionsiddeactivatewithbusinessrulecheck",
+    "description": "Test deactivating a region that is referenced elsewhere and verify that the API returns an error ApiResponse with appropriate business-rule rejection details."
+  },
+  {
+    "id": "TC004",
+    "title": "getapiv1orgdepartmentsidverifyisactiveflipafterdeactivate",
+    "description": "Test deactivating a department and verify that the isActive flag is flipped to false in the response and persisted state, reflected on subsequent GET or search calls."
+  },
+  {
+    "id": "TC005",
+    "title": "putapiv1orgdepartmentsiddeactivatewithchildnodesrejection",
+    "description": "Test deactivating a department that still has child nodes and verify that the API returns an error ApiResponse with business-rule rejection details."
+  }
+]
