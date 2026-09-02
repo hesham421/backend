@@ -382,7 +382,7 @@ The feature is **IMMEDIATELY REJECTED** if any of these are found:
 
 ### erp-common-utils Compliance (CU.1–CU.8)
 
-Run `.github/skills/backend/enforce-backend-contract/SKILL.md` for full erp-common-utils compliance validation (CU.1–CU.8). A feature that fails any CU check is NOT compliant regardless of its layer scores.
+Run `enforce-backend-contract` (`.claude/skills/enforce-backend-contract/SKILL.md`) for full erp-common-utils compliance validation (CU.1–CU.8). A feature that fails any CU check is NOT compliant regardless of its layer scores.
 
 ---
 

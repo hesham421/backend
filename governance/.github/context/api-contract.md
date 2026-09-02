@@ -185,7 +185,7 @@ This guideline states an architectural fact and a small number of canonical reso
 
 It does **not** prescribe which Backend Skill generates or validates a given feature's compliance
 with it — that remains an implementation detail of the Backend Skills (see
-`.github/skills/backend/`), governed the same way `domain-layer.md` governs Business Rule
+repo-root `.claude/skills/`), governed the same way `domain-layer.md` governs Business Rule
 placement without prescribing which skill produces the Domain object.
 
 ## Golden Rule

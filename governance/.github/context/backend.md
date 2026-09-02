@@ -50,4 +50,4 @@ Entity → Repository → DTOs → Mapper → Error Codes → Permissions → Se
 | Booleans | `BooleanNumberConverter`, stored as `NUMBER(1)`, column named `IS_<FIELD>` |
 | Existence checks | `existsBy<Field>()` — never `findBy().isPresent()` |
 
-> For detailed rules and examples, read the relevant skill from `.github/skills/backend/`.
+> For detailed rules and examples, read the relevant skill from the repo-root `.claude/skills/`.

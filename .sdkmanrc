@@ -1,0 +1,2 @@
+# Enable specific Java version for SDKMAN
+java=25.0.4-tem

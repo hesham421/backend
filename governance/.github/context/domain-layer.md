@@ -82,7 +82,7 @@ This guideline states an architectural requirement:
 
 It does **not** prescribe which Backend Generation Skill produces the Domain object or which
 Skill performs the delegation to it. That is an implementation detail of the Backend Generation
-Pipeline, governed by the Backend Skills themselves (see `.github/skills/backend/`), and may
+Pipeline, governed by the Backend Skills themselves (see repo-root `.claude/skills/`), and may
 change without requiring a change to this document.
 
 ## Relationship to the Execution Plan

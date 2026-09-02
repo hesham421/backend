@@ -18,8 +18,12 @@ Before generating any code:
 1. `governance/GOVERNANCE-RULES.md` is the single copy of the skill-routing
    table, execution order, and governance rules — read it before generating
    or modifying any code. This file does not restate its contents.
-2. Load the required skill from `governance/.github/skills/backend/<skill-name>/SKILL.md`
-   per the routing table in `GOVERNANCE-RULES.md`.
+2. Load the required skill via the Skill tool (or read
+   `.claude/skills/<skill-name>/SKILL.md` directly) per the routing table in
+   `GOVERNANCE-RULES.md`. Skills live at the repo-root `.claude/skills/` —
+   not under `governance/` — so they auto-load in every session; see
+   `.claude/skills/README.md` for the pack index. Moved there 2026-08-31
+   from `governance/.github/skills/backend/` by explicit human decision.
 3. Load architecture context from `governance/.github/context/backend.md` (if present).
 4. For a specific module's phase execution, read
    `governance/modules/[MODULE]/execution-state.json`, then follow the
@@ -63,7 +67,7 @@ in this repo needs lives inside `backend/governance/`.
 
 | Governance artifact | Location |
 |---------------------|----------|
-| Backend skills | `governance/.github/skills/backend/` |
+| Backend skills | `.claude/skills/` (repo root — not under `governance/`, moved 2026-08-31 so they auto-load every session) |
 | Backend architecture context | `governance/.github/context/backend.md` |
 | Master entity registry | `governance/master-registry.md` |
 | Modules registry | `governance/modules-registry.json` |
@@ -99,7 +103,7 @@ in this repo needs lives inside `backend/governance/`.
 1. Read sub file completely
 2. Identify all tasks in the sub
 3. Map each task to the skill routing table in `GOVERNANCE-RULES.md`
-4. Read required skills from `governance/.github/skills/`
+4. Read required skills from `.claude/skills/` (or invoke via the Skill tool)
 5. Execute all tasks in order
 6. Run `validate-backend-feature` (or `validate-frontend-feature`, for frontend work) after the last task
 7. Mark sub as COMPLETE in `governance/modules/[MODULE]/execution-state.json`
@@ -338,7 +342,7 @@ ownership table below, it almost certainly belongs in
 | `.claude/commands/generate-frontend-module-setup.md` (frontend) | `frontend/governance/.claude/commands/` — its own independent command, not a copy of the backend one | `backend/governance/` |
 | `.claude/commands/[MODULE]/execute-backend.md`, `execute-backend-test.md` (generated output, not templates — one subfolder per module, e.g. `.claude/commands/SECURITY/`, never the flat `.claude/commands/execute-backend.md`) | `backend/governance/.claude/commands/[MODULE]/` only | `frontend/governance/` |
 | `.claude/commands/[MODULE]/execute-frontend.md`, `execute-frontend-test.md` (generated output, not templates — same per-module-folder rule) | `frontend/governance/.claude/commands/[MODULE]/` only | `backend/governance/` |
-| `.github/skills/backend/`, `.github/skills/devops/` | `backend/governance/.github/skills/` | `frontend/governance/` |
+| `.github/skills/backend/`, `.github/skills/devops/` | **Superseded 2026-08-31** — backend skills now live at repo-root `backend/.claude/skills/<skill-name>/SKILL.md` (auto-loaded by the Skill tool every session), not under `governance/`. This is a deliberate, explicitly-confirmed exception to "governance content stays inside `governance/`" — see the note below the table. Any future `devops` skills follow the same repo-root `.claude/skills/` location. | `frontend/governance/`, and no longer `backend/governance/.github/skills/` |
 | `.github/skills/frontend/` | `frontend/governance/.github/skills/` | `backend/governance/` |
 | `mcp-servers/postgres/` | `backend/governance/mcp-servers/postgres/` only, wired via `backend/.mcp.json` | `frontend/governance/` — no frontend DB access use case |
 | `mcp-servers/playwright/` | `frontend/governance/mcp-servers/playwright/` only (UI/E2E tests, wired via `frontend/.mcp.json`). Backend had its own copy for API integration tests; removed 2026-08-28 as orphaned — the Playwright API test runner it served (`playwright.config.ts`/`package.json`) was removed the same day and nothing in backend still calls it. | `backend/governance/` — do not re-add without a fresh reason; `testsprite_tests/` is backend's current API test suite |
@@ -352,6 +356,7 @@ ownership table below, it almost certainly belongs in
 ### If you are about to do X, the answer is always Y
 
 - **About to add a new backend execution-plan phase file, JUnit scenario, or a generated `execute-backend*.md` command?** → `backend/governance/`. Never `frontend/governance/`.
+- **About to add a new backend skill?** → `backend/.claude/skills/<skill-name>/SKILL.md` (repo root, not `governance/`) — add `name`/`description` frontmatter and a row to `.claude/skills/README.md`, per its "Adding a new skill" section.
 - **About to add a new Playwright scenario, frontend skill, or a generated `execute-frontend*.md` command?** → `frontend/governance/`. Never `backend/governance/`.
 - **About to edit `governance-tools/*.py` or `.claude/commands/generate-module-setup.md`?** → These are backend-only; edit them in `backend/governance/` only. Do not assume a change here needs mirroring into `frontend/governance/` — its tooling is a separate, independently maintained copy.
 - **About to write a report, investigation note, or audit writeup?** → `governance/project-artifacts/`. Never the root of `governance/`, never inside `modules/`.
@@ -369,10 +374,19 @@ Do not create a new folder type, a new cross-repo dependency, or a new
 a short written justification and getting explicit human confirmation.
 Never skip straight to implementation.
 
-The one existing exception, already confirmed: `shared/modules-registry.json`
-(project root, outside both `governance/` trees — see the ownership table
-above). Do not treat its existence as precedent for adding further shared
-locations without going through the same confirmation step again.
+Existing exceptions, already confirmed:
+- `shared/modules-registry.json` (project root, outside both `governance/`
+  trees — see the ownership table above).
+- `backend/.claude/skills/` (project root, outside `governance/` — moved
+  2026-08-31 from `governance/.github/skills/backend/` by explicit human
+  decision, specifically so the skills auto-load via the Skill tool in
+  every session instead of requiring a manual read per the routing table).
+  `.claude/skills/README.md` is the pack index. `GOVERNANCE-RULES.md`
+  remains the authoritative routing table for *which* skill to use and
+  *when* — only the skills' storage location and loading mechanism moved.
+
+Do not treat either as precedent for adding further exceptions without
+going through the same confirmation step again.
 
 ### Decision authority
 

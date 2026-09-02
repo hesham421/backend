@@ -21,4 +21,6 @@ there is no external sibling governance repository. See this repo's own
 Skill routing, execution order, governance rules, and context references are
 shared across every AI runtime and defined once in `GOVERNANCE-RULES.md`. Read
 it before generating or modifying any code — do not restate its contents here.
-Skill files themselves are at `.github/skills/<category>/<skill-name>/SKILL.md`.
+Skill files themselves are at the repo-root `.claude/skills/<skill-name>/SKILL.md`
+(moved 2026-08-31 out of `governance/.github/skills/`; frontend skills remain at
+`frontend/governance/.github/skills/frontend/`, unaffected by this backend-only move).
