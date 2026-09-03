@@ -8,10 +8,16 @@ Gate Status: PASSED ✓
 API-ID     │ Endpoint                                  │ Method │ Request DTO                 │ Response DTO           │ Stability
 ───────────┼───────────────────────────────────────────┼────────┼─────────────────────────────┼────────────────────────┼──────────
 API-CU-001 │ /api/v1/common/configurations             │ POST   │ ConfigurationCreateRequest  │ ConfigurationResponse  │ STABLE
-API-CU-002 │ /api/v1/common/configurations             │ GET    │ SearchRequest (params)      │ Page<ConfigurationResp>│ STABLE
+API-CU-002 │ /api/v1/common/configurations/search      │ POST   │ ConfigurationSearchRequest  │ Page<ConfigurationResp>│ STABLE
 API-CU-003 │ /api/v1/common/configurations/{key}       │ PUT    │ ConfigurationUpdateRequest  │ ConfigurationResponse  │ STABLE
 API-CU-004 │ /api/v1/common/configurations/{key}       │ DELETE │ —                           │ confirmation           │ STABLE
 API-CU-005 │ /api/v1/common/configurations/{key}       │ GET    │ —                           │ ConfigurationResponse  │ STABLE
+
+Correction note: API-CU-002 row corrected (GET query-params → POST /search with
+ConfigurationSearchRequest body) to reflect the actual implementation, per the
+already-resolved NAMING_MISMATCH entry in execution-state.json's api_doc_gaps[]
+(recorded during SVC-API sub, 2026-09-03). No new decision made here — this only
+propagates that resolution into DOC-1.
 
 ### DOC-2: DTO Typing Rules
   Business Code: N/A (CU owns none). No LOV/ENUM fields.

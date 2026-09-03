@@ -1,64 +1,64 @@
 {
   "module": "CU",
   "generated_at": "2026-09-03",
-  "current_phase": "CORE",
-  "current_sub": "CORE",
+  "current_phase": "backend-test",
+  "current_sub": "RULE-SCENARIOS",
   "api_docs_path": "governance/modules/CU/api-docs/",
   "phases": [
     {
       "id": "CORE",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "CORE", "status": "PENDING" }
+        { "id": "CORE", "status": "COMPLETE" }
       ]
     },
     {
       "id": "DATA-DOM",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "DATA-DOM", "status": "PENDING" }
+        { "id": "DATA-DOM", "status": "COMPLETE" }
       ]
     },
     {
       "id": "SVC-API",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "SVC-API", "status": "PENDING" }
+        { "id": "SVC-API", "status": "COMPLETE" }
       ]
     },
     {
       "id": "DOC",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "DOC", "status": "PENDING" }
+        { "id": "DOC", "status": "COMPLETE" }
       ]
     },
     {
       "id": "INT-C",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "INT-C", "status": "PENDING" }
+        { "id": "INT-C", "status": "COMPLETE" }
       ]
     },
     {
       "id": "INT-R",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "INT-R", "status": "PENDING" }
+        { "id": "INT-R", "status": "COMPLETE" }
       ]
     },
     {
       "id": "SEC-BE",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "SEC-BE", "status": "PENDING" }
+        { "id": "SEC-BE", "status": "COMPLETE" }
       ]
     },
     {
       "id": "ALIGN-BE",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "ALIGN-BE", "status": "PENDING" }
+        { "id": "ALIGN-BE", "status": "COMPLETE" }
       ]
     }
   ],
@@ -74,5 +74,7 @@
   },
   "blocked": [],
   "deferred_xm": [],
-  "api_doc_gaps": []
+  "api_doc_gaps": [
+    {"type": "NAMING_MISMATCH", "phase": "SVC-API", "sub": "SVC-API", "endpoint": "GET /api/v1/common/configurations (API-CU-002, per SVC-API.md prose)", "detail": "Plan prose described Search as GET with query params; build-create-controller A.6.6 requires POST /search with @RequestBody for dynamic filter criteria. No derivation/rationale was given in the plan for deviating from the skill's hard rule.", "resolution": "Resolved before dispatch, per explicit human confirmation: implemented as POST /api/v1/common/configurations/search per the skill. Plan prose treated as stale/non-binding on this point.", "recorded_at": "2026-09-03T20:17:57Z"}
+  ]
 }
