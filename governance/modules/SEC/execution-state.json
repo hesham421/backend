@@ -1,35 +1,35 @@
 {
   "module": "SEC",
   "generated_at": "2026-09-03",
-  "current_phase": "CORE",
-  "current_sub": "CORE",
+  "current_phase": "DOC",
+  "current_sub": "DOC",
   "api_docs_path": "governance/modules/SEC/api-docs/",
   "phases": [
     {
       "id": "CORE",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "CORE", "status": "PENDING" }
+        { "id": "CORE", "status": "COMPLETE" }
       ]
     },
     {
       "id": "DATA-DOM",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "DATA-DOM-IDENTITY", "status": "PENDING" },
-        { "id": "DATA-DOM-RBAC", "status": "PENDING" },
-        { "id": "DATA-DOM-TOKENS", "status": "PENDING" }
+        { "id": "DATA-DOM-IDENTITY", "status": "COMPLETE" },
+        { "id": "DATA-DOM-RBAC", "status": "COMPLETE" },
+        { "id": "DATA-DOM-TOKENS", "status": "COMPLETE" }
       ]
     },
     {
       "id": "SVC-API",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "SVC-API-AUTH", "status": "PENDING" },
-        { "id": "SVC-API-LOOKUP", "status": "PENDING" },
-        { "id": "SVC-API-MODULES", "status": "PENDING" },
-        { "id": "SVC-API-RBAC", "status": "PENDING" },
-        { "id": "SVC-API-USERS", "status": "PENDING" }
+        { "id": "SVC-API-AUTH", "status": "COMPLETE" },
+        { "id": "SVC-API-LOOKUP", "status": "COMPLETE" },
+        { "id": "SVC-API-MODULES", "status": "COMPLETE" },
+        { "id": "SVC-API-RBAC", "status": "COMPLETE" },
+        { "id": "SVC-API-USERS", "status": "COMPLETE" }
       ]
     },
     {
@@ -80,5 +80,7 @@
   },
   "blocked": [],
   "deferred_xm": [],
-  "api_doc_gaps": []
+  "api_doc_gaps": [
+    {"type": "MAPPING_GAP", "phase": "SVC-API", "sub": "SVC-API-AUTH", "endpoint": "POST /api/v1/security/auth/{login,refresh,reset-password,activate}", "detail": "Error Catalog (SECTION A) maps auth ERR-IDs to HTTP 401 (ERR-0011 invalid credentials, ERR-0005 refresh), 403 (ERR-0008 non-active), 423 (ERR-0004 locked), 400 (ERR-0006/0007 reset/activation token) and 422 (ERR-0003 complexity). The shared common.domain.status.Status enum (frozen — common/ is out of scope for this sub) has no 401/403/423 constant, and the already-built SEC Domain objects throw BUSINESS_RULE_VIOLATION (422) for non-active/locked/refresh/reset/activation and VALIDATION_ERROR (400) for complexity. Closest available mappings were used without inventing statuses: invalid-credentials/non-active/locked/refresh/reset/activation -> 422; complexity -> 400. Exact ERR->HTTP fidelity requires extending Status (add UNAUTHORIZED 401, FORBIDDEN 403, LOCKED 423) or adjusting the DATA-DOM Domain throw statuses — both outside SVC-API-AUTH scope.", "resolution": "ESCALATED TO USER (2026-09-04). Root cause: authoritative Error Catalog demands 401/403/423 but the shared common.domain.status.Status enum is a deliberately frozen 8-value foundation contract (CLAUDE.md STRUCTURAL LAW; CORE.md) and DATA-DOM domain objects already throw BUSINESS_RULE_VIOLATION(422)/VALIDATION_ERROR(400). Project convention (DRV-008) maps business errors onto existing enum statuses, so the implemented 422/400 mapping is internally consistent. Exact fidelity requires extending common/Status (add UNAUTHORIZED 401/FORBIDDEN 403/LOCKED 423) + repointing the DATA-DOM domain throws — a shared-foundation structural change requiring explicit human sign-off, NOT done autonomously. Module execution continued; later subs reuse the same enum consistently. Awaiting user decision on whether to make the foundation change.", "recorded_at": "2026-09-04"}
+  ]
 }
