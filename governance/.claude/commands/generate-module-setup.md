@@ -285,8 +285,9 @@ STOP. Do not generate or run any test.
 2. Identify all scenarios
 3. Generate: Spring Boot test class (`@SpringBootTest`/`@WebMvcTest` +
    `MockMvc`), file `src/test/java/.../[Scenario]Test.java`
-4. Run: `mvn test -Dtest=[Class]` via bash. The PostgreSQL MCP server
-   (`mcp-servers/postgres/`, read-only) for any DB assertion.
+4. Run: `mvn test -Dtest=[Class]` via bash. The `postgres` MCP server wired
+   in `.mcp.json` (`postgres-mcp`, `--access-mode=restricted`, read-only) for
+   any DB assertion.
 5. Classify every failure/skip using the shared taxonomy
 6. Update `execution-state.json`
 

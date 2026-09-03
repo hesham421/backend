@@ -74,7 +74,7 @@ in this repo needs lives inside `backend/governance/`.
 | AI commands | `governance/.claude/commands/` |
 | Module execution state | `governance/modules/[MODULE]/execution-state.json` |
 | Governance tooling (splitter, api-doc-generator, etc.) | `governance/governance-tools/` |
-| Postgres MCP server | `governance/mcp-servers/postgres/` |
+| Postgres MCP (DB inspection, read-only) | wired in `.mcp.json` as `postgres` (`postgres-mcp`, `--access-mode=restricted`); self-hosted reference copy at `governance/mcp-servers/postgres/` |
 | SECURITY module | `governance/modules/SECURITY/` |
 | Reporting / non-impacting markdown (see below) | `governance/project-artifacts/` |
 | TestSprite mechanism, folder rules, module classification | `governance/testsprite/TESTSPRITE-GOVERNANCE.md` |
@@ -201,6 +201,27 @@ package-based and enforced by the ArchUnit suite in
 for the history of that consolidation. Cross-module calls go through each
 module's own `crossmodule` package (see the `build-create-service` skill's
 "Cross-Module Calls (XM)" section).
+
+---
+
+## Project identity & the shared `common` foundation
+
+**Base package = single variable.** The whole project lives under `com.erp.*`.
+`erp` is a working default, not a fixed name — `scripts/rename-project.sh <name>`
+re-brands the entire project (package, main class, artifact, app name, DB/Docker
+names, OpenAPI strings) in one pass. See `scripts/README.md`. The governance
+skills already generate under `<base.package>` (read from `pom.xml`'s `groupId`),
+so nothing under `.claude/skills/` needs editing after a rename.
+
+**Shared platform foundation.** `com.erp.common.*` holds the infrastructure every
+generated module consumes and must never reinvent: `domain.AuditableEntity` +
+`audit.AuditEntityListener`; `domain.status.{Status, ServiceResult}`;
+`exception.{LocalizedException, CommonErrorCodes}`; `web.{ApiResponse, ApiError,
+FieldErrorItem, OperationCode, GlobalExceptionHandler}`; `search.{SpecBuilder,
+PageableBuilder, SetAllowedFields, SearchRequest, ...}`; `dto.BaseSearchContractRequest`;
+`converter.{BooleanNumberConverter, BooleanCharYNConverter}`; `util.SecurityContextHelper`.
+These are exactly the classes the `build-*`/`gov-*` skills reference — the
+contract between the foundation and generated code.
 
 ---
 
@@ -345,7 +366,7 @@ ownership table below, it almost certainly belongs in
 | Backend skills — two lanes by prefix: `build-*` (generates code) and `gov-*` (validates code) | `backend/.claude/skills/`, all folders one level deep since skill discovery does not recurse — moved out of `backend/governance/.github/skills/backend/` on 2026-08-31 so skills auto-load via the Skill tool every session; `governance/GOVERNANCE-RULES.md` remains the authoritative routing table for which skill to use and when | `frontend/governance/`, and no longer `backend/governance/.github/skills/` |
 | `.github/skills/devops/` | Not currently present anywhere in this repo (removed along with the rest of `governance/.github/` and never re-added under `.claude/skills/`) — re-add under `backend/.claude/skills/` if devops skills are needed again | `frontend/governance/` |
 | `.github/skills/frontend/` | `frontend/governance/.github/skills/` | `backend/governance/` |
-| `mcp-servers/postgres/` | `backend/governance/mcp-servers/postgres/` only, wired via `backend/.mcp.json` | `frontend/governance/` — no frontend DB access use case |
+| Postgres MCP (DB inspection, read-only) | wired in `backend/.mcp.json` as the `postgres` server (`postgres-mcp`, `--access-mode=restricted`). A self-hosted equivalent is kept at `backend/governance/mcp-servers/postgres/` for reference — it is NOT the wired server. | `frontend/governance/` — no frontend DB access use case |
 | `mcp-servers/playwright/` | `frontend/governance/mcp-servers/playwright/` only (UI/E2E tests, wired via `frontend/.mcp.json`). Backend had its own copy for API integration tests; removed 2026-08-28 as orphaned — the Playwright API test runner it served (`playwright.config.ts`/`package.json`) was removed the same day and nothing in backend still calls it. | `backend/governance/` — do not re-add without a fresh reason; `testsprite_tests/` is backend's current API test suite |
 | `api-docs/` (auto-generated) | `backend/governance/modules/<MOD>/api-docs/` for backend's own use. Frontend keeps a SEPARATE, independent copy at `frontend/governance/modules/<MOD>/api-docs/`, populated after real implementation (manually, or by whatever process publishes them) — **not** a cross-repo read of backend's copy (superseded 2026-08-27; frontend's `config.py` no longer reaches into `backend/governance/` for this at all) | Backend's copy read live from `frontend/governance/`, or vice versa — the two copies are independent and never synced automatically |
 | `shared/modules-registry.json` (published, read-only copy of `modules-registry.json`) | Project root `shared/` — sibling to `backend/` and `frontend/`, **not** inside either `governance/` tree. Written only by backend's `save_modules_registry()` on every registry write (added 2026-08-27). This is frontend's ONLY sanctioned way to learn which modules are registered — it never reads `backend/governance/modules-registry.json` directly. | Treating this as a second source of truth — `backend/governance/modules-registry.json` remains authoritative; `shared/modules-registry.json` is a mechanical publish target only, never hand-edited |

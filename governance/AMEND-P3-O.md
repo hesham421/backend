@@ -4,7 +4,7 @@ Scope: the backend `governance/` package — the Stage-2 toolset, its docs, and
 the `.claude/commands/` prompts. Goal: bring prose, prompts, and tooling into
 one consistent, verified reality and harden against silent failure modes.
 Everything below is covered by the pytest suite in
-`governance-tools/tests/` (22 tests) and verified end-to-end.
+`governance-tools/tests/` (34 tests) and verified end-to-end.
 
 ## governance-tools/ (code)
 
@@ -35,7 +35,7 @@ M3          No auto split-threshold check — an             config.PHASE_SPLIT_
                                                           marker-countable phases;
                                                           DATA-DOM entities left to
                                                           the engine.
-M7          No tests.                                      pytest suite added (29).
+M7          No tests.                                      pytest suite added (34).
 ```
 
 ## Autonomy: deterministic self-repair + autonomous split orchestrator
@@ -106,6 +106,12 @@ M7          No tests.                                      pytest suite added (2
 - `process-project-files.md` — replaced the hardcoded `/Users/ezzat/my project/`
   absolute paths with runtime-derived roots, per the same portability law
   `orchestrate-module.md` already follows.
+- `bootstrap-legacy-frontend.md` — was BROKEN: it invoked the backend tools with
+  `--frontend-only` / `--track frontend` flags that do not exist (the split
+  toolsets have no track flag), and referenced a non-existent
+  `generate-module-setup-3.md`. Rewritten to invoke the FRONTEND toolset
+  (`frontend/governance/governance-tools/`) plainly, with runtime-derived roots
+  and the precondition gate defined inline.
 
 ## P4 is optional and non-breaking (clarification)
 
@@ -119,6 +125,9 @@ M7          No tests.                                      pytest suite added (2
 
 ## Unchanged (audited, already correct)
 
-`GOVERNANCE-RULES.md`, `orchestrate-module.md`, `bootstrap-legacy-frontend.md`,
-`WORKSPACE.md`, `vision.md`, `testsprite/`, `mcp-servers/postgres/`,
-`modules-registry.json` — no drift found.
+`GOVERNANCE-RULES.md`, `WORKSPACE.md`, `vision.md`, `mcp-servers/postgres/`,
+`modules-registry.json` — audited, no drift found. (`orchestrate-module.md` and
+`bootstrap-legacy-frontend.md` WERE changed — see the sections above; the
+latter's broken `--track`/`--frontend-only` flags and dangling
+`generate-module-setup-3.md` reference were fixed to use the split frontend
+toolset.)
