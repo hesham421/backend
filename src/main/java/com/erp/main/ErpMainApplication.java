@@ -22,47 +22,15 @@ import java.util.Locale;
                 "org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration"
         }
 )
-@EntityScan(basePackages = {
-        "com.erp.security.entity",
-        "com.erp.masterdata.entity",
-        "com.erp.finance.gl.entity",
-        "com.erp.org.entity",
-        "com.erp.file.entity",
-        "com.erp.notification.entity"
-})
+@EntityScan(basePackages = "com.erp")
 @EnableJpaRepositories(
-        basePackages = {
-                "com.erp.security.repository",
-                "com.erp.masterdata.repository",
-                "com.erp.finance.gl.repository",
-                "com.erp.org.repository",
-                "com.erp.file.repository",
-                "com.erp.notification.repository"
-        },
+        basePackages = "com.erp",
         entityManagerFactoryRef = "entityManagerFactory",
         transactionManagerRef = "transactionManager"
 )
 @EnableCaching
 @EnableScheduling
-@ComponentScan(basePackages = {
-    // Main module (must be included when overriding component scan)
-    "com.erp.main",
-
-    // Core modules
-    "com.erp.security",                      // Security module
-    "com.erp.masterdata",                    // Master Data module
-    "com.erp.finance.gl",               // Finance GL module
-    "com.erp.org",                       // Organization module
-    "com.erp.file",                      // File Service module
-    "com.erp.notification",              // Notification module
-
-    // Common utilities
-    "com.erp.common.web",               // Web components
-    "com.erp.common.multitenancy",      // Multi-tenancy
-    "com.erp.common.exception",         // Exception handling
-    "com.erp.common.search",            // Search components
-    "com.erp.common.i18n"               // Localization
-})
+@ComponentScan(basePackages = "com.erp")
 public class ErpMainApplication {
 
     public static void main(String[] args) {

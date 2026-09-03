@@ -33,14 +33,7 @@ public class JpaConfig {
     public LocalContainerEntityManagerFactoryBean entityManagerFactory(DataSource dataSource) {
         LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
         em.setDataSource(dataSource);
-        em.setPackagesToScan(
-            "com.erp.security.entity",
-            "com.erp.masterdata.entity",
-            "com.erp.finance.gl.entity",
-            "com.erp.org.entity",
-            "com.erp.file.entity",
-            "com.erp.notification.entity"
-        );
+        em.setPackagesToScan("com.erp");
 
         HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
         vendorAdapter.setShowSql(showSql);

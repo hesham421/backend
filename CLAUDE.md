@@ -5,8 +5,9 @@ configuration, API integration tests, and its own copy of the AI governance
 content that applies to backend work.
 
 > **Governance lives inside this repository.**
-> All backend-relevant AI skills, coding standards, architecture rules, and
-> execution protocols live in `governance/` (this repo's own subfolder) —
+> All backend-relevant coding standards, architecture rules, and execution
+> protocols live in `governance/` (this repo's own subfolder); the AI skills
+> themselves live in `.claude/skills/` so they auto-load via the Skill tool —
 > see "Workspace Layout" below for how this relates to `frontend/`.
 
 ---
@@ -18,8 +19,10 @@ Before generating any code:
 1. `governance/GOVERNANCE-RULES.md` is the single copy of the skill-routing
    table, execution order, and governance rules — read it before generating
    or modifying any code. This file does not restate its contents.
-2. Load the required skill from `governance/.github/skills/backend/<skill-name>/SKILL.md`
-   per the routing table in `GOVERNANCE-RULES.md`.
+2. Load the required skill from `.claude/skills/<skill-name>/SKILL.md`
+   per the routing table in `GOVERNANCE-RULES.md`. (Moved here from
+   `governance/.github/skills/backend/` on 2026-08-31 so skills auto-load
+   via the Skill tool — see `.claude/skills/README.md`.)
 3. Load architecture context from `governance/.github/context/backend.md` (if present).
 4. For a specific module's phase execution, read
    `governance/modules/[MODULE]/execution-state.json`, then follow the
@@ -63,7 +66,7 @@ in this repo needs lives inside `backend/governance/`.
 
 | Governance artifact | Location |
 |---------------------|----------|
-| Backend skills | `governance/.github/skills/backend/` |
+| Backend skills | `.claude/skills/` |
 | Backend architecture context | `governance/.github/context/backend.md` |
 | Master entity registry | `governance/master-registry.md` |
 | Modules registry | `governance/modules-registry.json` |
@@ -99,7 +102,7 @@ in this repo needs lives inside `backend/governance/`.
 1. Read sub file completely
 2. Identify all tasks in the sub
 3. Map each task to the skill routing table in `GOVERNANCE-RULES.md`
-4. Read required skills from `governance/.github/skills/`
+4. Read required skills from `.claude/skills/`
 5. Execute all tasks in order
 6. Run `validate-backend-feature` (or `validate-frontend-feature`, for frontend work) after the last task
 7. Mark sub as COMPLETE in `governance/modules/[MODULE]/execution-state.json`
@@ -338,7 +341,8 @@ ownership table below, it almost certainly belongs in
 | `.claude/commands/generate-frontend-module-setup.md` (frontend) | `frontend/governance/.claude/commands/` — its own independent command, not a copy of the backend one | `backend/governance/` |
 | `.claude/commands/[MODULE]/execute-backend.md`, `execute-backend-test.md` (generated output, not templates — one subfolder per module, e.g. `.claude/commands/SECURITY/`, never the flat `.claude/commands/execute-backend.md`) | `backend/governance/.claude/commands/[MODULE]/` only | `frontend/governance/` |
 | `.claude/commands/[MODULE]/execute-frontend.md`, `execute-frontend-test.md` (generated output, not templates — same per-module-folder rule) | `frontend/governance/.claude/commands/[MODULE]/` only | `backend/governance/` |
-| `.github/skills/backend/`, `.github/skills/devops/` | `backend/governance/.github/skills/` | `frontend/governance/` |
+| Backend skills (`create-*`, `enforce-*`, `validate-backend-feature`) | `backend/.claude/skills/` — moved out of `backend/governance/.github/skills/backend/` on 2026-08-31 so skills auto-load via the Skill tool every session; `governance/GOVERNANCE-RULES.md` remains the authoritative routing table for which skill to use and when | `frontend/governance/`, and no longer `backend/governance/.github/skills/` |
+| `.github/skills/devops/` | Not currently present anywhere in this repo (removed along with the rest of `governance/.github/` and never re-added under `.claude/skills/`) — re-add under `backend/.claude/skills/` if devops skills are needed again | `frontend/governance/` |
 | `.github/skills/frontend/` | `frontend/governance/.github/skills/` | `backend/governance/` |
 | `mcp-servers/postgres/` | `backend/governance/mcp-servers/postgres/` only, wired via `backend/.mcp.json` | `frontend/governance/` — no frontend DB access use case |
 | `mcp-servers/playwright/` | `frontend/governance/mcp-servers/playwright/` only (UI/E2E tests, wired via `frontend/.mcp.json`). Backend had its own copy for API integration tests; removed 2026-08-28 as orphaned — the Playwright API test runner it served (`playwright.config.ts`/`package.json`) was removed the same day and nothing in backend still calls it. | `backend/governance/` — do not re-add without a fresh reason; `testsprite_tests/` is backend's current API test suite |
