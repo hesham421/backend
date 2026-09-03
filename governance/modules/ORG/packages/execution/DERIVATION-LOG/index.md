@@ -1,3 +1,0 @@
-# Index — execution\DERIVATION-LOG
-
-- [DERIVATION-LOG](DERIVATION-LOG.md)

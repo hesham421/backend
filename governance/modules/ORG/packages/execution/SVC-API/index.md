@@ -1,5 +1,0 @@
-# Index — execution\SVC-API
-
-- [SVC-API-CRUD](SVC-API-CRUD.md)
-- [SVC-API-HEADER](SVC-API-HEADER.md)
-- [SVC-API-TREE](SVC-API-TREE.md)
