@@ -1,309 +1,242 @@
 ---
-name: validate-backend-feature
-description: "MASTER VALIDATION — runs ALL enforcement checks across a completed backend feature. Verifies execution order, file inventory, 85 layer-by-layer contract rules (including the Domain layer), and cross-cutting validations (error handling, caching, security, immutability)."
+name: gov-validate-backend-feature
+description: "MASTER VALIDATION — runs every enforcement check across a completed backend feature: build order, file inventory, the 85 layer contract rules, and the cross-cutting validations (error handling, caching, security, immutability, envelope, domain delegation, cross-module). Produces a score and a verdict."
 ---
 
-# Skill: validate-backend-feature
-
-## Name
-`validate-backend-feature`
+# Skill: gov-validate-backend-feature
 
 ## Description
-**MASTER VALIDATION SKILL.** The final gatekeeper that runs ALL enforcement checks against a completed backend feature. This skill analyzes generated code across ALL layers, detects violations, reports missing layers, and ensures full implementation-contract compliance. It orchestrates all enforcement skills into a single comprehensive validation pass.
+**MASTER VALIDATION SKILL.** The final gatekeeper. Runs ALL enforcement checks against a
+completed backend feature, detects violations, reports missing layers, and issues a verdict. It
+orchestrates the other governance skills into a single pass.
 
 ## When to Use
-- After a developer or AI agent claims a backend feature is "complete"
-- Before merging any backend feature branch
-- As the final step before moving to frontend implementation
-- During code review of any backend module
-- When verifying execution-template phase ordering
+- After anyone claims a backend feature is "complete"
+- Before merging a backend feature branch
+- As the final step before moving on to the client implementation
+- During review of any backend module
 
 ## When NOT to Use
-- During individual layer creation — use the specific `create-*` skill for that layer
-- For partial features where not all layers exist yet — report missing layers rather than running full validation
-- For frontend code — use `validate-frontend-feature` instead
-- For deploy/infrastructure — use the `deploy` skill instead
+- During individual layer creation — use the matching `build-*` skill
+- For a partial feature where layers are still missing — report the missing layers instead of
+  running a full validation pass
 
 ## Responsibilities
 
-- Verify ALL phases were executed in correct order (entity → repository → DTO → mapper → service → controller)
-- Run file inventory check to confirm all required files exist
-- Execute all layer-by-layer contract checks (85 rules, including the Domain layer)
-- Validate cross-cutting concerns: error handling, caching, security, immutability
+- Verify the build order was followed
+- Run the file inventory check
+- Execute all 85 layer contract checks
+- Validate the cross-cutting concerns
+- Produce a score and a verdict
 
 ## Constraints
 
-- MUST NOT generate or modify application code — this skill only validates
-- MUST NOT accept partial features — all required phases must be present
-- MUST NOT skip any validation stage — all stages are mandatory
-- MUST NOT fix violations automatically — report them with specific skill references
-
-## Output
-
-- Comprehensive validation report with:
-  - Execution order verification (pass/fail)
-  - File inventory (present/missing per artifact)
-  - Layer-by-layer contract compliance (77 checks)
-  - Cross-cutting validation results
-  - Final verdict: APPROVED or REJECTED with reasons
+- MUST NOT generate or modify application code — validation only
+- MUST NOT accept a partial feature
+- MUST NOT skip a stage
+- MUST NOT fix violations automatically — report them against the responsible skill
 
 ---
 
-## VALIDATION PIPELINE
-
-### STAGE 0: Execution Order Verification
-
-Verify that ALL phases were executed in the correct order:
+## STAGE 0: Build Order (9 checks)
 
 ```
-[ ] Step 1.1 Entity       — File exists, extends AuditableEntity
-[ ] Step 1.2 Repository   — File exists, extends JpaRepository + JpaSpecificationExecutor
-[ ] Step 1.3 DTOs         — All 5-6 DTO files exist (Create, Update, Response, Search, Usage, Option)
-[ ] Step 1.4 Mapper       — File exists, @Component annotated
-[ ] Step 1.4.5 Domain     — Unconditional (see `.github/context/domain-layer.md`).
-                              A dedicated <Entity>Domain class exists for every entity
-                              whose Execution Plan RULE-IDs require Business Decision
-                              ownership; it is a plain class (no Spring/JPA annotations),
-                              constructed only via create()/from(); the Service delegates
-                              business rule checks to it — never inline.
-[ ] Step 1.5 Error Codes  — Constants registered in <Module>ErrorCodes
-[ ] Step 1.6 Permissions  — 4 permissions in SecurityPermissions.java
-[ ] Step 1.7 Service      — File exists, @Service annotated
-[ ] Step 1.8 Controller   — File exists, @RestController annotated
+[ ] 1. Entity        — exists, extends AuditableEntity
+[ ] 2. Repository    — exists, extends JpaRepository + JpaSpecificationExecutor
+[ ] 3. DTOs          — the full required set exists
+[ ] 4. Mapper        — exists, @Component
+[ ] 5. Domain        — a plain <Entity>Domain exists for every entity whose rules answer
+                       "is this operation allowed?"; no Spring/JPA annotations; built only
+                       via create()/from(); the service delegates to it rather than inlining
+[ ] 6. Error codes   — registered in <Module>ErrorCodes
+[ ] 7. Permissions   — VIEW/CREATE/UPDATE/DELETE registered in the permission constants class
+[ ] 8. Service       — exists, @Service
+[ ] 9. Controller    — exists, @RestController
 ```
 
-> **If ANY step is missing → REJECT immediately. No partial features.**
+> **If any step is missing → REJECT immediately. No partial features.**
 
 ---
 
-### STAGE 1: File Inventory Check
-
-For a feature named `<Entity>` in module `<module>`, verify ALL files exist:
+## STAGE 1: File Inventory (15 mandatory files)
 
 ```
-src/main/java/com/erp/<module>/
-├── entity/Md<Entity>.java                          [ ]
-├── repository/<Entity>Repository.java               [ ]
-├── dto/<Entity>CreateRequest.java                   [ ]
-├── dto/<Entity>UpdateRequest.java                   [ ]
-├── dto/<Entity>Response.java                        [ ]
-├── dto/<Entity>SearchRequest.java                   [ ]
-├── dto/<Entity>UsageResponse.java                   [ ]
-├── dto/<Entity>OptionResponse.java (if dropdown)    [ ]
-├── mapper/<Entity>Mapper.java                       [ ]
-├── domain/<Entity>Domain.java                       [ ]  ← required whenever the
-│                                                            entity has Business Rules
-│                                                            needing Business Decision
-│                                                            ownership (see domain-layer.md)
-├── crossmodule/<Target>Api.java (if this feature     [ ]  ← only if this feature exposes
-│   exposes data to another module)                         data to another module —
-│                                                            see create-service's
-│                                                            "Cross-Module Calls (XM)"
-├── exception/<Module>ErrorCodes.java (updated)      [ ]
-├── service/<Entity>Service.java                     [ ]
-└── controller/<Entity>Controller.java               [ ]
+src/main/java/<base/package>/<module>/
+├── entity/<ENTITY_CLASS>.java                      [ ]
+├── repository/<Entity>Repository.java              [ ]
+├── dto/<Entity>CreateRequest.java                  [ ]
+├── dto/<Entity>UpdateRequest.java                  [ ]
+├── dto/<Entity>Response.java                       [ ]
+├── dto/<Entity>SearchRequest.java                  [ ]
+├── dto/<Entity>UsageResponse.java                  [ ]
+├── dto/<Entity>OptionResponse.java                 [ ]  ← conditional: dropdown use only
+├── mapper/<Entity>Mapper.java                      [ ]
+├── domain/<Entity>Domain.java                      [ ]  ← required when the entity has
+│                                                          decision rules
+├── crossmodule/<Name>Api.java                      [ ]  ← conditional: only if this feature
+│                                                          exposes data to another module
+├── exception/<Module>ErrorCodes.java (updated)     [ ]
+├── service/<Entity>Service.java                    [ ]
+└── controller/<Entity>Controller.java              [ ]
 
-src/main/java/com/erp/security/constants/
-└── SecurityPermissions.java (updated)                [ ]
-
+<permission constants class> (updated)              [ ]
 src/main/resources/i18n/
-├── messages.properties (updated)                    [ ]
-└── messages_ar.properties (updated)                 [ ]
+├── messages.properties (updated)                   [ ]
+└── messages_<locale>.properties (updated)          [ ]
 ```
+
+> Conditional files (`OptionResponse`, `crossmodule/`) are not counted in the 15 and are not a
+> violation when genuinely not applicable.
 
 ---
 
-### STAGE 2: Layer-by-Layer Contract Validation
+## STAGE 2: Layer Contracts (85 checks)
 
-Run each enforcement skill's full checklist:
+Run the full checklist from
+[`gov-enforce-backend-contract`](../gov-enforce-backend-contract/SKILL.md):
 
-#### 2.0 Domain Validation (7 checks from `enforce-backend-contract`)
-- A.0.1 through A.0.7 — see [`domain-layer.md`](../../../context/domain-layer.md). Unconditional
-  for every entity with Business Rules requiring Business Decision ownership.
-
-#### 2.1 Entity Validation (19 checks from `enforce-backend-contract`)
-- A.1.1 through A.1.19
-
-> Note: A.1.1 (AuditableEntity) has a canonical exception for
-> short-lived security/session artifacts (e.g., RefreshToken)
-> with their own lifecycle fields (issuedAt/expiresAt/revoked).
-> Verify exemption is intentionally declared in module Phase CORE
-> before flagging as a violation.
-
-#### 2.2 Repository Validation (9 checks)
-- A.2.1 through A.2.9
-
-#### 2.3 DTO Validation (13 checks)
-- A.3.1 through A.3.13
-
-#### 2.4 Mapper Validation (7 checks)
-- A.4.1 through A.4.7
-
-#### 2.5 Service Validation (18 checks)
-- A.5.1 through A.5.18
-
-#### 2.6 Controller Validation (12 checks)
-- A.6.1 through A.6.12
+| Layer | Rules | Checks |
+|-------|-------|--------|
+| Domain | A.0.1 – A.0.7 | 7 |
+| Entity | A.1.1 – A.1.19 | 19 |
+| Repository | A.2.1 – A.2.9 | 9 |
+| DTO | A.3.1 – A.3.13 | 13 |
+| Mapper | A.4.1 – A.4.7 | 7 |
+| Service | A.5.1 – A.5.18 | 18 |
+| Controller | A.6.1 – A.6.12 | 12 |
+| **TOTAL** | | **85** |
 
 ---
 
-### STAGE 3: Cross-Cutting Validations
+## STAGE 3: Cross-Cutting (37 checks)
 
-#### 3.1 Error Handling (from `enforce-error-handling`; Status/HTTP mapping canonical in [`api-contract.md`](../../../context/api-contract.md) §2)
+### 3.1 Error handling (8)
+Full checklist in [`gov-enforce-error-handling`](../gov-enforce-error-handling/SKILL.md).
 ```
-[ ] NO NotFoundException usage anywhere in module
-[ ] ALL not-found → LocalizedException(Status.NOT_FOUND, ...)
-[ ] ALL duplicates → LocalizedException(Status.ALREADY_EXISTS, ...)
-[ ] ALL FK violations → LocalizedException(Status.CONFLICT, ...) (except delete — DIVE handled by GlobalExceptionHandler)
-[ ] Delete does NOT try-catch DataIntegrityViolationException
-[ ] Error codes registered in <Module>ErrorCodes.java
-[ ] Error messages in messages.properties (EN)
-[ ] Error messages in messages_ar.properties (AR)
+[ ] No generic not-found or raw runtime exception anywhere in the module
+[ ] Every not-found      → LocalizedException(Status.NOT_FOUND, ...)
+[ ] Every duplicate      → LocalizedException(Status.ALREADY_EXISTS, ...)
+[ ] Every blocked-by-reference → LocalizedException(Status.CONFLICT, ...)
+[ ] delete() does not try-catch the constraint-violation exception
+[ ] Error codes registered in <Module>ErrorCodes
+[ ] Messages present in the default bundle
+[ ] Messages present in every other supported-locale bundle
 ```
 
-#### 3.2 Caching (from `enforce-caching-rules`)
+### 3.2 Caching (5)
+Full checklist in [`gov-enforce-caching-rules`](../gov-enforce-caching-rules/SKILL.md).
 ```
-[ ] Entity is on approved cache list OR has NO caching annotations
-[ ] If cached: @CacheEvict on ALL write methods
+[ ] The entity is on the approved register, OR carries no caching annotations at all
+[ ] If cached: @CacheEvict on every write method
 [ ] If cached: @Cacheable only on approved read methods
-[ ] If cached: annotation order correct (Cache → Transaction → Security)
-[ ] If NOT cached: ZERO caching annotations anywhere
+[ ] If cached: annotation order is Cache → Transaction → Security
+[ ] If not cached: zero caching annotations anywhere
 ```
 
-#### 3.3 Security
+### 3.3 Security (4)
 ```
-[ ] 4 permissions defined: VIEW, CREATE, UPDATE, DELETE
-[ ] SecurityPermissions constants use PERM_<ENTITY>_<ACTION> format
-[ ] @PreAuthorize on EVERY service public method
-[ ] Permission constants referenced (not hardcoded strings)
+[ ] Four permissions defined: VIEW, CREATE, UPDATE, DELETE
+[ ] Permission constants follow the project's naming convention
+[ ] @PreAuthorize on every public service method
+[ ] Permission constants referenced — never hardcoded strings
 ```
 
-#### 3.4 Immutability
+### 3.4 Immutability (4)
 ```
 [ ] Natural keys identified and documented
 [ ] UpdateRequest excludes natural keys and FK references
-[ ] Mapper's updateEntityFromRequest() skips immutable fields
-[ ] Service does NOT update immutable fields
+[ ] The mapper's update method skips immutable fields
+[ ] The service never updates an immutable field
 ```
 
-#### 3.5 Response Envelope (canonical definition in [`api-contract.md`](../../../context/api-contract.md) §1–2)
+### 3.5 Response envelope (8)
 ```
-[ ] Service methods return ServiceResult<T> (except delete)
+[ ] Service methods return ServiceResult<T> — except delete()
 [ ] create() uses Status.CREATED
 [ ] update()/activate()/deactivate() use Status.UPDATED
-[ ] getById()/search()/getUsage() use default Status.SUCCESS
-[ ] delete() returns void (no ServiceResult)
-[ ] Controller uses operationCode.craftResponse() for non-delete
-[ ] Controller uses @ResponseStatus(NO_CONTENT) for delete
-[ ] Controller does NOT use @ResponseStatus(CREATED)
+[ ] getById()/search()/getUsage() use the default success status
+[ ] delete() returns void
+[ ] The controller crafts every non-delete response through the shared helper
+[ ] The controller uses @ResponseStatus(NO_CONTENT) for delete
+[ ] The controller does not use @ResponseStatus(CREATED)
 ```
 
-#### 3.6 Domain Delegation (unconditional — see `domain-layer.md`)
-
+### 3.6 Domain delegation (4)
 ```
-[ ] 3.6.1 — Business rule guards (deactivation checks, FK
-             constraints, state transitions) are NOT inlined in
-             service method bodies — delegated to the entity's
-             <Entity>Domain object
-[ ] 3.6.2 — Service body is orchestration-only: load → delegate
-             → persist → return (no business if blocks remaining)
-[ ] 3.6.3 — <Entity>Domain throws LocalizedException for rule
-             violations (not the service)
-[ ] 3.6.4 — <Entity>Domain does NOT import or call another
-             module's service — cross-module (XM) data is resolved
-             by the Service (via the target module's crossmodule
-             interface — see create-service's "Cross-Module Calls
-             (XM)") and passed in as a plain argument
+[ ] Business-rule guards are not inlined in service method bodies
+[ ] The service body is orchestration-only: load → delegate → persist → return
+[ ] <Entity>Domain throws the rule violations, not the service
+[ ] <Entity>Domain never calls another module — the service resolves and passes that data in
 ```
 
-#### 3.7 Cross-Module Calls & Eventing (see `create-service`)
-
+### 3.7 Cross-module calls & eventing (4)
 ```
-[ ] 3.7.1 — Any cross-module read goes through the target module's
-             crossmodule interface, injected directly — no direct
-             import/injection of another module's @Service,
-             Repository, @Entity, or any class outside that
-             interface's package
-[ ] 3.7.2 — The crossmodule interface is only ever injected into
-             this module's Service — never into a Domain object,
-             mapper, or controller
-[ ] 3.7.3 — Any event this feature publishes uses
-             ApplicationEventPublisher with a dedicated
-             <Action><Entity>Event record — no RabbitTemplate, no
-             message broker, no custom publisher/listener port
-[ ] 3.7.4 — The listener for a published event lives in the same
-             module that defines the event
+[ ] Every cross-module read goes through the target module's cross-module interface
+[ ] That interface is injected only into this module's service — never a Domain object,
+    mapper, or controller
+[ ] Every published event uses ApplicationEventPublisher with a dedicated
+    <Action><Entity>Event — no message broker, no custom publisher/listener port
+[ ] The listener lives in the module that defines the event
 ```
 
 ---
 
-### STAGE 4: Compilation
+## STAGE 4: Compilation (2 checks)
 
 ```
-[ ] mvn clean compile → SUCCESS (no errors) — single consolidated pom.xml, no per-module -pl/-am
-[ ] No compilation warnings related to the feature
+[ ] The project compiles cleanly
+[ ] No new compilation warnings attributable to this feature
 ```
 
 ---
 
-## FINAL VERDICT
+## Scoring
 
-### Scoring
+| Stage | Max points |
+|-------|------------|
+| Stage 0 — Build order | 9 |
+| Stage 1 — File inventory | 15 |
+| Stage 2 — Layer contracts | 85 |
+| Stage 3 — Cross-cutting | 37 |
+| Stage 4 — Compilation | 2 |
+| **TOTAL** | **148** |
 
-| Stage | Weight | Max Score |
-|-------|--------|-----------|
-| Stage 0: Execution Order | 6% | 9 points |
-| Stage 1: File Inventory | 10% | 15 points |
-| Stage 2: Layer Contracts | 57% | 85 points |
-| Stage 3: Cross-Cutting | 25% | 37 points |
-| Stage 4: Compilation | 1% | 2 points |
-| **TOTAL** | **~100%** | **148 points** |
+> One point per checklist item. Stage 3 sums its seven areas: 8+5+4+4+8+4+4 = 37. The shared-layer
+> consumption checks (CU.1–CU.8) are deliberately outside this pool — they are a separate
+> pass/fail gate, below.
 
-> Points are 1-per-checklist-item throughout (Stage 0 has 9 execution-order steps including
-> Domain at 1.4.5; Stage 1 has 15 mandatory files; Stage 2 has the 85 contract checks from
-> `enforce-backend-contract`; Stage 3 sums its seven listed areas — 8+5+4+4+8+4+4 = 37 — Common-Utils
-> Reuse is intentionally excluded, see the note under STAGE 3 above; Stage 4 has 2 checks).
-> Weight % is informational only and rounds to ~100. Section 3.7 (Cross-Module Calls & Eventing)
-> is also a pass/fail gate independent of its point value — see "Automatic Rejection" below,
-> which is where it's actually enforced.
-
-### Verdict Thresholds
+### Verdict thresholds
 
 | Score | Verdict | Action |
 |-------|---------|--------|
-| 148/148 (100%) | ✅ **APPROVED** | Proceed to frontend |
-| 141-147 (95%+) | ⚠️ **APPROVED WITH NOTES** | Minor issues, document and proceed |
-| 118-140 (80%+) | 🔶 **CONDITIONAL** | Fix issues before proceeding |
+| 148 / 148 (100%) | ✅ **APPROVED** | Proceed |
+| 141–147 (95%+) | ⚠️ **APPROVED WITH NOTES** | Document the minor issues and proceed |
+| 118–140 (80%+) | 🔶 **CONDITIONAL** | Fix before proceeding |
 | < 118 (< 80%) | ❌ **REJECTED** | Major rework required |
 
-### Automatic Rejection (regardless of score)
+### Automatic rejection — regardless of score
 
-The feature is **IMMEDIATELY REJECTED** if any of these are found:
-
-- `NotFoundException` used anywhere
-- Service method without `@PreAuthorize`
-- Service returning raw entity outside module
+- A raw or generic exception used instead of `LocalizedException`
+- A service method without `@PreAuthorize`
+- A service returning a raw entity outside its module
 - `GenerationType.IDENTITY` or `AUTO`
-- Repository injected in another module
-- Direct import/injection of another module's `@Service`, `Repository`, `@Entity`, or any
-  class outside its `crossmodule` package, from anywhere in this module — cross-module reads
-  must go through the target module's `crossmodule` interface, injected directly (see
-  `create-service`'s "Cross-Module Calls (XM)")
-- An event published via `RabbitTemplate`, a message broker, or any publisher/listener port
-  other than `ApplicationEventPublisher` + a dedicated `<Action><Entity>Event` class
-  — Exception: RabbitMQ publish where the sole target consumer is the Accounting module
-  (inbound only) is not subject to this rejection trigger — see `create-service`'s
-  "Scoped exception — Accounting inbound events (PILOT)" under "Publishing Domain Events".
-  Status: PLANNED — no implementation exists in this codebase yet. All other RabbitMQ/
-  message-broker usage remains an automatic rejection with no exceptions.
-- Business logic in controller
-- Missing `AuditableEntity` extension
-- `@Builder` instead of `@SuperBuilder` on entity
-- Dead-code repository methods with no caller in any service
-- Entity helper methods iterating/filtering lazy `@OneToMany` collections
-- Child mapper `toEntity()` without parent entity FK parameter
-- Business-rule condition inlined in a Service method instead of delegated to `<Entity>Domain`
-- `<Entity>Domain` annotated with `@Component`, `@Service`, or `@Entity`, or accessing a Repository
+- A repository injected in another module
+- Direct import/injection of another module's `@Service`, `Repository`, `@Entity`, or any class
+  outside its cross-module package
+- An event published through a message broker or a custom publisher/listener port
+- Business logic in a controller
+- An entity not extending `AuditableEntity` without a declared exemption
+- `@Builder` instead of `@SuperBuilder` on an entity
+- Repository methods with no caller in any service
+- Entity helpers iterating or filtering a lazy collection
+- A child mapper `toEntity()` without the parent FK parameter
+- A business-rule condition inlined in a service instead of delegated to `<Entity>Domain`
+- `<Entity>Domain` annotated with `@Component`/`@Service`/`@Entity`, or accessing a repository
+
+### Shared-layer compliance gate (CU.1–CU.8)
+
+Run [`gov-enforce-backend-contract`](../gov-enforce-backend-contract/SKILL.md)'s CU checks. A
+feature failing any of them is non-compliant regardless of its score above.
 
 ---
 
@@ -312,84 +245,51 @@ The feature is **IMMEDIATELY REJECTED** if any of these are found:
 ```
 # Backend Feature Validation Report
 
-## Feature: [Feature Name]
-## Module: erp-[module]
-## Entity: Md[Entity]
-## Date: [Date]
-## Validator: AI Governance System
+## Feature: [Name]   ## Module: [Module]   ## Entity: [Entity]   ## Date: [Date]
 
----
-
-## STAGE 0: Execution Order
-| Step | Artifact | Status |
-|------|----------|--------|
-| 1.1 | Entity | ✅/❌ |
-| 1.2 | Repository | ✅/❌ |
-| 1.3 | DTOs | ✅/❌ |
-| 1.4 | Mapper | ✅/❌ |
-| 1.4.5 | Domain | ✅/❌ |
-| 1.5 | Error Codes | ✅/❌ |
-| 1.6 | Permissions | ✅/❌ |
-| 1.7 | Service | ✅/❌ |
-| 1.8 | Controller | ✅/❌ |
-
-## STAGE 1: File Inventory
-[x/15] files present
+## STAGE 0: Build Order        [x/9]
+## STAGE 1: File Inventory     [x/15]
 
 ## STAGE 2: Layer Contracts
-| Layer | Checks | Passed | Failed |
-|-------|--------|--------|--------|
-| Domain | 7 | ? | ? |
-| Entity | 19 | ? | ? |
-| Repository | 9 | ? | ? |
-| DTO | 13 | ? | ? |
-| Mapper | 7 | ? | ? |
-| Service | 18 | ? | ? |
-| Controller | 12 | ? | ? |
+| Layer      | Checks | Passed | Failed |
+|------------|--------|--------|--------|
+| Domain     | 7      | ?      | ?      |
+| Entity     | 19     | ?      | ?      |
+| Repository | 9      | ?      | ?      |
+| DTO        | 13     | ?      | ?      |
+| Mapper     | 7      | ?      | ?      |
+| Service    | 18     | ?      | ?      |
+| Controller | 12     | ?      | ?      |
 
 ## STAGE 3: Cross-Cutting
-| Area | Checks | Passed | Failed |
-|------|--------|--------|--------|
-| Error Handling | 8 | ? | ? |
-| Caching | 5 | ? | ? |
-| Security | 4 | ? | ? |
-| Immutability | 4 | ? | ? |
-| Response Envelope | 8 | ? | ? |
-| Domain Delegation | 4 | ? | ? |
-| Cross-Module Calls & Eventing | 4 | ? | ? |
+| Area                        | Checks | Passed | Failed |
+|-----------------------------|--------|--------|--------|
+| Error Handling              | 8      | ?      | ?      |
+| Caching                     | 5      | ?      | ?      |
+| Security                    | 4      | ?      | ?      |
+| Immutability                | 4      | ?      | ?      |
+| Response Envelope           | 8      | ?      | ?      |
+| Domain Delegation           | 4      | ?      | ?      |
+| Cross-Module & Eventing     | 4      | ?      | ?      |
 
-> Common-Utils Reuse (CU.1–CU.8) is NOT part of this stage's point pool — it's the separate
-> pass/fail gate below ("erp-common-utils Compliance"), which fails the feature regardless of
-> the score here.
-
-## STAGE 4: Compilation
-- Compile: ✅/❌
-
----
+## STAGE 4: Compilation         [x/2]
 
 ## VIOLATIONS FOUND
 1. [Rule ID] — [Description] — [Location] — [Severity]
 
 ## SCORE: [X] / 148 ([Y]%)
-
 ## VERDICT: APPROVED / APPROVED WITH NOTES / CONDITIONAL / REJECTED
 
-## REQUIRED FIXES (if not approved):
-1. [Fix description]
+## REQUIRED FIXES
+1. [Fix]
 ```
 
 ---
 
-### erp-common-utils Compliance (CU.1–CU.8)
-
-Run `enforce-backend-contract` (`.claude/skills/enforce-backend-contract/SKILL.md`) for full erp-common-utils compliance validation (CU.1–CU.8). A feature that fails any CU check is NOT compliant regardless of its layer scores.
-
----
-
-## RELATED SKILLS
+## Related Skills
 
 | Skill | Purpose |
 |-------|---------|
-| `enforce-backend-contract` | Detailed 77-check architectural validation across all layers |
-| `enforce-error-handling` | 27-check error handling compliance with `LocalizedException` and `Status` |
-| `enforce-caching-rules` | 35-check caching eligibility and annotation rules |
+| [`gov-enforce-backend-contract`](../gov-enforce-backend-contract/SKILL.md) | The 85 layer checks + CU gate |
+| [`gov-enforce-error-handling`](../gov-enforce-error-handling/SKILL.md) | 23-check error-handling compliance |
+| [`gov-enforce-caching-rules`](../gov-enforce-caching-rules/SKILL.md) | 30-check caching eligibility and annotations |

@@ -24,10 +24,17 @@ Invokes    : backend/governance/governance-tools/agent1_create_structure.py,
 ## Your task
 
 Help the user bootstrap the frontend-native structure (`P3_2`, `P3_5_FE`,
-`P4_2`, `packages/frontend-execution/*`, `packages/frontend-test/*`) for
+`packages/frontend-execution/*`, `packages/frontend-test/*`) for
 one module, by walking Agent 1 → Agent 2 → Agent 3 in order, using only
 the real `argparse` flags each script actually defines. Never modify a
 script. Never guess a missing value — ask.
+
+> There is NO `P4`/`P4_2` (pre-implementation audit) stage in this
+> ecosystem — the audit gate was removed. P4 is not part of the structure,
+> is never created, and is never required: if a `P4*` folder happens to be
+> absent (the normal case), nothing here depends on it and nothing breaks.
+> Should a legacy module still carry a leftover `P4*` folder, the tools
+> ignore it — they only ever act on the stages their own `config.py` knows.
 
 ---
 

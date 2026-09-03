@@ -84,7 +84,8 @@ def scan_source(mod: str, source_path: Path) -> list[dict]:
 
 
 def print_plan(mod: str, source_path: Path, operations: list[dict], dry_run: bool,
-                structure_created: list[Path], structure_missing: bool = False):
+                structure_created: list[Path], structure_missing: bool = False,
+                force: bool = False):
     found     = [o for o in operations if o["found"]]
     missing   = [o for o in operations if not o["found"]]
     overwrite = [o for o in found if o["exists"]]
@@ -120,7 +121,7 @@ def print_plan(mod: str, source_path: Path, operations: list[dict], dry_run: boo
             if not op["found"]:
                 status = "NOT FOUND  ✗ skip"
             elif op["exists"]:
-                status = "OVERWRITE  ⚠"
+                status = "OVERWRITE  ⚠" if force else "KEEP       ⚠ exists"
             else:
                 status = "COPY       ✓"
             try:
@@ -142,16 +143,22 @@ def print_plan(mod: str, source_path: Path, operations: list[dict], dry_run: boo
     print()
 
 
-def execute_archive(mod: str, operations: list[dict], dry_run: bool):
+def execute_archive(mod: str, operations: list[dict], dry_run: bool, force: bool = False):
     if dry_run:
         print("  DRY RUN — no files copied.")
         return
 
-    copied, skipped, errors = [], [], []
+    copied, skipped, skipped_exists, errors = [], [], [], []
 
     for op in operations:
         if not op["found"]:
             skipped.append(op["filename"])
+            continue
+        # An existing destination is preserved unless --force is given. This is
+        # what the closing note has always promised; previously copy2 overwrote
+        # unconditionally, contradicting that note (M4).
+        if op["dst"].exists() and not force:
+            skipped_exists.append(op["filename"])
             continue
         try:
             op["dst"].parent.mkdir(parents=True, exist_ok=True)
@@ -168,12 +175,14 @@ def execute_archive(mod: str, operations: list[dict], dry_run: bool):
         manifest["archived_at"] = datetime.now().isoformat()
         manifest["archived_files"] = copied
         manifest["skipped_files"] = skipped
+        manifest["skipped_existing_files"] = skipped_exists
         with open(manifest_path, "w", encoding="utf-8") as fh:
             json.dump(manifest, fh, indent=2, ensure_ascii=False)
 
     print("─" * 65)
-    print(f"  ✓ Copied   : {len(copied)} files")
-    print(f"  ⚠ Skipped  : {len(skipped)} files (not found)")
+    print(f"  ✓ Copied        : {len(copied)} files")
+    print(f"  ⚠ Skipped (n/f) : {len(skipped)} files (not found in source)")
+    print(f"  ⚠ Skipped (kept): {len(skipped_exists)} files (already present — use --force to overwrite)")
     if errors:
         print(f"  ✗ Errors   : {len(errors)}")
         for err in errors:
@@ -185,7 +194,10 @@ def execute_archive(mod: str, operations: list[dict], dry_run: bool):
     if skipped:
         print("  NOTE: Missing files can be added later by re-running")
         print(f"  agent2_archive.py --module {mod} --source <path>")
-        print("  Existing files will not be overwritten unless --force is used.")
+        print()
+    if skipped_exists:
+        print(f"  NOTE: {len(skipped_exists)} file(s) already existed and were kept as-is.")
+        print(f"  Re-run with --force to overwrite them.")
         print()
 
     if not errors:
@@ -246,7 +258,7 @@ def main():
             print()
 
     operations = scan_source(mod, source_path)
-    print_plan(mod, source_path, operations, args.dry_run, structure_created, structure_missing)
+    print_plan(mod, source_path, operations, args.dry_run, structure_created, structure_missing, force=args.force)
 
     if not args.dry_run:
         confirm = input("  Proceed? [y/N]: ").strip().lower()
@@ -255,7 +267,7 @@ def main():
             sys.exit(0)
         print()
 
-    execute_archive(mod, operations, args.dry_run)
+    execute_archive(mod, operations, args.dry_run, force=args.force)
 
 
 if __name__ == "__main__":

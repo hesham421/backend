@@ -1,69 +1,70 @@
-# STAGE 2 — GOVERNANCE TOOLS (Marker Packaging & Archival Layer)
+# STAGE 2 — GOVERNANCE TOOLS (Marker Packaging & Archival Layer) — BACKEND
 
 ```
-Status        : IMPLEMENTED ✓
-Depends on    : P3 Section 6.7 (Artifact Marker Protocol)
-Scope         : Post-generation tooling — runs AFTER P0–P4 artifacts exist
-Location      : governance-tools/ (Python scripts — local execution,
-                 typically via Claude Code on macOS)
-Relationship  : Independent of P0–P4 project instructions.
-                 Reads their OUTPUT artifacts. Never modifies governance
-                 logic, never regenerates content, never makes decisions
-                 P0–P4 are responsible for.
+Status        : IMPLEMENTED ✓  (backend-only toolset)
+Depends on    : PROJECT-3-REGISTRY.md Section 5.7 (Artifact Marker Protocol)
+Scope         : Post-generation tooling — runs AFTER the backend analysis +
+                 plans are released (P0 → P3_1 execution plan, P3_5_BE test
+                 plan) and BEFORE the backend code is implemented.
+Location      : backend/governance/governance-tools/ (Python 3.10+, stdlib
+                 only — local execution, typically via Claude Code on macOS).
+Relationship  : Independent of the governance engines. Reads their OUTPUT
+                 artifacts. Never modifies governance logic, never regenerates
+                 content, never makes a decision an engine is responsible for.
+                 No LLM call anywhere — deterministic file operations only.
 ```
 
-This document exists so that any future edit to P0, P1, P2, P3, or P4 —
-especially to Section 6.7 (Marker Protocol) or Section 16 (test-plan
-structure) of P3 — accounts for what Stage 2 tooling expects and depends
-on. A change to marker syntax, phase names, or threshold rules in P3
-will silently break Stage 2 tooling unless this document is consulted.
+This toolset knows ONLY the backend. There is no `frontend` concept, no
+`--track` flag, and no `P4`/audit concept anywhere — the frontend has its own
+separate copy of these tools in `frontend/governance/governance-tools/`, and
+the pre-implementation audit gate was removed. Agent 3 runs ONCE here (five
+stages) for the backend; the frontend toolset runs its own separately.
+
+This document is the contract companion to PROJECT-3-REGISTRY.md Section 5.7.
+Any future edit to that section (marker syntax, phase keys, thresholds) must be
+reflected here and in the code in lockstep — see the Impact Checklist at the end.
 
 ---
 
 ## 1 — WHY STAGE 2 EXISTS
 
-The five governance engines (P0–P4) produce text artifacts
-(`platform-summary.md`, `srs.md`, `db-script.md`, `execution-plan.md`,
-`test-plan.md`, `audit-report.md`). For a mid-complexity module these
-artifacts can reach thousands of lines (a real `test-plan.md` for module
-ORG measured 1264 lines containing 104 TCs).
-
-Two problems emerge once a module's artifacts are finalized:
+The backend engines produce large text artifacts (`backend-execution-plan.md`
+can reach thousands of lines). Stage 2 solves two problems without touching
+what those engines generate:
 
 ```
 PROBLEM 1 — Repository organization
   Where do finalized artifacts live? How are they archived per module,
   per version, without manual file-juggling?
 
-PROBLEM 2 — Context window cost for downstream agents
-  An implementation agent (Claude Code) that only needs
-  API-ORG-014 should not have to load an 8000-line execution-plan.md
-  to find it.
+PROBLEM 2 — Context-window cost for downstream agents
+  An implementation agent (Claude Code) that only needs API-ORG-014 should
+  not have to load the whole backend-execution-plan.md to find it.
 ```
 
-Stage 2 solves both — without touching what P0–P4 generate. It is a
-**packaging and archival layer**, not a content-generation layer.
+It is a packaging and archival layer, not a content-generation layer.
 
 ---
 
 ## 2 — TWO-PART DESIGN
 
 ```
-PART A — Marker Governance (lives INSIDE P3, Section 6.7)
-  P3 embeds HTML comment markers into execution-plan.md and test-plan.md
-  AT GENERATION TIME. This is a P3 responsibility, not a Stage 2 script.
+PART A — Marker Governance (lives INSIDE the generating engine)
+  The engine embeds HTML-comment markers into backend-execution-plan.md at
+  generation time (P3.1), and the Test Generation Engine does the same for
+  backend-test-plan.md — both per PROJECT-3-REGISTRY.md Section 5.7. This is
+  NOT a Stage 2 script.
 
 PART B — Artifact Packaging & Archival (Stage 2 tooling — this document)
   Independent Python scripts that:
-    1. Create the canonical folder structure for a module (Agent 1)
+    1. Create the canonical backend folder structure for a module (Agent 1)
     2. Archive generated artifacts into that structure (Agent 2)
-    3. Read the markers P3 embedded and split artifacts into smaller,
+    3. Read the embedded markers and split artifacts into smaller,
        addressable package files (Agent 3)
 ```
 
-Stage 2 tooling is entirely dependent on Part A. If P3's marker syntax
-changes, Stage 2 tooling must change in lockstep — they are coupled by
-contract, not by accident.
+Stage 2 is entirely dependent on Part A. If the marker syntax in Section 5.7
+changes, Stage 2 must change in lockstep — coupled by contract, not accident.
 
 ---
 
@@ -71,328 +72,290 @@ contract, not by accident.
 
 ```
 governance-tools/
-├── config.py                    Shared configuration — single source of
-│                                 truth for repo path, known modules,
-│                                 folder structure, artifact filenames,
-│                                 marker regex patterns, manifest schema.
-├── marker_parser.py             Marker parsing engine. Reads HTML comment
-│                                 markers, builds a nested tree, validates
-│                                 structural rules (Section 6.7.6).
-├── agent1_create_structure.py   Creates the folder structure for a module
-│                                 (or a new version of an existing module).
-├── agent2_archive.py            Copies generated P0–P4 artifact files from
-│                                 a source folder into the canonical structure.
-└── agent3_splitter.py           Staged, approve-gated splitter. Reads
-                                  markers and groups content into package
-                                  files for downstream agent consumption.
+├── config.py                    Single source of truth: repo path, modules,
+│                                 folder structure, artifact filenames, package
+│                                 structure, marker regexes, ALLOWED_PARENTS,
+│                                 CANONICAL_PHASE_KEYS, manifest schema.
+├── marker_parser.py             Marker parsing + validation engine. Builds a
+│                                 nested tree, validates STRUCTURAL rules, and
+│                                 (validate_semantics) SEMANTIC rules.
+├── agent1_create_structure.py   Creates the backend folder structure (or a new
+│                                 version) for a module.
+├── agent2_archive.py            Copies generated artifacts from a source folder
+│                                 into the canonical structure.
+├── agent3_splitter.py           Staged, approve-gated splitter (5 stages) +
+│                                 standalone --validate-markers mode.
+└── tests/                       pytest suite — parser, semantic validator,
+                                  full split pipeline, dry-run & force guards.
 ```
 
-All five files are plain Python 3.10+, no external dependencies beyond
-the standard library. They run locally (typically on macOS via Terminal,
-Claude Code) — they are NOT Claude Projects and do
-NOT call any LLM API. They are deterministic file operations only.
+Marker hierarchy (every backend file): `PHASE → [SUB] → ATOM (API/XM/TC)`.
+There is NO `MARK` level — `backend-test-plan.md` is JUnit-only by
+construction, so the file itself is the tool boundary.
 
 ---
 
-## 4 — DEPENDENCY ON P3 SECTION 6.7 (CRITICAL)
+## 3A — VALIDATION: STRUCTURAL + SEMANTIC
 
-Stage 2 tooling's correctness depends entirely on P3 Section 6.7 being
-followed exactly as specified when execution-plan.md and test-plan.md
-are generated. The following P3 rules are hard dependencies:
+Two layers, both blocking:
 
 ```
-DEPENDENCY                          WHERE IT'S USED IN STAGE 2
-──────────────────────────────────────────────────────────────────────
-Marker syntax:
-  <!-- PHASE:{id}:START/END -->     marker_parser.py MARKERS regex
-  <!-- MARK:{JUNIT|PLAYWRIGHT}      (config.py) — exact syntax match
-       :START/END -->               required; any deviation breaks
-  <!-- SUB:{id}:START/END -->       parsing silently or raises errors.
-  <!-- API:{id}:START/END -->
-  <!-- XM:{id}:START/END -->
-  <!-- TC:{id}:START/END -->
+STRUCTURAL (marker_parser.parse_file) — marker well-formedness:
+  ✓ Every START has a matching END; no unclosed/unmatched/mismatched markers
+  ✓ Legal nesting only (PHASE → SUB → ATOM); no cross-nesting
+  ✓ No duplicate marker_id within a kind, across the whole document
+    (this is what makes phase-qualified SUB labels mandatory — a bare
+     SUB:CRUD repeated under two phases collides; SUB:SVC-API-CRUD does not)
 
-Hierarchy rules (Section 6.7.6     marker_parser.py ALLOWED_PARENTS —
-  Rule 2):                          used to validate nesting and reject
-  execution-plan: PHASE→[SUB]→ATOM  malformed artifacts before any
-  test-plan: PHASE→MARK→[SUB]→ATOM  splitting is attempted (Stage 1).
+SEMANTIC (marker_parser.validate_semantics) — governance-contract validity:
+  ✓ Every PHASE key is one of the file's CANONICAL keys (config.CANONICAL_
+    PHASE_KEYS) — a non-canonical key (e.g. "DATADOM" missing the hyphen)
+    is rejected here instead of being silently skipped by the splitter.
+  ✓ Every SUB label is phase-qualified {PHASE-KEY}-{LABEL} (AMEND-P3-N),
+    EXCEPT in backend-test-plan.md where RULE-SCENARIOS / API-SCENARIOS are
+    bare by design (single phase → no collision possible).
+  ✓ No orphan atomic: an API/XM/TC directly under a PHASE that also has SUB
+    children would never be written to a package file — rejected here.
 
-Canonical phase keys                agent3_splitter.py PHASE_FOLDER_MAP
-  (Section 6.7.3):                  — maps each PHASE marker_id to a
-  CORE, DATA-DOM, SVC-API, DOC,     package output folder. Adding a new
-  INT-C, INT-R, F1, F2, F3, F4,     phase key in P3 requires adding it
-  SEC, ALIGN                         here too.
-  [F4 added — AMEND-P3-J, 2026-07 — Frontend Routing & Component
-  Structure — positioned between F3 and SEC. CONFIRMED: agent3_splitter.py's
-  PHASE_FOLDER_MAP has an F4 entry, and Stage 1-5 have been run end-to-end
-  against FILESVC and NOTIFICATION (both post-amendment) with zero
-  structural errors and zero content drift on Stage 5 verification.
-  execution-state.json for both modules also carries an F4 phase entry
-  (PENDING, between F3 and SEC) and PLAYWRIGHT's gated_by_phases includes
-  F4 — see Section 10 checklist below.]
-
-SUB-phase thresholds                Stage 1 plan display only references
-  (Section 6.7.4):                  these as documentation — actual
-  DATA+DOM ≥5 entities,             threshold ENFORCEMENT happens in P3
-  SVC+API ≥8 APIs/≥6 methods,       at generation time, not in Stage 2.
-  INT-C/R ≥5 XM-IDs,                Stage 2 simply reads whatever
-  F1/F2/F3/F4 ≥5 screens,           structure P3 actually produced.
-  MARK:JUNIT >12 TCs,
-  MARK:PLAYWRIGHT >8 TCs
-
-Atomic markers are addressing,      agent3_splitter.py Stage 2/3 — groups
-NOT a file-splitting instruction    content at SUB/PHASE/MARK level,
-  (Section 6.7.5, amended):         NEVER writes one file per API/XM/TC.
-                                     This was a real bug found and fixed
-                                     (see Section 8 — Lessons Learned).
+THRESHOLD (config.PHASE_SPLIT_THRESHOLDS) — AUTO, but FLEXIBLE:
+  A phase whose countable atomic marker reaches its split trigger (Section
+  5.7.4) but carries no SUB — or a never-split phase that carries a SUB — is
+  reported. This is ADVISORY by default (a non-blocking warning: the split
+  decision is ultimately semantic) and becomes BLOCKING only with
+  --strict-thresholds. Countable triggers only: SVC-API (APIs ≥ 8), INT-C /
+  INT-R (XMs ≥ 5), TEST-PLAN-BE (TCs > 12). DATA-DOM's entity trigger is not
+  marker-countable and is left to the generating engine.
 ```
 
-**If P3 Section 6.7 is edited in the future** (new phase key, changed
-threshold, changed marker syntax, new atomic marker type), this Stage 2
-documentation and the corresponding code in `config.py` /
-`marker_parser.py` / `agent3_splitter.py` MUST be updated together.
-They are not independently versioned.
+Standalone usage (no module structure required), the mandatory closing step
+right after any file is generated:
+
+```
+python3 agent3_splitter.py --validate-markers --file backend-execution-plan.md
+python3 agent3_splitter.py --validate-markers --file backend-test-plan.md
+```
+
+Exit 0 + "marker structure valid" on success; exit 1 + a line-numbered list of
+every structural/semantic violation on failure. Treat any non-zero exit as
+blocking.
+
+Deterministic self-repair (safe subset only):
+
+```
+python3 agent3_splitter.py --fix-safe --file backend-execution-plan.md
+```
+
+`--fix-safe` repairs ONLY unambiguous, reversible marker faults — a phase-key
+separator typo (SVC_API → SVC-API) and un-qualified SUB labels
+(SUB:CRUD → SUB:SVC-API-CRUD) — writing the untouched original to <file>.orig
+and re-validating. It NEVER touches content and NEVER attempts anything needing
+judgment (unmatched/unclosed markers, duplicate IDs, orphan atomics, an
+ambiguous key like DATADOM, threshold restructuring); those are reported for a
+human and it exits 1. This is what lets the Cowork orchestrator
+(process-project-files.md) self-heal safe faults automatically and stop only on
+the rest.
 
 ---
 
-## 5 — WORKFLOW
+## 4 — WORKFLOW (single backend run)
 
 ```
-STEP 0   Generate artifacts via P0 → P1 → P2 → P3 (Stage 1 + Stage 2.5)
-         as usual, in claude.ai Projects. Markers are embedded by P3
-         automatically per Section 6.7 — no manual step required.
+STEP 0    Generate backend artifacts via the engines in claude.ai Projects:
+          P0 → [P0.5] → P1 → P2 → [P2.5] → P3.1 (backend-execution-plan.md).
+          backend-test-plan.md is generated by the Test Generation Engine
+          (after ALIGN-BE ✓). Markers are embedded at generation time.
 
-STEP 1   Agent 1 — create structure
-         python3 agent1_create_structure.py --module ORG
-         → creates governance-repo/modules/ORG/{P0,P1,P2,P3,P3_5,P4,packages}/
+STEP 0.5  Validate each file immediately (see 3A):
+          python3 agent3_splitter.py --validate-markers --file <file>
+          Fix any reported error and re-run before archiving.
 
-STEP 2   Agent 2 — archive
-         python3 agent2_archive.py --module ORG --source ~/Desktop/ORG-files
-         → copies platform-summary.md, srs.md, db-script.md,
-           execution-plan.md, test-plan.md, audit-report.md, registry
-           files, and master-registry.md into the structure created
-           in Step 1. Source filenames must match config.py's
-           ARTIFACT_FILES canonical names exactly.
+STEP 1    Agent 1 — create structure
+          python3 agent1_create_structure.py --module ORG
+          → creates modules/ORG/{P0,P0_5,P1,P2,P2_5,P3_1,P3_5_BE}/ and
+            packages/{backend-execution/<phase-folders>, backend-test/}.
 
-STEP 3   Agent 3 — split (5 stages, each requires explicit approval)
-         python3 agent3_splitter.py --module ORG
-         Stage 1: Parse & validate marker structure, show a plan
-         Stage 2: Split execution-plan.md → packages/execution/
-         Stage 3: Split test-plan.md      → packages/test/
-         Stage 4: Generate index.md per package folder
-         Stage 5: Verify completeness + content-hash integrity
-                  (detects any drift, even a single corrupted line
-                  inside a grouped file containing 40+ TCs)
+STEP 2    Agent 2 — archive artifacts
+          python3 agent2_archive.py --module ORG --source ~/Desktop/ORG-files
+          → copies platform-summary.md, [prd-org.md], srs.md, db-script.md,
+            flow-diagram.md, ui-ux-spec.md, backend-execution-plan.md,
+            backend-test-plan.md, test-execution-manifest.md, and the P-REG
+            registry-*.md files. Existing files are KEPT unless --force.
+          (Agent 2 auto-creates the structure if Agent 1 was not run first.)
 
-STEP 4   Downstream agents (Claude Code) consume
-         individual package files directly — e.g. open
-         packages/test/JUNIT/RULE-SCENARIOS.md instead of the full
-         1264-line test-plan.md.
+STEP 3    Agent 3 — split (5 stages, each approve-gated, resumable)
+          python3 agent3_splitter.py --module ORG
+          Stage 1: Parse + validate (structural AND semantic), show a plan
+          Stage 2: Split backend-execution-plan.md → packages/backend-execution/
+                    (one folder per phase; SUB files named by their already
+                     phase-qualified label; unmarked trailing content captured
+                     as packages/backend-execution/_SECTIONS.md)
+          Stage 3: Split backend-test-plan.md → packages/backend-test/
+                    (flat files: RULE-SCENARIOS.md / API-SCENARIOS.md, or one
+                     whole-phase file below the TC>12 threshold)
+          Stage 4: Generate index.md per package folder
+          Stage 5: Verify — SHA-256 hash of every API/XM/TC block in the
+                    archived source vs the same block re-parsed from its
+                    package file. Any mismatch names the exact ID and file.
+
+STEP 4    Downstream agent (Claude Code) implements the backend, consuming
+          individual package files directly — e.g. open
+          packages/backend-execution/SVC-API/SVC-API-CRUD.md instead of the
+          full backend-execution-plan.md.
 ```
 
-Every stage in Agent 3 is independently resumable (`--resume`,
-`--status`, `--stage N`) and is approve-gated — no file is written
-without explicit user confirmation at each stage.
+Every Agent 3 stage requires `[y/N]` confirmation and is resumable
+(`--resume`, `--status`, `--stage N`, `--dry-run`). State persists in
+`packages/_agent3-state.json`.
 
 ---
 
-## 6 — OUTPUT STRUCTURE
+## 5 — PACKAGE LAYOUT (proportional to STRUCTURE, not element COUNT)
 
 ```
-governance-repo/
-├── master-registry.md                 (shared — not per-module)
-├── modules-registry.json              (tracks all modules + versions)
-└── modules/
-    └── ORG/                            (v1 — or ORG/v2/, v3/... for
-        │                                later versions of the same module)
-        ├── manifest.json
-        ├── P0/  P1/  P2/  P3/  P3_5/  P4/    (archived full artifacts —
-        │                                       untouched, exactly as
-        │                                       generated by P0–P4)
-        └── packages/
-            ├── execution/
-            │   ├── CORE/CORE.md
-            │   ├── SVC-API/SVC-API.md          (or split per SUB if the
-            │   ├── DATA-DOM/...                 phase exceeded threshold)
-            │   └── ...
-            └── test/
-                ├── JUNIT/
-                │   ├── RULE-SCENARIOS.md        (grouped — many TCs,
-                │   │                              one file, per Section
-                │   │                              6.7.5 amendment)
-                │   └── API-SCENARIOS.md
-                └── PLAYWRIGHT/
-                    ├── UI-FLOWS.md
-                    └── INT-FLOW.md
+modules/ORG/packages/
+├── backend-execution/
+│   ├── CORE/           CORE.md
+│   ├── DATA-DOM/       DATA-DOM-<group>.md ...
+│   ├── SVC-API/        SVC-API-CRUD.md, SVC-API-SEARCH.md, [SVC-API-HEADER.md]
+│   ├── DOC/            DOC.md
+│   ├── INT-C/          INT-C-<module>.md ...
+│   ├── INT-R/          INT-R-<module>.md ...
+│   ├── SEC-BE/         SEC-BE.md
+│   ├── ALIGN-BE/       ALIGN-BE.md
+│   ├── _SECTIONS.md    (content outside all phases — Plan Index, Error
+│   │                    Catalog, Agent Handoff Summary, etc. — if present)
+│   └── index.md
+└── backend-test/
+    ├── RULE-SCENARIOS.md    (or TEST-PLAN-BE.md whole-phase if TCs ≤ 12)
+    ├── API-SCENARIOS.md
+    └── index.md
 ```
 
-Key principle: **package file count is proportional to module STRUCTURE
-(phase/sub-phase count), never to element COUNT (number of APIs/TCs)**.
-A module with 104 TCs produces 4 test package files, not 104.
+Key principle: a module with 104 TCs still produces a handful of package
+files — file count tracks phase/sub-phase count, NEVER the number of
+APIs/TCs. Atomic markers stay embedded inside each grouped file for in-file
+search; they are addressing, not a split instruction.
 
 ---
 
-## 7 — GUARANTEES
+## 6 — GUARANTEES
 
 ```
-GUARANTEE                          MECHANISM
-──────────────────────────────────────────────────────────────────────
-No content rewriting               Stage 2/3 do pure copy/paste from
-                                    parsed block.content — no LLM call,
-                                    no text transformation, anywhere in
-                                    the splitting path.
-
-No content loss                    Stage 5 computes SHA-256 hash of every
-                                    atomic block (API/XM/TC) as it exists
-                                    in the archived source, and compares
-                                    it against the same block re-parsed
-                                    from inside its package file. Any
-                                    mismatch — even one corrupted word
-                                    inside a 46-TC grouped file — is
-                                    reported with the exact TC-ID and file.
-
-Structural validity enforced       marker_parser.py rejects (with line
-before any write                   numbers and clear messages) any
-                                    unmatched START/END, illegal nesting,
-                                    or duplicate ID, BEFORE Stage 2/3
-                                    write a single file.
-
-No silent partial archiving        Agent 2 reports exactly which files
-                                    were found/copied/skipped; manifest.json
-                                    tracks archived_files and skipped_files
-                                    explicitly.
-
-Approve-gated, resumable           Every stage in Agent 3 requires [y/N]
-                                    confirmation. State is persisted in
-                                    packages/_agent3-state.json — a failed
-                                    or cancelled run can resume from the
-                                    next incomplete stage without redoing
-                                    completed work.
-
-Module/version scalability         New modules: --auto-register flag
-                                    registers them into modules-registry.json
-                                    without editing code. New versions of
-                                    an existing module: --new-version
-                                    creates v2/v3/... alongside v1 without
-                                    overwriting it.
+No content rewriting     Stage 2/3 do pure copy from parsed block content —
+                          no LLM, no text transformation, anywhere.
+No content loss          Stage 5 SHA-256 cross-checks every atomic block.
+                          Content outside all phases is captured as _SECTIONS.md
+                          rather than dropped.
+Validity before write    marker_parser rejects structural AND semantic faults,
+                          with line numbers, BEFORE Stage 2/3 write anything.
+No silent phase skip      A non-canonical PHASE key is a blocking error, not a
+                          soft skip that drops the phase.
+Truthful archival        Agent 2 keeps existing files unless --force, and says
+                          so; it reports found / copied / kept / skipped exactly.
+Approve-gated, resumable  Every Agent 3 stage confirms [y/N]; state persists.
+Dry-run is read-only      Agent 1 --dry-run never registers a module or writes
+                          any file (FINDING-22a).
+Absent stages never break There is no P4/audit stage anywhere in the model
+                          (BACKEND_STAGES = P0..P3_5_BE only). A missing
+                          optional artifact is a graceful skip, not an error —
+                          e.g. no backend-test-plan.md yet → Stage 3 skips and
+                          the run still completes. A leftover P4* folder from a
+                          legacy module is simply ignored: the tools only ever
+                          act on stages their own config.py knows.
 ```
 
 ---
 
-## 8 — LESSONS LEARNED (for future editors of P3 or Stage 2)
+## 7 — TEST SUITE
 
 ```
-ISSUE FOUND                         RESOLUTION
-──────────────────────────────────────────────────────────────────────
-Initial Agent 3 implementation      P3 Section 6.7.5 was amended with an
-wrote ONE FILE PER ATOMIC MARKER    explicit "Atomic Markers are
-(API/XM/TC). For a real module      addressing, NOT a file-splitting
-with 104 TCs this produced 104      instruction" rule. Agent 3 Stage 2/3
-separate files — defeating the      were rewritten to group all atomic
-entire purpose of reducing          content at the SUB (or PHASE/MARK if
-context-window cost, and            no SUB) level into ONE file, with
-contradicting the explicit          atomic markers remaining embedded
-requirement that file count must    inside for in-file searchability.
-not scale with element count.       Stage 5's verification logic was
-                                     correspondingly rewritten to search
-                                     for a marker's content INSIDE
-                                     package files rather than expecting
-                                     a 1:1 filename match.
-
-argparse required=True on           Fixed: --module made optional with a
---module conflicted with the        manual required-check placed AFTER
-standalone --list-modules flag      parse_args(), executed only when
-in Agent 1 (argparse evaluates      --list-modules was not requested.
-required fields before any code     This pattern should be followed for
-runs, so --list-modules could       any future "standalone mode" flag
-never be reached).                  added to any agent's CLI.
-
-SUB markers were initially          Section 6.7.4 was corrected so SUB
-described as unconditional          markers in test-plan.md follow the
-inside MARK:PLAYWRIGHT in an        same threshold-triggered rule as
-early draft of Section 6.7.4 —      every other phase: MARK:JUNIT >12
-contradicting the general           TCs, MARK:PLAYWRIGHT >8 TCs — SUB
-"semantic split, not arbitrary      omitted entirely below threshold.
-split" principle agreed for the
-whole Marker Protocol.
+python3 -m pytest tests/            (from governance-tools/)
 ```
 
-Any future change to Section 6.7 of P3 should be cross-checked against
-this lessons-learned table to avoid reintroducing a previously-fixed
-class of bug.
+Covers: structural parsing (unclosed / unmatched / illegal nesting /
+duplicate id), the semantic validators (canonical keys, SUB qualification,
+orphan atomics, test-plan exemption, no-SUB validity), the full Agent 3
+split pipeline (correct SUB filenames, _SECTIONS capture, flat test files,
+hash verify), the Agent 1 dry-run registry guard, and the Agent 2 force
+behavior. All are hermetic (tmp dirs / isolated registry) — they never touch
+the real backend/governance tree.
 
 ---
 
-## 9 — WHAT STAGE 2 DOES **NOT** DO
+## 8 — AMENDMENT RECORD — AMEND-P3-O (backend Stage-2 maturation)
+
+Resolved in this amendment (all verified by the test suite):
 
 ```
-✗ Does not generate, rewrite, summarize, or validate governance CONTENT
-  (that is exclusively P0–P4's responsibility).
-✗ Does not enforce SUB-phase thresholds — it reads whatever P3 already
-  produced. If P3 fails to apply a threshold correctly, Stage 2 will
-  faithfully package the (possibly non-compliant) result as-is; it is
-  not a substitute for P4's CHECK-4 structural audit.
-✗ Does not call any LLM API — purely deterministic file/text operations.
-✗ Does not replace P4 (Governance Audit Engine). P4 audits CONTENT
-  correctness and cross-artifact alignment; Stage 2 only verifies that
-  packaging preserved content byte-for-byte.
-✗ Does not modify execution-plan.md, test-plan.md, or any other archived
-  source artifact — archived copies in P0–P4 folders are read-only
-  inputs to Agent 3.
+ID          FINDING                                    RESOLUTION
+────────────────────────────────────────────────────────────────────────────
+C1          Agent 3 Stage 2 re-prefixed already-       Filename = the SUB's own
+            phase-qualified SUB labels, producing      (already qualified) label.
+            SVC-API-SVC-API-CRUD.md.
+FINDING-19  backend-test SUBs pre-created as FOLDERS    config: backend-test is a
+            but written by Agent 3 as flat FILES —      container only; files land
+            the folders were always dead.              flat inside it.
+FINDING-22a Agent 1 --dry-run + --auto-register wrote   Dry-run validates
+            the registry (and shared copy) despite     read-only; registration
+            "no changes".                              deferred to a live run.
+C4          Content outside all phases (Plan Index,     Captured as _SECTIONS.md;
+            Error Catalog, Agent Handoff Summary)      dead SECTIONS folder removed.
+            was silently dropped by the splitter.
+M2          Non-canonical PHASE key / un-qualified      New semantic validator
+            SUB / orphan atomic passed validation      (blocking) in Stage 1 and
+            and caused silent loss.                    --validate-markers.
+M4          Agent 2 --force was inert; the "won't       Existing files kept unless
+            overwrite without --force" note was false. --force; messages truthful.
+M1          ALLOWED_PARENTS defined twice (config +     Single source in config;
+            parser) — drift hazard.                    parser imports it.
+(parser)    Tokenizer captured only the FIRST marker    finditer across all
+            per line — a latent bug on any shared line. patterns, ordered by column.
+M7          No tests for the tooling.                   pytest suite added (tests/).
+M3          No auto threshold check — an over-threshold   config.PHASE_SPLIT_
+            unsplit phase passed unnoticed.              THRESHOLDS + advisory
+                                                          check (flexible; strict
+                                                          via --strict-thresholds).
+D1/D2       STAGE-2 doc + AGENTS-GUIDE described the    Both rewritten to match the
+            pre-split (P0–P4, MARK) world.             current backend-only reality.
+```
+
+---
+
+## 9 — WHAT STAGE 2 DOES NOT DO
+
+```
+✗ Does not generate, rewrite, summarize, or validate governance CONTENT.
+✗ Does not HARD-block on SUB-phase thresholds by default — a phase over its
+  trigger but unsplit is an ADVISORY (the split is a semantic call). Use
+  --strict-thresholds to make it blocking. It always enforces that whatever
+  SUBs exist are well-formed and phase-qualified.
+✗ Does not call any LLM API.
+✗ Does not modify any archived source artifact — archived copies are
+  read-only inputs to Agent 3.
 ```
 
 ---
 
 ## 10 — IMPACT CHECKLIST FOR FUTURE EDITS
 
-Before changing any of the following in P0–P4, check this box:
-
 ```
-[ ] Changing P3 Section 6.7 marker syntax
-      → update marker_parser.py MARKERS regex + config.py MARKERS
-
-[ ] Adding/renaming a PHASE key in P3 (e.g. new phase beyond CORE,
-    DATA-DOM, SVC-API, DOC, INT-C, INT-R, F1, F2, F3, F4, SEC, ALIGN)
-      → update agent3_splitter.py PHASE_FOLDER_MAP
-      [DONE for F4 — AMEND-P3-J, Frontend Routing & Component Structure,
-      positioned between F3 and SEC. PHASE_FOLDER_MAP carries a confirmed
-      F4 entry; Stage 1-5 verified end-to-end against FILESVC and
-      NOTIFICATION 2026-07-15. Note: source artifacts must use the plain
-      `<!-- PHASE:F4:START/END -->` marker (no "MARK:" prefix) — both
-      modules initially had every phase marker mistakenly written as
-      `<!-- MARK:PHASE:{id}:START/END -->` while drafting the F4 section,
-      which the parser silently fails to recognize (0 phase blocks found,
-      no error raised). Caught and corrected before splitting. ORG's
-      execution-plan.md already has an F4 phase from an earlier session
-      but its execution-state.json/PHASE_FOLDER_MAP alignment has not been
-      re-verified against this amendment — check before running Agent 3
-      on ORG again.]
-
-[ ] Changing SUB-phase thresholds in Section 6.7.4
-      → update this document's Section 4 dependency table
-        (no code change needed — Stage 2 reads structure, doesn't
-        enforce thresholds — but documentation must stay accurate)
-
-[ ] Changing test-plan.md MARK values beyond JUNIT/PLAYWRIGHT
-      → update marker_parser.py MARKERS["mark"] regex + config.py
-
-[ ] Adding a new atomic marker type beyond API/XM/TC
-      → update marker_parser.py ALLOWED_PARENTS + agent3_splitter.py
-        grouping logic (apply the same "group at container level,
-        not per-element" principle from Section 7/8 of this document)
-
-[ ] Changing P0–P4 canonical artifact filenames
-      → update config.py ARTIFACT_FILES
-
-[ ] Adding a new module
-      → no code change needed — use --auto-register, or add to
-        config.py KNOWN_MODULES for a permanent static entry
+[ ] Change marker syntax in PROJECT-3-REGISTRY.md §5.7
+      → config.MARKERS + tests
+[ ] Add/rename a backend PHASE key
+      → config.CANONICAL_PHASE_KEYS + config.PACKAGES_STRUCTURE
+        + agent3_splitter.PHASE_FOLDER_MAP + tests
+[ ] Change SUB-phase thresholds
+      → config.PHASE_SPLIT_THRESHOLDS (one row per phase) + tests. Advisory
+        by default; --strict-thresholds makes them blocking.
+[ ] Change canonical artifact filenames / registry filename
+      → config.ARTIFACT_FILES (+ CANONICAL_PHASE_KEYS keys if a plan file
+        is renamed)
+[ ] Add a new atomic marker type beyond API/XM/TC
+      → config.MARKERS + config.ALLOWED_PARENTS + agent3 grouping + the
+        semantic orphan check + tests
+[ ] Add a module
+      → no code change — use --auto-register (or add to config.KNOWN_MODULES)
 ```
 
----
-
-*End of STAGE-2-GOVERNANCE-TOOLS.md*
-*Companion document to PROJECT-3-EXECUTION-PLAN-GOVERNANCE-ENGINE.md
-Section 6.7 (Artifact Marker Protocol).*
-*Any edit to Section 6.7 or Section 16 of P3 should be cross-checked
-against this document before being finalized.*
+*End of STAGE-2-GOVERNANCE-TOOLS.md — backend-only companion to*
+*PROJECT-3-REGISTRY.md Section 5.7. Keep code and this doc in lockstep.*

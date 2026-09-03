@@ -1,305 +1,237 @@
 ---
-name: create-controller
-description: "Generates a thin @RestController delegating ALL logic to the service. Phase 1, Step 1.8 — the final implementation step. Enforces OperationCode.craftResponse, @Valid, @Operation, zero business logic, 204 for delete. Search uses POST /search + @RequestBody. Activation uses separate activate/deactivate endpoints."
+name: build-create-controller
+description: "Generates a thin @RestController delegating ALL logic to the service. Build step 6 — the final implementation step. Enforces the shared response-crafting helper, @Valid, @Operation, zero business logic, 204 on delete, POST /search, and separate activate/deactivate endpoints."
 ---
 
-# Skill: create-controller
-
-## Name
-`create-controller`
+# Skill: build-create-controller
 
 ## Description
-Generates a thin REST controller that delegates ALL logic to the service layer. This is **Phase 1, Step 1.8** of the execution template — the final implementation step.
+Generates a thin REST controller that delegates ALL logic to the service layer. This is
+**build step 6** — the final implementation step.
 
 ## When to Use
-- After `create-service` is complete (Step 1.7)
-- When Phase 1, Step 1.8 of the execution template is being executed
+- After `build-create-service` is complete
 
 ## When NOT to Use
-- Before the service is complete — controller depends on service's method signatures
-- When the controller already exists and only one endpoint needs modification (edit directly)
-- For adding business logic — controllers are thin delegation only; use `create-service`
-- For frontend, deploy, or governance documents
+- Before the service exists — the controller depends on its method signatures
+- When the controller exists and one endpoint needs modification (edit directly)
+- To add business logic — controllers are pure delegation
 
 ## Prerequisites
-- Service with all CRUD methods returning `ServiceResult<T>`
-- `OperationCode` bean available from `erp-common-utils`
-- All DTOs defined (CreateRequest, UpdateRequest, Response, SearchRequest, UsageResponse)
+- Service with all operations returning `ServiceResult<T>` (except `delete()`)
+- The shared response-crafting bean available for injection
+- All DTOs defined
+
+---
+
+## Variables
+
+Inherits `<module>`, `<Entity>`, `<base.package>` from
+[`build-create-entity`](../build-create-entity/SKILL.md), plus `<entity-url>` — the kebab-case
+plural URL segment for this entity.
 
 ## Responsibilities
 
-- Generate a thin `@RestController` that delegates ALL logic to the service layer
-- Use `OperationCode.craftResponse()` for all non-delete response wrapping
-- Apply `@Valid` on all `@RequestBody` parameters
-- Apply `@Operation` Swagger annotations on all endpoints
-- Use `@ResponseStatus(HttpStatus.NO_CONTENT)` ONLY on `@DeleteMapping`
-- ZERO business logic in the controller — pure delegation
+- Generate a thin `@RestController` delegating everything to the service
+- Wrap every non-delete response through the shared response-crafting helper
+- Apply `@Valid` on every `@RequestBody`
+- Apply `@Operation` on every endpoint
+- Use `@ResponseStatus(HttpStatus.NO_CONTENT)` ONLY on delete
+- ZERO business logic
 
 ## Constraints
 
-- MUST NOT generate entity, repository, DTO, mapper, or service code
-- MUST NOT inject repositories or mappers — controller injects ONLY service + `OperationCode`
-- MUST NOT reference entity classes — use DTOs exclusively
-- MUST NOT use `@ResponseStatus(CREATED)` — HTTP 201 is derived from `ServiceResult.Status`
-- MUST NOT contain any business logic, validation, or conditional branching
+- MUST NOT generate any other layer's code
+- MUST NOT inject a repository or a mapper — only service(s) + the response helper
+- MUST NOT reference entity classes — DTOs only
+- MUST NOT use `@ResponseStatus(CREATED)` — 201 is derived from the service's `Status`
+- MUST NOT contain business logic, validation, or conditional branching
 
 ## Output
 
-- Single file: `src/main/java/com/erp/<module>/controller/<Entity>Controller.java`
+- `src/main/java/<base/package>/<module>/controller/<Entity>Controller.java`
 
 ---
 
 ## Steps
 
-### 1. Create Controller File
-- **Location:** `src/main/java/com/erp/<module>/controller/<ENTITY_NAME>Controller.java`
-
-### 2. Class Declaration
+### 1. Class declaration
 ```java
 @RestController
 @RequestMapping("/api/<module>/<entity-url>")
 @RequiredArgsConstructor
-@Tag(name = "<Entity> Management", description = "إدارة <Entity> - <Entity> Management API")
-public class <ENTITY_NAME>Controller {
+@Tag(name = "<Entity> Management", description = "<English> - <عربي>")
+public class <Entity>Controller {
 
-    private final <ENTITY_NAME>Service service;
+    private final <Entity>Service service;
     private final OperationCode operationCode;
 ```
 
-### 3. Create Endpoint
+### 2. Create
 ```java
 @PostMapping
-@Operation(summary = "Create <Entity>", description = "إنشاء <Entity> جديد")
-public ResponseEntity<ApiResponse<<ENTITY>Response>> create(
-        @Valid @RequestBody <ENTITY>CreateRequest request) {
+@Operation(summary = "Create <Entity>", description = "<عربي>")
+public ResponseEntity<ApiResponse<<Entity>Response>> create(
+        @Valid @RequestBody <Entity>CreateRequest request) {
     return operationCode.craftResponse(service.create(request));
 }
 ```
 
-### 4. Update Endpoint
+### 3. Update
 ```java
 @PutMapping("/{id}")
-@Operation(summary = "Update <Entity>", description = "تحديث <Entity>")
-public ResponseEntity<ApiResponse<<ENTITY>Response>> update(
+@Operation(summary = "Update <Entity>", description = "<عربي>")
+public ResponseEntity<ApiResponse<<Entity>Response>> update(
         @PathVariable Long id,
-        @Valid @RequestBody <ENTITY>UpdateRequest request) {
+        @Valid @RequestBody <Entity>UpdateRequest request) {
     return operationCode.craftResponse(service.update(id, request));
 }
 ```
 
-### 5. GetById Endpoint
+### 4. Get by id
 ```java
 @GetMapping("/{id}")
-@Operation(summary = "Get <Entity> by ID", description = "جلب <Entity> بالمعرف")
-public ResponseEntity<ApiResponse<<ENTITY>Response>> getById(@PathVariable Long id) {
+@Operation(summary = "Get <Entity> by ID", description = "<عربي>")
+public ResponseEntity<ApiResponse<<Entity>Response>> getById(@PathVariable Long id) {
     return operationCode.craftResponse(service.getById(id));
 }
 ```
 
-### 6. Search Endpoint
+### 5. Search — POST, not GET
 ```java
 @PostMapping("/search")
-@Operation(summary = "Search <Entity>s", description = "بحث في <Entity>")
-public ResponseEntity<ApiResponse<Page<<ENTITY>Response>>> search(
-        @Valid @RequestBody <ENTITY>SearchRequest searchRequest) {
+@Operation(summary = "Search <Entity>", description = "<عربي>")
+public ResponseEntity<ApiResponse<Page<<Entity>Response>>> search(
+        @Valid @RequestBody <Entity>SearchRequest searchRequest) {
     return operationCode.craftResponse(service.search(searchRequest));
 }
 ```
 
-### 7. Activate / Deactivate Endpoints
+### 6. Activate / deactivate — separate endpoints
 ```java
 @PutMapping("/{id}/activate")
-@Operation(summary = "Activate <Entity>", description = "تفعيل <Entity>")
-public ResponseEntity<ApiResponse<<ENTITY>Response>> activate(@PathVariable Long id) {
+@Operation(summary = "Activate <Entity>", description = "<عربي>")
+public ResponseEntity<ApiResponse<<Entity>Response>> activate(@PathVariable Long id) {
     return operationCode.craftResponse(service.activate(id));
 }
 
 @PutMapping("/{id}/deactivate")
-@Operation(summary = "Deactivate <Entity>", description = "إلغاء تفعيل <Entity>")
-public ResponseEntity<ApiResponse<<ENTITY>Response>> deactivate(@PathVariable Long id) {
+@Operation(summary = "Deactivate <Entity>", description = "<عربي>")
+public ResponseEntity<ApiResponse<<Entity>Response>> deactivate(@PathVariable Long id) {
     return operationCode.craftResponse(service.deactivate(id));
 }
 ```
 
-### 8. Delete Endpoint
+### 7. Delete — 204, void
 ```java
 @DeleteMapping("/{id}")
 @ResponseStatus(HttpStatus.NO_CONTENT)
-@Operation(summary = "Delete <Entity>", description = "حذف <Entity>")
+@Operation(summary = "Delete <Entity>", description = "<عربي>")
 public void delete(@PathVariable Long id) {
     service.delete(id);
 }
 ```
 
-### 9. Usage Endpoint
+### 8. Usage
 ```java
 @GetMapping("/{id}/usage")
-@Operation(summary = "Get <Entity> usage", description = "معلومات استخدام <Entity>")
-public ResponseEntity<ApiResponse<<ENTITY>UsageResponse>> getUsage(@PathVariable Long id) {
+@Operation(summary = "Get <Entity> usage", description = "<عربي>")
+public ResponseEntity<ApiResponse<<Entity>UsageResponse>> getUsage(@PathVariable Long id) {
     return operationCode.craftResponse(service.getUsage(id));
 }
 ```
 
-### 10. Child Entity Endpoints (if applicable)
+### 9. Child endpoints — same controller, nested path
 ```java
-// Under same controller — NOT a separate controller
-@PostMapping("/details")
-@Operation(summary = "Create detail", description = "إنشاء تفصيل")
-public ResponseEntity<ApiResponse<<Child>Response>> createDetail(
+@PostMapping("/<children-url>")
+@Operation(summary = "Create <Child>", description = "<عربي>")
+public ResponseEntity<ApiResponse<<Child>Response>> create<Child>(
         @Valid @RequestBody <Child>CreateRequest request) {
     return operationCode.craftResponse(childService.create(request));
 }
 
-@PostMapping("/details/search")
-@Operation(summary = "Search details", description = "بحث في التفاصيل")
-public ResponseEntity<ApiResponse<Page<<Child>Response>>> searchDetails(
+@PostMapping("/<children-url>/search")
+public ResponseEntity<ApiResponse<Page<<Child>Response>>> search<Children>(
         @Valid @RequestBody <Child>SearchRequest searchRequest) {
     return operationCode.craftResponse(childService.search(searchRequest));
 }
 
-@PutMapping("/details/{id}")
-public ResponseEntity<ApiResponse<<Child>Response>> updateDetail(
+@PutMapping("/<children-url>/{id}")
+public ResponseEntity<ApiResponse<<Child>Response>> update<Child>(
         @PathVariable Long id,
         @Valid @RequestBody <Child>UpdateRequest request) {
     return operationCode.craftResponse(childService.update(id, request));
 }
 
-@PutMapping("/details/{id}/activate")
-public ResponseEntity<ApiResponse<<Child>Response>> activateDetail(@PathVariable Long id) {
-    return operationCode.craftResponse(childService.activate(id));
-}
-
-@PutMapping("/details/{id}/deactivate")
-public ResponseEntity<ApiResponse<<Child>Response>> deactivateDetail(@PathVariable Long id) {
-    return operationCode.craftResponse(childService.deactivate(id));
-}
-
-@DeleteMapping("/details/{id}")
+@DeleteMapping("/<children-url>/{id}")
 @ResponseStatus(HttpStatus.NO_CONTENT)
-public void deleteDetail(@PathVariable Long id) {
+public void delete<Child>(@PathVariable Long id) {
     childService.delete(id);
-}
-
-@GetMapping("/details/options/{lookupKey}")
-@Operation(summary = "Get detail options", description = "خيارات التفاصيل")
-public ResponseEntity<ApiResponse<List<<Child>OptionResponse>>> getDetailOptions(
-        @PathVariable String lookupKey) {
-    return operationCode.craftResponse(childService.getOptions(lookupKey));
 }
 ```
 
 ---
 
-## SHARED LAYER MANDATE (`erp-common-utils`)
+## Shared Layer Mandate
 
-> Full contract definition (envelope shape, exception→HTTP mapping): [`api-contract.md`](../../../context/api-contract.md).
-> The table below is this skill's consumption checklist, not a second copy of the contract.
-
-Before creating a controller, verify the following shared resources from `erp-common-utils` are consumed — do NOT reinvent:
-
-| # | Requirement | Shared Class | Package |
-|---|-------------|-------------|--------|
-| SH.1 | Response mapping via `OperationCode.craftResponse()` | `OperationCode` / `OperationCodeImpl` | `com.erp.common.web` |
-| SH.2 | Response envelope is `ApiResponse<T>` — handled automatically by `ApiResponseWrapper` | `ApiResponse` / `ApiResponseWrapper` | `com.erp.common.web` / `web.advice` |
-| SH.3 | Exception handling by `GlobalExceptionHandler` — do NOT catch exceptions in controllers | `GlobalExceptionHandler` | `com.erp.common.web` |
-| SH.4 | Pagination validation by `PageableValidator` / `PageableUtils` | `PageableUtils` | `com.erp.common.web.util` |
-| SH.5 | Jackson serialization configured by `CommonJacksonConfig` — do NOT add custom ObjectMapper | `CommonJacksonConfig` | `com.erp.common.web.config` |
+| # | Requirement | Shared class | Package |
+|---|-------------|--------------|---------|
+| SH.1 | Response mapping via the shared crafting helper | `OperationCode` | `<base.package>.common.web` |
+| SH.2 | Envelope is the shared `ApiResponse<T>`, applied automatically | `ApiResponse` | `<base.package>.common.web` |
+| SH.3 | Exceptions handled centrally — never caught in a controller | `GlobalExceptionHandler` | `<base.package>.common.web` |
+| SH.4 | Pagination constraints enforced by the shared utility | `PageableUtils` | `<base.package>.common.web.util` |
+| SH.5 | JSON serialization configured globally — no local `ObjectMapper` | shared Jackson config | `<base.package>.common.web.config` |
 
 **Rules:**
-- NEVER create custom response wrappers — use `operationCode.craftResponse(serviceResult)`
-- NEVER catch exceptions in controllers — `GlobalExceptionHandler` handles all errors
-- NEVER use `@ResponseStatus(CREATED)` — HTTP 201 is derived from `Status.CREATED` via `OperationCode`
-- NEVER configure custom `ObjectMapper` — `CommonJacksonConfig` handles serialization globally
-- NEVER implement pagination validation — `PageableUtils` enforces constraints automatically
+- NEVER create a custom response wrapper
+- NEVER catch exceptions in a controller
+- NEVER use `@ResponseStatus(CREATED)` — 201 comes from the service's `Status.CREATED`
+- NEVER configure a local `ObjectMapper`
+- NEVER implement pagination validation by hand
 
-> **Cross-reference:** After creating the controller, run [`enforce-backend-contract`](../enforce-backend-contract/SKILL.md) to verify compliance.
+> After creating the controller, run [`gov-enforce-backend-contract`](../gov-enforce-backend-contract/SKILL.md).
 
 ---
 
-## Rules (STRICT — from implementation-contract.md)
+## Rules (STRICT)
 
 | Rule ID | Rule | MUST |
 |---------|------|------|
-| A.6.2 | `@Tag(name, description)` with Arabic/English | YES |
-| A.6.3 | Controller injects ONLY service(s) + `OperationCode` | YES |
-| A.6.4 | Non-delete endpoints return `ResponseEntity<ApiResponse<T>>` via `operationCode.craftResponse()` | YES |
-| A.6.5 | Delete: `@ResponseStatus(NO_CONTENT)` + `void` return — no ServiceResult | YES |
-| A.6.6 | Search: `@PostMapping("/search")` + `@RequestBody` — NOT `@GetMapping` with `@ModelAttribute` | YES |
-| A.6.7 | Activation: separate `@PutMapping("/{id}/activate")` and `@PutMapping("/{id}/deactivate")` — NOT a single `toggle-active` | YES |
-| A.6.8 | Usage: `@GetMapping("/{id}/usage")` | YES |
-| A.6.9 | Child endpoints under SAME controller (`/details/...`) | YES |
+| A.6.1 | `@RestController @RequestMapping @RequiredArgsConstructor` | YES |
+| A.6.2 | `@Tag` with a bilingual description | YES |
+| A.6.3 | Injects ONLY service(s) + the response helper | YES |
+| A.6.4 | Non-delete endpoints return the crafted `ResponseEntity<ApiResponse<T>>` | YES |
+| A.6.5 | Delete: `@ResponseStatus(NO_CONTENT)` + `void` | YES |
+| A.6.6 | Search: `POST /search` with `@RequestBody` — not `GET` with `@ModelAttribute` | YES |
+| A.6.7 | Separate `activate` and `deactivate` endpoints — not one toggle | YES |
+| A.6.8 | Usage exposed at `GET /{id}/usage` | YES |
+| A.6.9 | Child endpoints live under the same controller | YES |
 | A.6.10 | Every method has `@Operation(summary, description)` | YES |
-| A.6.11 | Request bodies use `@Valid @RequestBody` | YES |
+| A.6.11 | Every request body is `@Valid @RequestBody` | YES |
 | A.6.12 | ZERO business logic — pure delegation | YES |
 
-### HTTP Status Mapping (Automatic)
+### HTTP status mapping (automatic)
 
-> Full mapping (all `Status` values, not just the ones a controller generator touches):
-> [`api-contract.md`](../../../context/api-contract.md) §2.
-
-| ServiceResult Status | HTTP Status | How |
-|---------------------|-------------|-----|
-| `Status.CREATED` | 201 | Automatic via `OperationCode.craftResponse()` |
-| `Status.UPDATED` | 200 | Automatic via `OperationCode.craftResponse()` |
-| `Status.SUCCESS` | 200 | Automatic via `OperationCode.craftResponse()` |
-| Delete (void) | 204 | `@ResponseStatus(NO_CONTENT)` on method |
-
-> **`@ResponseStatus(CREATED)` is NOT used on POST** — the `Status.CREATED` in `ServiceResult` maps to 201 automatically.
+| Service `Status` | HTTP | How |
+|------------------|------|-----|
+| `Status.CREATED` | 201 | Automatic through the response helper |
+| `Status.UPDATED` | 200 | Automatic through the response helper |
+| `Status.SUCCESS` | 200 | Automatic through the response helper |
+| delete (`void`) | 204 | `@ResponseStatus(NO_CONTENT)` on the method |
 
 ---
 
 ## Violations (MUST NOT)
 
-- ❌ Injecting repository, mapper, or entity in controller
-- ❌ Any business logic (conditionals, validations, transformations) in controller
-- ❌ Returning raw DTOs — must use `operationCode.craftResponse()`
-- ❌ `@ResponseStatus(CREATED)` on POST — handled by `ServiceResult` mapping
-- ❌ Wrapping `delete()` in `ServiceResult` or `craftResponse` — stays `void` with 204
-- ❌ `GET /search` with `@ModelAttribute` — must use `POST /search` with `@RequestBody`
-- ❌ Single `toggle-active` endpoint — must use separate `activate` and `deactivate` endpoints
-- ❌ Separate controller for child entity — unified under parent controller
-- ❌ Missing `@Valid` on `@RequestBody`
-- ❌ Missing `@Operation` on any endpoint
-- ❌ Missing `OperationCode` injection
-- ❌ Any code answering "is this operation allowed?" (per the Decision Test in [`domain-layer.md`](../../../context/domain-layer.md)) — that belongs in `<Entity>Domain`, reached through the Service, never in the Controller
-
----
-
-## Example (Real ERP — MasterLookupController)
-
-```java
-@RestController
-@RequestMapping("/api/masterdata/master-lookups")
-@RequiredArgsConstructor
-@Tag(name = "Master Lookup Management", description = "إدارة القوائم المرجعية - Master Lookup API")
-public class MasterLookupController {
-
-    private final MasterLookupService masterLookupService;
-    private final LookupDetailService lookupDetailService;
-    private final OperationCode operationCode;
-
-    @PostMapping
-    @Operation(summary = "Create master lookup")
-    public ResponseEntity<ApiResponse<MasterLookupResponse>> create(
-            @Valid @RequestBody MasterLookupCreateRequest request) {
-        return operationCode.craftResponse(masterLookupService.create(request));
-    }
-
-    @PutMapping("/{id}")
-    @Operation(summary = "Update master lookup")
-    public ResponseEntity<ApiResponse<MasterLookupResponse>> update(
-            @PathVariable Long id,
-            @Valid @RequestBody MasterLookupUpdateRequest request) {
-        return operationCode.craftResponse(masterLookupService.update(id, request));
-    }
-
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Delete master lookup")
-    public void delete(@PathVariable Long id) {
-        masterLookupService.delete(id);
-    }
-
-    // ... all other endpoints follow same thin pattern
-}
-```
+- ❌ Injecting a repository, mapper, or entity into a controller
+- ❌ Any conditional, validation, or transformation in a controller
+- ❌ Returning a raw DTO instead of the crafted response
+- ❌ `@ResponseStatus(CREATED)` on POST
+- ❌ Wrapping `delete()` in a `ServiceResult` or crafted response
+- ❌ `GET /search` with `@ModelAttribute`
+- ❌ A single toggle endpoint instead of separate activate/deactivate
+- ❌ A separate controller for a child entity
+- ❌ Missing `@Valid` on a request body
+- ❌ Missing `@Operation` on an endpoint
+- ❌ Any code answering "is this operation allowed?" — that belongs in `<Entity>Domain`,
+  reached through the service

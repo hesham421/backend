@@ -48,6 +48,9 @@ def plan_structure(mod: str, version: int) -> list[dict]:
         folders.append({"path": p, "label": stage})
 
     for artifact, subs in PACKAGES_STRUCTURE.items():
+        # Always plan the container itself (backend-test has no pre-created
+        # subs — Agent 3 writes flat files straight into the container).
+        folders.append({"path": base / "packages" / artifact, "label": f"packages/{artifact}"})
         for sub in subs:
             p = base / "packages" / artifact / sub
             folders.append({"path": p, "label": f"packages/{artifact}/{sub}"})
@@ -112,10 +115,15 @@ def create_structure(mod: str, version: int, folders: list[dict], dry_run: bool)
 
     set_current_version(mod, version)
 
+    try:
+        manifest_rel = manifest_path.relative_to(REPO_BASE_PATH)
+    except ValueError:
+        manifest_rel = manifest_path
+
     print("─" * 62)
     print(f"  ✓ Created  : {len(created)} folders")
     print(f"  ⚠ Skipped  : {len(skipped)} (already exist)")
-    print(f"  ✓ Manifest : {manifest_path.relative_to(REPO_BASE_PATH)}")
+    print(f"  ✓ Manifest : {manifest_rel}")
     print(f"  ✓ Registry : modules-registry.json updated (v{version})")
     print("─" * 62)
     print()
@@ -163,11 +171,28 @@ def main():
         print("\n  ERROR: --module is required (or use --list-modules).\n")
         sys.exit(1)
 
-    try:
-        mod = validate_module(args.module, auto_register=args.auto_register, description=args.description)
-    except ValueError as e:
-        print(f"\n  ERROR: {e}\n")
-        sys.exit(1)
+    # FINDING-22a — a dry run must be strictly read-only. validate_module with
+    # auto_register=True WRITES modules-registry.json (and publishes the shared
+    # copy). So under --dry-run we never register: we validate read-only, and if
+    # the module is unknown but --auto-register was requested, we only NORMALISE
+    # the code and note that a live run would register it — no disk write.
+    if args.dry_run:
+        try:
+            mod = validate_module(args.module, auto_register=False, description=args.description)
+        except ValueError as e:
+            if args.auto_register:
+                mod = args.module.upper().strip()
+                print(f"\n  ⓘ DRY RUN: module '{mod}' is not registered yet — a LIVE run "
+                      f"with --auto-register would register it now. (Nothing written.)")
+            else:
+                print(f"\n  ERROR: {e}\n")
+                sys.exit(1)
+    else:
+        try:
+            mod = validate_module(args.module, auto_register=args.auto_register, description=args.description)
+        except ValueError as e:
+            print(f"\n  ERROR: {e}\n")
+            sys.exit(1)
 
     if args.new_version:
         version = get_next_version(mod)

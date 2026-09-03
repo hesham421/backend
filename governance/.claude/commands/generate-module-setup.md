@@ -55,7 +55,11 @@ find governance/modules/$MODULE/packages/backend-test -type f -name "*.md" | sor
 
 From the scan results:
 - Identify all PHASES (top-level folders under `packages/backend-execution/`)
-- For each PHASE, identify all SUBs (files inside the folder, excluding `index.md`)
+- For each PHASE, identify all SUBs = the `.md` files inside that phase folder,
+  EXCLUDING `index.md`, `.gitkeep`, and any `[PHASE]-HEADER.md` (the HEADER is
+  phase-level shared context — read once in execution STEP 1.0, never a sub)
+- Ignore `packages/backend-execution/_SECTIONS.md` for phase/sub detection — it
+  is a top-level FILE (plan content outside every phase), not a phase folder
 - Preserve the exact filesystem sort order
 - For each SUB file, read the first 40 lines and count the tasks
 
@@ -68,10 +72,13 @@ CORE → DATA-DOM → SVC-API → DOC → INT-C → INT-R → SEC-BE → ALIGN-B
 
 `packages/backend-test/` is JUnit-only by construction. Treat it as
 ONE TEST-PHASE named `backend-test`:
-- SUBs = every `.md` file inside, excluding `index.md`, `.gitkeep`, any
-  `*-HEADER.md`, and any `MANDATORY-*.md` (typically `RULE-SCENARIOS`,
-  `API-SCENARIOS`)
-- `*-HEADER.md`/`MANDATORY-*.md` are shared context, read once, not subs
+- SUBs = every `.md` file inside, excluding `index.md`, `.gitkeep`, and any
+  `*-HEADER.md` (the real subs are `RULE-SCENARIOS` / `API-SCENARIOS`, or a
+  single whole-phase file when the plan was below the TC>12 threshold)
+- `TEST-PLAN-BE-HEADER.md` (present only if the plan had a phase preamble)
+  is shared context — read once, not a sub. The splitter does NOT emit any
+  `MANDATORY-*.md` file: mandatory scenarios are TC blocks living inside the
+  SUB files themselves.
 - Gated by every backend phase that exists for this module
 
 ### Weight classification
@@ -111,8 +118,7 @@ Location: `governance/modules/$MODULE/execution-state.json`
     "id": "backend-test",
     "status": "PENDING",
     "gated_by_phases": ["CORE", "DATA-DOM", "SVC-API", "DOC", "INT-C", "INT-R", "SEC-BE", "ALIGN-BE"],
-    "header_file": "packages/backend-test/RULE-SCENARIOS-HEADER.md",
-    "mandatory_file": "packages/backend-test/MANDATORY-J.md",
+    "header_file": "packages/backend-test/TEST-PLAN-BE-HEADER.md",
     "subs": [
       { "id": "RULE-SCENARIOS", "status": "PENDING" },
       { "id": "API-SCENARIOS", "status": "PENDING" }
@@ -183,11 +189,21 @@ Proceed? [waits for confirmation]
 
 ## STEP 1 — Execution (after confirmation)
 
+### 1.0 — Read shared context once (before the per-sub loop)
+- The phase's `[PHASE]-HEADER.md` under `packages/backend-execution/[PHASE]/`
+  if present — phase-level strategy, tables, and intro that the SUB files
+  reference but don't repeat.
+- `packages/backend-execution/_SECTIONS.md` if present — plan-level content
+  that lives OUTSIDE every phase (Plan Index, DB Alignment Manifest, Error
+  Catalog, Agent Handoff Summary). Read once for orientation; it is context,
+  not a sub.
+
 ### Per sub:
 1. Read `packages/backend-execution/[PHASE]/[SUB].md` completely
+   (the SUB file is named by its phase-qualified label, e.g. `SVC-API-CRUD.md`)
 2. Identify all tasks
 3. Map each task to the skill routing table in `GOVERNANCE-RULES.md`
-4. Read required skills from `.github/skills/backend/`
+4. Read required skills from `.claude/skills/` (`build-*` to generate, `gov-*` to validate)
 5. Execute all tasks in order
 6. Run the phase's validation skill after the last task
 7. Mark sub COMPLETE in `execution-state.json`
@@ -262,15 +278,15 @@ STOP. Do not generate or run any test.
 
 ## STEP 1 — Execution (after confirmation)
 
-### 1.0 — Read `header_file` and `mandatory_file` once
+### 1.0 — Read `header_file` once (if present)
 
 ### Per sub:
 1. Read `packages/backend-test/[SUB].md` completely
 2. Identify all scenarios
 3. Generate: Spring Boot test class (`@SpringBootTest`/`@WebMvcTest` +
    `MockMvc`), file `src/test/java/.../[Scenario]Test.java`
-4. Run: `mvn test -Dtest=[Class]` via bash. `oracle-sql` MCP
-   (read-only) for any DB assertion.
+4. Run: `mvn test -Dtest=[Class]` via bash. The PostgreSQL MCP server
+   (`mcp-servers/postgres/`, read-only) for any DB assertion.
 5. Classify every failure/skip using the shared taxonomy
 6. Update `execution-state.json`
 
@@ -286,10 +302,11 @@ Write to `reports/TEST-REPORT-[MODULE]-backend-[YYYY-MM-DD].md`. Any
 ## Constraints (NON-NEGOTIABLE)
 
 - NEVER run before the gate check passes
-- NEVER treat `*-HEADER.md`/`MANDATORY-*.md` as a sub
-- NEVER skip MANDATORY scenarios
+- NEVER treat `*-HEADER.md` as a sub
+- NEVER skip mandatory scenarios (the Mandatory-J TC blocks embedded inside
+  the RULE-SCENARIOS / API-SCENARIOS sub files)
 - NEVER modify application source code — report, don't fix
-- NEVER run mutating SQL via oracle-sql
+- NEVER run mutating SQL via the PostgreSQL MCP (read-only only)
 - ALWAYS classify every failure/skip
 - ALWAYS update execution-state.json after every sub
 ```

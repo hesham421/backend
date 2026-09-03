@@ -5,8 +5,8 @@
 config.py                    ← الإعدادات المشتركة (يُقرأ من كل الـ agents)
 marker_parser.py              ← محرك قراءة Markers (يُستخدم داخلياً بواسطة Agent 3)
 agent1_create_structure.py   ← ينشئ هيكل المجلدات لموديول
-agent2_archive.py             ← يؤرشف ملفات P0-P4 المولّدة إلى الهيكل
-agent3_splitter.py            ← يقسّم execution-plan.md / test-plan.md حسب Markers
+agent2_archive.py             ← يؤرشف ملفات الـ artifacts المولّدة (P0→P3_5_BE) إلى الهيكل
+agent3_splitter.py            ← يقسّم backend-execution-plan.md / backend-test-plan.md حسب Markers
 ```
 
 ## الإعداد
@@ -59,7 +59,6 @@ python3 agent3_splitter.py --module ORG --status        # عرض التقدم
 ده اسم قديم لموديل حوكمة سابق مش موجود دلوقتي):
 ```
 governance/
-├── master-registry.md
 ├── modules-registry.json
 └── modules/
     └── [MOD]/

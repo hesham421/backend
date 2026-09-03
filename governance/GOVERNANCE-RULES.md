@@ -1,8 +1,9 @@
 # ERP Governance Rules
 
 Shared governance content for every AI runtime operating on this platform
-(Claude Code via `CLAUDE.md`, GitHub Copilot via `.github/copilot-instructions.md`,
-and any future runtime). This is the single copy of the skill routing table,
+(currently Claude Code via `CLAUDE.md`; any future runtime plugs in the same way —
+the repo-root `.github/` directory that once carried Copilot instructions has been
+removed). This is the single copy of the skill routing table,
 execution order, context references, and governance rules — runtime files must
 reference this document, not restate it.
 
@@ -10,43 +11,48 @@ reference this document, not restate it.
 
 ## Governance Content Map
 
-| Artifact | Path in this repository |
-|----------|------------------------|
-| Backend skills | repo-root `.claude/skills/` (not under `governance/` — moved 2026-08-31 so they auto-load via the Skill tool every session; this table still governs which skill to use and when) |
-| Frontend skills | `.github/skills/frontend/` |
-| DevOps / deploy skill | `.github/skills/devops/deploy/` |
-| Backend architecture context | `.github/context/backend.md` |
-| Frontend architecture context | `.github/context/frontend.md` |
-| Master entity registry | `master-registry.md` |
-| Modules registry | `modules-registry.json` |
-| AI commands | `.claude/commands/` |
-| Governance automation tools | `governance-tools/` |
-| Module execution plans | `modules/` |
-| Backend TestSprite governance (mechanism, prompts, module archive) | `backend/governance/testsprite/` |
-| Frontend TestSprite governance (mechanism, prompts, module archive) | `frontend/governance/testsprite/` |
+| Artifact | Path | Present |
+|----------|------|---------|
+| Backend skills | repo-root `.claude/skills/` (not under `governance/` — moved 2026-08-31 so they auto-load via the Skill tool every session; this table still governs which skill to use and when) | ✅ |
+| Modules registry | `governance/modules-registry.json` | ✅ (currently empty) |
+| AI commands | `governance/.claude/commands/` | ✅ |
+| Governance automation tools | `governance/governance-tools/` | ✅ |
+| Backend TestSprite governance (mechanism, prompts, module archive) | `governance/testsprite/` | ✅ |
+| Module execution plans | `governance/modules/` | ❌ not present — recreated per module by `generate-module-setup.md` |
+| Backend architecture context | `governance/.github/context/backend.md` | ❌ not present |
+| Frontend skills | `frontend/governance/.github/skills/frontend/` — **the frontend repo, not this one** | n/a here |
+| DevOps / deploy skill | the `deploy` repo | n/a here |
+| Frontend architecture context | `frontend/governance/.github/context/frontend.md` — the frontend repo | n/a here |
+| Frontend TestSprite governance | `frontend/governance/testsprite/` — the frontend repo | n/a here |
+
+> ❌ rows are content this model expects but that does not exist in the repository right now. Do
+> not silently substitute something else for a missing artifact, and do not invent its content —
+> stop and report the gap, per `CLAUDE.md`.
 
 ---
 
 ## Task → Skill Routing
 
 Read the matching skill BEFORE generating or modifying any code.
-Skill files are at `.github/skills/<category>/<skill-name>/SKILL.md`.
+Backend skill files are at `backend/.claude/skills/<skill-name>/SKILL.md`, split into two lanes
+by prefix: `build-*` generates code, `gov-*` validates it. Frontend and DevOps skills live in
+their own repos at `.github/skills/<category>/<skill-name>/SKILL.md`.
 
 ### Backend (code lives in `backend` repo)
 
 | Task | Skill |
 |------|-------|
-| **Always first — contract validation** | `enforce-backend-contract` |
-| Create / modify Entity | `create-entity` |
-| Create / modify Repository | `create-repository` |
-| Create / modify DTOs | `create-dto` |
-| Create / modify Mapper | `create-mapper` |
-| Create / modify Service | `create-service` |
-| Create / modify Controller | `create-controller` |
-| Review / validate backend code | `enforce-backend-contract` |
-| Add / review caching | `enforce-caching-rules` |
-| Add / review error handling | `enforce-error-handling` |
-| Validate a complete feature | `validate-backend-feature` |
+| **Always first — contract validation** | `gov-enforce-backend-contract` |
+| Create / modify Entity | `build-create-entity` |
+| Create / modify Repository | `build-create-repository` |
+| Create / modify DTOs | `build-create-dto` |
+| Create / modify Mapper | `build-create-mapper` |
+| Create / modify Service | `build-create-service` |
+| Create / modify Controller | `build-create-controller` |
+| Review / validate backend code | `gov-enforce-backend-contract` |
+| Add / review caching | `gov-enforce-caching-rules` |
+| Add / review error handling | `gov-enforce-error-handling` |
+| Validate a complete feature | `gov-validate-backend-feature` |
 
 ### Frontend (code lives in `frontend` repo)
 
@@ -87,11 +93,11 @@ Skill files are at `.github/skills/<category>/<skill-name>/SKILL.md`.
 ## Execution Order
 
 **Backend (strict):**
-`enforce-backend-contract` → `create-entity` → `create-repository` → `create-dto` → `create-mapper` → `create-service` → `create-controller` → `validate-backend-feature`
+`gov-enforce-backend-contract` → `build-create-entity` → `build-create-repository` → `build-create-dto` → `build-create-mapper` → `build-create-service` → `build-create-controller` → `gov-validate-backend-feature`
 
-> `create-entity` emits two artifacts in this one step when applicable: the JPA entity, and its
-> Domain companion object (business rules) per `.github/context/domain-layer.md`. This does not
-> add a step to the sequence above.
+> `build-create-entity` emits two artifacts in this one step when applicable: the JPA entity, and
+> its Domain companion object (business rules) — see that skill's "Domain Companion Object"
+> section. This does not add a step to the sequence above.
 
 **Frontend — foundation (build once, before any feature):**
 `create-auth-session` → `create-error-handling` → `create-app-state`
@@ -118,22 +124,22 @@ Skill files are at `.github/skills/<category>/<skill-name>/SKILL.md`.
 - When a task spans multiple layers, read ALL relevant skills
 - After completing a feature, run the validation skill to verify compliance
 - Reference existing implementations in the codebase as canonical examples
-- `master-registry.md` is the single source of truth for all entities and rules
 - Business-rule conditions (anything answering "is this operation allowed?") must be
   implemented on a dedicated Domain object created via `create()`/`from()` factory methods —
-  never inlined in Service, Repository, Controller, Mapper, or the Entity. See
-  `.github/context/domain-layer.md`. This is a Governance requirement, not a prescription of
-  which Backend Skill produces the Domain object — that remains an implementation detail of
+  never inlined in Service, Repository, Controller, Mapper, or the Entity. The rule and its
+  checks live in `build-create-entity`'s "Domain Companion Object" section and
+  `gov-enforce-backend-contract`'s LAYER 0. This is a Governance requirement, not a prescription
+  of which Backend Skill produces the Domain object — that remains an implementation detail of
   the Backend Skills.
 - NEVER write banner/section-divider comments (`// ==== Section ====`, `// ─────...─────`,
   or any repeated-character line used to slice one file into visual sections). If a class has
   grown enough sections to need dividers, that is a signal to split the class, not to add ASCII
   art.
 - NEVER write a Javadoc block longer than ~5 lines. No `@author` tags, no embedded usage
-  examples, no restated "Architecture Rules" prose — that content belongs in
-  `.github/context/` or a `project-artifacts/` doc, not repeated inside every class that
-  touches the concept. A Javadoc comment states the one non-obvious thing a reader couldn't
-  get from the method/class signature and name; if there isn't one, omit the Javadoc entirely.
+  examples, no restated "Architecture Rules" prose — that content belongs in a
+  `governance/project-artifacts/` doc, not repeated inside every class that touches the
+  concept. A Javadoc comment states the one non-obvious thing a reader couldn't get from the
+  method/class signature and name; if there isn't one, omit the Javadoc entirely.
 - NEVER create or modify a JUnit test file (anything under `src/test/java/` or
   `packages/backend-test/`) unless the user explicitly asked for tests, or the dedicated
   `execute-backend-test` phase is what's currently running. Implementing or fixing a feature
@@ -144,8 +150,18 @@ Skill files are at `.github/skills/<category>/<skill-name>/SKILL.md`.
 
 ## Context Reference (read on demand)
 
-- Backend architecture overview: `.github/context/backend.md`
-- Domain Layer Guideline (Business Rule ownership): `.github/context/domain-layer.md`
-- API Contract Guideline (response envelope, exception→HTTP mapping, error-code format): `.github/context/api-contract.md`
-- Frontend architecture overview + navigation i18n keys: `.github/context/frontend.md`
-- All detailed rules live in `.github/skills/`
+The `governance/.github/context/` guideline documents this section used to point at
+(`backend.md`, `domain-layer.md`, `api-contract.md`, `frontend.md`) are **not present in this
+repository**. Their essential content now lives inside the skills themselves:
+
+| Topic | Where it lives now |
+|-------|--------------------|
+| Domain Layer — Business Rule ownership, the Decision Test | `build-create-entity` → "Domain Companion Object"; `gov-enforce-backend-contract` → LAYER 0 |
+| API contract — response envelope, `Status` → HTTP mapping, error-code format | `gov-enforce-backend-contract` → "Status → HTTP Mapping"; `gov-enforce-error-handling` |
+| Cross-module boundaries and eventing | `build-create-service` → "Cross-Module Calls" / "Publishing Domain Events" |
+| Layer-by-layer detailed rules | the ten skills in `.claude/skills/` |
+
+If a genuine architecture-overview document is needed again, create it under
+`governance/project-artifacts/` and link it here — do not reintroduce
+`governance/.github/context/` without an explicit decision, since the skills are now the single
+place these rules are stated.

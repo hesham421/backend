@@ -1,203 +1,164 @@
 ---
-name: create-repository
-description: "Generates a JPA repository interface extending JpaRepository + JpaSpecificationExecutor. Phase 1, Step 1.2 — AFTER entity, BEFORE DTOs. Enforces existsBy checks, JOIN FETCH queries, and JPQL count queries."
+name: build-create-repository
+description: "Generates a JPA repository interface extending JpaRepository + JpaSpecificationExecutor. Build step 2 — AFTER entity, BEFORE DTOs. Enforces existsBy checks, JOIN FETCH queries, JPQL count queries, and module-internal scope."
 ---
 
-# Skill: create-repository
-
-## Name
-`create-repository`
+# Skill: build-create-repository
 
 ## Description
-Generates a JPA repository interface for the ERP system following the canonical pattern. This is **Phase 1, Step 1.2** of the execution template. MUST be created AFTER entity, BEFORE DTOs.
+Generates a JPA repository interface following the project's canonical pattern. This is
+**build step 2** — created AFTER the entity, BEFORE the DTOs.
 
 ## When to Use
-- After `create-entity` is complete (Step 1.1)
-- When Phase 1, Step 1.2 of the execution template is being executed
+- After `build-create-entity` is complete
 - BEFORE creating DTOs, mapper, service, or controller
 
 ## When NOT to Use
-- Before the entity class exists — `create-entity` must run first
-- When the repository already exists and only needs minor method additions (edit directly)
-- For frontend, deploy, or governance documents
+- Before the entity class exists — `build-create-entity` must run first
+- When the repository exists and only needs a method added (edit it directly)
+
+---
+
+## Variables
+
+Inherits every variable resolved by [`build-create-entity`](../build-create-entity/SKILL.md) —
+`<module>`, `<Entity>`, `<ENTITY_CLASS>`, `<base.package>`. Derive field and column names from
+the entity that was actually generated; never assume them.
 
 ## Responsibilities
 
-- Generate a JPA repository interface extending `JpaRepository` and `JpaSpecificationExecutor`
+- Generate an interface extending `JpaRepository` and `JpaSpecificationExecutor`
 - Define `existsBy<Field>()` methods for uniqueness checks
-- Define `existsBy<Field>AndIdNot()` ONLY if the unique field is mutable on update
-- Add `countChildren()` and `countActiveChildren()` JPQL queries if parent entity
-- Add `JOIN FETCH` queries for child entities loading parent relationships
+- Define `existsBy<Field>AndIdNot()` ONLY when that field is mutable on update
+- Add count queries if this is a parent entity
+- Add `JOIN FETCH` queries where a child needs its parent loaded
 
 ## Constraints
 
 - MUST NOT generate entity, DTO, mapper, service, or controller code
-- MUST NOT modify existing repository files unless explicitly requested
-- MUST NOT assume entity field names — derive from entity definition
-- MUST NOT add `existsBy<Field>AndIdNot()` for immutable natural keys
+- MUST NOT modify existing repository files unless asked
+- MUST NOT assume entity field names — derive them from the entity
+- MUST NOT add `existsBy<Field>AndIdNot()` for an immutable natural key (dead code by design)
 - Repository is module-internal — MUST NOT be designed for cross-module use
 
 ## Output
 
-- Single file: `src/main/java/com/erp/<module>/repository/<Entity>Repository.java` (single
-  consolidated `pom.xml` — see
-  `governance/project-artifacts/INTERFACE-VS-REST-AND-POM-STRUCTURE-RECOMMENDATION.md`; module
-  boundaries are package-based, enforced by ArchUnit, not separate Maven module directories)
+- `src/main/java/<base/package>/<module>/repository/<Entity>Repository.java`
 
 ---
 
 ## Cross-Module Access
 
-This repository is injected ONLY within its own module's service. If another module needs
-this data, it consumes it via this module's own `crossmodule` interface — see
-`create-service`'s "Cross-Module Calls (XM)" section for the direct-injection pattern used on
-the calling side (real examples: `OrgBranchApi`, `MasterDataLookupApi`, `SecurityUserApi`,
-`SecUserProfileApi`). Do NOT add methods here to make this repository "easier to reuse" from
-another module, and do NOT inject this repository directly from another module — the module
-boundary is enforced by the ArchUnit suite in `src/test/java/com/erp/architecture`, not by
-repository design.
+This repository is injected ONLY inside its own module's service. If another module needs this
+data, it consumes it through this module's own cross-module interface — see
+[`build-create-service`](../build-create-service/SKILL.md)'s "Cross-Module Calls" section.
+
+Do NOT add methods here to make the repository "easier to reuse" from another module, and do
+NOT inject it from another module. Module boundaries are package-based and enforced by the
+project's ArchUnit suite, not by repository design.
 
 ---
 
 ## Steps
 
-### 1. Create Repository File
-- **Location:** `src/main/java/com/erp/<module>/repository/<ENTITY_NAME>Repository.java`
-
-### 2. Interface Declaration
+### 1. Interface declaration
 ```java
 @Repository
-public interface <ENTITY_NAME>Repository
-    extends JpaRepository<Md<ENTITY_NAME>, Long>,
-            JpaSpecificationExecutor<Md<ENTITY_NAME>> {
+public interface <Entity>Repository
+    extends JpaRepository<<ENTITY_CLASS>, Long>,
+            JpaSpecificationExecutor<<ENTITY_CLASS>> {
 ```
 
-### 3. Standard Finders
+### 2. Standard finders
 ```java
-Optional<Md<ENTITY_NAME>> findBy<UniqueField>(<Type> value);
+Optional<<ENTITY_CLASS>> findBy<UniqueField>(<Type> value);
+
 boolean existsBy<UniqueField>(<Type> value);
-boolean existsBy<UniqueField>AndIdNot(<Type> value, Long id); // ONLY if unique field is mutable on update
+
+// ONLY if <UniqueField> is mutable on update — otherwise omit
+boolean existsBy<UniqueField>AndIdNot(<Type> value, Long id);
 ```
 
-### 4. Paginated Queries
+### 3. Paginated queries
 ```java
-Page<Md<ENTITY_NAME>> findBy<Filter>(<Type> value, Pageable pageable);
+Page<<ENTITY_CLASS>> findBy<Filter>(<Type> value, Pageable pageable);
 ```
 
-### 5. Child Entity Queries (if parent)
+### 4. Count queries (parent entity)
 ```java
-@Query("SELECT COUNT(c) FROM Md<CHILD> c WHERE c.<entity>.id = :entityId")
-long countChildren(@Param("entityId") Long entityId);
+@Query("SELECT COUNT(c) FROM <CHILD_CLASS> c WHERE c.<parentField>.id = :entityId")
+long count<Children>(@Param("entityId") Long entityId);
 
-@Query("SELECT COUNT(c) FROM Md<CHILD> c WHERE c.<entity>.id = :entityId AND c.isActive = true")
-long countActiveChildren(@Param("entityId") Long entityId);
+@Query("SELECT COUNT(c) FROM <CHILD_CLASS> c WHERE c.<parentField>.id = :entityId AND c.isActive = true")
+long countActive<Children>(@Param("entityId") Long entityId);
 ```
 
-### 6. JOIN FETCH Queries (if child entity)
+### 5. JOIN FETCH queries (child entity)
 ```java
-@Query(value = "SELECT d FROM Md<ENTITY> d JOIN FETCH d.<parent> WHERE d.<parent>.id = :parentId",
-       countQuery = "SELECT COUNT(d) FROM Md<ENTITY> d WHERE d.<parent>.id = :parentId")
-Page<Md<ENTITY>> searchByParentId(@Param("parentId") Long parentId, Pageable pageable);
+@Query(value = "SELECT c FROM <CHILD_CLASS> c JOIN FETCH c.<parentField> WHERE c.<parentField>.id = :parentId",
+       countQuery = "SELECT COUNT(c) FROM <CHILD_CLASS> c WHERE c.<parentField>.id = :parentId")
+Page<<CHILD_CLASS>> searchByParentId(@Param("parentId") Long parentId, Pageable pageable);
 ```
 
-### 7. Validation Queries (for complex checks)
+### 6. Projections for read-only multi-table reads
 ```java
-@Query(value = "SELECT COUNT(*) FROM <TABLE> WHERE <FIELD> = :field AND IS_ACTIVE = 1",
-       nativeQuery = true)
-int countActiveByField(@Param("field") String field);
+public interface <Entity>SummaryView {
+    Long getId();
+    String get<Field>();
+}
 ```
 
 ---
 
-## SHARED LAYER MANDATE (`erp-common-utils`)
+## Shared Layer Mandate
 
-Before creating a new repository, verify the following shared resources from `erp-common-utils` are consumed — do NOT reinvent:
+Search, paging and sort validation are provided by the project's shared search layer — do NOT
+reinvent any of it:
 
-| # | Requirement | Shared Class | Package |
-|---|-------------|-------------|--------|
-| SH.1 | Search specifications built via `SpecBuilder` — do NOT write manual `Specification<E>` | `SpecBuilder` | `com.erp.common.search` |
-| SH.2 | Pagination built via `PageableBuilder.from()` with sort field validation | `PageableBuilder` | `com.erp.common.search` |
-| SH.3 | Allowed sort/filter fields validated via `AllowedFields` / `SetAllowedFields` | `SetAllowedFields` | `com.erp.common.search` |
-| SH.4 | Active flag filtering via `ActiveFlagQueryHelper` | `ActiveFlagQueryHelper` | `com.erp.common.search` |
-| SH.5 | Boolean field conversions handled by `BooleanFieldValueConverter` in search specs | `BooleanFieldValueConverter` | `com.erp.common.search` |
+| # | Requirement | Shared class | Package |
+|---|-------------|--------------|---------|
+| SH.1 | Specifications built via `SpecBuilder` — never a hand-written `Specification<E>` | `SpecBuilder` | `<base.package>.common.search` |
+| SH.2 | Pageables built via `PageableBuilder.from()` with sort-field validation | `PageableBuilder` | `<base.package>.common.search` |
+| SH.3 | Allowed sort/filter fields declared via the shared allowed-fields type | `SetAllowedFields` | `<base.package>.common.search` |
+| SH.4 | Active-flag filtering uses the shared helper | `ActiveFlagQueryHelper` | `<base.package>.common.search` |
+| SH.5 | Boolean values in search specs go through the shared converter | `BooleanFieldValueConverter` | `<base.package>.common.search` |
 
 **Rules:**
-- NEVER build JPA `Specification<E>` manually — use `SpecBuilder.build()`
-- NEVER build `Pageable` manually — use `PageableBuilder.from()` with `ALLOWED_SORT_FIELDS`
-- NEVER write custom sort field validation logic — use `SetAllowedFields`
+- NEVER build a `Specification<E>` manually
+- NEVER build a `Pageable` manually
+- NEVER write custom sort-field validation
 
-> **Cross-reference:** After creating the repository, run [`enforce-backend-contract`](../enforce-backend-contract/SKILL.md) to verify compliance.
+> After creating the repository, run [`gov-enforce-backend-contract`](../gov-enforce-backend-contract/SKILL.md).
 
 ---
 
-## Rules (STRICT — from implementation-contract.md)
+## Rules (STRICT)
 
 | Rule ID | Rule | MUST |
 |---------|------|------|
+| A.2.1 | Extends `JpaRepository` AND `JpaSpecificationExecutor` | YES |
 | A.2.2 | Annotated with `@Repository` | YES |
-| A.2.3 | NEVER injected outside its own module (cross-module consumers use the module's `crossmodule` interface, injected directly — see `create-service`'s "Cross-Module Calls (XM)") | YES |
+| A.2.3 | Never injected outside its own module | YES |
 | A.2.4 | Existence checks use `boolean existsBy<Field>(...)` | YES |
-| A.2.5 | Update uniqueness uses `existsBy<Field>AndIdNot(value, id)` — ONLY if that field is mutable on update | YES |
-| A.2.6 | Child queries use `JOIN FETCH` in `@Query` to avoid N+1 | YES |
-| A.2.7 | Count queries for reference checks use JPQL `@Query("SELECT COUNT()")` | YES |
+| A.2.5 | Update uniqueness uses `existsBy<Field>AndIdNot(value, id)` — only for mutable fields | YES |
+| A.2.6 | Child queries use `JOIN FETCH` to avoid N+1 | YES |
+| A.2.7 | Reference checks use JPQL `@Query("SELECT COUNT(...)")` | YES |
 | A.2.8 | Projection interfaces used for read-only multi-table queries | YES |
-| A.2.9 | No dead code — every repository method must have at least one caller in the service | YES |
+| A.2.9 | No dead code — every method has at least one caller in a service | YES |
 
 ---
 
 ## Violations (MUST NOT)
 
 - ❌ Missing `JpaSpecificationExecutor` — blocks search/filter functionality
-- ❌ Missing `@Repository` annotation
-- ❌ Using `findBy().isPresent()` for existence checks — use `existsBy<Field>()`
-- ❌ Not excluding current ID in update validation — use `existsBy<Field>AndIdNot()`
-- ❌ Derived queries that navigate paths causing N+1 — use `JOIN FETCH`
-- ❌ Loading full collections to count — use `@Query("SELECT COUNT()")`
-- ❌ Injecting repository in another module's service
-- ❌ Returning full entities when only a subset is needed for read-only queries
-- ❌ Dead code: repository methods that are never called by any service
-- ❌ Adding `existsBy<Field>AndIdNot()` when that field is immutable on update (dead code by design)
-- ❌ A query predicate that itself decides a business outcome (e.g. an "is eligible" filter) — repositories fetch/count data only; the decision belongs to `<Entity>Domain`, see [`domain-layer.md`](../../../context/domain-layer.md)
-
----
-
-## Example (Real ERP — MasterLookupRepository)
-
-```java
-@Repository
-public interface MasterLookupRepository
-    extends JpaRepository<MdMasterLookup, Long>,
-            JpaSpecificationExecutor<MdMasterLookup> {
-
-    Optional<MdMasterLookup> findByLookupKey(String lookupKey);
-
-    boolean existsByLookupKey(String lookupKey);
-
-    // Note: existsByLookupKeyAndIdNot() NOT defined — lookupKey is immutable on update
-
-    @Query("SELECT COUNT(d) FROM MdLookupDetail d WHERE d.masterLookup.id = :masterLookupId")
-    long countLookupDetails(@Param("masterLookupId") Long masterLookupId);
-
-    @Query("SELECT COUNT(d) FROM MdLookupDetail d WHERE d.masterLookup.id = :masterLookupId AND d.isActive = true")
-    long countActiveLookupDetails(@Param("masterLookupId") Long masterLookupId);
-}
-```
-
-```java
-@Repository
-public interface LookupDetailRepository
-    extends JpaRepository<MdLookupDetail, Long>,
-            JpaSpecificationExecutor<MdLookupDetail> {
-
-    @Query(value = "SELECT d FROM MdLookupDetail d JOIN FETCH d.masterLookup WHERE d.masterLookup.id = :masterLookupId",
-           countQuery = "SELECT COUNT(d) FROM MdLookupDetail d WHERE d.masterLookup.id = :masterLookupId")
-    Page<MdLookupDetail> searchByMasterLookupId(@Param("masterLookupId") Long masterLookupId, Pageable pageable);
-
-    boolean existsByMasterLookupIdAndCode(Long masterLookupId, String code);
-
-    boolean existsByMasterLookupIdAndCodeAndIdNot(Long masterLookupId, String code, Long id);
-
-    Optional<MdLookupDetail> findByMasterLookup_LookupKeyAndCodeAndIsActive(
-        String lookupKey, String code, Boolean isActive);
-}
-```
+- ❌ Missing `@Repository`
+- ❌ `findBy(...).isPresent()` for an existence check — use `existsBy<Field>()`
+- ❌ Update uniqueness check that does not exclude the current id
+- ❌ Derived queries that navigate paths and cause N+1 — use `JOIN FETCH`
+- ❌ Loading a full collection just to count it — use a count query
+- ❌ Injecting this repository in another module's service
+- ❌ Returning full entities when a projection would do
+- ❌ Repository methods never called by any service
+- ❌ `existsBy<Field>AndIdNot()` for a field that is immutable on update
+- ❌ A query predicate that decides a business outcome (an "is eligible" filter) — repositories
+  fetch and count; the decision belongs to `<Entity>Domain`

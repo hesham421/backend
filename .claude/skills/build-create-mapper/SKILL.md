@@ -1,108 +1,103 @@
 ---
-name: create-mapper
-description: "Generates the @Component entity-to-DTO mapper. Phase 1, Step 1.4 — AFTER DTOs, BEFORE service. Enforces toEntity, updateEntityFromRequest (void, skips immutables), toResponse with Boolean.TRUE.equals, toUsageResponse."
+name: build-create-mapper
+description: "Generates the @Component entity-to-DTO mapper. Build step 4 — AFTER DTOs, BEFORE service. Enforces toEntity, updateEntityFromRequest (void, skips immutables), null-safe boolean mapping, toUsageResponse, and manual mapping over MapStruct."
 ---
 
-# Skill: create-mapper
-
-## Name
-`create-mapper`
+# Skill: build-create-mapper
 
 ## Description
-Generates the entity-to-DTO mapper class for the ERP system. This is **Phase 1, Step 1.4** of the execution template. One mapper per entity, manual mapping (no MapStruct).
+Generates the entity-to-DTO mapper. This is **build step 4**. One mapper per entity, manual
+mapping — no annotation-based mapping framework.
 
 ## When to Use
-- After `create-dto` is complete (Step 1.3)
-- When Phase 1, Step 1.4 of the execution template is being executed
-- BEFORE creating service or controller
+- After `build-create-dto` is complete
+- BEFORE creating the service or controller
 
 ## When NOT to Use
-- Before DTOs are completed — `create-dto` must run first
-- When the mapper already exists and only a single method needs updating (edit directly)
-- For MapStruct or any annotation-based mapping — this project uses manual mappers only
-- For frontend or deploy code
+- Before the DTOs exist
+- When the mapper exists and a single method needs updating (edit directly)
+- For MapStruct or any annotation-driven mapping — this project uses manual mappers only
+
+---
+
+## Variables
+
+Inherits `<module>`, `<Entity>`, `<ENTITY_CLASS>`, `<base.package>` from
+[`build-create-entity`](../build-create-entity/SKILL.md).
 
 ## Responsibilities
 
-- Generate a `@Component` mapper class with manual entity-to-DTO mapping (no MapStruct)
-- Implement `toEntity()` for CreateRequest → Entity conversion
-- Implement `updateEntityFromRequest()` as void method that mutates entity in-place, skipping immutable fields
-- Implement `toResponse()` mapping booleans with `Boolean.TRUE.equals()`
-- Implement `toUsageResponse()` for usage/dependency checks
-- Handle null input gracefully in all methods
+- Generate a `@Component` mapper with manual mapping
+- `toEntity()` — CreateRequest → entity
+- `updateEntityFromRequest()` — void, mutates in place, skips immutable fields
+- `toResponse()` — entity → Response, null-safe boolean mapping
+- `toUsageResponse()` — entity + counts → usage/dependency view
+- Handle null input gracefully in every method
 
 ## Constraints
 
 - MUST NOT generate entity, repository, DTO, service, or controller code
-- MUST NOT set FK relationships in `toEntity()` — service sets those
-- MUST NOT apply uppercase/case normalization — entity `@PrePersist` handles it
+- MUST NOT set FK relationships in `toEntity()` for a root entity — the service resolves those
+- MUST NOT apply case normalization — the entity's `@PrePersist` owns that
 - MUST NOT update natural keys or FK references in `updateEntityFromRequest()`
-- MUST NOT call repository or service from mapper — mappers are pure
+- MUST NOT call a repository or a service — mappers are pure
 
 ## Output
 
-- Single file: `src/main/java/com/erp/<module>/mapper/<Entity>Mapper.java`
+- `src/main/java/<base/package>/<module>/mapper/<Entity>Mapper.java`
 
 ---
 
 ## Steps
 
-### 1. Create Mapper File
-- **Location:** `src/main/java/com/erp/<module>/mapper/<ENTITY_NAME>Mapper.java`
-
-### 2. Class Declaration
+### 1. Class declaration
 ```java
 @Component
-public class <ENTITY_NAME>Mapper {
+public class <Entity>Mapper {
 ```
 
-### 3. toEntity (CreateRequest → Entity)
-
-**Root entity (no parent FK):**
+### 2. toEntity — root entity
 ```java
-public Md<ENTITY_NAME> toEntity(<ENTITY_NAME>CreateRequest request) {
+public <ENTITY_CLASS> toEntity(<Entity>CreateRequest request) {
     if (request == null) return null;
-    return Md<ENTITY_NAME>.builder()
-            .fieldName(request.getFieldName())
-            // Do NOT apply .toUpperCase() — entity @PrePersist handles it
+    return <ENTITY_CLASS>.builder()
+            .<fieldName>(request.get<FieldName>())   // NOT .toUpperCase() — @PrePersist owns it
             .isActive(request.getIsActive() != null ? request.getIsActive() : Boolean.TRUE)
             .build();
 }
 ```
 
-**Child entity (has parent FK — compile-time safety):**
+### 3. toEntity — child entity (compile-time FK safety)
 ```java
-public Md<CHILD_NAME> toEntity(<CHILD_NAME>CreateRequest request, Md<PARENT_NAME> parent) {
+public <CHILD_CLASS> toEntity(<Child>CreateRequest request, <PARENT_CLASS> parent) {
     if (request == null) return null;
-    return Md<CHILD_NAME>.builder()
-            .fieldName(request.getFieldName())
+    return <CHILD_CLASS>.builder()
+            .<fieldName>(request.get<FieldName>())
             .isActive(request.getIsActive() != null ? request.getIsActive() : Boolean.TRUE)
-            .masterEntity(parent)  // FK set at compile-time — caller cannot forget
+            .<parentField>(parent)   // FK set at compile time — the caller cannot forget it
             .build();
 }
 ```
 
-### 4. updateEntityFromRequest (Mutate In-Place)
+### 4. updateEntityFromRequest — mutate in place
 ```java
-public void updateEntityFromRequest(Md<ENTITY_NAME> entity, <ENTITY_NAME>UpdateRequest request) {
+public void updateEntityFromRequest(<ENTITY_CLASS> entity, <Entity>UpdateRequest request) {
     if (entity == null || request == null) return;
-    // ❌ NEVER update natural keys (lookupKey, code)
-    // ❌ NEVER update FK references (parentId)
-    entity.setDescriptionEn(request.getDescriptionEn());
-    entity.setDescriptionAr(request.getDescriptionAr());
+    // ❌ NEVER update natural keys
+    // ❌ NEVER update FK references
+    entity.set<MutableField>(request.get<MutableField>());
 }
 ```
 
-### 5. toResponse (Entity → Response DTO)
+### 5. toResponse
 ```java
-public <ENTITY_NAME>Response toResponse(Md<ENTITY_NAME> entity) {
+public <Entity>Response toResponse(<ENTITY_CLASS> entity) {
     if (entity == null) return null;
-    return <ENTITY_NAME>Response.builder()
+    return <Entity>Response.builder()
             .id(entity.getId())
-            .fieldName(entity.getFieldName())
+            .<fieldName>(entity.get<FieldName>())
             .isActive(Boolean.TRUE.equals(entity.getIsActive()))
-            // Include computed counts if parent
-            .childCount(entity.getChildCount() != null ? entity.getChildCount() : 0)
+            .<child>Count(entity.get<Child>Count() != null ? entity.get<Child>Count() : 0)
             // Audit fields — ALWAYS mapped
             .createdAt(entity.getCreatedAt())
             .createdBy(entity.getCreatedBy())
@@ -112,141 +107,81 @@ public <ENTITY_NAME>Response toResponse(Md<ENTITY_NAME> entity) {
 }
 ```
 
-### 6. toOptionResponse (if applicable)
+### 6. toOptionResponse (if the entity feeds dropdowns)
 ```java
-public <ENTITY_NAME>OptionResponse toOptionResponse(Md<ENTITY_NAME> entity) {
+public <Entity>OptionResponse toOptionResponse(<ENTITY_CLASS> entity) {
     if (entity == null) return null;
-    return <ENTITY_NAME>OptionResponse.builder()
+    return <Entity>OptionResponse.builder()
             .id(entity.getId())
-            .label(entity.getDescriptionEn())
-            .code(entity.getCode())
+            .label(entity.get<LabelField>())
+            .code(entity.get<CodeField>())
             .build();
 }
 ```
 
 ### 7. toUsageResponse
 ```java
-public <ENTITY_NAME>UsageResponse toUsageResponse(Md<ENTITY_NAME> entity, long childCount) {
+public <Entity>UsageResponse toUsageResponse(<ENTITY_CLASS> entity, long <child>Count) {
     if (entity == null) return null;
-    boolean canDelete = childCount == 0;
-    boolean canDeactivate = childCount == 0; // or based on active children
-    String reason = null;
-    if (!canDelete) {
-        reason = "Entity has " + childCount + " child records";
-    }
-    return <ENTITY_NAME>UsageResponse.builder()
+    boolean canDelete = <child>Count == 0;
+    boolean canDeactivate = <child>Count == 0;   // or based on ACTIVE children only
+    return <Entity>UsageResponse.builder()
             .id(entity.getId())
-            .childCount(childCount)
+            .<child>Count(<child>Count)
             .canDelete(canDelete)
             .canDeactivate(canDeactivate)
-            .reason(reason)
+            .reason(!canDelete ? "<reason text or message key>" : null)
             .build();
 }
 ```
 
 ---
 
-## SHARED LAYER MANDATE (`erp-common-utils`)
+## Shared Layer Mandate
 
-Before creating a mapper, verify the following shared conventions from `erp-common-utils` are respected — do NOT bypass:
-
-| # | Requirement | Shared Convention | Why |
-|---|-------------|------------------|-----|
-| SH.1 | Boolean mapping uses `Boolean.TRUE.equals()` | Safe null handling | Avoids `NullPointerException` on unboxing |
-| SH.2 | Uppercase/case normalization NOT done in mapper | Entity `@PrePersist` handles it | Single canonical location for normalization |
-| SH.3 | FK relationships NOT set in `toEntity()` | Service sets FK via repository lookup | Mapper should not contain query logic |
-| SH.4 | Date formatting uses `TimestampUtils` from common-utils if needed | `TimestampUtils` | Consistent ISO-8601 formatting |
-| SH.5 | Audit fields mapped via `AuditableEntity` getters — no manual audit mapping | `AuditableEntity` | Audit fields managed by `AuditEntityListener` |
+| # | Requirement | Convention | Why |
+|---|-------------|------------|-----|
+| SH.1 | Boolean mapping uses `Boolean.TRUE.equals(...)` | Null-safe unboxing | Avoids `NullPointerException` |
+| SH.2 | No case normalization in the mapper | Entity `@PrePersist` owns it | One canonical location |
+| SH.3 | FK relationships not resolved in the mapper | The service looks them up | Mappers stay query-free |
+| SH.4 | Date/time formatting uses the shared timestamp utility | `TimestampUtils` (`<base.package>.common.util`) | Consistent ISO-8601 output |
+| SH.5 | Audit fields read from the inherited getters | `AuditableEntity` | They are listener-managed |
 
 **Rules:**
-- NEVER format dates manually — use `TimestampUtils` from `erp-common-utils`
-- NEVER duplicate boolean null-safety patterns — always use `Boolean.TRUE.equals()`
-- NEVER set audit fields in mappers — they are managed by `AuditEntityListener`
+- NEVER format dates by hand
+- NEVER duplicate boolean null-safety patterns
+- NEVER set audit fields in a mapper
 
-> **Cross-reference:** After creating the mapper, run [`enforce-backend-contract`](../enforce-backend-contract/SKILL.md) to verify compliance.
+> After creating the mapper, run [`gov-enforce-backend-contract`](../gov-enforce-backend-contract/SKILL.md).
 
 ---
 
-## Rules (STRICT — from implementation-contract.md)
+## Rules (STRICT)
 
 | Rule ID | Rule | MUST |
 |---------|------|------|
-| A.4.2 | `toEntity()` for child entities accepts parent entity as parameter (compile-time FK safety) | YES |
-| A.4.3 | `updateEntityFromRequest()` returns `void`, mutates entity in-place | YES |
-| A.4.4 | `updateEntityFromRequest()` does NOT update natural keys or FK refs | YES |
-| A.4.5 | `toResponse()` maps booleans with `Boolean.TRUE.equals(entity.getIsActive())` | YES |
-| A.4.6 | All mapper methods handle `null` input gracefully (return null) | YES |
-| A.4.7 | `toUsageResponse()` computes `canDelete`/`canDeactivate` from counts | YES |
+| A.4.1 | One `@Component` mapper per entity | YES |
+| A.4.2 | Child `toEntity()` accepts the parent entity as a parameter | YES |
+| A.4.3 | `updateEntityFromRequest()` returns `void` and mutates in place | YES |
+| A.4.4 | `updateEntityFromRequest()` skips natural keys and FK references | YES |
+| A.4.5 | `toResponse()` maps booleans with `Boolean.TRUE.equals(...)` | YES |
+| A.4.6 | Every mapper method handles `null` input by returning null / no-op | YES |
+| A.4.7 | `toUsageResponse()` computes eligibility from counts, never hardcoded | YES |
 
 ---
 
 ## Violations (MUST NOT)
 
-- ❌ Inline mapping in service or controller — must use mapper
-- ❌ Mapper calling repository or any service
-- ❌ Mapper applying `.toUpperCase()` to natural keys — entity `@PrePersist` handles it
-- ❌ Implicit FK contract — child `toEntity()` must accept parent entity as parameter, not rely on service to call `setParent()` afterwards
-- ❌ `updateEntityFromRequest()` returning a new entity — must mutate in-place
-- ❌ Updating `lookupKey`, `code`, or `parentId` in `updateEntityFromRequest()`
-- ❌ Using `entity.getIsActive()` directly without `Boolean.TRUE.equals()` — null-unsafe
-- ❌ Missing null checks on mapper methods
-- ❌ Hardcoded `canDelete = true` — must be computed from counts
+- ❌ Inline mapping in a service or controller instead of using the mapper
+- ❌ A mapper calling a repository or a service
+- ❌ A mapper applying case normalization
+- ❌ A child `toEntity()` that relies on the service to set the FK afterwards
+- ❌ `updateEntityFromRequest()` returning a new entity instead of mutating
+- ❌ Updating an immutable field in `updateEntityFromRequest()`
+- ❌ Unboxing `getIsActive()` directly without `Boolean.TRUE.equals(...)`
+- ❌ Missing null checks
+- ❌ Hardcoded `canDelete = true` instead of deriving it from counts
 - ❌ Using MapStruct — manual mapping is the project standard
-- ❌ Missing audit fields in `toResponse()` — `createdAt`, `createdBy`, `updatedAt`, `updatedBy` are mandatory
-- ❌ A conditional in the mapper that encodes a business decision rather than a plain field transformation — belongs in `<Entity>Domain`, see [`domain-layer.md`](../../../context/domain-layer.md)
-
----
-
-## Example (Real ERP — MasterLookupMapper)
-
-```java
-@Component
-public class MasterLookupMapper {
-
-    public MdMasterLookup toEntity(MasterLookupCreateRequest request) {
-        if (request == null) return null;
-        return MdMasterLookup.builder()
-                .lookupKey(request.getLookupKey())  // NOT .toUpperCase() — @PrePersist does it
-                .descriptionEn(request.getDescriptionEn())
-                .descriptionAr(request.getDescriptionAr())
-                .isActive(request.getIsActive() != null ? request.getIsActive() : Boolean.TRUE)
-                .build();
-    }
-
-    public void updateEntityFromRequest(MdMasterLookup entity, MasterLookupUpdateRequest request) {
-        if (entity == null || request == null) return;
-        // ❌ NEVER: entity.setLookupKey(...) — IMMUTABLE
-        entity.setDescriptionEn(request.getDescriptionEn());
-        entity.setDescriptionAr(request.getDescriptionAr());
-    }
-
-    public MasterLookupResponse toResponse(MdMasterLookup entity) {
-        if (entity == null) return null;
-        return MasterLookupResponse.builder()
-                .id(entity.getId())
-                .lookupKey(entity.getLookupKey())
-                .descriptionEn(entity.getDescriptionEn())
-                .descriptionAr(entity.getDescriptionAr())
-                .isActive(Boolean.TRUE.equals(entity.getIsActive()))
-                .detailCount(entity.getDetailCount() != null ? entity.getDetailCount() : 0)
-                .createdAt(entity.getCreatedAt())
-                .createdBy(entity.getCreatedBy())
-                .updatedAt(entity.getUpdatedAt())
-                .updatedBy(entity.getUpdatedBy())
-                .build();
-    }
-
-    public MasterLookupUsageResponse toUsageResponse(MdMasterLookup entity, long detailCount) {
-        if (entity == null) return null;
-        boolean canDelete = detailCount == 0;
-        boolean canDeactivate = detailCount == 0;
-        return MasterLookupUsageResponse.builder()
-                .id(entity.getId())
-                .detailCount(detailCount)
-                .canDelete(canDelete)
-                .canDeactivate(canDeactivate)
-                .reason(!canDelete ? "Lookup has " + detailCount + " detail records" : null)
-                .build();
-    }
-}
-```
+- ❌ Audit fields missing from `toResponse()`
+- ❌ A conditional encoding a business decision rather than a field transformation — that
+  belongs in `<Entity>Domain`

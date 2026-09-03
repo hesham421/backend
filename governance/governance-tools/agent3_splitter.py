@@ -36,11 +36,17 @@ from datetime import datetime
 sys.path.insert(0, str(Path(__file__).parent))
 from config import (
     REPO_BASE_PATH,
+    CANONICAL_PHASE_KEYS,
+    SUB_QUALIFICATION_EXEMPT,
+    classify_artifact,
     get_module_version_path,
     validate_module,
     load_modules_registry,
 )
-from marker_parser import parse_file, flatten, find_by_kind, MarkerBlock, ParseResult
+from marker_parser import (
+    parse_file, flatten, find_by_kind, validate_semantics,
+    MarkerBlock, ParseResult,
+)
 
 STAGE_NAMES = {
     1: "Parse & Plan",
@@ -114,6 +120,132 @@ def confirm(prompt: str = "  Proceed?") -> bool:
     return answer == "y"
 
 
+def _rel(p: Path, root: Path = REPO_BASE_PATH) -> str:
+    """Path relative to root, falling back to the absolute string when p is
+    outside root (e.g. an --output override or a test tmp dir). Mirrors the
+    defensive relative_to handling already used in agent1/agent2."""
+    try:
+        return str(p.relative_to(root))
+    except ValueError:
+        return str(p)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SAFE AUTOFIX — deterministic, reversible marker repairs ONLY.
+#
+# Applies exactly two classes of fix, both mechanical and unambiguous:
+#   1. Phase-key normalization — a non-canonical PHASE key that is an
+#      unambiguous typo of exactly ONE canonical key (only '+', '_', spaces,
+#      or doubled '-' differ) is rewritten to the canonical key.
+#   2. SUB phase-qualification — a bare SUB label (AMEND-P3-N violation) is
+#      prefixed with its enclosing phase key: SUB:CRUD → SUB:SVC-API-CRUD.
+#
+# It NEVER touches content, and NEVER attempts fixes that require judgment:
+# unmatched/unclosed/mismatched markers, duplicate IDs, orphan atomics, or
+# threshold restructuring are reported as "remaining" for a human. Edits are
+# line-indexed from the parse tree (so they can't hit the wrong marker), and
+# the untouched original is preserved as <file>.orig on first change.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _normalize_phase_key(key: str) -> str:
+    import re as _re
+    n = key.replace("+", "-").replace("_", "-").replace(" ", "-").upper()
+    n = _re.sub(r"-{2,}", "-", n).strip("-")
+    return n
+
+
+def safe_autofix_file(path: Path) -> dict:
+    path = Path(path)
+    report = {
+        "file": path.name,
+        "artifact": classify_artifact(str(path)),
+        "phase_key_fixes": [],
+        "sub_qualification_fixes": [],
+        "changed": False,
+        "backup": None,
+        "remaining_blocking": [],
+        "advisories": [],
+    }
+    artifact = report["artifact"]
+    if not artifact:
+        # Unknown file identity → do not guess any fix.
+        result = parse_file(path)
+        blocking, advisories = validate_semantics(path, result)
+        report["remaining_blocking"] = [f"[{e.severity}] line {e.line}: {e.message}"
+                                         for e in (list(result.errors) + list(blocking))]
+        report["advisories"] = [f"[{e.severity}] line {e.line}: {e.message}" for e in advisories]
+        return report
+
+    canonical = set(CANONICAL_PHASE_KEYS[artifact])
+    exempt = artifact in SUB_QUALIFICATION_EXEMPT
+    original_bytes = path.read_bytes()
+
+    for _ in range(50):  # bounded; each pass applies one fix then re-parses
+        result = parse_file(path)
+        lines = result.raw_lines
+        made = False
+
+        # Pass A — phase-key normalization
+        for phase in result.root_blocks:
+            if phase.kind != "phase" or phase.marker_id in canonical:
+                continue
+            norm = _normalize_phase_key(phase.marker_id)
+            if norm in canonical and norm != phase.marker_id:
+                si = phase.start_line - 1
+                lines[si] = lines[si].replace(f"PHASE:{phase.marker_id}:", f"PHASE:{norm}:")
+                if phase.end_line:
+                    lines[phase.end_line - 1] = lines[phase.end_line - 1].replace(
+                        f"PHASE:{phase.marker_id}:", f"PHASE:{norm}:")
+                report["phase_key_fixes"].append(
+                    {"from": phase.marker_id, "to": norm, "line": phase.start_line})
+                made = True
+                break
+        if made:
+            path.write_text("".join(lines), encoding="utf-8")
+            continue
+
+        # Pass B — SUB phase-qualification
+        if not exempt:
+            for phase in result.root_blocks:
+                if phase.kind != "phase":
+                    continue
+                prefix = f"{phase.marker_id}-"
+                for sub in [c for c in phase.children if c.kind == "sub"]:
+                    if not sub.marker_id.startswith(prefix):
+                        new_id = f"{phase.marker_id}-{sub.marker_id}"
+                        si = sub.start_line - 1
+                        lines[si] = lines[si].replace(f"SUB:{sub.marker_id}:", f"SUB:{new_id}:")
+                        if sub.end_line:
+                            lines[sub.end_line - 1] = lines[sub.end_line - 1].replace(
+                                f"SUB:{sub.marker_id}:", f"SUB:{new_id}:")
+                        report["sub_qualification_fixes"].append(
+                            {"from": sub.marker_id, "to": new_id, "line": sub.start_line})
+                        made = True
+                        break
+                if made:
+                    break
+        if made:
+            path.write_text("".join(lines), encoding="utf-8")
+            continue
+
+        break  # no more safe fixes available
+
+    changed = (report["phase_key_fixes"] or report["sub_qualification_fixes"])
+    if changed:
+        backup = path.parent / (path.name + ".orig")
+        if not backup.exists():
+            backup.write_bytes(original_bytes)
+        report["backup"] = backup.name
+        report["changed"] = True
+
+    result = parse_file(path)
+    blocking, advisories = validate_semantics(path, result)
+    report["remaining_blocking"] = [f"[{e.severity}] line {e.line}: {e.message}"
+                                     for e in (list(result.errors) + list(blocking))]
+    report["advisories"] = [f"[{e.severity}] line {e.line}: {e.message}" for e in advisories]
+    return report
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # WRITE HELPERS
 # ─────────────────────────────────────────────────────────────────────────────
@@ -144,6 +276,29 @@ def _safe_filename(marker_id: str) -> str:
     return marker_id.strip().replace(" ", "-") + ".md"
 
 
+def _unmarked_top_level_content(result: "ParseResult") -> str:
+    """
+    Return all document content that lies OUTSIDE every top-level PHASE block
+    — i.e. anything before the first phase, between phases, or after the last
+    phase. The backend execution plan legitimately emits trailing, un-marked
+    sections (Plan Index, DB Alignment Manifest, Error Catalog, Agent Handoff
+    Summary — PROJECT-3-BACKEND-ENGINE.md / PROJECT-3-REGISTRY.md Section 5.3).
+    Without this, Agent 3 would silently drop them. Captured lines keep their
+    original order; runs of blank-only gaps are ignored.
+    """
+    lines = result.raw_lines
+    phases = [b for b in result.root_blocks if b.kind == "phase"]
+    # Mark every line covered by a top-level phase (inclusive of its markers).
+    covered = [False] * (len(lines) + 2)
+    for p in phases:
+        for ln in range(p.start_line, (p.end_line or p.start_line) + 1):
+            if 0 < ln <= len(lines):
+                covered[ln] = True
+    kept = [lines[i - 1] for i in range(1, len(lines) + 1) if not covered[i]]
+    text = "".join(kept).strip()
+    return text
+
+
 def _preamble_content(block: "MarkerBlock", raw_lines: list[str]) -> str:
     """
     Extract content between a container's START marker and its first
@@ -162,7 +317,8 @@ def _preamble_content(block: "MarkerBlock", raw_lines: list[str]) -> str:
 # STAGE 1 — Parse & Plan
 # ─────────────────────────────────────────────────────────────────────────────
 
-def stage1_parse_and_plan(mod: str, version: int, state: dict, base: Path = None) -> dict | None:
+def stage1_parse_and_plan(mod: str, version: int, state: dict, base: Path = None,
+                           strict_thresholds: bool = False) -> dict | None:
     """
     Parses backend-execution-plan.md + backend-test-plan.md, validates
     marker structure, and shows a generation plan before anything is written.
@@ -201,15 +357,28 @@ def stage1_parse_and_plan(mod: str, version: int, state: dict, base: Path = None
         print(f"  ERROR: Neither backend-execution-plan.md nor backend-test-plan.md found. Nothing to split.")
         return None
 
+    # Blocking = structural + hard semantic (canonical keys, SUB qualification,
+    # orphan atomics). Advisory = split-threshold findings (non-blocking unless
+    # --strict-thresholds, which folds them into the blocking set).
     all_errors = []
-    if exec_result:
-        all_errors += [("backend-execution-plan.md", e) for e in exec_result.errors]
-    if test_result:
-        all_errors += [("backend-test-plan.md", e) for e in test_result.errors]
+    advisories = []
+    for label, res, path in (
+        ("backend-execution-plan.md", exec_result, exec_path),
+        ("backend-test-plan.md", test_result, test_path),
+    ):
+        if not res:
+            continue
+        all_errors += [(label, e) for e in res.errors]
+        blocking, adv = validate_semantics(path, res, strict_thresholds=strict_thresholds)
+        all_errors += [(label, e) for e in blocking]
+        if strict_thresholds:
+            all_errors += [(label, e) for e in adv]      # escalated to blocking
+        else:
+            advisories += [(label, e) for e in adv]
 
     if all_errors:
         print()
-        print("  ✗ STRUCTURAL ERRORS FOUND — splitting blocked until fixed:")
+        print("  ✗ STRUCTURAL / SEMANTIC ERRORS FOUND — splitting blocked until fixed:")
         print()
         for fname, err in all_errors:
             print(f"    [{err.severity}] {fname} line {err.line}: {err.message}")
@@ -218,13 +387,20 @@ def stage1_parse_and_plan(mod: str, version: int, state: dict, base: Path = None
         return None
 
     print()
-    print("  ✓ No structural errors — marker hierarchy is valid.")
+    print("  ✓ No structural or semantic errors — marker hierarchy is valid.")
+
+    if advisories:
+        print()
+        print("  ⚠ THRESHOLD ADVISORIES (non-blocking — verify these were intentional;")
+        print("    re-run with --strict-thresholds to enforce them as errors):")
+        for fname, err in advisories:
+            print(f"    [{err.severity}] {fname} line {err.line}: {err.message}")
 
     plan = {
-        # Relative to REPO_BASE_PATH, never absolute — see config.py's
-        # build_manifest() note; this persists into _agent3-state.json.
-        "exec_path": str(exec_path.relative_to(REPO_BASE_PATH)) if exec_result else None,
-        "test_path": str(test_path.relative_to(REPO_BASE_PATH)) if test_result else None,
+        # Relative to REPO_BASE_PATH where possible (persists into
+        # _agent3-state.json); falls back to absolute for out-of-root bases.
+        "exec_path": _rel(exec_path) if exec_result else None,
+        "test_path": _rel(test_path) if test_result else None,
         "exec_summary": {},
         "test_summary": {},
     }
@@ -268,26 +444,10 @@ def stage1_parse_and_plan(mod: str, version: int, state: dict, base: Path = None
             extra = f", {sub_count} sub-section(s)" if sub_count else " (no SUB — below threshold)"
             print(f"      - PHASE:{p.marker_id:<12} → {tc_count} TC(s){extra}")
         print(f"    Total TC atomic files : {len(tcs)}")
-
-        orphan_warnings = []
-        for p in phases_t:
-            sub_blocks = [c for c in p.children if c.kind == "sub"]
-            if not sub_blocks:
-                continue
-            tcs_in_subs = {t.marker_id for sub in sub_blocks for t in flatten([sub]) if t.kind == "tc"}
-            all_tcs_in_phase = [t for t in flatten([p]) if t.kind == "tc"]
-            orphans = [t for t in all_tcs_in_phase if t.marker_id not in tcs_in_subs]
-            if orphans:
-                orphan_warnings.append((p.marker_id, orphans))
-
-        if orphan_warnings:
-            print()
-            print("  ⚠ WARNING — Orphan TCs (inside PHASE but outside any SUB block):")
-            print("    Stage 3 will NOT write these TCs to any package file.")
-            for phase_id, orphans in orphan_warnings:
-                ids = ", ".join(t.marker_id for t in orphans)
-                print(f"    PHASE:{phase_id} → {len(orphans)} orphan TC(s): {ids}")
-            print()
+        # Orphan TCs (inside PHASE but outside any SUB while SUBs exist) are no
+        # longer merely warned about here — they are caught as a blocking
+        # semantic error above (check_orphan_atomics), so by this point the
+        # structure is guaranteed clean.
 
         plan["test_summary"] = {"phases": len(phases_t), "tcs": len(tcs), "subs": len(subs_t)}
 
@@ -353,8 +513,13 @@ def stage2_split_execution(mod: str, version: int, state: dict, plan: dict | Non
     for phase in phases:
         folder_name = PHASE_FOLDER_MAP.get(phase.marker_id)
         if folder_name is None:
-            print(f"  ⚠ PHASE:{phase.marker_id} not in the backend phase map — skipped.")
-            continue
+            # A non-canonical key must never silently drop a whole phase. Stage 1
+            # semantic validation blocks this case before we get here; this is a
+            # defensive hard-stop in case Stage 2 is run in isolation.
+            print(f"  ✗ PHASE:{phase.marker_id} is not a canonical backend phase key "
+                  f"— refusing to split (a silently-skipped phase = lost content). "
+                  f"Fix the marker in the source and re-run Stage 1.")
+            return False
         folder = pkg_root / folder_name
 
         sub_blocks = [c for c in phase.children if c.kind == "sub"]
@@ -374,7 +539,11 @@ def stage2_split_execution(mod: str, version: int, state: dict, plan: dict | Non
                 })
 
             for sub in sub_blocks:
-                fname = _safe_filename(f"{phase.marker_id}-{sub.marker_id}")
+                # SUB labels are already phase-qualified ({PHASE-KEY}-{LABEL},
+                # AMEND-P3-N) and globally unique, so the label alone is the
+                # filename. Prepending the phase key again (the old behaviour)
+                # produced doubled names like SVC-API-SVC-API-CRUD.md (C1).
+                fname = _safe_filename(sub.marker_id)
                 sub_api_count = len([a for a in flatten([sub]) if a.kind == "api"])
                 sub_xm_count  = len([x for x in flatten([sub]) if x.kind == "xm"])
                 context_ref = (
@@ -398,6 +567,20 @@ def stage2_split_execution(mod: str, version: int, state: dict, plan: dict | Non
                 "header": f"<!-- Source: PHASE:{phase.marker_id} -->",
                 "note": f"{api_count} API(s), {xm_count} XM(s) embedded" if (api_count or xm_count) else "",
             })
+
+    # Capture any content that lives OUTSIDE every phase (trailing sections
+    # like Plan Index / Error Catalog / Agent Handoff Summary). Without this
+    # they would be silently dropped from the packages (C4).
+    unmarked = _unmarked_top_level_content(result)
+    if unmarked:
+        write_plan.append({
+            "dest": pkg_root / "_SECTIONS.md",
+            "content": unmarked,
+            "header": "<!-- Source: content OUTSIDE all PHASE markers "
+                      "(trailing / between-phase sections — e.g. Plan Index, "
+                      "DB Alignment Manifest, Error Catalog, Agent Handoff Summary) -->",
+            "note": "unmarked top-level content (preserved, not lost)",
+        })
 
     print(f"  Files to write: {len(write_plan)}")
     for w in write_plan[:15]:
@@ -699,9 +882,9 @@ def stage5_verify(mod: str, version: int, state: dict, base: Path = None) -> boo
 # ─────────────────────────────────────────────────────────────────────────────
 
 def run_stage(stage: int, mod: str, version: int, state: dict, plan: dict | None,
-              base: Path = None, dry_run: bool = False) -> tuple[bool, dict | None]:
+              base: Path = None, dry_run: bool = False, strict_thresholds: bool = False) -> tuple[bool, dict | None]:
     if stage == 1:
-        result_plan = stage1_parse_and_plan(mod, version, state, base)
+        result_plan = stage1_parse_and_plan(mod, version, state, base, strict_thresholds=strict_thresholds)
         return (result_plan is not None), result_plan
     elif stage == 2:
         ok = stage2_split_execution(mod, version, state, plan, base, dry_run=dry_run)
@@ -733,8 +916,53 @@ def main():
                               "no module registration required if used with --file.")
     parser.add_argument("--file", help="With --validate-markers: validate this specific file directly "
                                         "(e.g. before it has been archived for any module).")
+    parser.add_argument("--strict-thresholds", action="store_true",
+                         help="Escalate split-threshold advisories (a phase over its "
+                              "split threshold with no SUBs, or a never-split phase with "
+                              "SUBs) from non-blocking warnings to blocking errors.")
+    parser.add_argument("--fix-safe", action="store_true",
+                         help="With --file: apply deterministic, reversible marker repairs "
+                              "(phase-key typo normalization + SUB phase-qualification) in "
+                              "place (original kept as <file>.orig), then re-validate. "
+                              "Never fixes anything that needs judgment.")
 
     args = parser.parse_args()
+
+    if args.fix_safe:
+        if not args.file:
+            print("\n  ERROR: --fix-safe requires --file <path>.\n")
+            sys.exit(1)
+        target = Path(args.file)
+        if not target.exists():
+            print(f"\n  ERROR: file not found: {target}\n")
+            sys.exit(1)
+        rep = safe_autofix_file(target)
+        print(f"\n  SAFE AUTOFIX — {rep['file']}"
+              + (f"  (identity: {rep['artifact']})" if rep["artifact"] else "  (unknown file identity — no fixes attempted)"))
+        if rep["phase_key_fixes"]:
+            print("  Phase-key normalizations:")
+            for f in rep["phase_key_fixes"]:
+                print(f"    line {f['line']}: PHASE:{f['from']} → PHASE:{f['to']}")
+        if rep["sub_qualification_fixes"]:
+            print("  SUB phase-qualifications:")
+            for f in rep["sub_qualification_fixes"]:
+                print(f"    line {f['line']}: SUB:{f['from']} → SUB:{f['to']}")
+        if not (rep["phase_key_fixes"] or rep["sub_qualification_fixes"]):
+            print("  No safe fixes were applicable.")
+        if rep["backup"]:
+            print(f"  Original preserved as: {rep['backup']}")
+        if rep["advisories"]:
+            print("  Threshold advisories (non-blocking):")
+            for a in rep["advisories"]:
+                print(f"    {a}")
+        if rep["remaining_blocking"]:
+            print("  ✗ REMAINING issues that need a human (not safe to auto-fix):")
+            for e in rep["remaining_blocking"]:
+                print(f"    {e}")
+            print()
+            sys.exit(1)
+        print("  ✓ File is now structurally & semantically valid.\n")
+        sys.exit(0)
 
     if args.validate_markers and args.file:
         target = Path(args.file)
@@ -742,12 +970,20 @@ def main():
             print(f"\n  ERROR: file not found: {target}\n")
             sys.exit(1)
         result = parse_file(target)
-        if result.errors:
-            print(f"\n  ✗ STRUCTURAL ERRORS in {target.name}:\n")
-            for e in result.errors:
+        blocking, advisories = validate_semantics(target, result, strict_thresholds=args.strict_thresholds)
+        hard = list(result.errors) + list(blocking)
+        if args.strict_thresholds:
+            hard += list(advisories)
+        if hard:
+            print(f"\n  ✗ STRUCTURAL / SEMANTIC ERRORS in {target.name}:\n")
+            for e in hard:
                 print(f"    [{e.severity}] line {e.line}: {e.message}")
             print()
             sys.exit(1)
+        if advisories:
+            print(f"\n  ⚠ THRESHOLD ADVISORIES in {target.name} (non-blocking):")
+            for e in advisories:
+                print(f"    [{e.severity}] line {e.line}: {e.message}")
         phases = find_by_kind(result.root_blocks, "phase")
         apis = find_by_kind(result.root_blocks, "api")
         xms = find_by_kind(result.root_blocks, "xm")
@@ -784,10 +1020,14 @@ def main():
                 continue
             checked += 1
             result = parse_file(p)
-            if result.errors:
+            blocking, advisories = validate_semantics(p, result, strict_thresholds=args.strict_thresholds)
+            hard = list(result.errors) + list(blocking)
+            if args.strict_thresholds:
+                hard += list(advisories)
+            if hard:
                 exit_code = 1
-                print(f"\n  ✗ STRUCTURAL ERRORS in {label}:")
-                for e in result.errors:
+                print(f"\n  ✗ STRUCTURAL / SEMANTIC ERRORS in {label}:")
+                for e in hard:
                     print(f"    [{e.severity}] line {e.line}: {e.message}")
             else:
                 phases = find_by_kind(result.root_blocks, "phase")
@@ -796,6 +1036,10 @@ def main():
                 tcs = find_by_kind(result.root_blocks, "tc")
                 print(f"\n  ✓ {label}: marker structure valid — "
                       f"{len(phases)} PHASE, {len(apis)} API, {len(xms)} XM, {len(tcs)} TC block(s).")
+                if advisories:
+                    print(f"  ⚠ threshold advisories (non-blocking):")
+                    for e in advisories:
+                        print(f"    [{e.severity}] line {e.line}: {e.message}")
         if checked == 0:
             print(f"\n  Nothing to validate — neither file found for module {mod} (v{version}).")
         print()
@@ -810,10 +1054,10 @@ def main():
     if args.stage:
         plan = None
         if args.stage > 1 and (args.stage - 1) not in state.get("stages_completed", []):
-            ok, plan = run_stage(1, mod, version, state, None, base)
+            ok, plan = run_stage(1, mod, version, state, None, base, strict_thresholds=args.strict_thresholds)
             if not ok:
                 sys.exit(1)
-        ok, _ = run_stage(args.stage, mod, version, state, plan, base, dry_run=args.dry_run)
+        ok, _ = run_stage(args.stage, mod, version, state, plan, base, dry_run=args.dry_run, strict_thresholds=args.strict_thresholds)
         sys.exit(0 if ok else 1)
 
     if args.resume:
@@ -826,7 +1070,7 @@ def main():
 
     plan = None
     for stage in stages_to_run:
-        ok, plan = run_stage(stage, mod, version, state, plan, base, dry_run=args.dry_run)
+        ok, plan = run_stage(stage, mod, version, state, plan, base, dry_run=args.dry_run, strict_thresholds=args.strict_thresholds)
         if not ok:
             print(f"\n  Stopped at Stage {stage}. Fix the issue and re-run with --resume.\n")
             sys.exit(1)

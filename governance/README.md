@@ -19,10 +19,9 @@ this repo (see [Sanctioned cross-repo reads](#sanctioned-cross-repo-reads)).
 |---|---|
 | Single source of truth for skill routing (both backend and frontend tasks) | [`GOVERNANCE-RULES.md`](GOVERNANCE-RULES.md) |
 | Backend skills | repo-root `.claude/skills/` (not under `governance/` — moved 2026-08-31 so they auto-load via the Skill tool every session) |
-| DevOps / deploy skill | `.github/skills/devops/` |
+| DevOps / deploy skill | the `deploy` repo — not present here |
 | Frontend skills (frontend code, but skills are frontend-repo-owned) | `frontend/governance/.github/skills/frontend/` — not here |
-| Architecture context (backend, domain layer, API contract, frontend) | `.github/context/` |
-| Master entity registry | `master-registry.md` |
+| Architecture context (backend, domain layer, API contract) | ❌ `governance/.github/context/` no longer exists — these rules now live inside the skills themselves, see `GOVERNANCE-RULES.md`'s "Context Reference" |
 | Modules registry | `modules-registry.json` |
 | Module planning + execution artifacts | `modules/<MOD>/` |
 | Governance automation tooling (independent, backend-only — NOT synced with frontend's copy) | `governance-tools/` |

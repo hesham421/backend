@@ -1,164 +1,185 @@
 ---
-name: enforce-caching-rules
-description: "CACHING GOVERNANCE ENFORCER — validates @Cacheable/@CacheEvict usage against the approved entity list (lookupValues, roleDefinitions, etc.). Prevents unauthorized caching, wrong annotation order, and missing eviction on write methods."
+name: gov-enforce-caching-rules
+description: "CACHING GOVERNANCE ENFORCER — validates @Cacheable/@CacheEvict usage against the project's approved-entity register and eligibility criteria. Prevents unauthorized caching, wrong annotation order, cache-name drift, and missing eviction on write methods."
 ---
 
-# Skill: enforce-caching-rules
-
-## Name
-`enforce-caching-rules`
+# Skill: gov-enforce-caching-rules
 
 ## Description
-**CACHING GOVERNANCE ENFORCER.** Validates that caching annotations, cache names, and caching patterns comply with the strict caching architecture. Prevents unauthorized caching, stale data risks, and annotation misplacement.
+**CACHING GOVERNANCE ENFORCER.** Validates that caching annotations, cache names and caching
+patterns comply with the project's caching architecture. Prevents unauthorized caching, stale-data
+risk, and annotation misplacement.
 
 ## When to Use
 - After any service is created or modified
 - When `@Cacheable` or `@CacheEvict` is added anywhere
-- When reviewing code that touches cached entities
-- When a developer proposes caching a new entity
-- As part of the full `validate-backend-feature` pipeline
+- When someone proposes caching a new entity
+- As part of the [`gov-validate-backend-feature`](../gov-validate-backend-feature/SKILL.md) pipeline
 
 ## When NOT to Use
-- When the service does not use any caching annotations
-- For frontend caching concerns — Angular HTTP cache is out of scope
-- For database query cache or JPA second-level cache — this skill covers Spring `@Cacheable` only
-- For entities not on the governance-approved caching list — reject the proposal, do not validate
+- When the service uses no caching annotations at all
+- For the JPA second-level cache or a database query cache — this skill covers the Spring cache
+  abstraction only
 
 ## Responsibilities
 
-- Verify entity cache eligibility against the approved governance list
-- Validate `@Cacheable`/`@CacheEvict` annotation usage, placement, and ordering
+- Decide cache eligibility against the criteria below and the project's approved register
+- Validate annotation usage, placement and ordering
 - Ensure cache names match between read and write methods
-- Detect unauthorized caching of transactional, financial, or workflow entities
+- Detect unauthorized caching of transactional, financial or workflow data
 
 ## Constraints
 
-- MUST NOT generate or modify application code — this skill only validates
-- MUST NOT approve caching for entities not on the governance-approved list
-- MUST NOT modify the approved cache entity list — that requires governance approval
-- MUST NOT place caching annotations on repositories or controllers
+- MUST NOT generate or modify application code — validation only
+- MUST NOT approve caching for an entity that is not on the approved register
+- MUST NOT add an entity to the register — that requires an explicit governance decision
+- MUST NOT allow caching annotations on repositories or controllers
 
 ## Output
 
-- Caching compliance report identifying:
-  - Cache eligibility determination (approved or rejected with reason)
-  - Annotation correctness (order, placement, cache name consistency)
-  - Specific violations with rule references
+- A caching compliance report: eligibility verdict, annotation correctness, and specific
+  violations with rule references
 
 ---
 
 ## Cache Eligibility Gate (FIRST CHECK)
 
-Before allowing ANY caching annotation, verify the entity against the eligibility list:
+### The approved register
 
-### Approved Cacheable Entities (EXHAUSTIVE — NO ADDITIONS without governance)
+The project maintains its own list of cache-eligible entities and their approved cache names. It
+is **explicit and exhaustive** — an entity absent from it is not cacheable, full stop.
 
-| Entity | Cache Name | Justification |
-|--------|------------|---------------|
-| Master Lookup | `lookupValues` | Small ref dataset, cross-module |
-| Lookup Details | `lookupDetailValues` | Dropdown options system-wide |
-| Login reference data | `loginReferenceData` | Per-session, rarely changes |
-| Menu structure | `menuStructure` | Static nav, admin-only mutations |
-| Role definitions | `roleDefinitions` | Security ref, infrequent changes |
-| Permission definitions | `permissionDefinitions` | Security ref, infrequent changes |
+| Entity | Approved cache name | Justification |
+|--------|---------------------|---------------|
+| *(populated per project — one row per approved entity)* | | |
 
-### Eligibility Criteria (ALL must be TRUE)
+> This table starts empty for a new project. An entity is added only by an explicit governance
+> decision recording that it satisfies every criterion below. Never add a row while implementing
+> a feature.
+
+### Eligibility criteria (ALL must be true)
 
 | # | Criterion | Threshold |
 |---|-----------|-----------|
-| 1 | Dataset size | < 500 records |
-| 2 | Update frequency | Low (admin-initiated) |
-| 3 | Financial transactional impact | NONE |
+| 1 | Dataset size | Small and bounded — a few hundred rows, not growing with transactions |
+| 2 | Update frequency | Low, administrator-initiated |
+| 3 | Financial or transactional impact | NONE |
 | 4 | Workflow / state lifecycle | NONE |
-| 5 | Cross-module reuse | Used by 2+ modules |
-| 6 | Usage pattern | Dropdowns, auth checks, menus |
+| 5 | Reuse breadth | Read by more than one module or on nearly every request |
+| 6 | Usage pattern | Dropdowns, authorization checks, navigation — not business records |
 
-> **If ANY criterion is false → Entity is NOT cacheable. Period.**
+> **If ANY criterion is false → the entity is NOT cacheable. Period.**
 
-### Permanently Excluded (NEVER cacheable)
+### Never cacheable, regardless of the criteria
 
-- ❌ GL entities (Journal Entries, GL Accounts with balances, Vouchers)
-- ❌ Billing entities
-- ❌ Financial module entities
-- ❌ Approval-based / workflow entities
-- ❌ High write frequency entities
-- ❌ Per-user / session-scoped data in shared Redis
-- ❌ Search result sets (any `search()` method)
+- ❌ Financial or accounting records (postings, journals, balances, invoices)
+- ❌ Any entity carrying a monetary amount that participates in a transaction
+- ❌ Approval-based or workflow-driven entities
+- ❌ High write-frequency entities
+- ❌ Per-user or session-scoped data held in a shared cache
+- ❌ Search result sets — any `search()` method
 
 ---
 
-## Enforcement Checklist
+## Enforcement Checklist (30 checks)
 
-### CHECK 1: Cache Eligibility (D.1)
-
-```
-[ ] D.1.1 — Entity is in the governance-approved eligible list
-[ ] D.1.2 — Entity satisfies ALL 6 eligibility criteria
-[ ] D.1.3 — Entity is NOT a transactional/financial entity
-[ ] D.1.4 — Entity is NOT an approval/workflow entity
-[ ] D.1.5 — Entity is NOT per-user/session data in shared Redis
-[ ] D.1.6 — @Cacheable is NOT on a search() method
-```
-
-### CHECK 2: Cache Naming (D.2)
+### CHECK 1: Eligibility (6)
 
 ```
-[ ] D.2.1 — Cache name is domain-specific camelCase (NOT "cache1", "data")
-[ ] D.2.2 — Cache name matches the approved name for this entity
-[ ] D.2.3 — No alternative/alias cache names used
-[ ] D.2.4 — @Cacheable and @CacheEvict use SAME cacheNames value
+[ ] D.1.1 — The entity is on the project's approved register
+[ ] D.1.2 — The entity satisfies ALL 6 eligibility criteria
+[ ] D.1.3 — The entity is not financial or transactional
+[ ] D.1.4 — The entity is not approval- or workflow-driven
+[ ] D.1.5 — The entity is not per-user/session data in a shared cache
+[ ] D.1.6 — @Cacheable is not on a search() or paginated method
 ```
 
-### CHECK 3: Annotation Placement (D.3)
+### CHECK 2: Cache naming (4)
 
 ```
-[ ] D.3.1 — @Cacheable is on SERVICE-layer read methods ONLY
-[ ] D.3.2 — @CacheEvict is on SERVICE-layer write methods ONLY
-[ ] D.3.3 — @Cacheable is NOT on write methods
-[ ] D.3.4 — @CacheEvict is NOT on read-only methods
+[ ] D.2.1 — The cache name is domain-specific camelCase — not "cache1", "data", "temp"
+[ ] D.2.2 — The cache name matches the register's approved name for this entity
+[ ] D.2.3 — No alias or alternative name is used for the same data
+[ ] D.2.4 — @Cacheable and @CacheEvict use the SAME cacheNames value
+```
+
+### CHECK 3: Annotation placement (7)
+
+```
+[ ] D.3.1 — @Cacheable appears on service-layer read methods only
+[ ] D.3.2 — @CacheEvict appears on service-layer write methods only
+[ ] D.3.3 — @Cacheable is not on a write method
+[ ] D.3.4 — @CacheEvict is not on a read-only method
 [ ] D.3.5 — @CacheEvict uses allEntries = true
-[ ] D.3.6 — Cached read order: @Cacheable → @Transactional(readOnly) → @PreAuthorize
-[ ] D.3.7 — Cached write order: @CacheEvict → @Transactional → @PreAuthorize
+[ ] D.3.6 — Cached read order:  @Cacheable  → @Transactional(readOnly) → @PreAuthorize
+[ ] D.3.7 — Cached write order: @CacheEvict → @Transactional          → @PreAuthorize
 ```
 
-### CHECK 4: Cache Eviction Completeness (D.4)
+### CHECK 4: Eviction completeness (6)
 
 ```
-[ ] D.4.1 — create() has @CacheEvict (if cached entity)
-[ ] D.4.2 — update() has @CacheEvict (if cached entity)
-[ ] D.4.3 — activate() and deactivate() have @CacheEvict (if cached entity)
-[ ] D.4.4 — delete() has @CacheEvict (if cached entity)
-[ ] D.4.5 — No partial key-based eviction without governance approval
-[ ] D.4.6 — Eviction co-located with @Transactional method
+[ ] D.4.1 — create() has @CacheEvict
+[ ] D.4.2 — update() has @CacheEvict
+[ ] D.4.3 — activate() and deactivate() have @CacheEvict
+[ ] D.4.4 — delete() has @CacheEvict
+[ ] D.4.5 — No partial key-based eviction without an explicit governance decision
+[ ] D.4.6 — Eviction is co-located with the @Transactional method that performs the write
 ```
 
-### CHECK 5: Frontend Caching (D.5)
+### CHECK 5: Prohibited patterns (7)
 
 ```
-[ ] D.5.1 — shareReplay(1) ONLY in lookup services for eligible entities
-[ ] D.5.2 — Feature API services do NOT use shareReplay
-[ ] D.5.3 — Facades do NOT have manual Map/object caches
-[ ] D.5.4 — Frontend does NOT implement custom TTL logic
-[ ] D.5.5 — No redundant frontend cache for backend-cached data
+[ ] D.5.1 — No @Cacheable on a search or paginated method
+[ ] D.5.2 — No direct cache-client calls (e.g. a raw template) in service code
+[ ] D.5.3 — No caching of financial entities
+[ ] D.5.4 — No caching of workflow entities
+[ ] D.5.5 — No @Cacheable on an entity absent from the register
+[ ] D.5.6 — No @CachePut without a paired eviction strategy
+[ ] D.5.7 — No caching annotations on a repository or a controller
 ```
 
-### CHECK 6: Prohibited Patterns (D.6)
+---
 
+## Annotation Order Enforcement
+
+```java
+// Cached read — eligible entities only
+@Cacheable(cacheNames = "<CACHE_NAME>", key = "#id")   // 1. Cache
+@Transactional(readOnly = true)                        // 2. Transaction
+@PreAuthorize("hasAuthority(...)")                     // 3. Security
+public ServiceResult<<Entity>Response> getById(Long id) { }
+
+// Cached write — eligible entities only
+@CacheEvict(cacheNames = "<CACHE_NAME>", allEntries = true)  // 1. Evict
+@Transactional                                                // 2. Transaction
+@PreAuthorize("hasAuthority(...)")                            // 3. Security
+public ServiceResult<<Entity>Response> update(Long id, ...) { }
+
+// Non-cached method — the default for almost every entity
+@Transactional(readOnly = true)     // 1. Transaction
+@PreAuthorize("hasAuthority(...)")  // 2. Security
+public ServiceResult<<Entity>Response> getById(Long id) { }
 ```
-[ ] D.6.1 — No @Cacheable on search/paginated methods
-[ ] D.6.2 — No manual RedisTemplate calls in service code
-[ ] D.6.3 — No caching of financial entities
-[ ] D.6.4 — No caching of workflow entities
-[ ] D.6.5 — No @Cacheable on non-eligible entities
-[ ] D.6.6 — No orphaned @CachePut without paired @CacheEvict
-[ ] D.6.7 — No caching annotations on repositories or controllers
+
+## Non-Eligible Entity Pattern
+
+An entity absent from the register carries **zero** caching annotations:
+
+```java
+// ✅ CORRECT — not on the register, so no caching at all
+@Transactional
+@PreAuthorize("hasAuthority(...)")
+public ServiceResult<<Entity>Response> create(<Entity>CreateRequest request) { }
+
+// ❌ VIOLATION — caching an entity that was never approved
+@CacheEvict(cacheNames = "<something>", allEntries = true)
+@Transactional
+public ServiceResult<<Entity>Response> create(<Entity>CreateRequest request) { }
 ```
 
 ---
 
 ## Violation Response
-
-When a caching violation is detected:
 
 ```
 ❌ CACHING VIOLATION
@@ -169,54 +190,7 @@ Found: [What was found]
 Problem: [Why this is dangerous]
 Fix: [Exact correction]
 
-Impact: [Stale data risk / Performance issue / Security risk]
-```
-
----
-
-## Non-Eligible Entity Service Pattern
-
-For entities that are NOT in the approved cache list, the service MUST NOT have any caching annotations:
-
-```java
-// ✅ CORRECT — non-eligible entity, no caching
-@Transactional
-@PreAuthorize("hasAuthority(...)")
-public ServiceResult<EntityResponse> create(EntityCreateRequest request) {
-    // No @CacheEvict — entity is not cached
-}
-
-// ❌ VIOLATION — caching a non-eligible entity
-@CacheEvict(cacheNames = "entities", allEntries = true) // NOT APPROVED
-@Transactional
-public ServiceResult<EntityResponse> create(EntityCreateRequest request) {
-```
-
----
-
-## Annotation Order Enforcement
-
-### Cached Read (ONLY for eligible entities):
-```java
-@Cacheable(cacheNames = "lookupValues", key = "#id")  // 1. Cache
-@Transactional(readOnly = true)                         // 2. Transaction
-@PreAuthorize("hasAuthority(...)")                      // 3. Security
-public ServiceResult<EntityResponse> getById(Long id) { }
-```
-
-### Cached Write (ONLY for eligible entities):
-```java
-@CacheEvict(cacheNames = "lookupValues", allEntries = true)  // 1. Evict
-@Transactional                                                 // 2. Transaction
-@PreAuthorize("hasAuthority(...)")                             // 3. Security
-public ServiceResult<EntityResponse> update(Long id, ...) { }
-```
-
-### Non-Cached Method:
-```java
-@Transactional(readOnly = true)     // 1. Transaction
-@PreAuthorize("hasAuthority(...)")  // 2. Security
-public ServiceResult<EntityResponse> getById(Long id) { }
+Impact: [Stale-data risk / performance issue / security risk]
 ```
 
 ---
@@ -227,28 +201,27 @@ public ServiceResult<EntityResponse> getById(Long id) { }
 ## Caching Governance Report
 
 ### Entity: [Name]
-### Cache Eligible: YES / NO
-### Approved Cache Name: [name] / N/A
+### On approved register: YES / NO
+### Approved cache name: [name] / N/A
 
-| Check | Rules | Passed | Failed |
-|-------|-------|--------|--------|
-| Eligibility | 6 | ? | ? |
-| Naming | 4 | ? | ? |
-| Placement | 7 | ? | ? |
-| Eviction | 6 | ? | ? |
-| Frontend | 5 | ? | ? |
-| Prohibited | 7 | ? | ? |
-| **TOTAL** | **35** | **?** | **?** |
+| Check              | Rules  | Passed | Failed |
+|--------------------|--------|--------|--------|
+| Eligibility        | 6      | ?      | ?      |
+| Naming             | 4      | ?      | ?      |
+| Placement          | 7      | ?      | ?      |
+| Eviction           | 6      | ?      | ?      |
+| Prohibited         | 7      | ?      | ?      |
+| **TOTAL**          | **30** | **?**  | **?**  |
 
 ### Verdict: COMPLIANT / NON-COMPLIANT
 ```
 
 ---
 
-## RELATED SKILLS
+## Related Skills
 
 | Skill | Purpose |
 |-------|---------|
-| `enforce-backend-contract` | Validates overall layered architecture compliance including `erp-common-utils` consumption |
-| `enforce-error-handling` | Validates error handling patterns: `LocalizedException`, `Status`, error codes |
-| `validate-backend-feature` | Master validation across all layers with scoring |
+| [`gov-enforce-backend-contract`](../gov-enforce-backend-contract/SKILL.md) | Full layered-architecture compliance |
+| [`gov-enforce-error-handling`](../gov-enforce-error-handling/SKILL.md) | Error handling patterns |
+| [`gov-validate-backend-feature`](../gov-validate-backend-feature/SKILL.md) | Master validation with scoring |

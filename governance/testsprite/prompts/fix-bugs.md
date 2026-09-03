@@ -36,9 +36,9 @@ STEP 1 — Diagnose, don't guess.
      behavior diverges from the test's expectation.
   c. Classify the failure as exactly one of:
      - REAL BUG — the code does not correctly implement the documented
-       business rule (check governance/master-registry.md and the
-       module's P0 business-policies doc if unsure what the rule actually
-       is). The code is wrong; the test's expectation is right.
+       business rule (check the module's P0 business-policies doc if
+       unsure what the rule actually is). The code is wrong; the test's
+       expectation is right.
      - STALE TEST — the code's behavior changed deliberately and
        correctly (an approved, intentional contract change), and the
        test's assumption is simply out of date. The test is wrong; the
@@ -53,22 +53,23 @@ STEP 1 — Diagnose, don't guess.
 STEP 2 — Fix, respecting governance, only for REAL BUG.
   - Read governance/GOVERNANCE-RULES.md's skill-routing table first, then
     the specific skill(s) for whatever layer you're touching
-    (enforce-backend-contract always first, then create-entity /
-    create-repository / create-dto / create-mapper / create-service /
-    create-controller as applicable) — same as any other backend change.
+    (gov-enforce-backend-contract always first, then build-create-entity /
+    build-create-repository / build-create-dto / build-create-mapper /
+    build-create-service / build-create-controller as applicable) — same as
+    any other backend change.
   - The fix must make the code correctly implement the actual, documented
     business rule. It must NOT: loosen or remove validation just to turn a
     400 into a 200, return a stubbed/hardcoded value instead of computing
     the real one, bypass a DataScope or permission check, remove exception
     handling to make a status-code assertion pass, or add a special case
     that exists only to satisfy this test's specific fixture data.
-  - If making the test pass would require contradicting
-    master-registry.md, a module's business-policies doc, or the
-    domain-layer rules — that's not a code bug, it's a requirements
-    conflict. STOP and flag it instead of forcing a change.
-  - Never touch the actual columns/behavior of a PERMANENT EXCEPTION
-    module (Security, MasterData Lookup, per master-registry.md §4) to
-    make a test pass — flag it for an explicit human decision instead.
+  - If making the test pass would require contradicting a module's
+    business-policies doc or the domain-layer rules — that's not a code
+    bug, it's a requirements conflict. STOP and flag it instead of
+    forcing a change.
+  - Never change the columns or behavior of a module its own governance
+    docs mark as a permanent exception, just to make a test pass — flag
+    it for an explicit human decision instead.
   - Keep the fix minimal and targeted at the one root cause — no unrelated
     refactoring while you're in a bug-fix pass.
 

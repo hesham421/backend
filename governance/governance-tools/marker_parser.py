@@ -22,7 +22,15 @@ from dataclasses import dataclass, field
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent))
-from config import MARKERS
+from config import (
+    MARKERS,
+    ALLOWED_PARENTS,          # single source of truth — no local copy here
+    CANONICAL_PHASE_KEYS,
+    SUB_QUALIFICATION_EXEMPT,
+    PHASE_SPLIT_THRESHOLDS,
+    NEVER_SPLIT_PHASES,
+    classify_artifact,
+)
 
 
 @dataclass
@@ -51,25 +59,32 @@ class ParseResult:
     total_lines: int
 
 
-# Allowed nesting hierarchy per PROJECT-3-REGISTRY.md Section 5.7.2/5.7.6
-ALLOWED_PARENTS = {
-    "phase": [None],                  # top level only
-    "sub":   ["phase"],               # SUB inside PHASE only
-    "api":   ["phase", "sub"],        # API inside PHASE or SUB
-    "xm":    ["phase", "sub"],        # XM inside PHASE or SUB
-    "tc":    ["phase", "sub"],        # TC inside PHASE or SUB directly
-}
+# Nesting hierarchy (PROJECT-3-REGISTRY.md Section 5.7.2/5.7.6) is imported
+# from config.ALLOWED_PARENTS above — kept in ONE place so the parser and any
+# other consumer can never drift apart. (Previously this file held a second,
+# independent copy — a latent drift hazard removed under this amendment.)
 
 
 def _tokenize(lines: list[str]) -> list[dict]:
-    """Scan every line for marker patterns, return ordered token list."""
+    """Scan every line for marker patterns, return ordered token list.
+
+    A single line may legitimately contain more than one marker (e.g. a
+    compact inline atomic block `<!-- TC:..:START -->...<!-- TC:..:END -->`,
+    or a SUB:END immediately followed by the next SUB:START). Every marker on
+    the line is captured, ordered by column position, so none is silently
+    missed. (The previous version used pattern.search and kept only the FIRST
+    match per pattern per line — a latent bug that dropped any second marker on
+    a shared line.)
+    """
     tokens = []
     for i, line in enumerate(lines, start=1):
+        line_hits = []
         for kind, pattern in MARKERS.items():
-            m = pattern.search(line)
-            if m:
-                marker_id, action = m.group(1), m.group(2)
-                tokens.append({"kind": kind, "marker_id": marker_id, "type": action, "line": i})
+            for m in pattern.finditer(line):
+                line_hits.append((m.start(), kind, m.group(1), m.group(2)))
+        line_hits.sort(key=lambda h: h[0])  # preserve left-to-right order
+        for _col, kind, marker_id, action in line_hits:
+            tokens.append({"kind": kind, "marker_id": marker_id, "type": action, "line": i})
     return tokens
 
 
@@ -207,3 +222,176 @@ def flatten(blocks: list[MarkerBlock]) -> list[MarkerBlock]:
 def find_by_kind(blocks: list[MarkerBlock], kind: str) -> list[MarkerBlock]:
     """Return every block of a given kind, anywhere in the tree."""
     return [b for b in flatten(blocks) if b.kind == kind]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SEMANTIC VALIDATION — layered ON TOP of structural parsing.
+#
+# parse_file() already catches STRUCTURAL faults (unmatched/unclosed markers,
+# illegal nesting, duplicate IDs). The checks below catch SEMANTIC faults that
+# are structurally legal but violate the governance contract and would
+# otherwise cause SILENT DATA LOSS during splitting:
+#
+#   • a non-canonical PHASE key (e.g. "SVC+API" instead of "SVC-API") — would
+#     be silently skipped by Agent 3 Stage 2, dropping a whole phase.
+#   • a SUB label that is not phase-qualified (AMEND-P3-N) — collides across
+#     phases and/or produces mis-named package files.
+#   • an atomic marker (API/XM/TC) sitting directly under a PHASE that also
+#     has SUB children ("orphan") — Agent 3 writes SUBs only, so the orphan
+#     would never reach any package file.
+#
+# All are returned as ParseError so callers can treat them exactly like
+# structural errors: blocking, with a line number and a clear message.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def check_canonical_phase_keys(roots: list[MarkerBlock], allowed_keys: list[str]) -> list[ParseError]:
+    """Every top-level PHASE marker_id must be one of allowed_keys."""
+    errors: list[ParseError] = []
+    allowed = set(allowed_keys)
+    for block in roots:
+        if block.kind != "phase":
+            continue
+        if block.marker_id not in allowed:
+            errors.append(ParseError(
+                severity="CRITICAL",
+                message=(
+                    f"Non-canonical PHASE key '{block.marker_id}' at line {block.start_line} "
+                    f"— not one of the canonical keys for this file "
+                    f"({', '.join(sorted(allowed))}). A typo here (e.g. '+' instead of '-') "
+                    f"would be silently skipped by the splitter, dropping the whole phase."
+                ),
+                line=block.start_line,
+            ))
+    return errors
+
+
+def check_sub_qualification(roots: list[MarkerBlock], exempt: bool) -> list[ParseError]:
+    """Every SUB label must be phase-qualified as {PARENT-PHASE-KEY}-{LABEL}
+    (AMEND-P3-N), unless the file is exempt (test-plans — single phase)."""
+    if exempt:
+        return []
+    errors: list[ParseError] = []
+    for phase in roots:
+        if phase.kind != "phase":
+            continue
+        prefix = f"{phase.marker_id}-"
+        for child in phase.children:
+            if child.kind != "sub":
+                continue
+            if not child.marker_id.startswith(prefix):
+                errors.append(ParseError(
+                    severity="CRITICAL",
+                    message=(
+                        f"SUB '{child.marker_id}' at line {child.start_line} is not "
+                        f"phase-qualified — it must start with '{prefix}' "
+                        f"(SUB:{phase.marker_id}-{{LABEL}}), per PROJECT-3-REGISTRY.md "
+                        f"Section 5.7.4 (AMEND-P3-N). Bare SUB labels collide across "
+                        f"phases and mis-name package files."
+                    ),
+                    line=child.start_line,
+                ))
+    return errors
+
+
+def check_orphan_atomics(roots: list[MarkerBlock]) -> list[ParseError]:
+    """An atomic (api/xm/tc) that is a DIRECT child of a PHASE which also has
+    SUB children is an orphan: Agent 3 writes SUB blocks (or the whole phase
+    when there are no SUBs), so a mixed phase would drop its direct atomics."""
+    errors: list[ParseError] = []
+    for phase in roots:
+        if phase.kind != "phase":
+            continue
+        has_sub = any(c.kind == "sub" for c in phase.children)
+        if not has_sub:
+            continue  # no-SUB phase: atomics directly under PHASE are valid
+        for child in phase.children:
+            if child.kind in ("api", "xm", "tc"):
+                errors.append(ParseError(
+                    severity="MAJOR",
+                    message=(
+                        f"Orphan {child.kind.upper()}:{child.marker_id} at line "
+                        f"{child.start_line} — sits directly under PHASE:{phase.marker_id} "
+                        f"which also has SUB blocks. When a phase is split into SUBs, "
+                        f"every atomic must live inside a SUB, or it will not be written "
+                        f"to any package file."
+                    ),
+                    line=child.start_line,
+                ))
+    return errors
+
+
+def check_split_thresholds(roots: list[MarkerBlock], strict: bool = False) -> list[ParseError]:
+    """AUTO-verify the split thresholds (config.PHASE_SPLIT_THRESHOLDS) that are
+    countable from markers.
+
+    Flexible by design:
+      • A phase at/above its trigger count with NO SUB blocks is reported.
+      • A NEVER_SPLIT phase that DOES carry SUB blocks is reported.
+      • Severity is MINOR (advisory — callers treat it as a non-blocking
+        warning) unless strict=True, which escalates to MAJOR (blocking).
+
+    Only markers can be counted, so phases whose trigger is not a marker kind
+    (e.g. DATA-DOM entities) are simply not in PHASE_SPLIT_THRESHOLDS and are
+    skipped here — never guessed at.
+    """
+    sev = "MAJOR" if strict else "MINOR"
+    errors: list[ParseError] = []
+    for phase in roots:
+        if phase.kind != "phase":
+            continue
+        has_sub = any(c.kind == "sub" for c in phase.children)
+
+        rule = PHASE_SPLIT_THRESHOLDS.get(phase.marker_id)
+        if rule and not has_sub:
+            count = len([b for b in flatten([phase]) if b.kind == rule["kind"]])
+            triggered = count > rule["count"] if rule["op"] == ">" else count >= rule["count"]
+            if triggered:
+                errors.append(ParseError(
+                    severity=sev,
+                    message=(
+                        f"PHASE:{phase.marker_id} has {count} {rule['kind'].upper()} "
+                        f"block(s) ({rule['op']} {rule['count']} → over the split "
+                        f"threshold) but no SUB blocks. Section 5.7.4 expects it split "
+                        f"into {rule['grouping']}. "
+                        + ("Blocking (--strict-thresholds)." if strict else
+                           "Advisory — verify this was an intentional semantic choice.")
+                    ),
+                    line=phase.start_line,
+                ))
+
+        if phase.marker_id in NEVER_SPLIT_PHASES and has_sub:
+            errors.append(ParseError(
+                severity=sev,
+                message=(
+                    f"PHASE:{phase.marker_id} carries SUB blocks but is a "
+                    f"never-split phase (Section 5.7.4). "
+                    + ("Blocking (--strict-thresholds)." if strict else
+                       "Advisory — verify this was intentional.")
+                ),
+                line=phase.start_line,
+            ))
+    return errors
+
+
+def validate_semantics(filepath, result: ParseResult, strict_thresholds: bool = False):
+    """Run all semantic checks appropriate to the file's identity.
+
+    Returns a tuple (blocking, advisories):
+      • blocking    — always-blocking semantic errors (non-canonical phase key,
+                      un-qualified SUB, orphan atomic).
+      • advisories  — split-threshold findings. These are NON-blocking warnings
+                      by default; when strict_thresholds=True they are emitted at
+                      MAJOR severity and the caller should treat them as blocking.
+
+    File identity is inferred from the basename. If unrecognised, the
+    file-specific checks are skipped but the file-agnostic ones still run.
+    """
+    artifact = classify_artifact(str(filepath))
+    blocking: list[ParseError] = []
+    if artifact:
+        blocking += check_canonical_phase_keys(result.root_blocks, CANONICAL_PHASE_KEYS[artifact])
+        blocking += check_sub_qualification(result.root_blocks, exempt=artifact in SUB_QUALIFICATION_EXEMPT)
+    blocking += check_orphan_atomics(result.root_blocks)
+
+    advisories = check_split_thresholds(result.root_blocks, strict=strict_thresholds)
+    return blocking, advisories

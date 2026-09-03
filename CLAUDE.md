@@ -23,7 +23,9 @@ Before generating any code:
    per the routing table in `GOVERNANCE-RULES.md`. (Moved here from
    `governance/.github/skills/backend/` on 2026-08-31 so skills auto-load
    via the Skill tool — see `.claude/skills/README.md`.)
-3. Load architecture context from `governance/.github/context/backend.md` (if present).
+3. Architecture context: `governance/.github/context/` no longer exists — the
+   domain-layer, API-contract and cross-module rules now live inside the skills
+   themselves (see `GOVERNANCE-RULES.md`'s "Context Reference" table).
 4. For a specific module's phase execution, read
    `governance/modules/[MODULE]/execution-state.json`, then follow the
    **Phase Execution Protocol** below. A per-module `execute-backend.md` /
@@ -67,8 +69,7 @@ in this repo needs lives inside `backend/governance/`.
 | Governance artifact | Location |
 |---------------------|----------|
 | Backend skills | `.claude/skills/` |
-| Backend architecture context | `governance/.github/context/backend.md` |
-| Master entity registry | `governance/master-registry.md` |
+| Backend architecture context | inside the skills — `governance/.github/context/` no longer exists |
 | Modules registry | `governance/modules-registry.json` |
 | AI commands | `governance/.claude/commands/` |
 | Module execution state | `governance/modules/[MODULE]/execution-state.json` |
@@ -104,7 +105,7 @@ in this repo needs lives inside `backend/governance/`.
 3. Map each task to the skill routing table in `GOVERNANCE-RULES.md`
 4. Read required skills from `.claude/skills/`
 5. Execute all tasks in order
-6. Run `validate-backend-feature` (or `validate-frontend-feature`, for frontend work) after the last task
+6. Run `gov-validate-backend-feature` (or `validate-frontend-feature`, for frontend work) after the last task
 7. Mark sub as COMPLETE in `governance/modules/[MODULE]/execution-state.json`
 
 ### Blocked items — OQ / XM DEFERRED
@@ -198,7 +199,7 @@ package-based and enforced by the ArchUnit suite in
 `src/test/java/com/erp/architecture`, not by separate Maven modules — see
 `governance/project-artifacts/INTERFACE-VS-REST-AND-POM-STRUCTURE-RECOMMENDATION.md`
 for the history of that consolidation. Cross-module calls go through each
-module's own `crossmodule` package (see the `create-service` skill's
+module's own `crossmodule` package (see the `build-create-service` skill's
 "Cross-Module Calls (XM)" section).
 
 ---
@@ -291,7 +292,7 @@ otherwise).
   (`V3__file_service_schema_and_seed.sql`,
   `V6__reconcile_filesvc_audit_column_length.sql`), not one giant file per
   module and not one file per column.
-- Table/column naming inside migrations follows the same `create-entity`
+- Table/column naming inside migrations follows the same `build-create-entity`
   skill conventions (UPPER_SNAKE_CASE, module prefix) — a migration and its
   matching JPA entity must agree on the physical name.
 
@@ -327,7 +328,7 @@ ownership table below, it almost certainly belongs in
 | Content type | Lives in | Never in |
 |---|---|---|
 | `CLAUDE.md` | `backend/` (repo root — not `backend/governance/`, since this repo already has a root `CLAUDE.md`; see `governance/README.md`'s note) for backend, `frontend/governance/` (frontend has no root `CLAUDE.md` of its own) for frontend | the other repo's matching location |
-| `GOVERNANCE-RULES.md`, `WORKSPACE.md`, `master-registry.md`, `modules-registry.json`, `vision.md` | `backend/governance/` | `frontend/governance/` |
+| `GOVERNANCE-RULES.md`, `WORKSPACE.md`, `modules-registry.json`, `vision.md` | `backend/governance/` | `frontend/governance/` |
 | P0, P0.5, P1, P2, P2.5 (text only — flow-diagram.md, ui-ux-spec.md), P3.1, P3.5_BE planning docs (per module) | `backend/governance/modules/<MOD>/` | `frontend/governance/` |
 | P2.5 mockups (`visual-mockups/`, rendered via Claude Design) | `frontend/governance/modules/<MOD>/P2_5-mockups/` | `backend/governance/` — this is the one P2.5 artifact type that lives in frontend, since a developer building the UI Shell needs it right there |
 | `packages/backend-execution/<PHASE>/` (CORE, DATA-DOM, SVC-API, DOC, INT-C, INT-R, SEC-BE, ALIGN-BE) | `backend/governance/modules/<MOD>/packages/backend-execution/` | `frontend/governance/` |
@@ -341,7 +342,7 @@ ownership table below, it almost certainly belongs in
 | `.claude/commands/generate-frontend-module-setup.md` (frontend) | `frontend/governance/.claude/commands/` — its own independent command, not a copy of the backend one | `backend/governance/` |
 | `.claude/commands/[MODULE]/execute-backend.md`, `execute-backend-test.md` (generated output, not templates — one subfolder per module, e.g. `.claude/commands/SECURITY/`, never the flat `.claude/commands/execute-backend.md`) | `backend/governance/.claude/commands/[MODULE]/` only | `frontend/governance/` |
 | `.claude/commands/[MODULE]/execute-frontend.md`, `execute-frontend-test.md` (generated output, not templates — same per-module-folder rule) | `frontend/governance/.claude/commands/[MODULE]/` only | `backend/governance/` |
-| Backend skills (`create-*`, `enforce-*`, `validate-backend-feature`) | `backend/.claude/skills/` — moved out of `backend/governance/.github/skills/backend/` on 2026-08-31 so skills auto-load via the Skill tool every session; `governance/GOVERNANCE-RULES.md` remains the authoritative routing table for which skill to use and when | `frontend/governance/`, and no longer `backend/governance/.github/skills/` |
+| Backend skills — two lanes by prefix: `build-*` (generates code) and `gov-*` (validates code) | `backend/.claude/skills/`, all folders one level deep since skill discovery does not recurse — moved out of `backend/governance/.github/skills/backend/` on 2026-08-31 so skills auto-load via the Skill tool every session; `governance/GOVERNANCE-RULES.md` remains the authoritative routing table for which skill to use and when | `frontend/governance/`, and no longer `backend/governance/.github/skills/` |
 | `.github/skills/devops/` | Not currently present anywhere in this repo (removed along with the rest of `governance/.github/` and never re-added under `.claude/skills/`) — re-add under `backend/.claude/skills/` if devops skills are needed again | `frontend/governance/` |
 | `.github/skills/frontend/` | `frontend/governance/.github/skills/` | `backend/governance/` |
 | `mcp-servers/postgres/` | `backend/governance/mcp-servers/postgres/` only, wired via `backend/.mcp.json` | `frontend/governance/` — no frontend DB access use case |

@@ -1,131 +1,116 @@
 ---
-name: create-dto
-description: "Generates the complete DTO set: CreateRequest, UpdateRequest, Response, SearchRequest, UsageResponse, OptionResponse. Phase 1, Step 1.3 — AFTER repository, BEFORE mapper. Enforces @Schema, i18n validation, immutability rules."
+name: build-create-dto
+description: "Generates the complete DTO set: CreateRequest, UpdateRequest, Response, SearchRequest, UsageResponse, and OptionResponse when needed. Build step 3 — AFTER repository, BEFORE mapper. Enforces @Schema documentation, i18n validation keys, and immutability rules."
 ---
 
-# Skill: create-dto
-
-## Name
-`create-dto`
+# Skill: build-create-dto
 
 ## Description
-Generates the complete set of DTO classes for a feature in the ERP system. This is **Phase 1, Step 1.3** of the execution template. Creates EXACTLY the required DTOs — no more, no less.
+Generates the complete DTO set for one entity. This is **build step 3**. Creates EXACTLY the
+required DTOs — no more, no less.
 
 ## When to Use
-- After `create-repository` is complete (Step 1.2)
-- When Phase 1, Step 1.3 of the execution template is being executed
+- After `build-create-repository` is complete
 - BEFORE creating mapper, service, or controller
 
 ## When NOT to Use
-- Before entity and repository exist — they must be completed first
-- When DTOs already exist and only a single field needs updating (edit directly)
-- For frontend TypeScript models — use `create-models` instead
-- For deploy or governance documents
+- Before the entity and repository exist
+- When the DTOs exist and a single field needs updating (edit directly)
+
+---
+
+## Variables
+
+Inherits `<module>`, `<Entity>`, `<ENTITY_CLASS>`, `<base.package>` from
+[`build-create-entity`](../build-create-entity/SKILL.md). Field names and types come from the
+generated entity — never assume them.
 
 ## Responsibilities
 
-- Generate the complete DTO set: `CreateRequest`, `UpdateRequest`, `Response`, `SearchRequest`, `UsageResponse`, and optionally `OptionResponse`
-- Apply `@Schema` annotations with bilingual descriptions on all DTOs and fields
-- Apply i18n validation message keys (`{validation.required}`, `{validation.size}`)
-- Enforce immutability rules: exclude `id`, audit fields, and natural keys from `CreateRequest`/`UpdateRequest` as appropriate
-- Ensure `SearchRequest` extends `BaseSearchContractRequest`
+- Generate `CreateRequest`, `UpdateRequest`, `Response`, `SearchRequest`, `UsageResponse`, and
+  `OptionResponse` when the entity feeds dropdowns
+- Apply `@Schema` documentation on every class and field
+- Apply i18n validation message keys — never literal message text
+- Enforce immutability: exclude `id` and audit fields from requests, exclude natural keys and
+  FK references from `UpdateRequest`
+- Make `SearchRequest` extend the shared search base type
 
 ## Constraints
 
 - MUST NOT generate entity, repository, mapper, service, or controller code
-- MUST NOT modify existing DTO files unless explicitly requested
-- MUST NOT include mutable natural keys in `UpdateRequest` without explicit approval
-- MUST NOT assume field types — derive from entity definition
-- MUST NOT hardcode validation messages — use i18n keys only
-- Note: structural validation (`@NotBlank`, `@Size`, format checks) is not a Business Rule
-  under [`domain-layer.md`](../../../context/domain-layer.md) — it stays here, on the DTO,
-  exactly as today. Do not move it to `<Entity>Domain`.
+- MUST NOT include a mutable natural key in `UpdateRequest` without explicit approval
+- MUST NOT assume field types — derive them from the entity
+- MUST NOT hardcode validation messages — i18n keys only
+
+> **Scope note:** structural validation (`@NotBlank`, `@Size`, format checks) is not a Business
+> Rule. It stays here on the DTO. Do not move it into `<Entity>Domain`.
 
 ## Output
 
-- 5–6 Java files in `src/main/java/com/erp/<module>/dto/`:
-  - `<Entity>CreateRequest.java`
-  - `<Entity>UpdateRequest.java`
-  - `<Entity>Response.java`
-  - `<Entity>SearchRequest.java`
-  - `<Entity>UsageResponse.java`
-  - `<Entity>OptionResponse.java` *(if entity is used in dropdowns)*
+5–6 files in `src/main/java/<base/package>/<module>/dto/`:
+
+| # | DTO | Purpose |
+|---|-----|---------|
+| 1 | `<Entity>CreateRequest` | POST request body |
+| 2 | `<Entity>UpdateRequest` | PUT request body — excludes immutable fields |
+| 3 | `<Entity>Response` | All GET/POST/PUT responses |
+| 4 | `<Entity>SearchRequest` | `POST /search` body |
+| 5 | `<Entity>UsageResponse` | `GET /{id}/usage` response |
+| 6 | `<Entity>OptionResponse` | *(only if used in dropdowns)* slim option DTO |
 
 ---
 
 ## Steps
 
-### 1. Create All Required DTO Classes
-
-For each entity, create **exactly** these DTOs in `src/main/java/com/erp/<module>/dto/`:
-
-| # | DTO Class | Purpose |
-|---|-----------|---------|
-| 1 | `<Entity>CreateRequest` | POST request body |
-| 2 | `<Entity>UpdateRequest` | PUT request body (excludes immutable fields) |
-| 3 | `<Entity>Response` | All GET/POST/PUT responses |
-| 4 | `<Entity>SearchRequest` | POST /search body (extends `BaseSearchContractRequest`) |
-| 5 | `<Entity>UsageResponse` | GET /{id}/usage response |
-| 6 | `<Entity>OptionResponse` | *(if needed)* Dropdown options (slim DTO) |
-
-### 2. CreateRequest
+### 1. CreateRequest
 ```java
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-@Schema(description = "Request to create a new <Entity> - طلب إنشاء <Entity> جديد")
+@Data @Builder @NoArgsConstructor @AllArgsConstructor
+@Schema(description = "<English description> - <الوصف بالعربية>")
 public class <Entity>CreateRequest {
 
     @NotBlank(message = "{validation.required}")
-    @Size(max = 50, message = "{validation.size}")
-    @Schema(description = "Unique key - المفتاح الفريد", example = "SAMPLE_KEY")
-    private String fieldName;
+    @Size(max = <LENGTH>, message = "{validation.size}")
+    @Schema(description = "<English> - <عربي>", example = "<EXAMPLE>")
+    private String <fieldName>;
 
-    @Schema(description = "Active status - حالة التفعيل", example = "true")
+    @Schema(description = "<English> - <عربي>", example = "true")
     @Builder.Default
     private Boolean isActive = true;
 }
 ```
 
-### 3. UpdateRequest (Excludes Immutable Fields)
+### 2. UpdateRequest — excludes immutable fields
 ```java
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-@Schema(description = "Request to update <Entity> - طلب تحديث <Entity>")
+@Data @Builder @NoArgsConstructor @AllArgsConstructor
+@Schema(description = "<English description> - <الوصف بالعربية>")
 public class <Entity>UpdateRequest {
 
-    // ❌ NO natural keys (lookupKey, code) — they are IMMUTABLE
-    // ❌ NO FK references (parentId) — they are IMMUTABLE
+    // ❌ NO natural keys — they are IMMUTABLE
+    // ❌ NO FK references — they are IMMUTABLE
 
-    @Size(max = 200, message = "{validation.size}")
-    @Schema(description = "Description - الوصف", example = "Updated description")
-    private String descriptionEn;
+    @Size(max = <LENGTH>, message = "{validation.size}")
+    @Schema(description = "<English> - <عربي>", example = "<EXAMPLE>")
+    private String <mutableField>;
 }
 ```
 
-### 4. Response (ALL fields + audit)
+### 3. Response — all fields + audit
 ```java
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-@Schema(description = "<Entity> response - استجابة <Entity>")
+@Data @Builder @NoArgsConstructor @AllArgsConstructor
+@Schema(description = "<English description> - <الوصف بالعربية>")
 public class <Entity>Response {
 
     @Schema(description = "Unique identifier - المعرف الفريد")
     private Long id;
 
-    // ALL business fields...
+    // ... every business field
 
     @Schema(description = "Active status - حالة التفعيل")
     private Boolean isActive;
 
-    // Computed counts (if parent)
+    // Computed counts, if this is a parent entity
     @Schema(description = "Number of child records - عدد السجلات الفرعية")
-    private Integer childCount;
+    private Integer <child>Count;
 
     // Audit fields — ALWAYS included
     @Schema(description = "Created timestamp - تاريخ الإنشاء")
@@ -144,72 +129,59 @@ public class <Entity>Response {
 }
 ```
 
-### 5. SearchRequest
+### 4. SearchRequest
 ```java
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@SuperBuilder
-@Schema(description = "Search request for <Entity> - طلب بحث <Entity>")
+@Data @NoArgsConstructor @AllArgsConstructor @SuperBuilder
+@Schema(description = "Search request for <Entity> - طلب بحث")
 public class <Entity>SearchRequest extends BaseSearchContractRequest {
-    // Inherits: filters, sorts, page, size
-    // Override toCommonSearchRequest() ONLY if child (to exclude parent ID filter)
+    // Inherits filters, sorts, page, size
 }
 ```
 
-#### Child SearchRequest Pattern:
+**Child variant** — excludes the parent-id filter from the generic search and exposes it
+explicitly:
 ```java
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@SuperBuilder
-@Schema(description = "Search request for <ChildEntity>")
-public class <ChildEntity>SearchRequest extends BaseSearchContractRequest {
+@Data @NoArgsConstructor @AllArgsConstructor @SuperBuilder
+@Schema(description = "Search request for <Child> - طلب بحث")
+public class <Child>SearchRequest extends BaseSearchContractRequest {
 
     @Override
     public SearchRequest toCommonSearchRequest() {
-        return toCommonSearchRequest(Set.of("parentId"));
+        return toCommonSearchRequest(Set.of("<parentIdFilter>"));
     }
 
-    public Long getParentId() {
-        return extractLongFilter("parentId");
+    public Long get<Parent>Id() {
+        return extractLongFilter("<parentIdFilter>");
     }
 }
 ```
 
-### 6. UsageResponse
+### 5. UsageResponse
 ```java
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-@Schema(description = "Usage information for <Entity> - معلومات الاستخدام")
+@Data @Builder @NoArgsConstructor @AllArgsConstructor
+@Schema(description = "Usage information - معلومات الاستخدام")
 public class <Entity>UsageResponse {
 
-    @Schema(description = "Entity ID")
     private Long id;
 
     @Schema(description = "Number of child references - عدد المراجع الفرعية")
-    private long childCount;
+    private long <child>Count;
 
-    @Schema(description = "Can entity be deleted - هل يمكن حذف العنصر")
+    @Schema(description = "Can be deleted - هل يمكن الحذف")
     private boolean canDelete;
 
-    @Schema(description = "Can entity be deactivated - هل يمكن إلغاء التفعيل")
+    @Schema(description = "Can be deactivated - هل يمكن إلغاء التفعيل")
     private boolean canDeactivate;
 
-    @Schema(description = "Reason if actions are blocked - سبب حظر الإجراء")
+    @Schema(description = "Reason if blocked - سبب الحظر")
     private String reason;
 }
 ```
 
-### 7. OptionResponse (if needed for dropdowns)
+### 6. OptionResponse — slim, no audit fields
 ```java
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-@Schema(description = "Option for dropdown")
+@Data @Builder @NoArgsConstructor @AllArgsConstructor
+@Schema(description = "Dropdown option - خيار القائمة")
 public class <Entity>OptionResponse {
     private Long id;
     private String label;
@@ -220,101 +192,54 @@ public class <Entity>OptionResponse {
 
 ---
 
-## SHARED LAYER MANDATE (`erp-common-utils`)
+## Shared Layer Mandate
 
-> Full contract definition (response envelope, error shape): [`api-contract.md`](../../../context/api-contract.md).
-> The table below is this skill's consumption checklist, not a second copy of the contract.
-
-Before creating DTOs, verify the following shared resources from `erp-common-utils` are consumed — do NOT reinvent:
-
-| # | Requirement | Shared Class | Package |
-|---|-------------|-------------|--------|
-| SH.1 | `SearchRequest` DTO for search input already exists in common-utils | `SearchRequest` | `com.erp.common.search` |
-| SH.2 | `SearchFilter` for filter criteria already exists in common-utils | `SearchFilter` | `com.erp.common.search` |
-| SH.3 | `BaseSearchContractRequest` for API layer search mapping | `BaseSearchContractRequest` | `com.erp.common.dto` |
-| SH.4 | API response envelope `ApiResponse<T>` — do NOT create per-module response wrappers | `ApiResponse` | `com.erp.common.web` |
-| SH.5 | Field validation error items use `FieldErrorItem` | `FieldErrorItem` | `com.erp.common.web` |
+| # | Requirement | Shared class | Package |
+|---|-------------|--------------|---------|
+| SH.1 | Search input type already exists — do not redefine it | `SearchRequest` | `<base.package>.common.search` |
+| SH.2 | Filter criteria type already exists | `SearchFilter` | `<base.package>.common.search` |
+| SH.3 | API-layer search base type | `BaseSearchContractRequest` | `<base.package>.common.dto` |
+| SH.4 | Response envelope — never a per-module wrapper | `ApiResponse` | `<base.package>.common.web` |
+| SH.5 | Field-level validation error items | `FieldErrorItem` | `<base.package>.common.web` |
 
 **Rules:**
-- NEVER redefine `SearchRequest`, `SearchFilter`, or `Op` in feature modules — import from `erp-common-utils`
-- NEVER create a custom API response wrapper — use `ApiResponse<T>`
-- `SearchRequest` in feature module `extends BaseSearchContractRequest` for API-layer conversion
-- Validation messages MUST use i18n keys (`"{validation.required}"`) resolved by `LocaleConfig` from common-utils
+- NEVER redefine the shared search/filter/operator types in a feature module
+- NEVER create a custom API response wrapper
+- Validation messages MUST be i18n keys resolved by the shared locale configuration
 
-> **Cross-reference:** After creating DTOs, run [`enforce-backend-contract`](../enforce-backend-contract/SKILL.md) to verify compliance.
+> After creating the DTOs, run [`gov-enforce-backend-contract`](../gov-enforce-backend-contract/SKILL.md).
 
 ---
 
-## Rules (STRICT — from implementation-contract.md)
+## Rules (STRICT)
 
 | Rule ID | Rule | MUST |
 |---------|------|------|
-| A.3.2 | Class-level `@Schema(description = "English - Arabic")` | YES |
-| A.3.3 | Each field has `@Schema(description, example)` | YES |
-| A.3.4 | Validation messages use i18n keys: `"{validation.required}"` | YES |
+| A.3.1 | All DTOs use `@Data @Builder @NoArgsConstructor @AllArgsConstructor` | YES |
+| A.3.2 | Class-level `@Schema` with a bilingual description | YES |
+| A.3.3 | Every field has `@Schema(description, example)` | YES |
+| A.3.4 | Validation messages use i18n keys | YES |
 | A.3.5 | `CreateRequest` excludes `id` and audit fields | YES |
 | A.3.6 | `UpdateRequest` excludes immutable fields (natural keys, FKs) | YES |
-| A.3.7 | `Response` includes ALL fields + audit fields + computed counts | YES |
-| A.3.8 | Audit timestamps: `@JsonFormat(shape = STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")` | YES |
+| A.3.7 | `Response` includes all fields + audit fields + computed counts | YES |
+| A.3.8 | Audit timestamps carry the project's `@JsonFormat` pattern in UTC | YES |
 | A.3.9 | `SearchRequest` extends `BaseSearchContractRequest` | YES |
-| A.3.10 | Child `SearchRequest` overrides `toCommonSearchRequest()` to exclude parent ID | YES |
-| A.3.11 | Child `SearchRequest` provides parent ID extractor method | YES |
-| A.3.12 | `UsageResponse` has `canDelete`/`canDeactivate` booleans + reason | YES |
+| A.3.10 | Child `SearchRequest` overrides `toCommonSearchRequest()` to exclude the parent id | YES |
+| A.3.11 | Child `SearchRequest` exposes a parent-id extractor | YES |
+| A.3.12 | `UsageResponse` carries `canDelete`/`canDeactivate` + reason | YES |
 | A.3.13 | `OptionResponse` is slim — no audit fields | YES |
 
 ---
 
 ## Violations (MUST NOT)
 
-- ❌ Including `id` in `CreateRequest`
-- ❌ Including immutable fields (`lookupKey`, `code`, `parentId`) in `UpdateRequest`
-- ❌ Missing audit fields in `Response`
-- ❌ Hardcoded English validation messages — use `"{validation.required}"`
-- ❌ Missing `@Schema` documentation on class or fields
+- ❌ `id` present in `CreateRequest`
+- ❌ Natural keys or FK references present in `UpdateRequest`
+- ❌ Audit fields missing from `Response`
+- ❌ Literal validation message text instead of an i18n key
+- ❌ Missing `@Schema` on a class or field
 - ❌ Missing `@JsonFormat` on `Instant` audit fields
-- ❌ Duplicating filter/sort parsing — must extend `BaseSearchContractRequest`
-- ❌ Reusing full `Response` DTO for dropdowns — use `OptionResponse`
-- ❌ Missing `canDelete`/`canDeactivate` in `UsageResponse`
-- ❌ Using `@SuperBuilder` on non-search DTOs (only `SearchRequest` needs it for `BaseSearchContractRequest`)
-
----
-
-## Example (Real ERP)
-
-```java
-// MasterLookupCreateRequest
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
-@Schema(description = "Create a new master lookup - إنشاء قائمة مرجعية جديدة")
-public class MasterLookupCreateRequest {
-
-    @NotBlank(message = "{validation.required}")
-    @Size(max = 50, message = "{validation.size}")
-    @Schema(description = "Unique lookup key - مفتاح البحث الفريد", example = "CURRENCY")
-    private String lookupKey;
-
-    @NotBlank(message = "{validation.required}")
-    @Size(max = 200, message = "{validation.size}")
-    @Schema(description = "English description", example = "Currency types")
-    private String descriptionEn;
-
-    @Size(max = 200, message = "{validation.size}")
-    @Schema(description = "Arabic description", example = "أنواع العملات")
-    private String descriptionAr;
-
-    @Schema(description = "Active status", example = "true")
-    @Builder.Default
-    private Boolean isActive = true;
-}
-
-// MasterLookupUpdateRequest — NO lookupKey (immutable)
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
-@Schema(description = "Update master lookup")
-public class MasterLookupUpdateRequest {
-
-    @Size(max = 200, message = "{validation.size}")
-    private String descriptionEn;
-
-    @Size(max = 200, message = "{validation.size}")
-    private String descriptionAr;
-}
-```
+- ❌ Re-implementing filter/sort parsing instead of extending the shared base type
+- ❌ Reusing the full `Response` for dropdowns instead of `OptionResponse`
+- ❌ `UsageResponse` without `canDelete`/`canDeactivate`
+- ❌ `@SuperBuilder` on a non-search DTO

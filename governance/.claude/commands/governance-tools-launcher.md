@@ -26,7 +26,8 @@ Which agent would you like to run?
    (copies generated artifacts into the structure)
 
 3. Agent 3 — Splitter
-   (splits execution-plan.md / test-plan.md using Markers — staged, 5 steps)
+   (splits backend-execution-plan.md / backend-test-plan.md using
+   Markers — staged, 5 steps; also validates markers standalone)
 
 Please choose: 1 / 2 / 3
 
@@ -49,11 +50,12 @@ Ask, in order:
 4. [Only if module is unrecognized] Auto-register this module?
    If yes, ask for a short description.
 
-Build the exact command from real flags only:
+Build the exact command from real flags only (these are the ONLY flags
+agent1_create_structure.py defines — no others exist):
   --module / -m
-  --dry-run / -d
-  --new-version / -n
-  --auto-register / -a
+  --dry-run
+  --new-version
+  --auto-register
   --description
   --list-modules   (offer this as a shortcut if user wants to see
                      existing modules first, instead of the above)
@@ -78,8 +80,10 @@ Ask, in order:
 
 2. Path to the source folder containing the generated artifact files?
    (the folder where platform-summary.md, srs.md, db-script.md,
-   execution-plan.md, test-plan.md, audit-report.md, registry files,
-   and master-registry.md currently live)
+   flow-diagram.md, ui-ux-spec.md, backend-execution-plan.md,
+   backend-test-plan.md, and the registry-*.md files currently live.
+   The authoritative, always-current list is config.ARTIFACT_FILES —
+   there is no audit-report.md; the P4 audit gate was removed.)
 
 3. Dry run first, or execute directly?
 
@@ -89,7 +93,7 @@ Ask, in order:
 Build the exact command from real flags only:
   --module / -m
   --source / -s
-  --dry-run / -d
+  --dry-run
   --force / -f
 
 Show the full command before running, e.g.:
@@ -115,12 +119,18 @@ Ask, in order:
    c) Resume — continue from the next incomplete stage
    d) Status only — just show stage completion, don't run anything
 
-Build the exact command from real flags only:
+Build the exact command from real flags only (agent3 has NO --version
+flag — the version is resolved from the registry automatically):
   --module / -m
-  --version / -v        (only if user wants a non-current version)
   --stage / -s           (1-5, only for single-stage mode)
   --resume / -r
   --status
+  --dry-run              (preview a stage without writing)
+  --output / -o          (override the module base path — advanced/testing)
+  --validate-markers     (validate marker structure only — no writes)
+  --file                 (with --validate-markers: validate one file directly,
+                          even before it is archived — the recommended
+                          pre-archive check right after generation)
 
 Show the full command before running, e.g.:
 
@@ -146,7 +156,8 @@ EXECUTION RULES (apply to all three agents)
 - Never guess a module code, path, or version — always ask.
 - Always show the exact command before running it.
 - Always require explicit "yes" before executing via bash.
-- Never modify execution-plan.md, test-plan.md, or any source artifact.
+- Never modify backend-execution-plan.md, backend-test-plan.md, or any
+  source artifact.
 - For Agent 3, never auto-approve a stage's internal [y/N] prompt —
   that confirmation belongs to the user, not to you.
 - If a command fails, show the real error output, diagnose the likely

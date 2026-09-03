@@ -75,9 +75,17 @@ output. Do not merge the two or move files between them.
 
 `testsprite_backend_test_plan.json` and the generated `.py` files are not
 module-aware — TestSprite treats the backend as one flat surface. Assign
-each generated `TCnnn_*.py` to a module by the endpoint(s) it calls, using
-`governance/master-registry.md`'s module ownership (§5 "Entity Registry",
-§2 "Platform Layer Structure") as the authority:
+each generated `TCnnn_*.py` to a module by the endpoint(s) it calls. The
+authority for which module owns what is `governance/modules-registry.json`
+plus that module's own `P0` business-policies and module-registry docs:
+
+> **⚠ STALE TABLE — READ FIRST.** The endpoint→module table below describes the
+> module/endpoint layout from BEFORE the backend was emptied. Right now
+> `governance/modules-registry.json` is `{"modules": {}}` and none of those
+> modules or endpoints exist in `src/main/java/`. Do NOT classify against this
+> table as-is. Before a real run, rebuild it from the ACTUAL registered modules
+> (`modules-registry.json`) and their real endpoint prefixes; the rows below are
+> a shape example only, kept so the format is clear.
 
 | Endpoint prefix / subject | Module |
 |---|---|
@@ -92,8 +100,8 @@ scenarios hit one resource), file it under the module that owns the
 resource being asserted on, not the module used only for setup (e.g. a test
 that logs in via `SECURITY` to then test `/api/org/branches` is `ORG`).
 
-If a future module is added to `master-registry.md`, add its prefix here in
-the same pass — don't leave newly-generated tests unclassifiable.
+If a future module is added to `modules-registry.json`, add its prefix here
+in the same pass — don't leave newly-generated tests unclassifiable.
 
 ---
 
@@ -156,8 +164,7 @@ test's assumptions — without anyone touching the test — defeats that.
 **Before finishing any backend code change**, check whether it touches
 something an archived test exercises:
 
-1. Identify the module the change belongs to (per `master-registry.md` /
-   §3's endpoint table).
+1. Identify the module the change belongs to (per §3's endpoint table).
 2. Search that module's `governance/modules/<MOD>/testsprite/tests/*.py`
    for the endpoint path, request/response field name, status code, or
    error code you're changing (`grep -rl` for the path or field is enough
@@ -219,6 +226,7 @@ this cleanup is never needed again.
   generated tests, no regeneration), and
   `governance/testsprite/prompts/fix-bugs.md` (diagnose → fix → re-run
   loop for failures reported by either of the above, per §5's sync rule).
-- Module ownership authority: `governance/master-registry.md`.
+- Module ownership authority: `governance/modules-registry.json` plus each
+  module's own `P0` docs.
 - Routing table cross-reference: `governance/GOVERNANCE-RULES.md`'s
   "Governance Content Map".
