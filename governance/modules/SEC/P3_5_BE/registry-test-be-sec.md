@@ -1,0 +1,92 @@
+# REGISTRY EXTRACT — registry-test-be-SEC
+══════════════════════════════════════════════════════════════════
+Module          : Security (SEC)
+Source artifact : backend-test-plan-SEC.md (PLAN-SEC-001)
+Extracted by    : P-REG (mechanical extraction — not a governance artifact)
+Status          : SESSION INPUT ONLY — not loaded as Project Instruction,
+                  not a Truth Layer artifact, not subject to P4.1/P4.2 audit
+══════════════════════════════════════════════════════════════════
+
+## HEADER
+Module name : Security
+Module Prefix : SEC
+
+## TC-BE-ID REGISTER
+| TC-BE-SEC-ID | Covers | Data-Class |
+|---|---|---|
+| TC-BE-SEC-001 | RULE-SEC-001 | VALID |
+| TC-BE-SEC-002 | RULE-SEC-001 / ERR-0001 | INVALID |
+| TC-BE-SEC-003 | RULE-SEC-002 | VALID |
+| TC-BE-SEC-004 | RULE-SEC-002 / ERR-0002 | INVALID |
+| TC-BE-SEC-005 | RULE-SEC-003 | VALID |
+| TC-BE-SEC-006 | RULE-SEC-003 / ERR-0003 | INVALID/BOUNDARY |
+| TC-BE-SEC-007 | RULE-SEC-004 | VALID |
+| TC-BE-SEC-008 | RULE-SEC-005 | VALID |
+| TC-BE-SEC-009 | RULE-SEC-005 / ERR-0004 | BOUNDARY |
+| TC-BE-SEC-010 | RULE-SEC-006 | VALID |
+| TC-BE-SEC-011 | RULE-SEC-006 / ERR-0005 | INVALID |
+| TC-BE-SEC-012 | RULE-SEC-007 | VALID |
+| TC-BE-SEC-013 | RULE-SEC-007 / ERR-0006 | INVALID |
+| TC-BE-SEC-014 | RULE-SEC-008 | VALID |
+| TC-BE-SEC-015 | RULE-SEC-008 / ERR-0007 | INVALID |
+| TC-BE-SEC-016 | RULE-SEC-009 | VALID |
+| TC-BE-SEC-017 | RULE-SEC-009 / ERR-0008 | INVALID |
+| TC-BE-SEC-018 | RULE-SEC-010 | VALID |
+| TC-BE-SEC-019 | RULE-SEC-010 / ERR-0009 | INVALID |
+| TC-BE-SEC-020 | RULE-SEC-011 / API-SEC-013 | VALID |
+| TC-BE-SEC-021 | RULE-SEC-012 / API-SEC-010 | VALID |
+| TC-BE-SEC-022 | API-SEC-001 | VALID |
+| TC-BE-SEC-023 | API-SEC-002 | VALID |
+| TC-BE-SEC-024 | API-SEC-003 | VALID |
+| TC-BE-SEC-025 | API-SEC-004 | VALID |
+| TC-BE-SEC-026 | API-SEC-005 | VALID |
+| TC-BE-SEC-027 | API-SEC-006 | VALID |
+| TC-BE-SEC-028 | API-SEC-007 | VALID |
+| TC-BE-SEC-029 | API-SEC-008 | VALID/EDGE_CASE |
+| TC-BE-SEC-030 | API-SEC-009 | VALID |
+| TC-BE-SEC-031 | API-SEC-010 | VALID |
+| TC-BE-SEC-032 | API-SEC-011 | VALID |
+| TC-BE-SEC-033 | API-SEC-012 | VALID |
+| TC-BE-SEC-034 | API-SEC-013 | VALID |
+| TC-BE-SEC-035 | API-SEC-014 | VALID |
+| TC-BE-SEC-036 | API-SEC-015 | VALID |
+| TC-BE-SEC-037 | API-SEC-016 / ERR-0011,0012 | VALID/ATTACK |
+
+## TC TRACEABILITY INDEX (compact, backend)
+| RULE-ID/API-ID/ERR-ID | TC-BE-SEC-IDs |
+|---|---|
+| RULE-SEC-001 | TC-BE-SEC-001, 002 |
+| RULE-SEC-002 | TC-BE-SEC-003, 004 |
+| RULE-SEC-003 | TC-BE-SEC-005, 006 |
+| RULE-SEC-004 | TC-BE-SEC-007 |
+| RULE-SEC-005 | TC-BE-SEC-008, 009 |
+| RULE-SEC-006 | TC-BE-SEC-010, 011 |
+| RULE-SEC-007 | TC-BE-SEC-012, 013 |
+| RULE-SEC-008 | TC-BE-SEC-014, 015 |
+| RULE-SEC-009 | TC-BE-SEC-016, 017 |
+| RULE-SEC-010 | TC-BE-SEC-018, 019 |
+| RULE-SEC-011 | TC-BE-SEC-020 |
+| RULE-SEC-012 | TC-BE-SEC-021 |
+| API-SEC-001..016 | TC-BE-SEC-022..037 (1:1 sequential) |
+| ERR-0001 | TC-BE-SEC-002 |
+| ERR-0002 | TC-BE-SEC-004 |
+| ERR-0003 | TC-BE-SEC-006 |
+| ERR-0004 | TC-BE-SEC-009 |
+| ERR-0005 | TC-BE-SEC-011 |
+| ERR-0006 | TC-BE-SEC-013 |
+| ERR-0007 | TC-BE-SEC-015 |
+| ERR-0008 | TC-BE-SEC-017 |
+| ERR-0009 | TC-BE-SEC-019 |
+| ERR-0011/0012 | TC-BE-SEC-037 |
+
+## XM MOCK STRATEGY REGISTER
+| XM-SEC-ID | Mock Strategy |
+|---|---|
+| (none) | — |
+No XM dependencies are exercised in this test plan (SEC has no outbound XM).
+
+## LAST ASSIGNED TC-BE SEQUENCE
+TC-BE-SEC: last = TC-BE-SEC-037
+
+---
+*End of registry-test-be-SEC.md*

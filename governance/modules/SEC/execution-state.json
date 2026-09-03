@@ -1,0 +1,84 @@
+{
+  "module": "SEC",
+  "generated_at": "2026-09-03",
+  "current_phase": "CORE",
+  "current_sub": "CORE",
+  "api_docs_path": "governance/modules/SEC/api-docs/",
+  "phases": [
+    {
+      "id": "CORE",
+      "status": "PENDING",
+      "subs": [
+        { "id": "CORE", "status": "PENDING" }
+      ]
+    },
+    {
+      "id": "DATA-DOM",
+      "status": "PENDING",
+      "subs": [
+        { "id": "DATA-DOM-IDENTITY", "status": "PENDING" },
+        { "id": "DATA-DOM-RBAC", "status": "PENDING" },
+        { "id": "DATA-DOM-TOKENS", "status": "PENDING" }
+      ]
+    },
+    {
+      "id": "SVC-API",
+      "status": "PENDING",
+      "subs": [
+        { "id": "SVC-API-AUTH", "status": "PENDING" },
+        { "id": "SVC-API-LOOKUP", "status": "PENDING" },
+        { "id": "SVC-API-MODULES", "status": "PENDING" },
+        { "id": "SVC-API-RBAC", "status": "PENDING" },
+        { "id": "SVC-API-USERS", "status": "PENDING" }
+      ]
+    },
+    {
+      "id": "DOC",
+      "status": "PENDING",
+      "subs": [
+        { "id": "DOC", "status": "PENDING" }
+      ]
+    },
+    {
+      "id": "INT-C",
+      "status": "PENDING",
+      "subs": [
+        { "id": "INT-C", "status": "PENDING" }
+      ]
+    },
+    {
+      "id": "INT-R",
+      "status": "PENDING",
+      "subs": [
+        { "id": "INT-R", "status": "PENDING" }
+      ]
+    },
+    {
+      "id": "SEC-BE",
+      "status": "PENDING",
+      "subs": [
+        { "id": "SEC-BE", "status": "PENDING" }
+      ]
+    },
+    {
+      "id": "ALIGN-BE",
+      "status": "PENDING",
+      "subs": [
+        { "id": "ALIGN-BE", "status": "PENDING" }
+      ]
+    }
+  ],
+  "test_phase": {
+    "id": "backend-test",
+    "status": "PENDING",
+    "gated_by_phases": ["CORE", "DATA-DOM", "SVC-API", "DOC", "INT-C", "INT-R", "SEC-BE", "ALIGN-BE"],
+    "header_file": null,
+    "subs": [
+      { "id": "RULE-SCENARIOS", "status": "PENDING" },
+      { "id": "API-SCENARIOS", "status": "PENDING" }
+    ]
+  },
+  "blocked": [],
+  "deferred_xm": [],
+  "api_doc_gaps": []
+}

@@ -1,0 +1,51 @@
+{
+  "module": "NOTIF",
+  "version": 1,
+  "status": {
+    "archived": true,
+    "split": false,
+    "backend_module_complete": false,
+    "ui_shell_complete": false
+  },
+  "artifacts": {
+    "p0": "modules/NOTIF/P0",
+    "p0_5": "modules/NOTIF/P0_5",
+    "p1": "modules/NOTIF/P1",
+    "p2": "modules/NOTIF/P2",
+    "p2_5": "modules/NOTIF/P2_5",
+    "p3_1": "modules/NOTIF/P3_1",
+    "p3_5_be": "modules/NOTIF/P3_5_BE"
+  },
+  "registries": {
+    "srs": "modules/NOTIF/P1/registry-srs-notif.md",
+    "db": "modules/NOTIF/P2/registry-db-notif.md",
+    "exec_be": "modules/NOTIF/P3_1/registry-exec-be-notif.md",
+    "test_be": "modules/NOTIF/P3_5_BE/registry-test-be-notif.md"
+  },
+  "packages": {
+    "backend_execution": "modules/NOTIF/packages/backend-execution",
+    "backend_test": "modules/NOTIF/packages/backend-test"
+  },
+  "created_at": "2026-09-03T20:23:14.189518",
+  "archived_at": "2026-09-03T20:41:02.321892",
+  "archived_files": [
+    "backend-execution-plan.md"
+  ],
+  "skipped_files": [],
+  "skipped_existing_files": [
+    "platform-summary.md",
+    "module-registry-notif.md",
+    "business-policies-notif.md",
+    "prd-notif.md",
+    "srs.md",
+    "registry-srs-notif.md",
+    "db-script.md",
+    "registry-db-notif.md",
+    "flow-diagram.md",
+    "ui-ux-spec.md",
+    "registry-exec-be-notif.md",
+    "backend-test-plan.md",
+    "test-execution-manifest.md",
+    "registry-test-be-notif.md"
+  ]
+}
