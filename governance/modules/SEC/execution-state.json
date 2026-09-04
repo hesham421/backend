@@ -1,8 +1,8 @@
 {
   "module": "SEC",
   "generated_at": "2026-09-03",
-  "current_phase": "DOC",
-  "current_sub": "DOC",
+  "current_phase": "ALIGN-BE",
+  "current_sub": "ALIGN-BE",
   "api_docs_path": "governance/modules/SEC/api-docs/",
   "phases": [
     {
@@ -34,37 +34,37 @@
     },
     {
       "id": "DOC",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "DOC", "status": "PENDING" }
+        { "id": "DOC", "status": "COMPLETE" }
       ]
     },
     {
       "id": "INT-C",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "INT-C", "status": "PENDING" }
+        { "id": "INT-C", "status": "COMPLETE" }
       ]
     },
     {
       "id": "INT-R",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "INT-R", "status": "PENDING" }
+        { "id": "INT-R", "status": "COMPLETE" }
       ]
     },
     {
       "id": "SEC-BE",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "SEC-BE", "status": "PENDING" }
+        { "id": "SEC-BE", "status": "COMPLETE" }
       ]
     },
     {
       "id": "ALIGN-BE",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "ALIGN-BE", "status": "PENDING" }
+        { "id": "ALIGN-BE", "status": "COMPLETE" }
       ]
     }
   ],
@@ -81,6 +81,8 @@
   "blocked": [],
   "deferred_xm": [],
   "api_doc_gaps": [
-    {"type": "MAPPING_GAP", "phase": "SVC-API", "sub": "SVC-API-AUTH", "endpoint": "POST /api/v1/security/auth/{login,refresh,reset-password,activate}", "detail": "Error Catalog (SECTION A) maps auth ERR-IDs to HTTP 401 (ERR-0011 invalid credentials, ERR-0005 refresh), 403 (ERR-0008 non-active), 423 (ERR-0004 locked), 400 (ERR-0006/0007 reset/activation token) and 422 (ERR-0003 complexity). The shared common.domain.status.Status enum (frozen — common/ is out of scope for this sub) has no 401/403/423 constant, and the already-built SEC Domain objects throw BUSINESS_RULE_VIOLATION (422) for non-active/locked/refresh/reset/activation and VALIDATION_ERROR (400) for complexity. Closest available mappings were used without inventing statuses: invalid-credentials/non-active/locked/refresh/reset/activation -> 422; complexity -> 400. Exact ERR->HTTP fidelity requires extending Status (add UNAUTHORIZED 401, FORBIDDEN 403, LOCKED 423) or adjusting the DATA-DOM Domain throw statuses — both outside SVC-API-AUTH scope.", "resolution": "ESCALATED TO USER (2026-09-04). Root cause: authoritative Error Catalog demands 401/403/423 but the shared common.domain.status.Status enum is a deliberately frozen 8-value foundation contract (CLAUDE.md STRUCTURAL LAW; CORE.md) and DATA-DOM domain objects already throw BUSINESS_RULE_VIOLATION(422)/VALIDATION_ERROR(400). Project convention (DRV-008) maps business errors onto existing enum statuses, so the implemented 422/400 mapping is internally consistent. Exact fidelity requires extending common/Status (add UNAUTHORIZED 401/FORBIDDEN 403/LOCKED 423) + repointing the DATA-DOM domain throws — a shared-foundation structural change requiring explicit human sign-off, NOT done autonomously. Module execution continued; later subs reuse the same enum consistently. Awaiting user decision on whether to make the foundation change.", "recorded_at": "2026-09-04"}
+    {"type": "MAPPING_GAP", "phase": "SVC-API", "sub": "SVC-API-AUTH", "endpoint": "POST /api/v1/security/auth/{login,refresh,reset-password,activate}", "detail": "Error Catalog (SECTION A) maps auth ERR-IDs to HTTP 401 (ERR-0011 invalid credentials, ERR-0005 refresh), 403 (ERR-0008 non-active), 423 (ERR-0004 locked), 400 (ERR-0006/0007 reset/activation token) and 422 (ERR-0003 complexity). The shared common.domain.status.Status enum (frozen — common/ is out of scope for this sub) has no 401/403/423 constant, and the already-built SEC Domain objects throw BUSINESS_RULE_VIOLATION (422) for non-active/locked/refresh/reset/activation and VALIDATION_ERROR (400) for complexity. Closest available mappings were used without inventing statuses: invalid-credentials/non-active/locked/refresh/reset/activation -> 422; complexity -> 400. Exact ERR->HTTP fidelity requires extending Status (add UNAUTHORIZED 401, FORBIDDEN 403, LOCKED 423) or adjusting the DATA-DOM Domain throw statuses — both outside SVC-API-AUTH scope.", "resolution": "ESCALATED TO USER (2026-09-04). Root cause: authoritative Error Catalog demands 401/403/423 but the shared common.domain.status.Status enum is a deliberately frozen 8-value foundation contract (CLAUDE.md STRUCTURAL LAW; CORE.md) and DATA-DOM domain objects already throw BUSINESS_RULE_VIOLATION(422)/VALIDATION_ERROR(400). Project convention (DRV-008) maps business errors onto existing enum statuses, so the implemented 422/400 mapping is internally consistent. Exact fidelity requires extending common/Status (add UNAUTHORIZED 401/FORBIDDEN 403/LOCKED 423) + repointing the DATA-DOM domain throws — a shared-foundation structural change requiring explicit human sign-off, NOT done autonomously. Module execution continued; later subs reuse the same enum consistently. Awaiting user decision on whether to make the foundation change.", "recorded_at": "2026-09-04"},
+    {"type": "SEED_SCOPE_GAP", "phase": "SEC-BE", "sub": "SEC-BE", "endpoint": "N/A (seed data — V3__sec_security_seed.sql)", "detail": "V3 seeds the SEC security registry (SEC_MODULE=SEC, SEC_ROLE=SYS_ADMIN, 4 pages, 16 permissions, Tier-1 SEC_ROLE_MODULE grant, Tier-2 16 SEC_ROLE_PERMISSION grants) but deliberately does NOT seed a bootstrap SEC_USER_ACCOUNT nor a SEC_USER_ROLE link (explicitly out of this phase's stated seed scope). Consequence: no principal holds SYS_ADMIN after V3, so no one can authenticate (AuthController login) and therefore no one can exercise the @PreAuthorize-guarded SEC screen endpoints on a fresh DB. No CommandLineRunner/ApplicationRunner or code-level bootstrap-admin mechanism exists in src/main/java (searched). A first-admin bootstrap (seed a SEC_USER_ACCOUNT with a known PASSWORD_HASH + PREFERRED_LANG_ID + USER_STATUS_ID='ACTIVE' and a SEC_USER_ROLE row to SYS_ADMIN) is needed to make the module usable end-to-end.", "resolution": "RAISED, NOT implemented — bootstrap user is outside SEC-BE's authoritative seed scope (SEC-BE.md lists only SEC_MODULE/SEC_PAGE/SEC_PERMISSION/SEC_ROLE_MODULE/SEC_ROLE_PERMISSION). Awaiting explicit human decision on whether/where to seed the first admin (separate migration or a runtime bootstrap).", "recorded_at": "2026-09-04"},
+    {"type": "MIGRATION_SYNTAX_DEFECT", "phase": "SEC-BE", "sub": "SEC-BE", "endpoint": "N/A (pre-existing migrations V1__cu_app_configuration_schema.sql, V2__sec_security_schema.sql)", "detail": "Discovered while validating V3 against a real PostgreSQL 16 container: every CREATE SEQUENCE in V1 and V2 uses the Oracle-ism 'NO CACHE NO CYCLE'. PostgreSQL rejects 'NO CACHE' with 'syntax error at or near CACHE' (valid PG is 'CACHE 1' or omit; only 'NO CYCLE' is valid). As written, V1 and V2 CANNOT apply to PostgreSQL, so Flyway would fail at startup on a fresh DB before V3 ever runs. V3 itself is clean — validated by applying a syntax-patched copy of V2 (NO CACHE->CACHE 1, real files untouched) then the unmodified V3, which applied with zero errors (1 module, 1 role, 4 pages, 16 permissions, 1 Tier-1 grant, 16 Tier-2 grants; all CHECK/FK/NOT NULL satisfied).", "resolution": "RAISED, NOT fixed — editing V1/V2 is explicitly out of SEC-BE scope and forbidden by policy (never edit an applied migration). Correct forward-fix is a human decision: either these migrations were never actually applied (the live erp_db shows an unrelated legacy Flyway history) and can be corrected at source, or a new forward migration is required. Flagged for the user.", "recorded_at": "2026-09-04"}
   ]
 }

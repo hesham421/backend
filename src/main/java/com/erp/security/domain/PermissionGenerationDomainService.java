@@ -29,6 +29,12 @@ public final class PermissionGenerationDomainService {
 
     private static final List<String> PERMISSION_TYPES = List.of(TYPE_VIEW, TYPE_CREATE, TYPE_UPDATE, TYPE_DELETE);
 
+    // Physical column limits of SEC_PERMISSION.NAME_EN / NAME_AR (see Permission entity @Size and
+    // V2 migration). The generated "<page name> - <TYPE>" label is truncated to fit so a long page
+    // name can never overflow the permission columns and roll back the whole page-create tx.
+    private static final int NAME_EN_MAX = 100;
+    private static final int NAME_AR_MAX = 200;
+
     private PermissionGenerationDomainService() {
         throw new UnsupportedOperationException("Domain service — cannot be instantiated");
     }
@@ -53,13 +59,29 @@ public final class PermissionGenerationDomainService {
             generated.add(Permission.builder()
                 .permissionCode(code)
                 .permissionType(type)
-                .nameAr(page.getNameAr() + " - " + type)
-                .nameEn(page.getNameEn() + " - " + type)
+                .nameAr(buildName(page.getNameAr(), type, NAME_AR_MAX))
+                .nameEn(buildName(page.getNameEn(), type, NAME_EN_MAX))
                 .isActive(Boolean.TRUE)
                 .page(page)
                 .build());
         }
         return generated;
+    }
+
+    /**
+     * Builds the "&lt;page name&gt; - &lt;TYPE&gt;" permission label, truncating the page-name portion so the
+     * result never exceeds {@code max} — the page name and permission name columns share the same
+     * length, so a page name at its own limit would otherwise overflow once the " - TYPE" suffix is
+     * appended and fail the insert.
+     */
+    private static String buildName(String pageName, String type, int max) {
+        String suffix = " - " + type;
+        String base = pageName == null ? "" : pageName;
+        int budget = Math.max(0, max - suffix.length());
+        if (base.length() > budget) {
+            base = base.substring(0, budget);
+        }
+        return base + suffix;
     }
 
     /** CORE-9 code convention: PERM_&lt;PAGE_CODE&gt;_&lt;TYPE&gt;. */

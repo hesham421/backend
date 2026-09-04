@@ -31,14 +31,19 @@ public class UserMapper {
     /**
      * Mutates in place. Skips username (immutable) and passwordHash (system-managed). isActiveFl,
      * when present, is applied via activate()/deactivate() (never a raw setter); null means "no
-     * change". The RULE-SEC-012 transition guard on userStatusId runs in the service beforehand.
+     * change". phone is optional — a null (omitted) phone means "no change", consistent with
+     * isActiveFl, so a partial update that leaves phone out does not wipe an existing number (send
+     * an empty string to clear it explicitly). The RULE-SEC-012 transition guard on userStatusId
+     * runs in the service beforehand.
      */
     public void updateEntityFromRequest(UserAccount entity, UserUpdateRequest request) {
         if (entity == null || request == null) {
             return;
         }
         entity.setEmail(request.getEmail());
-        entity.setPhone(request.getPhone());
+        if (request.getPhone() != null) {
+            entity.setPhone(request.getPhone());
+        }
         entity.setFullName(request.getFullName());
         entity.setPreferredLangId(request.getPreferredLangId());
         entity.setUserStatusId(request.getUserStatusId());

@@ -3,6 +3,7 @@ package com.erp.security.service;
 import com.erp.common.domain.status.ServiceResult;
 import com.erp.common.domain.status.Status;
 import com.erp.common.exception.LocalizedException;
+import com.erp.common.util.TokenHasher;
 import com.erp.security.domain.AccountActivationTokenDomain;
 import com.erp.security.domain.PasswordResetTokenDomain;
 import com.erp.security.domain.RefreshTokenDomain;
@@ -25,11 +26,7 @@ import com.erp.security.repository.AccountActivationTokenRepository;
 import com.erp.security.repository.PasswordResetTokenRepository;
 import com.erp.security.repository.RefreshTokenRepository;
 import com.erp.security.repository.UserAccountRepository;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
-import java.util.HexFormat;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -99,12 +96,18 @@ public class AuthService {
         log.info("Refresh token rotation requested");
         LocalDateTime now = LocalDateTime.now();
 
-        RefreshToken token = refreshTokenRepository.findByToken(hash(request.getRefreshToken()))
+        RefreshToken token = refreshTokenRepository.findByToken(TokenHasher.sha256Hex(request.getRefreshToken()))
             .orElseThrow(() -> new LocalizedException(
                 Status.BUSINESS_RULE_VIOLATION, SecErrorCodes.REFRESH_TOKEN_REVOKED));
 
         // RULE-SEC-006 — usable (not revoked, not expired) before rotating.
         RefreshTokenDomain.from(token).assertCanRotate(now);
+
+        // RULE-SEC-009 / RULE-SEC-005 — the account must still be login-eligible: a user deactivated
+        // (or locked) after the refresh token was issued must not keep minting access tokens, exactly
+        // as login() blocks it. Without this a disabled user retains access until token expiry.
+        UserAccountDomain.from(token.getUserAccount()).assertLoginAllowed(now);
+
         token.revoke();
         refreshTokenRepository.save(token);
 
@@ -117,7 +120,7 @@ public class AuthService {
     public void logout(LogoutRequest request) {
         log.info("Logout requested");
         // RULE-SEC-006 — idempotent revoke: unknown or already-revoked token is a silent no-op (204).
-        refreshTokenRepository.findByToken(hash(request.getRefreshToken())).ifPresent(token -> {
+        refreshTokenRepository.findByToken(TokenHasher.sha256Hex(request.getRefreshToken())).ifPresent(token -> {
             if (!Boolean.TRUE.equals(token.getRevoked())) {
                 token.revoke();
                 refreshTokenRepository.save(token);
@@ -143,7 +146,7 @@ public class AuthService {
 
             String raw = jwtTokenProvider.generateOpaqueToken();
             PasswordResetToken token = PasswordResetToken.builder()
-                .token(hash(raw))
+                .token(TokenHasher.sha256Hex(raw))
                 .expiresAt(PasswordResetTokenDomain.issue(now).getExpiresAt())
                 .used(false)
                 .userAccount(user)
@@ -161,7 +164,7 @@ public class AuthService {
         log.info("Password reset submission received");
         LocalDateTime now = LocalDateTime.now();
 
-        PasswordResetToken token = passwordResetTokenRepository.findByToken(hash(request.getToken()))
+        PasswordResetToken token = passwordResetTokenRepository.findByToken(TokenHasher.sha256Hex(request.getToken()))
             .orElseThrow(() -> new LocalizedException(
                 Status.BUSINESS_RULE_VIOLATION, SecErrorCodes.PASSWORD_RESET_TOKEN_USED));
 
@@ -170,11 +173,24 @@ public class AuthService {
         UserAccountDomain.assertPasswordMeetsComplexity(request.getNewPassword());
 
         UserAccount user = token.getUserAccount();
-        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        // RULE-SEC-009 — mirror requestReset: only an ACTIVE account can complete a reset, so a token
+        // issued before the account was deactivated cannot silently "succeed" on a disabled account.
+        UserAccountDomain.from(user).assertLoginAllowed(now);
+
+        String encoded = passwordEncoder.encode(request.getNewPassword());
+        UserAccountDomain.assertStoredHashed(request.getNewPassword(), encoded); // RULE-SEC-004
+        user.setPasswordHash(encoded);
         userAccountRepository.save(user);
 
         token.markUsed();
         passwordResetTokenRepository.save(token);
+
+        // A password change must terminate every pre-existing session (RULE-SEC-007): revoke all live
+        // refresh tokens so a session opened before the reset (e.g. by an attacker) cannot outlive it.
+        List<RefreshToken> liveSessions = refreshTokenRepository.findByUserAccount_IdAndRevokedFalse(user.getId());
+        liveSessions.forEach(RefreshToken::revoke);
+        refreshTokenRepository.saveAll(liveSessions);
+
         log.info("Password reset applied for user ID: {}", user.getId());
         return ServiceResult.success(null);
     }
@@ -184,7 +200,7 @@ public class AuthService {
         log.info("Account activation submission received");
         LocalDateTime now = LocalDateTime.now();
 
-        AccountActivationToken token = accountActivationTokenRepository.findByToken(hash(request.getToken()))
+        AccountActivationToken token = accountActivationTokenRepository.findByToken(TokenHasher.sha256Hex(request.getToken()))
             .orElseThrow(() -> new LocalizedException(
                 Status.BUSINESS_RULE_VIOLATION, SecErrorCodes.ACCOUNT_ACTIVATION_TOKEN_USED));
 
@@ -198,7 +214,9 @@ public class AuthService {
 
         if (request.getNewPassword() != null && !request.getNewPassword().isBlank()) {
             UserAccountDomain.assertPasswordMeetsComplexity(request.getNewPassword());
-            user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+            String encoded = passwordEncoder.encode(request.getNewPassword());
+            UserAccountDomain.assertStoredHashed(request.getNewPassword(), encoded); // RULE-SEC-004
+            user.setPasswordHash(encoded);
         }
         user.setUserStatusId(UserAccountDomain.STATUS_ACTIVE);
         userAccountRepository.save(user);
@@ -215,7 +233,7 @@ public class AuthService {
 
         String rawRefresh = jwtTokenProvider.generateOpaqueToken();
         RefreshToken refresh = RefreshToken.builder()
-            .token(hash(rawRefresh))
+            .token(TokenHasher.sha256Hex(rawRefresh))
             .expiresAt(RefreshTokenDomain.issue(now).getExpiresAt())
             .revoked(false)
             .userAccount(user)
@@ -227,16 +245,5 @@ public class AuthService {
             .refreshToken(rawRefresh)
             .expiresIn(jwtTokenProvider.getAccessTokenTtlSeconds())
             .build();
-    }
-
-    /** SHA-256 hash (hex) of an opaque token — the only form persisted (RULE-SEC-004 / DRV-005). */
-    private static String hash(String rawToken) {
-        try {
-            byte[] digest = MessageDigest.getInstance("SHA-256")
-                .digest(rawToken.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(digest);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 unavailable", e);
-        }
     }
 }

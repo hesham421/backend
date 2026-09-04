@@ -2,6 +2,7 @@ package com.erp.main.config;
 
 import com.erp.security.jwt.JwtAuthenticationFilter;
 import com.erp.security.jwt.JwtTokenProvider;
+import com.erp.security.jwt.RestAuthenticationEntryPoint;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -35,17 +36,24 @@ public class SecurityConfig {
         "/swagger-ui.html",
         "/swagger-ui/**",
         "/v3/api-docs/**",
-        "/actuator/**"
+        // Only the health/info actuator endpoints are exposed (management.endpoints.web.exposure
+        // .include=health,info) — scope the public matcher to those rather than the whole /actuator
+        // namespace so any future exposed endpoint is not silently unauthenticated.
+        "/actuator/health",
+        "/actuator/health/**",
+        "/actuator/info"
     };
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, JwtTokenProvider jwtTokenProvider) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, JwtTokenProvider jwtTokenProvider,
+                                           RestAuthenticationEntryPoint authenticationEntryPoint) throws Exception {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
                 .anyRequest().authenticated())
+            .exceptionHandling(ex -> ex.authenticationEntryPoint(authenticationEntryPoint))
             .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider),
                 UsernamePasswordAuthenticationFilter.class);
         return http.build();

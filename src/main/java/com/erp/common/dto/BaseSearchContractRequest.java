@@ -1,5 +1,8 @@
 package com.erp.common.dto;
 
+import com.erp.common.domain.status.Status;
+import com.erp.common.exception.CommonErrorCodes;
+import com.erp.common.exception.LocalizedException;
 import com.erp.common.search.SearchFilter;
 import com.erp.common.search.SearchRequest;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -60,11 +63,30 @@ public class BaseSearchContractRequest {
             return null;
         }
         return filters.stream()
-            .filter(f -> field.equals(f.getField()))
+            .filter(f -> f != null && field.equals(f.getField()))
             .map(SearchFilter::getValue)
+            // Only scalar values yield a single Long — an IN-list (Iterable/array) value is not a
+            // scalar id filter, so skip it rather than blow up parsing "[1, 2]".
+            .filter(v -> v != null && !(v instanceof Iterable<?>) && !v.getClass().isArray())
+            .map(BaseSearchContractRequest::toLong)
             .filter(v -> v != null)
-            .map(v -> Long.valueOf(String.valueOf(v)))
             .findFirst()
             .orElse(null);
+    }
+
+    /**
+     * Parses a scalar filter value to a Long. A malformed (non-numeric) value is a client input
+     * error, so it surfaces as a 400 VALIDATION_ERROR rather than an unhandled 500 from a raw
+     * NumberFormatException escaping through the specification build.
+     */
+    private static Long toLong(Object value) {
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        try {
+            return Long.valueOf(String.valueOf(value).trim());
+        } catch (NumberFormatException e) {
+            throw new LocalizedException(Status.VALIDATION_ERROR, CommonErrorCodes.VALIDATION_ERROR);
+        }
     }
 }

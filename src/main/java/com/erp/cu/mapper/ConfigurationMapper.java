@@ -38,7 +38,11 @@ public class ConfigurationMapper {
             return;
         }
         entity.setConfigValue(request.getConfigValue());
-        entity.setNotes(request.getNotes());
+        // notes is optional — a null (omitted) notes means "no change", consistent with isActive,
+        // so a partial update does not wipe existing notes (send an empty string to clear it).
+        if (request.getNotes() != null) {
+            entity.setNotes(request.getNotes());
+        }
         if (request.getIsActive() != null) {
             if (Boolean.TRUE.equals(request.getIsActive())) {
                 entity.activate();

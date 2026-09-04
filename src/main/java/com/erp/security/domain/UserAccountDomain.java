@@ -135,7 +135,12 @@ public final class UserAccountDomain {
      * returned values to the entity and saves.
      */
     public LockDecision registerFailedLogin(LocalDateTime now) {
-        int next = failedLoginCount + 1;
+        // assertLoginAllowed has already run, so any non-null lockedUntil here is a lock that has
+        // already EXPIRED. In that case the previous failed streak is over — restart the count from
+        // zero, otherwise the persisted count (still MAX from the earlier lock, cleared only on a
+        // successful login) would make the very next mistake re-lock the account immediately.
+        int base = (lockedUntil != null && !now.isBefore(lockedUntil)) ? 0 : failedLoginCount;
+        int next = base + 1;
         LocalDateTime lockUntil = next >= MAX_FAILED_LOGIN_ATTEMPTS ? now.plus(LOCK_DURATION) : null;
         return new LockDecision((short) next, lockUntil);
     }

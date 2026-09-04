@@ -23,13 +23,17 @@ public interface ModuleRepository
 
     /**
      * QR-SEC-0028 (API-SEC-019 dashboard) — the distinct ACTIVE modules granted to a user through
-     * any of its roles. SEC_USER_ACCOUNT → SEC_USER_ROLE → SEC_ROLE_MODULE → SEC_MODULE.
+     * any of its ACTIVE roles. SEC_USER_ACCOUNT → SEC_USER_ROLE → SEC_ROLE → SEC_ROLE_MODULE →
+     * SEC_MODULE. The role.isActive guard keeps a deactivated role (whose SEC_ROLE_MODULE join rows
+     * survive deactivation) from continuing to surface its modules on the dashboard (RULE-SEC-013).
      */
     @Query("""
         SELECT DISTINCT m
-        FROM Module m, RoleModule rm, UserRole ur, UserAccount u
+        FROM Module m, RoleModule rm, Role r, UserRole ur, UserAccount u
         WHERE u.username = :username
           AND ur.id.userAccountFk = u.id
+          AND r.id = ur.id.roleFk
+          AND r.isActive = true
           AND rm.id.roleFk = ur.id.roleFk
           AND m.id = rm.id.moduleFk
           AND m.isActive = true

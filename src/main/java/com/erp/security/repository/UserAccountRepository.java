@@ -33,12 +33,17 @@ public interface UserAccountRepository
 
     /**
      * QR-SEC-0002 (DRV-003) — the distinct active permission codes granted to a user through its
-     * roles, used as the JWT authorities. SEC_USER_ROLE -> SEC_ROLE_PERMISSION -> SEC_PERMISSION.
+     * roles, used as the JWT authorities. SEC_USER_ROLE -> SEC_ROLE -> SEC_ROLE_PERMISSION ->
+     * SEC_PERMISSION. Both the role and the permission must be active: deactivating a role
+     * (SEC_ROLE.IS_ACTIVE_FL=0) leaves its join rows intact, so without the role.isActive guard a
+     * deactivated role would keep granting its permissions as authorities (RULE-SEC-013).
      */
     @Query("""
         SELECT DISTINCT p.permissionCode
-        FROM UserRole ur, RolePermission rp, Permission p
+        FROM UserRole ur, Role r, RolePermission rp, Permission p
         WHERE ur.id.userAccountFk = :userId
+          AND r.id = ur.id.roleFk
+          AND r.isActive = true
           AND rp.id.roleFk = ur.id.roleFk
           AND p.id = rp.id.permissionFk
           AND p.isActive = true

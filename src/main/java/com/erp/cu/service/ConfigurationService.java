@@ -46,6 +46,13 @@ public class ConfigurationService {
         "configKey", "createdAt", "updatedAt"
     );
 
+    // Filterable fields for SpecBuilder. Distinct from ALLOWED_SORT_FIELDS: isActive is a valid
+    // EXACT filter (API-CU-002) but not a sort key, and reusing the sort set as the filter allow-list
+    // silently dropped the isActive predicate, returning every row regardless of the filter.
+    private static final Set<String> ALLOWED_FILTER_FIELDS = Set.of(
+        "configKey", "isActive", "createdAt", "updatedAt"
+    );
+
     @Transactional
     @PreAuthorize("hasAuthority(T(com.erp.security.permission.PermissionConstants).CONFIG_CREATE)")
     public ServiceResult<ConfigurationResponse> create(ConfigurationCreateRequest request) {
@@ -75,7 +82,7 @@ public class ConfigurationService {
 
         SearchRequest commonRequest = searchRequest.toCommonSearchRequest();
 
-        SetAllowedFields allowedFields = new SetAllowedFields(ALLOWED_SORT_FIELDS);
+        SetAllowedFields allowedFields = new SetAllowedFields(ALLOWED_FILTER_FIELDS);
         Specification<AppConfiguration> spec =
             SpecBuilder.build(commonRequest, allowedFields, DefaultFieldValueConverter.INSTANCE);
         Pageable pageable = PageableBuilder.from(commonRequest, ALLOWED_SORT_FIELDS);
@@ -152,9 +159,14 @@ public class ConfigurationService {
      * controller/OperationCode, so there is nothing to unwrap for — wrapping it would only force
      * every future internal caller to unwrap .getData() for no reason. Narrow, deliberate
      * exception to A.5.8 for this one internal-only method.
+     *
+     * <p>No {@code @PreAuthorize}: this is an in-process library read invoked by other modules from
+     * system/startup/async paths that carry no SecurityContext. A method-security check here would
+     * throw AccessDeniedException on exactly those internal calls. Access to the public,
+     * controller-facing read (getByKey) remains CONFIG_VIEW-gated; this internal accessor is never
+     * bound to a controller/OperationCode, so it needs no authority of its own.
      */
     @Transactional(readOnly = true)
-    @PreAuthorize("hasAuthority(T(com.erp.security.permission.PermissionConstants).CONFIG_VIEW)")
     public String getValue(String configKey) {
         log.debug("Fetching Configuration value for key: {}", configKey);
 

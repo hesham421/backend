@@ -1,6 +1,7 @@
 package com.erp.security.repository;
 
 import com.erp.security.entity.RefreshToken;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -17,4 +18,11 @@ public interface RefreshTokenRepository
             JpaSpecificationExecutor<RefreshToken> {
 
     Optional<RefreshToken> findByToken(String token);
+
+    /**
+     * All still-live (not-yet-revoked) refresh tokens for a user — used to revoke every existing
+     * session when the password changes (RULE-SEC-007), so a session opened before the reset cannot
+     * outlive it.
+     */
+    List<RefreshToken> findByUserAccount_IdAndRevokedFalse(Long userId);
 }

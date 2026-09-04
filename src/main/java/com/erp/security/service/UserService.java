@@ -4,6 +4,7 @@ import com.erp.common.domain.status.ServiceResult;
 import com.erp.common.domain.status.Status;
 import com.erp.common.exception.LocalizedException;
 import com.erp.common.search.PageableBuilder;
+import com.erp.common.util.TokenHasher;
 import com.erp.security.domain.AccountActivationTokenDomain;
 import com.erp.security.domain.UserAccountDomain;
 import com.erp.security.dto.UserCreateRequest;
@@ -19,12 +20,8 @@ import com.erp.security.mapper.UserMapper;
 import com.erp.security.repository.AccountActivationTokenRepository;
 import com.erp.security.repository.UserAccountRepository;
 import jakarta.persistence.criteria.Predicate;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
@@ -86,14 +83,17 @@ public class UserService {
         // 3. Map + set system-managed fields, then persist (QR-SEC-0001; audit via listener)
         UserAccount entity = mapper.toEntity(request);
         entity.setUserStatusId(UserAccountDomain.STATUS_PENDING_ACTIVATION);
-        entity.setPasswordHash(passwordEncoder.encode(jwtTokenProvider.generateOpaqueToken()));
+        String placeholderRaw = jwtTokenProvider.generateOpaqueToken();
+        String placeholderHash = passwordEncoder.encode(placeholderRaw);
+        UserAccountDomain.assertStoredHashed(placeholderRaw, placeholderHash); // RULE-SEC-004
+        entity.setPasswordHash(placeholderHash);
         UserAccount saved = repository.save(entity);
         log.info("Created UserAccount ID: {}", saved.getId());
 
         // 4. Issue the activation token (QR-SEC-0021, hashed at rest) and publish the CU event
         String rawToken = jwtTokenProvider.generateOpaqueToken();
         AccountActivationToken token = AccountActivationToken.builder()
-            .token(hash(rawToken))
+            .token(TokenHasher.sha256Hex(rawToken))
             .expiresAt(AccountActivationTokenDomain.issue(now).getExpiresAt())
             .used(false)
             .userAccount(saved)
@@ -204,16 +204,5 @@ public class UserService {
             }
             return cb.and(predicates.toArray(new Predicate[0]));
         };
-    }
-
-    /** SHA-256 hash (hex) of an opaque token — the only form persisted (RULE-SEC-004 / DRV-005). */
-    private static String hash(String rawToken) {
-        try {
-            byte[] digest = MessageDigest.getInstance("SHA-256")
-                .digest(rawToken.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(digest);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 unavailable", e);
-        }
     }
 }
