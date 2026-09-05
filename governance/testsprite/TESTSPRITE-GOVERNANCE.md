@@ -79,21 +79,19 @@ each generated `TCnnn_*.py` to a module by the endpoint(s) it calls. The
 authority for which module owns what is `governance/modules-registry.json`
 plus that module's own `P0` business-policies and module-registry docs:
 
-> **⚠ STALE TABLE — READ FIRST.** The endpoint→module table below describes the
-> module/endpoint layout from BEFORE the backend was emptied. Right now
-> `governance/modules-registry.json` is `{"modules": {}}` and none of those
-> modules or endpoints exist in `src/main/java/`. Do NOT classify against this
-> table as-is. Before a real run, rebuild it from the ACTUAL registered modules
-> (`modules-registry.json`) and their real endpoint prefixes; the rows below are
-> a shape example only, kept so the format is clear.
+> **Rebuilt 2026-09-05** against the current codebase (`modules-registry.json`:
+> `SEC`, `CU`, `FILE`, `MDM`, `NOTIF`) after the previous table went stale
+> following an earlier reset of `src/main/java/`. Re-derive this table again
+> any time a module is added/renamed or a controller's base path changes —
+> don't assume it stays accurate across a major restructuring.
 
 | Endpoint prefix / subject | Module |
 |---|---|
-| `/api/auth/*`, `/api/users*`, `/api/roles*`, `/api/permissions*`, `/api/pages*`, `/api/menu*` | `SECURITY` |
-| `/api/v1/files*` (upload-token / upload / access-token / download) | `FILESVC` |
-| `/api/v1/notifications*` | `NOTIFICATION` |
-| `/api/lookups*`, `MD_MASTER_LOOKUP` / `MD_LOOKUP_DETAIL` scenarios | `MASTERDATA` |
-| `/api/org/*` (legal entities, branches, departments, cost centers, profit centers, regions, location sites) | `ORG` |
+| `/api/v1/security/*` (auth, me, users, roles, permissions, pages, modules, lookups) | `SEC` |
+| `/api/v1/common/configurations*` | `CU` |
+| `/api/v1/files*` (documents, categories, lookups) | `FILE` |
+| `/api/v1/mdm*` (lookups, lookup consumption) | `MDM` |
+| `/api/v1/notifications*` (dispatch, channels, templates, logs, lookups) | `NOTIF` |
 
 If a generated test genuinely spans two modules (rare — most TestSprite
 scenarios hit one resource), file it under the module that owns the

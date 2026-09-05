@@ -1,0 +1,52 @@
+[
+  {
+    "id": "TC001",
+    "title": "post api v1 security auth login with valid and invalid credentials",
+    "description": "Test the login endpoint with valid username and password to receive accessToken, refreshToken, and expiresIn. Also test with missing username or password to receive 400 validation error, and with invalid credentials or inactive account to receive 401 unauthorized."
+  },
+  {
+    "id": "TC002",
+    "title": "post api v1 security auth refresh with valid and invalid refresh tokens",
+    "description": "Test the refresh token endpoint with a valid refreshToken to receive new accessToken, refreshToken, and expiresIn. Also test with missing refreshToken to receive 400 validation error, and with expired, invalid, or already-rotated refreshToken to receive 401 unauthorized."
+  },
+  {
+    "id": "TC003",
+    "title": "post api v1 security auth logout with and without valid bearer token",
+    "description": "Test logout endpoint with valid bearer token and refreshToken to receive 204 no content and revoke the refresh token. Also test without a valid bearer token to receive 401 unauthorized."
+  },
+  {
+    "id": "TC004",
+    "title": "post api v1 security auth forgot password with valid and malformed email",
+    "description": "Test forgot-password endpoint with a valid email address to receive 202 accepted regardless of email existence. Also test with malformed email to receive 400 validation error."
+  },
+  {
+    "id": "TC005",
+    "title": "post api v1 security auth reset password with valid and invalid tokens",
+    "description": "Test reset-password endpoint with valid reset token and strong newPassword to receive 200 status envelope and password updated. Also test with expired or invalid token to receive 400 invalid token error."
+  },
+  {
+    "id": "TC006",
+    "title": "post api v1 security auth activate with valid and invalid tokens",
+    "description": "Test activate endpoint with valid activation token and newPassword to receive 200 status envelope and account activated. Also test with expired or invalid token to receive 400 invalid token error."
+  },
+  {
+    "id": "TC007",
+    "title": "get api v1 security me modules with valid and invalid bearer tokens",
+    "description": "Test the current user dashboard modules endpoint with a valid bearer token to receive 200 with an array of granted active modules. Also test without bearer token or with malformed/expired token to receive 401 unauthorized."
+  },
+  {
+    "id": "TC008",
+    "title": "post api v1 security users with valid data and duplicate username or email",
+    "description": "Test user creation endpoint with valid user data and proper authority to receive 201 with created user response. Also test with duplicate username or email to receive 409 conflict, and with missing required fields to receive 400 validation error."
+  },
+  {
+    "id": "TC009",
+    "title": "get api v1 security users with and without proper authorization",
+    "description": "Test user search endpoint with valid bearer token holding PERM_SEC_USERS_VIEW to receive 200 with paged user list. Also test without bearer token to receive 401 unauthorized, and with bearer token lacking permission to receive 403 forbidden."
+  },
+  {
+    "id": "TC010",
+    "title": "post api v1 notifications dispatch with valid and invalid inputs",
+    "description": "Test notification dispatch endpoint with valid recipientId, templateCode, channelHint, variables, and authenticated bearer token to receive 200 with array of logIds. Also test with missing recipientId or templateCode to receive 400 validation error, with unknown or inactive templateCode to receive 404 not found, with blank channelHint entries to receive 400 validation error, and without bearer token to receive 401 unauthorized."
+  }
+]
