@@ -154,7 +154,7 @@ public class AuthService {
             passwordResetTokenRepository.save(token);
 
             eventPublisher.publishEvent(new PasswordResetRequestedEvent(
-                user.getId(), user.getEmail(), raw, token.getExpiresAt()));
+                user.getId(), user.getEmail(), raw, token.getExpiresAt(), user.getPreferredLangId()));
             log.info("Password reset token issued for user ID: {}", user.getId());
         });
     }

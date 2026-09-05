@@ -25,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -62,11 +63,33 @@ public class DispatchService {
     @Transactional
     // RULE-NOTIF-005 — dispatch sits behind the Security filter, not tied to a management screen, so
     // it is gated to any authenticated principal rather than a page permission (SEC_PERMISSION.PAGE_FK
-    // is NOT NULL, so no screenless dispatch permission can be seeded). Programmatic/event-driven
-    // dispatch with no principal is a future concern (internal trusted-caller pattern); the XM/event
-    // triggers are DEFERRED, so no principal-less caller exists yet.
+    // is NOT NULL, so no screenless dispatch permission can be seeded).
     @PreAuthorize("isAuthenticated()")
     public ServiceResult<DispatchResponse> dispatch(DispatchRequest request) {
+        return doDispatch(request);
+    }
+
+    /**
+     * Internal trusted-caller entry point (the pattern flagged as a future concern above, now that a
+     * principal-less caller exists): in-process {@code @EventListener}s such as
+     * {@link com.erp.notif.crossmodule.SecurityAuthEventListener} run with no HTTP principal (e.g. the
+     * public forgot-password flow), so they cannot go through {@link #dispatch}'s
+     * {@code isAuthenticated()} gate. Not exposed via any controller — callers within this JVM only.
+     *
+     * <p>REQUIRES_NEW is deliberate, not decorative: an {@code AFTER_COMMIT}
+     * {@code @TransactionalEventListener} (the only caller) runs while the just-committed outer
+     * transaction's synchronization is still winding down, so the default REQUIRED propagation
+     * silently "joins" it instead of opening a fresh one — {@code isNewTransaction()} comes back
+     * false, this method's own commit never fires, and the NOTIF_LOG row is dropped with no
+     * exception (confirmed empirically: the sequence advances, the row never appears). REQUIRES_NEW
+     * forces a genuinely independent transaction so the write actually commits.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public ServiceResult<DispatchResponse> dispatchSystem(DispatchRequest request) {
+        return doDispatch(request);
+    }
+
+    private ServiceResult<DispatchResponse> doDispatch(DispatchRequest request) {
         log.info("Dispatching notification: template={}, recipient={}, channels={}",
             request.getTemplateCode(), request.getRecipientId(), request.getChannelHint());
 

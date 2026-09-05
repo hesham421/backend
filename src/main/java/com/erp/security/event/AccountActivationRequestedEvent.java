@@ -11,5 +11,6 @@ public record AccountActivationRequestedEvent(
     Long userAccountId,
     String email,
     String rawToken,
-    LocalDateTime expiresAt) {
+    LocalDateTime expiresAt,
+    String preferredLangId) {
 }

@@ -101,7 +101,7 @@ public class UserService {
         activationTokenRepository.save(token);
 
         eventPublisher.publishEvent(new AccountActivationRequestedEvent(
-            saved.getId(), saved.getEmail(), rawToken, token.getExpiresAt()));
+            saved.getId(), saved.getEmail(), rawToken, token.getExpiresAt(), saved.getPreferredLangId()));
         log.info("Activation token issued for user ID: {}", saved.getId());
 
         return ServiceResult.success(mapper.toResponse(saved), Status.CREATED);

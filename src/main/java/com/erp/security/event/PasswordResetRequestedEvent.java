@@ -11,5 +11,6 @@ public record PasswordResetRequestedEvent(
     Long userAccountId,
     String email,
     String rawToken,
-    LocalDateTime expiresAt) {
+    LocalDateTime expiresAt,
+    String preferredLangId) {
 }
