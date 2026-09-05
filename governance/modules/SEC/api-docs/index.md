@@ -7,7 +7,7 @@ API version: `v0`
 
 ## Servers
 
-- http://localhost:7273
+- http://localhost:7272
 
 ## Common Headers
 
@@ -26,11 +26,11 @@ Schema: `PageRoleResponse`
 |---|---|---|---|---|
 | totalPages | integer (int32) | No |  |  |
 | totalElements | integer (int64) | No |  |  |
+| pageable | Pageablenull | No |  |  |
+| sort | Sortnull | No |  |  |
 | first | boolean | No |  |  |
 | last | boolean | No |  |  |
 | numberOfElements | integer (int32) | No |  |  |
-| pageable | Pageablenull | No |  |  |
-| sort | Sortnull | No |  |  |
 | size | integer (int32) | No |  |  |
 | number | integer (int32) | No |  |  |
 | empty | boolean | No |  |  |
@@ -47,36 +47,70 @@ Source: `com/erp/common/search/PageableBuilder.java`
 
 | Code | Value | Source | Status | HTTP Status |
 |---|---|---|---|---|
-| USER_ACCOUNT_FIELDS_REQUIRED | `USER_ACCOUNT_FIELDS_REQUIRED` | exception/SecErrorCodes.java | VALIDATION_ERROR |  |
-| USER_ACCOUNT_USERNAME_DUPLICATE | `USER_ACCOUNT_USERNAME_DUPLICATE` | exception/SecErrorCodes.java | ALREADY_EXISTS |  |
-| USER_ACCOUNT_EMAIL_DUPLICATE | `USER_ACCOUNT_EMAIL_DUPLICATE` | exception/SecErrorCodes.java | ALREADY_EXISTS |  |
-| USER_ACCOUNT_PASSWORD_COMPLEXITY | `USER_ACCOUNT_PASSWORD_COMPLEXITY` | exception/SecErrorCodes.java | VALIDATION_ERROR |  |
-| USER_ACCOUNT_PASSWORD_NOT_HASHED | `USER_ACCOUNT_PASSWORD_NOT_HASHED` | exception/SecErrorCodes.java | BUSINESS_RULE_VIOLATION |  |
-| USER_ACCOUNT_LOGIN_NOT_ACTIVE | `USER_ACCOUNT_LOGIN_NOT_ACTIVE` | exception/SecErrorCodes.java | BUSINESS_RULE_VIOLATION |  |
-| USER_ACCOUNT_INVALID_CREDENTIALS | `USER_ACCOUNT_INVALID_CREDENTIALS` | exception/SecErrorCodes.java | BUSINESS_RULE_VIOLATION |  |
-| USER_ACCOUNT_LOCKED | `USER_ACCOUNT_LOCKED` | exception/SecErrorCodes.java | BUSINESS_RULE_VIOLATION |  |
-| USER_ACCOUNT_INVALID_STATUS_TRANSITION | `USER_ACCOUNT_INVALID_STATUS_TRANSITION` | exception/SecErrorCodes.java | BUSINESS_RULE_VIOLATION |  |
-| USER_ACCOUNT_NOT_FOUND | `USER_ACCOUNT_NOT_FOUND` | exception/SecErrorCodes.java | NOT_FOUND |  |
-| ROLE_FIELDS_REQUIRED | `ROLE_FIELDS_REQUIRED` | exception/SecErrorCodes.java | VALIDATION_ERROR |  |
-| ROLE_CODE_DUPLICATE | `ROLE_CODE_DUPLICATE` | exception/SecErrorCodes.java | ALREADY_EXISTS |  |
-| MODULE_FIELDS_REQUIRED | `MODULE_FIELDS_REQUIRED` | exception/SecErrorCodes.java | VALIDATION_ERROR |  |
-| MODULE_CODE_DUPLICATE | `MODULE_CODE_DUPLICATE` | exception/SecErrorCodes.java | ALREADY_EXISTS |  |
-| MODULE_NOT_FOUND | `MODULE_NOT_FOUND` | exception/SecErrorCodes.java | NOT_FOUND |  |
-| ROLE_NOT_FOUND | `ROLE_NOT_FOUND` | exception/SecErrorCodes.java | NOT_FOUND |  |
-| PAGE_FIELDS_REQUIRED | `PAGE_FIELDS_REQUIRED` | exception/SecErrorCodes.java | VALIDATION_ERROR |  |
-| PAGE_CODE_DUPLICATE | `PAGE_CODE_DUPLICATE` | exception/SecErrorCodes.java | ALREADY_EXISTS |  |
-| PAGE_NOT_FOUND | `PAGE_NOT_FOUND` | exception/SecErrorCodes.java | NOT_FOUND |  |
-| PERMISSION_NOT_FOUND | `PERMISSION_NOT_FOUND` | exception/SecErrorCodes.java | NOT_FOUND |  |
-| PERMISSION_CODE_DUPLICATE | `PERMISSION_CODE_DUPLICATE` | exception/SecErrorCodes.java | ALREADY_EXISTS |  |
-| ROLE_PERMISSION_MODULE_NOT_GRANTED | `ROLE_PERMISSION_MODULE_NOT_GRANTED` | exception/SecErrorCodes.java | BUSINESS_RULE_VIOLATION |  |
-| ROLE_MODULE_REVOKE_HAS_DEPENDENTS | `ROLE_MODULE_REVOKE_HAS_DEPENDENTS` | exception/SecErrorCodes.java | CONFLICT |  |
-| REFRESH_TOKEN_EXPIRED | `REFRESH_TOKEN_EXPIRED` | exception/SecErrorCodes.java | BUSINESS_RULE_VIOLATION |  |
-| REFRESH_TOKEN_REVOKED | `REFRESH_TOKEN_REVOKED` | exception/SecErrorCodes.java | BUSINESS_RULE_VIOLATION |  |
-| PASSWORD_RESET_TOKEN_EXPIRED | `PASSWORD_RESET_TOKEN_EXPIRED` | exception/SecErrorCodes.java | BUSINESS_RULE_VIOLATION |  |
-| PASSWORD_RESET_TOKEN_USED | `PASSWORD_RESET_TOKEN_USED` | exception/SecErrorCodes.java | BUSINESS_RULE_VIOLATION |  |
-| ACCOUNT_ACTIVATION_TOKEN_EXPIRED | `ACCOUNT_ACTIVATION_TOKEN_EXPIRED` | exception/SecErrorCodes.java | BUSINESS_RULE_VIOLATION |  |
-| ACCOUNT_ACTIVATION_TOKEN_USED | `ACCOUNT_ACTIVATION_TOKEN_USED` | exception/SecErrorCodes.java | BUSINESS_RULE_VIOLATION |  |
-| LOOKUP_KEY_NOT_FOUND | `LOOKUP_KEY_NOT_FOUND` | exception/SecErrorCodes.java | NOT_FOUND |  |
+| VALIDATION_ERROR | `VALIDATION_ERROR` | com/erp/common/exception/CommonErrorCodes.java | VALIDATION_ERROR |  |
+| INTERNAL_ERROR | `INTERNAL_ERROR` | com/erp/common/exception/CommonErrorCodes.java | INTERNAL_ERROR |  |
+| APP_CONFIGURATION_KEY_DUPLICATE | `APP_CONFIGURATION_KEY_DUPLICATE` | com/erp/cu/exception/CuErrorCodes.java | ALREADY_EXISTS |  |
+| APP_CONFIGURATION_FIELDS_REQUIRED | `APP_CONFIGURATION_FIELDS_REQUIRED` | com/erp/cu/exception/CuErrorCodes.java | VALIDATION_ERROR |  |
+| APP_CONFIGURATION_KEY_IMMUTABLE | `APP_CONFIGURATION_KEY_IMMUTABLE` | com/erp/cu/exception/CuErrorCodes.java |  |  |
+| APP_CONFIGURATION_NOT_FOUND | `APP_CONFIGURATION_NOT_FOUND` | com/erp/cu/exception/CuErrorCodes.java | NOT_FOUND |  |
+| FILE_DOCUMENT_SIZE_EXCEEDED | `FILE_DOCUMENT_SIZE_EXCEEDED` | com/erp/file/exception/FileErrorCodes.java | PAYLOAD_TOO_LARGE |  |
+| FILE_DOCUMENT_TYPE_NOT_ALLOWED | `FILE_DOCUMENT_TYPE_NOT_ALLOWED` | com/erp/file/exception/FileErrorCodes.java | UNSUPPORTED_MEDIA_TYPE |  |
+| FILE_ACCESS_TOKEN_INVALID | `FILE_ACCESS_TOKEN_INVALID` | com/erp/file/exception/FileErrorCodes.java | UNAUTHORIZED |  |
+| FILE_DOCUMENT_OWNERSHIP_REQUIRED | `FILE_DOCUMENT_OWNERSHIP_REQUIRED` | com/erp/file/exception/FileErrorCodes.java | VALIDATION_ERROR |  |
+| FILE_CATEGORY_CODE_DUPLICATE | `FILE_CATEGORY_CODE_DUPLICATE` | com/erp/file/exception/FileErrorCodes.java | ALREADY_EXISTS |  |
+| FILE_CATEGORY_INACTIVE | `FILE_CATEGORY_INACTIVE` | com/erp/file/exception/FileErrorCodes.java | BUSINESS_RULE_VIOLATION |  |
+| FILE_LOOKUP_KEY_UNKNOWN | `FILE_LOOKUP_KEY_UNKNOWN` | com/erp/file/exception/FileErrorCodes.java | NOT_FOUND |  |
+| FILE_DOCUMENT_INVALID_TRANSITION | `FILE_DOCUMENT_INVALID_TRANSITION` | com/erp/file/exception/FileErrorCodes.java | BUSINESS_RULE_VIOLATION |  |
+| FILE_DOCUMENT_NOT_FOUND | `FILE_DOCUMENT_NOT_FOUND` | com/erp/file/exception/FileErrorCodes.java | NOT_FOUND |  |
+| FILE_CATEGORY_NOT_FOUND | `FILE_CATEGORY_NOT_FOUND` | com/erp/file/exception/FileErrorCodes.java | NOT_FOUND |  |
+| LOOKUP_TYPE_FIELDS_REQUIRED | `LOOKUP_TYPE_FIELDS_REQUIRED` | com/erp/mdm/exception/MdmErrorCodes.java | VALIDATION_ERROR |  |
+| LOOKUP_TYPE_CODE_DUPLICATE | `LOOKUP_TYPE_CODE_DUPLICATE` | com/erp/mdm/exception/MdmErrorCodes.java | ALREADY_EXISTS |  |
+| LOOKUP_TYPE_HAS_ACTIVE_VALUES | `LOOKUP_TYPE_HAS_ACTIVE_VALUES` | com/erp/mdm/exception/MdmErrorCodes.java | CONFLICT |  |
+| LOOKUP_VALUE_FIELDS_REQUIRED | `LOOKUP_VALUE_FIELDS_REQUIRED` | com/erp/mdm/exception/MdmErrorCodes.java | VALIDATION_ERROR |  |
+| LOOKUP_VALUE_CODE_DUPLICATE | `LOOKUP_VALUE_CODE_DUPLICATE` | com/erp/mdm/exception/MdmErrorCodes.java | ALREADY_EXISTS |  |
+| LOOKUP_TYPE_NOT_FOUND | `LOOKUP_TYPE_NOT_FOUND` | com/erp/mdm/exception/MdmErrorCodes.java | NOT_FOUND |  |
+| LOOKUP_VALUE_NOT_FOUND | `LOOKUP_VALUE_NOT_FOUND` | com/erp/mdm/exception/MdmErrorCodes.java | NOT_FOUND |  |
+| LOOKUP_TYPE_PARENT_NOT_FOUND | `LOOKUP_TYPE_PARENT_NOT_FOUND` | com/erp/mdm/exception/MdmErrorCodes.java | NOT_FOUND |  |
+| NOTIF_TEMPLATE_BILINGUAL_REQUIRED | `NOTIF_TEMPLATE_BILINGUAL_REQUIRED` | com/erp/notif/exception/NotifErrorCodes.java | VALIDATION_ERROR |  |
+| NOTIF_TEMPLATE_CODE_DUPLICATE | `NOTIF_TEMPLATE_CODE_DUPLICATE` | com/erp/notif/exception/NotifErrorCodes.java | ALREADY_EXISTS |  |
+| NOTIF_CHANNEL_CONFIG_DUPLICATE | `NOTIF_CHANNEL_CONFIG_DUPLICATE` | com/erp/notif/exception/NotifErrorCodes.java | ALREADY_EXISTS |  |
+| NOTIF_LOG_INVALID_TRANSITION | `NOTIF_LOG_INVALID_TRANSITION` | com/erp/notif/exception/NotifErrorCodes.java | BUSINESS_RULE_VIOLATION |  |
+| NOTIF_CHANNEL_TYPE_REQUIRED | `NOTIF_CHANNEL_TYPE_REQUIRED` | com/erp/notif/exception/NotifErrorCodes.java | VALIDATION_ERROR |  |
+| NOTIF_TEMPLATE_INACTIVE | `NOTIF_TEMPLATE_INACTIVE` | com/erp/notif/exception/NotifErrorCodes.java | BUSINESS_RULE_VIOLATION |  |
+| NOTIF_TEMPLATE_NOT_FOUND | `NOTIF_TEMPLATE_NOT_FOUND` | com/erp/notif/exception/NotifErrorCodes.java | NOT_FOUND |  |
+| NOTIF_CHANNEL_CONFIG_NOT_FOUND | `NOTIF_CHANNEL_CONFIG_NOT_FOUND` | com/erp/notif/exception/NotifErrorCodes.java | NOT_FOUND |  |
+| NOTIF_LOG_NOT_FOUND | `NOTIF_LOG_NOT_FOUND` | com/erp/notif/exception/NotifErrorCodes.java | NOT_FOUND |  |
+| NOTIF_LOOKUP_KEY_UNKNOWN | `NOTIF_LOOKUP_KEY_UNKNOWN` | com/erp/notif/exception/NotifErrorCodes.java | NOT_FOUND |  |
+| USER_ACCOUNT_FIELDS_REQUIRED | `USER_ACCOUNT_FIELDS_REQUIRED` | com/erp/security/exception/SecErrorCodes.java | VALIDATION_ERROR |  |
+| USER_ACCOUNT_USERNAME_DUPLICATE | `USER_ACCOUNT_USERNAME_DUPLICATE` | com/erp/security/exception/SecErrorCodes.java | ALREADY_EXISTS |  |
+| USER_ACCOUNT_EMAIL_DUPLICATE | `USER_ACCOUNT_EMAIL_DUPLICATE` | com/erp/security/exception/SecErrorCodes.java | ALREADY_EXISTS |  |
+| USER_ACCOUNT_PASSWORD_COMPLEXITY | `USER_ACCOUNT_PASSWORD_COMPLEXITY` | com/erp/security/exception/SecErrorCodes.java | VALIDATION_ERROR |  |
+| USER_ACCOUNT_PASSWORD_NOT_HASHED | `USER_ACCOUNT_PASSWORD_NOT_HASHED` | com/erp/security/exception/SecErrorCodes.java | BUSINESS_RULE_VIOLATION |  |
+| USER_ACCOUNT_LOGIN_NOT_ACTIVE | `USER_ACCOUNT_LOGIN_NOT_ACTIVE` | com/erp/security/exception/SecErrorCodes.java | BUSINESS_RULE_VIOLATION |  |
+| USER_ACCOUNT_INVALID_CREDENTIALS | `USER_ACCOUNT_INVALID_CREDENTIALS` | com/erp/security/exception/SecErrorCodes.java | BUSINESS_RULE_VIOLATION |  |
+| USER_ACCOUNT_LOCKED | `USER_ACCOUNT_LOCKED` | com/erp/security/exception/SecErrorCodes.java | BUSINESS_RULE_VIOLATION |  |
+| USER_ACCOUNT_INVALID_STATUS_TRANSITION | `USER_ACCOUNT_INVALID_STATUS_TRANSITION` | com/erp/security/exception/SecErrorCodes.java | BUSINESS_RULE_VIOLATION |  |
+| USER_ACCOUNT_NOT_FOUND | `USER_ACCOUNT_NOT_FOUND` | com/erp/security/exception/SecErrorCodes.java | NOT_FOUND |  |
+| ROLE_FIELDS_REQUIRED | `ROLE_FIELDS_REQUIRED` | com/erp/security/exception/SecErrorCodes.java | VALIDATION_ERROR |  |
+| ROLE_CODE_DUPLICATE | `ROLE_CODE_DUPLICATE` | com/erp/security/exception/SecErrorCodes.java | ALREADY_EXISTS |  |
+| MODULE_FIELDS_REQUIRED | `MODULE_FIELDS_REQUIRED` | com/erp/security/exception/SecErrorCodes.java | VALIDATION_ERROR |  |
+| MODULE_CODE_DUPLICATE | `MODULE_CODE_DUPLICATE` | com/erp/security/exception/SecErrorCodes.java | ALREADY_EXISTS |  |
+| MODULE_NOT_FOUND | `MODULE_NOT_FOUND` | com/erp/security/exception/SecErrorCodes.java | NOT_FOUND |  |
+| ROLE_NOT_FOUND | `ROLE_NOT_FOUND` | com/erp/security/exception/SecErrorCodes.java | NOT_FOUND |  |
+| PAGE_FIELDS_REQUIRED | `PAGE_FIELDS_REQUIRED` | com/erp/security/exception/SecErrorCodes.java | VALIDATION_ERROR |  |
+| PAGE_CODE_DUPLICATE | `PAGE_CODE_DUPLICATE` | com/erp/security/exception/SecErrorCodes.java | ALREADY_EXISTS |  |
+| PAGE_NOT_FOUND | `PAGE_NOT_FOUND` | com/erp/security/exception/SecErrorCodes.java | NOT_FOUND |  |
+| PERMISSION_NOT_FOUND | `PERMISSION_NOT_FOUND` | com/erp/security/exception/SecErrorCodes.java | NOT_FOUND |  |
+| PERMISSION_CODE_DUPLICATE | `PERMISSION_CODE_DUPLICATE` | com/erp/security/exception/SecErrorCodes.java | ALREADY_EXISTS |  |
+| ROLE_PERMISSION_MODULE_NOT_GRANTED | `ROLE_PERMISSION_MODULE_NOT_GRANTED` | com/erp/security/exception/SecErrorCodes.java | BUSINESS_RULE_VIOLATION |  |
+| ROLE_MODULE_REVOKE_HAS_DEPENDENTS | `ROLE_MODULE_REVOKE_HAS_DEPENDENTS` | com/erp/security/exception/SecErrorCodes.java | CONFLICT |  |
+| REFRESH_TOKEN_EXPIRED | `REFRESH_TOKEN_EXPIRED` | com/erp/security/exception/SecErrorCodes.java | BUSINESS_RULE_VIOLATION |  |
+| REFRESH_TOKEN_REVOKED | `REFRESH_TOKEN_REVOKED` | com/erp/security/exception/SecErrorCodes.java | BUSINESS_RULE_VIOLATION |  |
+| PASSWORD_RESET_TOKEN_EXPIRED | `PASSWORD_RESET_TOKEN_EXPIRED` | com/erp/security/exception/SecErrorCodes.java | BUSINESS_RULE_VIOLATION |  |
+| PASSWORD_RESET_TOKEN_USED | `PASSWORD_RESET_TOKEN_USED` | com/erp/security/exception/SecErrorCodes.java | BUSINESS_RULE_VIOLATION |  |
+| ACCOUNT_ACTIVATION_TOKEN_EXPIRED | `ACCOUNT_ACTIVATION_TOKEN_EXPIRED` | com/erp/security/exception/SecErrorCodes.java | BUSINESS_RULE_VIOLATION |  |
+| ACCOUNT_ACTIVATION_TOKEN_USED | `ACCOUNT_ACTIVATION_TOKEN_USED` | com/erp/security/exception/SecErrorCodes.java | BUSINESS_RULE_VIOLATION |  |
+| LOOKUP_KEY_NOT_FOUND | `LOOKUP_KEY_NOT_FOUND` | com/erp/security/exception/SecErrorCodes.java | NOT_FOUND |  |
 
 
 ## API Catalog
@@ -138,6 +172,7 @@ Source: `com/erp/common/search/PageableBuilder.java`
 | POST | `/api/v1/security/auth/login` | Login | [login](endpoints/authentication.md#post-apiv1securityauthlogin) |
 | POST | `/api/v1/security/auth/forgot-password` | Forgot password | [forgotPassword](endpoints/authentication.md#post-apiv1securityauthforgot-password) |
 | POST | `/api/v1/security/auth/activate` | Activate account | [activate](endpoints/authentication.md#post-apiv1securityauthactivate) |
+| GET | `/api/v1/security/auth/me` | Self identity, roles and granted modules/permissions | [me](endpoints/authentication.md#get-apiv1securityauthme) |
 
 ### Permission Registry
 
@@ -150,6 +185,7 @@ Source: `com/erp/common/search/PageableBuilder.java`
 | Method | Path | Summary | Doc |
 |---|---|---|---|
 | GET | `/api/v1/security/me/modules` | List my dashboard modules | [modules](endpoints/current-user-dashboard.md#get-apiv1securitymemodules) |
+| GET | `/api/v1/security/me/menu` | Self nested navigation menu tree | [menu](endpoints/current-user-dashboard.md#get-apiv1securitymemenu) |
 
 ### Security Lookups
 

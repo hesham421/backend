@@ -9,6 +9,7 @@
 - [POST /api/v1/security/auth/login](#post-apiv1securityauthlogin)
 - [POST /api/v1/security/auth/forgot-password](#post-apiv1securityauthforgot-password)
 - [POST /api/v1/security/auth/activate](#post-apiv1securityauthactivate)
+- [GET /api/v1/security/auth/me](#get-apiv1securityauthme)
 
 ## POST /api/v1/security/auth/reset-password
 
@@ -285,3 +286,54 @@ Shape: `ApiResponseVoid`
 | error.fieldErrors[].field | string | No |  |  |
 | error.fieldErrors[].message | string | No |  |  |
 | timestamp | string (date-time) | No |  |  |
+
+## GET /api/v1/security/auth/me
+
+**Self identity, roles and granted modules/permissions**
+
+الهوية الذاتية والأدوار والموديولات/الصلاحيات الممنوحة للمستخدم الحالي
+
+Operation ID: `me`
+
+**Authentication**
+
+Not determined from the OpenAPI document.
+
+### Response `200` — OK
+
+Shape: `ApiResponseMeResponse`
+
+| Field | Type | Required | Constraints | Description | Example |
+|---|---|---|---|---|---|
+| success | boolean | No |  |  |  |
+| data | MeResponse | No |  | Current authenticated user's self identity, roles and grants - الهوية الذاتية للمستخدم الحالي وأدواره وصلاحياته |  |
+| data.username | string | No |  | Username of the authenticated caller - اسم مستخدم المستدعي المصادَق عليه | admin |
+| data.fullName | string | No |  | Full name of the authenticated caller - الاسم الكامل للمستدعي | System Administrator |
+| data.roleCodes | array<string> | No |  | Codes of the caller's currently active roles (union) - رموز الأدوار النشطة للمستخدم (اتحاد) | ['SEC_ADMIN'] |
+| data.roleNames | array<string> | No |  | Names of the caller's currently active roles (union) - أسماء الأدوار النشطة للمستخدم (اتحاد) | ['Security Administrator'] |
+| data.grantedModules | array<string> | No |  | Codes of the modules granted to the caller across all active roles (Tier-1 union) - رموز الموديولات الممنوحة عبر كل الأدوار النشطة | ['SEC'] |
+| data.grantedPermissions | array<string> | No |  | Codes of the permissions granted to the caller across all active roles (Tier-2 union) - رموز الصلاحيات الممنوحة عبر كل الأدوار النشطة | ['PERM_SEC_ROLES_VIEW'] |
+| error | ApiError | No |  |  |  |
+| error.code | string | No |  |  |  |
+| error.message | string | No |  |  |  |
+| error.fieldErrors | array<FieldErrorItem> | No |  |  |  |
+| error.fieldErrors[].field | string | No |  |  |  |
+| error.fieldErrors[].message | string | No |  |  |  |
+| timestamp | string (date-time) | No |  |  |  |
+
+**Response Example**
+
+_(partial — only fields with a documented example are shown)_
+
+```json
+{
+  "data": {
+    "username": "admin",
+    "fullName": "System Administrator",
+    "roleCodes": "['SEC_ADMIN']",
+    "roleNames": "['Security Administrator']",
+    "grantedModules": "['SEC']",
+    "grantedPermissions": "['PERM_SEC_ROLES_VIEW']"
+  }
+}
+```
