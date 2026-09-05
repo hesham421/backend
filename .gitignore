@@ -1,6 +1,4 @@
 # Environment variables (contains real secrets — never commit)
-.env
-.env.local
 
 # OS files
 .DS_Store

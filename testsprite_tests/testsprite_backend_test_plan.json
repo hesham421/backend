@@ -1,0 +1,102 @@
+[
+  {
+    "id": "TC001",
+    "title": "post api v1 security auth login with valid credentials",
+    "description": "Verify that POST /api/v1/security/auth/login with valid admin/admin credentials returns 200 with a valid access token and refresh token."
+  },
+  {
+    "id": "TC002",
+    "title": "post api v1 security auth login with invalid credentials",
+    "description": "Verify that POST /api/v1/security/auth/login with a wrong password returns 401 Unauthorized and does not leak whether the username exists."
+  },
+  {
+    "id": "TC003",
+    "title": "post api v1 security auth refresh with valid refresh token",
+    "description": "Verify that POST /api/v1/security/auth/refresh with a valid refresh token returns 200 with a new access token, and that a reused/rotated old refresh token is rejected."
+  },
+  {
+    "id": "TC004",
+    "title": "post api v1 security auth logout requires authentication",
+    "description": "Verify that POST /api/v1/security/auth/logout without a bearer token returns 401, and with a valid bearer token returns 204 and invalidates the refresh token."
+  },
+  {
+    "id": "TC005",
+    "title": "post api v1 security auth forgot password neutral response",
+    "description": "Verify that POST /api/v1/security/auth/forgot-password returns the same neutral 202 response for both an existing and a non-existing email, to prevent account enumeration."
+  },
+  {
+    "id": "TC006",
+    "title": "access protected endpoint without token returns 401",
+    "description": "Verify that GET /api/v1/security/me/modules without an Authorization header returns 401 Unauthorized, confirming the JWT filter protects non-public endpoints."
+  },
+  {
+    "id": "TC007",
+    "title": "get api v1 security me modules with bearer token",
+    "description": "Verify that GET /api/v1/security/me/modules with a valid bearer token returns 200 with the current user's granted dashboard modules."
+  },
+  {
+    "id": "TC008",
+    "title": "post api v1 security users create requires permission",
+    "description": "Verify that POST /api/v1/security/users with a token lacking PERM_SEC_USERS_CREATE returns 403 Forbidden, and with an authorized admin token returns 201 with the created user."
+  },
+  {
+    "id": "TC009",
+    "title": "post api v1 security roles crud and permission assignment",
+    "description": "Verify creating a role via POST /api/v1/security/roles returns 201, then granting a Tier-2 permission via POST /api/v1/security/roles/{id}/permissions returns 200/204 and GET /api/v1/security/roles/{id}/permissions reflects the grant."
+  },
+  {
+    "id": "TC010",
+    "title": "delete api v1 security roles deactivate soft delete",
+    "description": "Verify that DELETE /api/v1/security/roles/{id} performs a soft deactivation (204), and the role no longer appears as active on subsequent GET/search."
+  },
+  {
+    "id": "TC011",
+    "title": "get api v1 security permissions list",
+    "description": "Verify that GET /api/v1/security/permissions with valid query params (page, size) returns 200 with a paginated list, and requires PERM_SEC_ROLES_VIEW."
+  },
+  {
+    "id": "TC012",
+    "title": "post api v1 security modules create and search",
+    "description": "Verify POST /api/v1/security/modules creates a Tier-1 module (201), and POST /api/v1/security/modules/search returns it in results."
+  },
+  {
+    "id": "TC013",
+    "title": "post api v1 common configurations crud lifecycle",
+    "description": "Verify POST /api/v1/common/configurations creates a config (201), GET /api/v1/common/configurations/{key} retrieves it (200), PUT updates its value (200), and DELETE deactivates it (204)."
+  },
+  {
+    "id": "TC014",
+    "title": "post api v1 common configurations without auth returns 401",
+    "description": "Verify that POST /api/v1/common/configurations without a bearer token returns 401 Unauthorized."
+  },
+  {
+    "id": "TC015",
+    "title": "post api v1 common configurations duplicate key conflict",
+    "description": "Verify that creating a configuration with a key that already exists returns a validation/conflict error rather than a duplicate silently succeeding."
+  },
+  {
+    "id": "TC016",
+    "title": "post api v1 files categories create and search",
+    "description": "Verify POST /api/v1/files/categories creates a file category (201) and POST /api/v1/files/categories/search returns it."
+  },
+  {
+    "id": "TC017",
+    "title": "post api v1 files upload get metadata and access token flow",
+    "description": "Verify POST /api/v1/files (multipart) uploads a file (201), GET /api/v1/files/{id} returns its metadata (200), POST /api/v1/files/{id}/access-token issues a token, and GET /api/v1/files/download?token= returns the file bytes (200)."
+  },
+  {
+    "id": "TC018",
+    "title": "get api v1 files download with invalid or expired token returns error",
+    "description": "Verify that GET /api/v1/files/download with a missing, invalid, or expired token returns 401/404 rather than leaking file bytes."
+  },
+  {
+    "id": "TC019",
+    "title": "delete api v1 files archive and delete actions",
+    "description": "Verify DELETE /api/v1/files/{id}?action=ARCHIVE requires PERM_FILE_BROWSER_UPDATE and DELETE /api/v1/files/{id}?action=DELETE requires PERM_FILE_BROWSER_DELETE, each returning 204 on success and 403 when the caller lacks the specific authority."
+  },
+  {
+    "id": "TC020",
+    "title": "post api v1 notifications dispatch success",
+    "description": "Verify that POST /api/v1/notifications/dispatch with valid authentication, valid channelHint, and active recipient returns 200 with dispatch accepted and creates per-channel logs. Then verify GET /api/v1/notifications/logs/{id} returns 200 with correct delivery statuses such as SENT or PENDING."
+  }
+]
