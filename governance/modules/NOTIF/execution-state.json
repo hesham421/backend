@@ -1,64 +1,64 @@
 {
   "module": "NOTIF",
   "generated_at": "2026-09-04",
-  "current_phase": "CORE",
-  "current_sub": "CORE",
+  "current_phase": "backend-test",
+  "current_sub": "RULE-SCENARIOS",
   "api_docs_path": "governance/modules/NOTIF/api-docs/",
   "phases": [
     {
       "id": "CORE",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "CORE", "status": "PENDING" }
+        { "id": "CORE", "status": "COMPLETE" }
       ]
     },
     {
       "id": "DATA-DOM",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "DATA-DOM", "status": "PENDING" }
+        { "id": "DATA-DOM", "status": "COMPLETE" }
       ]
     },
     {
       "id": "SVC-API",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "SVC-API", "status": "PENDING" }
+        { "id": "SVC-API", "status": "COMPLETE" }
       ]
     },
     {
       "id": "DOC",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "DOC", "status": "PENDING" }
+        { "id": "DOC", "status": "COMPLETE" }
       ]
     },
     {
       "id": "INT-C",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "INT-C", "status": "PENDING" }
+        { "id": "INT-C", "status": "COMPLETE" }
       ]
     },
     {
       "id": "INT-R",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "INT-R", "status": "PENDING" }
+        { "id": "INT-R", "status": "COMPLETE" }
       ]
     },
     {
       "id": "SEC-BE",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "SEC-BE", "status": "PENDING" }
+        { "id": "SEC-BE", "status": "COMPLETE" }
       ]
     },
     {
       "id": "ALIGN-BE",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "ALIGN-BE", "status": "PENDING" }
+        { "id": "ALIGN-BE", "status": "COMPLETE" }
       ]
     }
   ],
@@ -73,6 +73,87 @@
     ]
   },
   "blocked": [],
-  "deferred_xm": [],
-  "api_doc_gaps": []
+  "deferred_xm": [
+    {
+      "id": "XM-NOTIF-001",
+      "phase": "SVC-API",
+      "target_module": "SEC",
+      "detail": "Recipient-active check (RULE-NOTIF-007). SEC exposes no crossmodule interface. Implemented NOTIF-owned port RecipientStatusReader with a DefaultRecipientStatusReader stub returning true. Marked // TODO: XM-NOTIF-001 DEFERRED.",
+      "resolution": "Replace stub with SEC crossmodule UserAccount status reader when SEC exposes one.",
+      "runtime_verdict": "DEFERRED, NOT READY (INT-R gate, 2026-09-05). INT-R.md's 'READY ✓' is aspirational; reality verified: no src/main/java/com/erp/security/crossmodule/ package exists, so the recipient-active check runs against DefaultRecipientStatusReader which always returns true. Non-blocking for NOTIF's own runtime — fallback treats the recipient as active. Unblock condition: SEC must expose a crossmodule UserAccount-status reader, then replace DefaultRecipientStatusReader with it."
+    },
+    {
+      "id": "XM-NOTIF-002",
+      "phase": "SVC-API",
+      "target_module": "FILE",
+      "detail": "attachmentFileId validation via FILE FileService. FILE module does not exist. attachmentFileId accepted as-is; validation site marked // TODO: XM-NOTIF-002 DEFERRED in NotificationTemplateService.create and DispatchService.dispatch.",
+      "resolution": "Validate attachmentFileId via FILE FileService when FILE module is built.",
+      "runtime_verdict": "DEFERRED, NOT READY (INT-R gate, 2026-09-05). INT-R.md's 'READY ✓' is aspirational; reality verified: no src/main/java/com/erp/file/ package exists, so attachment validation is skipped and attachmentFileId is accepted without a FileService check. Non-blocking for NOTIF's own runtime — fallback omits/accepts the attachment (nullable). Unblock condition: build the FILE module, then wire FileService validation of attachmentFileId at the marked sites."
+    }
+  ],
+  "api_doc_gaps": [
+    {
+      "type": "MAPPING_GAP",
+      "phase": "SVC-API",
+      "sub": "SVC-API",
+      "endpoint": "POST /api/v1/notifications/logs/search, POST /api/v1/notifications/templates/search, POST /api/v1/notifications/channels/search",
+      "detail": "Plan/SRS specified GET-with-query for log query (API-NOTIF-002) and list/search of templates/channels. Implemented as POST /search with a request body.",
+      "resolution": "Binding build-create-controller A.6.6 forbids GET-search; the shared search contract is POST-body-only. Same resolution MDM applied for API-MDM-002/007. Skill outranks plan.",
+      "recorded_at": "2026-09-05"
+    },
+    {
+      "type": "ABSENT",
+      "phase": "SVC-API",
+      "sub": "SVC-API",
+      "endpoint": "POST /api/v1/notifications/dispatch",
+      "detail": "Plan/DB-script marked XM-NOTIF-001 (recipient-active via SEC) READY, but SEC has no crossmodule surface to read UserAccount status.",
+      "resolution": "Deferred with a NOTIF-owned RecipientStatusReader port + stub returning true (RULE-NOTIF-007 assumes active). Replace when SEC exposes a crossmodule reader.",
+      "recorded_at": "2026-09-05"
+    },
+    {
+      "type": "ABSENT",
+      "phase": "SVC-API",
+      "sub": "SVC-API",
+      "endpoint": "POST /api/v1/notifications/templates, POST /api/v1/notifications/dispatch",
+      "detail": "Plan/DB-script marked XM-NOTIF-002 (attachmentFileId via FILE FileService) READY, but the FILE module does not exist.",
+      "resolution": "Deferred; attachmentFileId accepted without validation, site marked with a TODO. Replace when FILE is built.",
+      "recorded_at": "2026-09-05"
+    },
+    {
+      "type": "MAPPING_GAP",
+      "phase": "SVC-API",
+      "sub": "SVC-API",
+      "endpoint": "com.erp.notif.crossmodule.NotificationDispatchApi",
+      "detail": "Plan/SRS specified an in-process CU NotificationEvent listener as the dispatch trigger. Implemented a NOTIF crossmodule interface (NotificationDispatchApi + DispatchCommand) instead; other modules call it rather than NOTIF listening to their internal events.",
+      "resolution": "build-create-service forbids listening to another module's internal event type (and CU NotificationEvent does not exist). Skill outranks plan.",
+      "recorded_at": "2026-09-05"
+    },
+    {
+      "type": "MAPPING_GAP",
+      "phase": "SVC-API",
+      "sub": "SVC-API",
+      "endpoint": "POST /api/v1/notifications/dispatch",
+      "detail": "Plan specified HTTP 202 for dispatch. Implemented returns HTTP 200.",
+      "resolution": "The shared ServiceResult/Status taxonomy + OperationCode express only 200/201, and common is out of scope for this sub to modify. Returned Status.SUCCESS (200); revisit if an ACCEPTED status is added to the shared taxonomy.",
+      "recorded_at": "2026-09-05"
+    },
+    {
+      "type": "NAMING_MISMATCH",
+      "phase": "SEC-BE",
+      "sub": "SEC-BE",
+      "endpoint": "SEC_PERMISSION.PERMISSION_CODE + com.erp.security.permission.PermissionConstants (NOTIF templates/channels)",
+      "detail": "SVC-API declared the NOTIF constants with SINGULAR nouns (PERM_NOTIF_TEMPLATE_*, PERM_NOTIF_CHANNEL_*) while the page_codes are PLURAL (NOTIF_TEMPLATES/NOTIF_CHANNELS); runtime-generated + V7-seeded codes are PLURAL (PERM_<PAGE_CODE>_<TYPE>), so every template/channel endpoint would have 403'd.",
+      "resolution": "RESOLVED. Renamed the 8 constants and their string VALUES to the PLURAL page-code-derived form (PERM_NOTIF_TEMPLATES_*, PERM_NOTIF_CHANNELS_*) and updated all @PreAuthorize refs in NotificationTemplateService/NotificationChannelConfigService; V7 seeds PERMISSION_CODE identical to these constants. PERM_NOTIF_LOG_VIEW already matched. Compile passes; grep for old singular names returns nothing.",
+      "recorded_at": "2026-09-05"
+    },
+    {
+      "type": "MAPPING_GAP",
+      "phase": "SEC-BE",
+      "sub": "SEC-BE",
+      "endpoint": "POST /api/v1/notifications/dispatch (DispatchService.dispatch)",
+      "detail": "SVC-API gated dispatch with @PreAuthorize hasAuthority(PERM_NOTIF_DISPATCH), but dispatch (API-NOTIF-001, RULE-NOTIF-005) is behind the Security filter with no management screen and SEC_PERMISSION.PAGE_FK is NOT NULL — so no PERM_NOTIF_DISPATCH row can be seeded, meaning the gate would always deny.",
+      "resolution": "RESOLVED. Re-gated dispatch to @PreAuthorize(\"isAuthenticated()\") (any authenticated principal, matching 'behind the Security filter'); removed the unused PERM_NOTIF_DISPATCH constant and dropped its crossmodule javadoc references; no dispatch permission is seeded in V7. Programmatic/event-driven dispatch with no principal (internal trusted-caller pattern) is a future concern — the XM/event triggers are DEFERRED, so no principal-less caller exists yet.",
+      "recorded_at": "2026-09-05"
+    }
+  ]
 }

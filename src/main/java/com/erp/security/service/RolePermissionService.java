@@ -4,15 +4,18 @@ import com.erp.common.domain.status.ServiceResult;
 import com.erp.common.domain.status.Status;
 import com.erp.common.exception.LocalizedException;
 import com.erp.security.domain.AuthorizationGrantDomainService;
+import com.erp.security.dto.PermissionResponse;
 import com.erp.security.entity.Permission;
 import com.erp.security.entity.RoleModuleId;
 import com.erp.security.entity.RolePermission;
 import com.erp.security.entity.RolePermissionId;
 import com.erp.security.exception.SecErrorCodes;
+import com.erp.security.mapper.PermissionMapper;
 import com.erp.security.repository.PermissionRepository;
 import com.erp.security.repository.RoleModuleRepository;
 import com.erp.security.repository.RolePermissionRepository;
 import com.erp.security.repository.RoleRepository;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -35,6 +38,26 @@ public class RolePermissionService {
     private final PermissionRepository permissionRepository;
     private final RoleModuleRepository roleModuleRepository;
     private final RolePermissionRepository rolePermissionRepository;
+    private final PermissionMapper permissionMapper;
+
+    /**
+     * The Tier-2 screen permissions currently granted to a role — read counterpart of grant/revoke,
+     * used to pre-populate the role screen's permission picker in edit mode. Validates the role
+     * exists (absent → ERR-0012 NOT_FOUND); an empty grant set is valid → {@code []}.
+     */
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasAuthority(T(com.erp.security.permission.PermissionConstants).PERM_SEC_ROLES_VIEW)")
+    public ServiceResult<List<PermissionResponse>> getPermissions(Long roleId) {
+        log.debug("Fetching granted permissions for Role ID: {}", roleId);
+        requireRole(roleId);
+
+        List<PermissionResponse> permissions = rolePermissionRepository.findPermissionsByRoleId(roleId)
+            .stream()
+            .map(permissionMapper::toResponse)
+            .toList();
+
+        return ServiceResult.success(permissions);
+    }
 
     /**
      * API-SEC-015 grant — validate the role and permission exist (absent → ERR-0012 NOT_FOUND),

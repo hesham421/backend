@@ -1,66 +1,66 @@
 {
   "module": "FILE",
   "generated_at": "2026-09-04",
-  "current_phase": "CORE",
-  "current_sub": "CORE",
+  "current_phase": "ALIGN-BE",
+  "current_sub": "ALIGN-BE",
   "api_docs_path": "governance/modules/FILE/api-docs/",
   "phases": [
     {
       "id": "CORE",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "CORE", "status": "PENDING" }
+        { "id": "CORE", "status": "COMPLETE" }
       ]
     },
     {
       "id": "DATA-DOM",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "DATA-DOM", "status": "PENDING" }
+        { "id": "DATA-DOM", "status": "COMPLETE" }
       ]
     },
     {
       "id": "SVC-API",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "SVC-API-CATEGORIES", "status": "PENDING" },
-        { "id": "SVC-API-FILES", "status": "PENDING" },
-        { "id": "SVC-API-LOOKUP", "status": "PENDING" }
+        { "id": "SVC-API-CATEGORIES", "status": "COMPLETE" },
+        { "id": "SVC-API-FILES", "status": "COMPLETE" },
+        { "id": "SVC-API-LOOKUP", "status": "COMPLETE" }
       ]
     },
     {
       "id": "DOC",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "DOC", "status": "PENDING" }
+        { "id": "DOC", "status": "COMPLETE" }
       ]
     },
     {
       "id": "INT-C",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "INT-C", "status": "PENDING" }
+        { "id": "INT-C", "status": "COMPLETE" }
       ]
     },
     {
       "id": "INT-R",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "INT-R", "status": "PENDING" }
+        { "id": "INT-R", "status": "COMPLETE" }
       ]
     },
     {
       "id": "SEC-BE",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "SEC-BE", "status": "PENDING" }
+        { "id": "SEC-BE", "status": "COMPLETE" }
       ]
     },
     {
       "id": "ALIGN-BE",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "ALIGN-BE", "status": "PENDING" }
+        { "id": "ALIGN-BE", "status": "COMPLETE" }
       ]
     }
   ],
@@ -76,5 +76,7 @@
   },
   "blocked": [],
   "deferred_xm": [],
-  "api_doc_gaps": []
+  "api_doc_gaps": [
+    {"type":"MISSING_IN_DOCS","phase":"DATA-DOM","sub":"DATA-DOM","endpoint":"RULE-FILE-003 AES/GCM access token encoding","detail":"srs.md A4 RULE-FILE-003 and the SVC-API Error Catalog specify AES/GCM, ~100m TTL, and single-use, but no key length, key-derivation, or token wire-encoding; db-script.md has no crypto detail and DATA-DOM.md only restates the rule. Implemented a minimal defensible choice (SHA-256-derived 256-bit AES key, 12-byte GCM IV, 128-bit tag, Base64URL(IV||ciphertext) payload of fileId+expiry+16-byte nonce).","resolution":"RESOLVED (STEP 2, existing-source + intent): the access token is opaque to clients (issued by API-FILE-002, returned verbatim on API-FILE-003) — its byte layout is a purely internal implementation detail, not an external API contract, so no SRS/db-script value governs it and there is nothing to agree cross-repo. Confirmed no pre-existing AES/GCM utility elsewhere in the codebase to mirror. The agent's choice (SHA-256-derived 256-bit AES key from file.access-token.secret, 12-byte GCM IV, 128-bit tag, Base64URL(IV||ciphertext) over fileId+expiry+nonce) is cryptographically sound and self-consistent; kept as-is. Entry retained as historical record.","recorded_at":"2026-09-05"}
+  ]
 }

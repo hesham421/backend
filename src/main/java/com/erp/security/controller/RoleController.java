@@ -2,6 +2,8 @@ package com.erp.security.controller;
 
 import com.erp.common.web.ApiResponse;
 import com.erp.common.web.OperationCode;
+import com.erp.security.dto.ModuleResponse;
+import com.erp.security.dto.PermissionResponse;
 import com.erp.security.dto.RoleCreateRequest;
 import com.erp.security.dto.RoleModuleAssignRequest;
 import com.erp.security.dto.RolePermissionGrantRequest;
@@ -14,6 +16,7 @@ import com.erp.security.service.RoleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -101,6 +104,12 @@ public class RoleController {
         return operationCode.craftResponse(roleModuleService.revokeModule(id, moduleId));
     }
 
+    @GetMapping("/{id}/modules")
+    @Operation(summary = "List role's granted modules", description = "موديولات الدور الممنوحة (Tier-1)")
+    public ResponseEntity<ApiResponse<List<ModuleResponse>>> getModules(@PathVariable Long id) {
+        return operationCode.craftResponse(roleModuleService.getModules(id));
+    }
+
     @PostMapping("/{id}/permissions")
     @Operation(summary = "Grant permission to role", description = "منح صلاحية شاشة لدور (Tier-2)")
     public ResponseEntity<ApiResponse<Void>> grantPermission(
@@ -115,5 +124,11 @@ public class RoleController {
             @PathVariable Long id,
             @PathVariable Long permissionId) {
         return operationCode.craftResponse(rolePermissionService.revoke(id, permissionId));
+    }
+
+    @GetMapping("/{id}/permissions")
+    @Operation(summary = "List role's granted permissions", description = "صلاحيات الدور الممنوحة (Tier-2)")
+    public ResponseEntity<ApiResponse<List<PermissionResponse>>> getPermissions(@PathVariable Long id) {
+        return operationCode.craftResponse(rolePermissionService.getPermissions(id));
     }
 }

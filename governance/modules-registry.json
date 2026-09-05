@@ -35,6 +35,15 @@
         1
       ],
       "current_version": 1
+    },
+    "MDM": {
+      "code": "MDM",
+      "description": "Master Data",
+      "registered_at": "2026-09-04T18:45:03.255575",
+      "versions": [
+        1
+      ],
+      "current_version": 1
     }
   }
 }

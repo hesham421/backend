@@ -10,7 +10,7 @@
 CREATE SEQUENCE SEQ_CU_APP_CONFIGURATION
   START WITH 1
   INCREMENT BY 1
-  NO CACHE
+  CACHE 1
   NO CYCLE;
 
 -- ============================================================

@@ -49,4 +49,54 @@ public final class PermissionConstants {
     public static final String PERM_SEC_PAGE_REGISTRY_CREATE = "PERM_SEC_PAGE_REGISTRY_CREATE";
     public static final String PERM_SEC_PAGE_REGISTRY_UPDATE = "PERM_SEC_PAGE_REGISTRY_UPDATE";
     public static final String PERM_SEC_PAGE_REGISTRY_DELETE = "PERM_SEC_PAGE_REGISTRY_DELETE";
+
+    // --- Master Data (MDM) — SCR-MDM-001 Reference Data Lookup Mgmt (ENTITY-MDM-001) -
+    // page_code MDM_LOOKUP; SEC-BE seeds matching SEC_PERMISSION rows.
+    public static final String PERM_MDM_LOOKUP_VIEW = "PERM_MDM_LOOKUP_VIEW";
+    public static final String PERM_MDM_LOOKUP_CREATE = "PERM_MDM_LOOKUP_CREATE";
+    public static final String PERM_MDM_LOOKUP_UPDATE = "PERM_MDM_LOOKUP_UPDATE";
+    public static final String PERM_MDM_LOOKUP_DELETE = "PERM_MDM_LOOKUP_DELETE";
+
+    // --- Notification Service (NOTIF) — SCR-NOTIF-001 Templates (ENTITY-NOTIF-002) ---
+    // page_code NOTIF_TEMPLATES; codes follow PERM_<PAGE_CODE>_<TYPE> so they equal the V7-seeded
+    // SEC_PERMISSION rows and runtime PermissionGenerationDomainService output. (SEC-BE renamed these
+    // from the earlier SINGULAR PERM_NOTIF_TEMPLATE_* to the PLURAL, page-code-derived form.)
+    public static final String PERM_NOTIF_TEMPLATES_VIEW = "PERM_NOTIF_TEMPLATES_VIEW";
+    public static final String PERM_NOTIF_TEMPLATES_CREATE = "PERM_NOTIF_TEMPLATES_CREATE";
+    public static final String PERM_NOTIF_TEMPLATES_UPDATE = "PERM_NOTIF_TEMPLATES_UPDATE";
+    public static final String PERM_NOTIF_TEMPLATES_DELETE = "PERM_NOTIF_TEMPLATES_DELETE";
+
+    // --- Notification Service (NOTIF) — SCR-NOTIF-002 Channel Config (ENTITY-NOTIF-003) ---
+    // page_code NOTIF_CHANNELS; PERM_<PAGE_CODE>_<TYPE> (SEC-BE renamed from SINGULAR
+    // PERM_NOTIF_CHANNEL_* to the PLURAL, page-code-derived form). SEC-BE seeds matching rows (V7).
+    public static final String PERM_NOTIF_CHANNELS_VIEW = "PERM_NOTIF_CHANNELS_VIEW";
+    public static final String PERM_NOTIF_CHANNELS_CREATE = "PERM_NOTIF_CHANNELS_CREATE";
+    public static final String PERM_NOTIF_CHANNELS_UPDATE = "PERM_NOTIF_CHANNELS_UPDATE";
+    public static final String PERM_NOTIF_CHANNELS_DELETE = "PERM_NOTIF_CHANNELS_DELETE";
+
+    // --- Notification Service (NOTIF) — SCR-NOTIF-003 Notification Log (ENTITY-NOTIF-001) ---
+    // page_code NOTIF_LOG; VIEW-only screen (system record). SEC-BE seeds the SEC_PERMISSION row.
+    public static final String PERM_NOTIF_LOG_VIEW = "PERM_NOTIF_LOG_VIEW";
+
+    // --- File Service (FILE) — SCR-FILE-001 File Categories (ENTITY-FILE-002) ---
+    // page_code FILE_CATEGORIES; PERM_<PAGE_CODE>_<TYPE> (plural, page-code-derived from the start).
+    // SEC-BE seeds matching SEC_PERMISSION rows.
+    public static final String PERM_FILE_CATEGORIES_VIEW = "PERM_FILE_CATEGORIES_VIEW";
+    public static final String PERM_FILE_CATEGORIES_CREATE = "PERM_FILE_CATEGORIES_CREATE";
+    public static final String PERM_FILE_CATEGORIES_UPDATE = "PERM_FILE_CATEGORIES_UPDATE";
+    public static final String PERM_FILE_CATEGORIES_DELETE = "PERM_FILE_CATEGORIES_DELETE";
+
+    // --- File Service (FILE) — SCR-FILE-002 File Browser (ENTITY-FILE-001) ---
+    // page_code FILE_BROWSER. VIEW guards metadata/list/access-token; CREATE upload; UPDATE archive;
+    // DELETE soft-delete. Download (API-FILE-003) is token-gated, not a FILE_BROWSER permission.
+    // SEC-BE seeds matching SEC_PERMISSION rows.
+    public static final String PERM_FILE_BROWSER_VIEW = "PERM_FILE_BROWSER_VIEW";
+    public static final String PERM_FILE_BROWSER_CREATE = "PERM_FILE_BROWSER_CREATE";
+    public static final String PERM_FILE_BROWSER_UPDATE = "PERM_FILE_BROWSER_UPDATE";
+    public static final String PERM_FILE_BROWSER_DELETE = "PERM_FILE_BROWSER_DELETE";
+
+    // NOTE (NOTIF dispatch, API-NOTIF-001): no dispatch permission constant. Dispatch is a
+    // service/event endpoint behind the Security filter (RULE-NOTIF-005), NOT tied to a management
+    // screen, and SEC_PERMISSION.PAGE_FK is NOT NULL — so a dispatch permission cannot be seeded.
+    // The dispatch gate is @PreAuthorize("isAuthenticated()") in DispatchService (SEC-BE).
 }

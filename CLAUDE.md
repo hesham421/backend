@@ -301,18 +301,21 @@ otherwise).
 
 - **Location**: `src/main/resources/db/migration/`
 - **Naming**: `V<N>__<snake_case_description>.sql` — `N` is a strictly
-  sequential integer with no gaps or reuse (currently at `V16`; the next
-  migration is always `V17`). Check the highest existing `V<N>` before
-  creating a new one — never guess or hardcode a number from memory.
+  sequential integer with no gaps or reuse. **Never write a specific version
+  number into this document or carry one from memory** — it drifts the moment
+  the next migration lands. Instead, derive the next number at creation time by
+  inspecting the migration directory, e.g.
+  `ls src/main/resources/db/migration/ | grep -oE '^V[0-9]+' | sort -t V -k2 -n | tail -1`
+  gives the current highest `V<N>`; the next file is `V<N+1>`.
 - **NEVER edit a migration file that has already been merged/applied.**
   Flyway checksums applied migrations; editing one breaks every environment
   that already ran it. A wrong or outdated migration is corrected by adding
   a new migration that fixes it forward — not by rewriting history.
 - **One logical schema change per file** (a table + its seed data, or a
-  single reconciliation fix) — mirrors the existing files
-  (`V3__file_service_schema_and_seed.sql`,
-  `V6__reconcile_filesvc_audit_column_length.sql`), not one giant file per
-  module and not one file per column.
+  single reconciliation fix) — mirror the granularity of whatever migrations
+  already exist in `src/main/resources/db/migration/` (open that directory to
+  see the current set), not one giant file per module and not one file per
+  column.
 - Table/column naming inside migrations follows the same `build-create-entity`
   skill conventions (UPPER_SNAKE_CASE, module prefix) — a migration and its
   matching JPA entity must agree on the physical name.

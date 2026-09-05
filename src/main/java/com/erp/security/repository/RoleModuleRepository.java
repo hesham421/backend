@@ -1,7 +1,9 @@
 package com.erp.security.repository;
 
+import com.erp.security.entity.Module;
 import com.erp.security.entity.RoleModule;
 import com.erp.security.entity.RoleModuleId;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -35,4 +37,19 @@ public interface RoleModuleRepository
         """)
     boolean existsRolePermissionForRoleInModule(@Param("roleId") Long roleId,
                                                  @Param("moduleId") Long moduleId);
+
+    /**
+     * The Tier-1 modules currently granted to a role — the read counterpart of the
+     * assign/revoke join (API-SEC-017/018), used to pre-populate the role screen's module picker in
+     * edit mode. Returns every current grant (active or not) so the picker reflects true state;
+     * ordered by module id for deterministic output. Empty when the role holds no module.
+     */
+    @Query("""
+        SELECT m
+        FROM RoleModule rm, Module m
+        WHERE rm.id.roleFk = :roleId
+          AND m.id = rm.id.moduleFk
+        ORDER BY m.id
+        """)
+    List<Module> findModulesByRoleId(@Param("roleId") Long roleId);
 }

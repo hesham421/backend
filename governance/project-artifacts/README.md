@@ -14,3 +14,7 @@ Current contents:
 - `INTERFACE-VS-REST-AND-POM-STRUCTURE-RECOMMENDATION.md` — the rationale for the
   single-deployable, package-by-feature Maven layout (referenced by `pom.xml`
   and `Dockerfile`).
+- `MDM-DEACTIVATE-INVARIANT-GAP.md` — OPEN governance decision: value `create`
+  (DRV-004, existence-only) can strand an active value under an inactive type,
+  which RULE-MDM-006's deactivate guard alone cannot prevent. No code changed;
+  awaiting a spec decision.

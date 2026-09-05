@@ -2,6 +2,7 @@ package com.erp.security.controller;
 
 import com.erp.common.web.ApiResponse;
 import com.erp.common.web.OperationCode;
+import com.erp.security.dto.RoleResponse;
 import com.erp.security.dto.UserCreateRequest;
 import com.erp.security.dto.UserResponse;
 import com.erp.security.dto.UserRoleAssignRequest;
@@ -12,6 +13,7 @@ import com.erp.security.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -84,5 +86,11 @@ public class UserController {
             @PathVariable Long id,
             @Valid @RequestBody UserRoleAssignRequest request) {
         return operationCode.craftResponse(userRoleService.assign(id, request.getRoleId()));
+    }
+
+    @GetMapping("/{id}/roles")
+    @Operation(summary = "List user's assigned roles", description = "أدوار المستخدم المُسنَدة")
+    public ResponseEntity<ApiResponse<List<RoleResponse>>> getRoles(@PathVariable Long id) {
+        return operationCode.craftResponse(userRoleService.getRoles(id));
     }
 }

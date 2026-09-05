@@ -1,0 +1,105 @@
+{
+  "module": "MDM",
+  "generated_at": "2026-09-04",
+  "current_phase": "ALIGN-BE",
+  "current_sub": "ALIGN-BE",
+  "api_docs_path": "governance/modules/MDM/api-docs/",
+  "phases": [
+    {
+      "id": "CORE",
+      "status": "COMPLETE",
+      "subs": [
+        { "id": "CORE", "status": "COMPLETE" }
+      ]
+    },
+    {
+      "id": "DATA-DOM",
+      "status": "COMPLETE",
+      "subs": [
+        { "id": "DATA-DOM", "status": "COMPLETE" }
+      ]
+    },
+    {
+      "id": "SVC-API",
+      "status": "COMPLETE",
+      "subs": [
+        { "id": "SVC-API-CONSUMPTION", "status": "COMPLETE" },
+        { "id": "SVC-API-LOOKUP-TYPE", "status": "COMPLETE" },
+        { "id": "SVC-API-LOOKUP-VALUE", "status": "COMPLETE" }
+      ]
+    },
+    {
+      "id": "DOC",
+      "status": "COMPLETE",
+      "subs": [
+        { "id": "DOC", "status": "COMPLETE" }
+      ]
+    },
+    {
+      "id": "INT-C",
+      "status": "COMPLETE",
+      "subs": [
+        { "id": "INT-C", "status": "COMPLETE" }
+      ]
+    },
+    {
+      "id": "INT-R",
+      "status": "COMPLETE",
+      "subs": [
+        { "id": "INT-R", "status": "COMPLETE" }
+      ]
+    },
+    {
+      "id": "SEC-BE",
+      "status": "COMPLETE",
+      "subs": [
+        { "id": "SEC-BE", "status": "COMPLETE" }
+      ]
+    },
+    {
+      "id": "ALIGN-BE",
+      "status": "COMPLETE",
+      "subs": [
+        { "id": "ALIGN-BE", "status": "COMPLETE" }
+      ]
+    }
+  ],
+  "test_phase": {
+    "id": "backend-test",
+    "status": "PENDING",
+    "gated_by_phases": ["CORE", "DATA-DOM", "SVC-API", "DOC", "INT-C", "INT-R", "SEC-BE", "ALIGN-BE"],
+    "header_file": "packages/backend-test/TEST-PLAN-BE-HEADER.md",
+    "subs": []
+  },
+  "blocked": [],
+  "deferred_xm": [],
+  "api_doc_gaps": [
+    {
+      "type": "MISSING_IN_DOCS",
+      "phase": "backend-test",
+      "sub": null,
+      "endpoint": null,
+      "detail": "packages/backend-test/ contains only .gitkeep — no test plan sub files (RULE-SCENARIOS / API-SCENARIOS) have been split for MDM yet. test_phase.subs left empty rather than invented; run the splitter for this module before /MDM/execute-backend-test.",
+      "resolution": "unresolved",
+      "recorded_at": "2026-09-04"
+    },
+    {
+      "type": "MAPPING_GAP",
+      "phase": "SVC-API",
+      "sub": "SVC-API-LOOKUP-TYPE",
+      "endpoint": "GET /api/v1/mdm/lookup-types (search)",
+      "detail": "Plan specifies GET-with-query-params search; platform's mandatory shared search contract (BaseSearchContractRequest+SpecBuilder) is POST-body-only and build-create-controller A.6.6 forbids GET-search. Implemented as POST /api/v1/mdm/lookup-types/search to stay contract-compliant, matching SEC ModuleController.",
+      "resolution": "resolved: implemented POST /search per binding skill + shared search layer; api-docs will reflect POST",
+      "recorded_at": "2026-09-04"
+    },
+    {
+      "type": "MAPPING_GAP",
+      "phase": "SVC-API",
+      "sub": "SVC-API-LOOKUP-VALUE",
+      "endpoint": "GET /api/v1/mdm/lookup-types/{typeId}/values (list)",
+      "detail": "Plan specifies GET-with-query-params nested list; platform's mandatory shared search contract is POST-body-only and A.6.6 forbids GET-search. Implemented as POST /api/v1/mdm/lookup-types/{typeId}/values/search (parent scoped by path typeId), consistent with the API-MDM-002 resolution.",
+      "resolution": "resolved: implemented POST /search per binding skill + shared search layer",
+      "recorded_at": "2026-09-04"
+    }
+  ]
+}

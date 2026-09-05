@@ -4,14 +4,17 @@ import com.erp.common.domain.status.ServiceResult;
 import com.erp.common.domain.status.Status;
 import com.erp.common.exception.LocalizedException;
 import com.erp.security.domain.AuthorizationGrantDomainService;
+import com.erp.security.dto.ModuleResponse;
 import com.erp.security.entity.Module;
 import com.erp.security.entity.Role;
 import com.erp.security.entity.RoleModule;
 import com.erp.security.entity.RoleModuleId;
 import com.erp.security.exception.SecErrorCodes;
+import com.erp.security.mapper.ModuleMapper;
 import com.erp.security.repository.ModuleRepository;
 import com.erp.security.repository.RoleModuleRepository;
 import com.erp.security.repository.RoleRepository;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -32,6 +35,26 @@ public class RoleModuleService {
     private final RoleRepository roleRepository;
     private final ModuleRepository moduleRepository;
     private final RoleModuleRepository roleModuleRepository;
+    private final ModuleMapper moduleMapper;
+
+    /**
+     * The Tier-1 modules currently granted to a role — read counterpart of assign/revoke, used to
+     * pre-populate the role screen's module picker in edit mode. Validates the role exists
+     * (absent → ERR-0012 NOT_FOUND); an empty grant set is valid → {@code []}.
+     */
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasAuthority(T(com.erp.security.permission.PermissionConstants).PERM_SEC_ROLES_VIEW)")
+    public ServiceResult<List<ModuleResponse>> getModules(Long roleId) {
+        log.debug("Fetching granted modules for Role ID: {}", roleId);
+        requireRole(roleId);
+
+        List<ModuleResponse> modules = roleModuleRepository.findModulesByRoleId(roleId)
+            .stream()
+            .map(moduleMapper::toResponse)
+            .toList();
+
+        return ServiceResult.success(modules);
+    }
 
     /**
      * API-SEC-017 — grant a module to a role. Validates the role and module exist and are active
