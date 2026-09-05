@@ -1,0 +1,36 @@
+{
+  "module": "SEC",
+  "generated_at": "2026-09-05",
+  "current_phase": "SVC-API",
+  "current_sub": "SVC-API-SESSION",
+  "api_docs_path": "governance/modules/SEC/v2/api-docs/",
+  "phases": [
+    {
+      "id": "SVC-API",
+      "status": "PENDING",
+      "subs": [
+        { "id": "SVC-API-SESSION", "status": "PENDING" }
+      ]
+    },
+    {
+      "id": "ALIGN-BE",
+      "status": "PENDING",
+      "subs": [
+        { "id": "ALIGN-BE", "status": "PENDING" }
+      ]
+    }
+  ],
+  "test_phase": {
+    "id": "backend-test",
+    "status": "PENDING",
+    "gated_by_phases": ["SVC-API", "ALIGN-BE"],
+    "header_file": "packages/backend-test/TEST-PLAN-BE-HEADER.md",
+    "subs": [
+      { "id": "RULE-SCENARIOS", "status": "PENDING" },
+      { "id": "API-SCENARIOS", "status": "PENDING" }
+    ]
+  },
+  "blocked": [],
+  "deferred_xm": [],
+  "api_doc_gaps": []
+}

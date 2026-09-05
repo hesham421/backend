@@ -44,6 +44,7 @@ from config import (
     ensure_module_structure,
     build_manifest,
     set_current_version,
+    load_modules_registry,
 )
 
 
@@ -226,23 +227,31 @@ def main():
         print(f"\n  ERROR: Source folder not found: {source_path}\n")
         sys.exit(1)
 
+    # Version resolution (IFA-aware): archive into whatever version agent1
+    # set as current — v1 for a first pass, v2/v3… when agent1 --new-version
+    # ran first. Reading current_version (never hardcoding 1) is what lets an
+    # incremental-feature delta land in modules/[MOD]/v2/ instead of over v1.
+    registry = load_modules_registry()
+    entry = registry.get("modules", {}).get(mod)
+    version = (entry.get("current_version") if entry else None) or 1
+
     # Flexibility: auto-create structure if missing — no hard dependency on agent1
-    module_path = get_module_path(mod)
+    module_path = get_module_path(mod, version)
     structure_created = []
     structure_missing = not module_path.exists()
 
     if structure_missing and not args.dry_run:
-        structure_created = ensure_module_structure(mod)
+        structure_created = ensure_module_structure(mod, version)
         # Keep manifest.json / registry tracking consistent even though
         # agent1 never ran — same manifest shape agent1 would have written.
         manifest_path_new = module_path / "manifest.json"
         if not manifest_path_new.exists():
-            manifest = build_manifest(mod, 1)
+            manifest = build_manifest(mod, version)
             manifest["created_at"] = datetime.now().isoformat()
             manifest["created_by"] = "agent2_archive.py (auto-created — agent1 was not run first)"
             with open(manifest_path_new, "w", encoding="utf-8") as fh:
                 json.dump(manifest, fh, indent=2, ensure_ascii=False)
-            set_current_version(mod, 1)
+            set_current_version(mod, version)
 
     manifest_path = module_path / "manifest.json"
     if manifest_path.exists():

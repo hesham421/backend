@@ -15,7 +15,7 @@ reference this document, not restate it.
 |----------|------|---------|
 | Backend skills | repo-root `.claude/skills/` (not under `governance/` — moved 2026-08-31 so they auto-load via the Skill tool every session; this table still governs which skill to use and when) | ✅ |
 | Modules registry | `governance/modules-registry.json` | ✅ (currently empty) |
-| AI commands | `governance/.claude/commands/` | ✅ |
+| AI commands | repo-root `.claude/commands/` (not under `governance/` — moved 2026-09-05 so they auto-load as Claude Code slash commands, same reason skills moved) | ✅ |
 | Governance automation tools | `governance/governance-tools/` | ✅ |
 | Backend TestSprite governance (mechanism, prompts, module archive) | `governance/testsprite/` | ✅ |
 | Module execution plans | `governance/modules/` | ❌ not present — recreated per module by `generate-module-setup.md` |

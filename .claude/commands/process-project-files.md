@@ -155,6 +155,49 @@ still can't be pinned down — ask. Never proceed on a guess.
 
 ---
 
+## STEP 3.5 — IFA / new-version detection (before running the tools)
+
+A batch can be a FRESH module (v1) OR an INCREMENTAL FEATURE ADDITION (IFA)
+delta for an already-implemented module. The tools archive into whatever
+version is `current` in `modules-registry.json`, so getting this right BEFORE
+`agent1` is what keeps a delta from landing over frozen v1 work.
+
+Read the header of the batch's plan / srs. Decide:
+
+- **IFA delta** — the header carries a Change Manifest from an Incremental
+  Feature Addition: a `Module Version: v{N}` (N ≥ 2), a `Baseline: v{N-1}`,
+  and/or a `Change Set: CS-…` line. Then, per track that has files:
+  1. Confirm the module already exists in that track's `modules-registry.json`
+     with a `current_version`. If it does NOT (the "vN/baseline" header
+     describes a version of a module that was never built), the header is
+     inconsistent → STOP and ask; do not invent a v1.
+  2. Run `agent1` WITH `--new-version` so the delta lands in the next version
+     folder and v1 stays frozen:
+     ```bash
+     python3 agent1_create_structure.py --module [MODULE] --new-version
+     ```
+     This sets `current_version = N`; `agent2` and `agent3` then follow it
+     automatically — neither has (nor needs) a `--version` flag, by design.
+  3. Proceed to Step 4 as normal — the version is now resolved for the whole
+     chain.
+
+- **Ambiguous overwrite** — NO IFA header, but the module is already archived
+  for that track (`current_version` present and `manifest.status.archived`),
+  and the batch holds full fresh artifacts. Dropping these over an implemented
+  module is real prior-work loss and is NOT an IFA delta. This is a genuine
+  human decision (STEP 4.2 territory): **ask** whether this is a new version
+  (→ `--new-version`), an intended overwrite of the same version (→ `--force`
+  later, after the 4.2 gate), or a mistake. Never auto-overwrite v1.
+
+- **Fresh module** — unknown/new module, or a known module with no prior
+  archive, and no IFA header → normal v1 flow: `agent1` WITHOUT `--new-version`
+  (Step 4 unchanged).
+
+Record the decision (v1 fresh / v{N} IFA delta / asked-for-overwrite) in the
+Step 5 report.
+
+---
+
 ## STEP 4 — Run the real tools to completion, per track (AUTONOMOUS)
 
 Only touch a track that had at least one matching file (after Step 2.5) AND
@@ -165,7 +208,8 @@ frontend tools for a module with zero frontend files, or vice versa.
 
 ```bash
 cd "<track>/governance-tools"
-python3 agent1_create_structure.py --module [MODULE] --dry-run
+# add --new-version here too if STEP 3.5 classified this batch as an IFA delta
+python3 agent1_create_structure.py --module [MODULE] [--new-version if IFA] --dry-run
 python3 agent2_archive.py --module [MODULE] --source "<SOURCE>" --dry-run
 ```
 
@@ -188,9 +232,13 @@ overwrite, implicit otherwise — authorizes answering each tool's own `[y/N]`
 with `y` for THIS track):
 
 ```bash
-python3 agent1_create_structure.py --module [MODULE]
+python3 agent1_create_structure.py --module [MODULE]   # add --new-version if STEP 3.5 = IFA delta
 python3 agent2_archive.py --module [MODULE] --source "<SOURCE>"    # add --force ONLY if approved in 4.2
 ```
+
+> agent2/agent3 take NO version flag — once `agent1 --new-version` set the
+> current version, they resolve it from the registry automatically and the
+> delta packages land under `modules/[MODULE]/v{N}/…`, v1 untouched.
 
 Then, only if the track's execution-plan file archived successfully:
 

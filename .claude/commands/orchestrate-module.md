@@ -21,6 +21,27 @@ backend repo root unless said otherwise.
   `.claude/commands/{MODULE}/execute-backend.md`. If any of this is missing or
   shaped differently than expected, STOP and ask — never guess a module's
   structure.
+
+  **VERSION (IFA-aware) — resolve the base BEFORE anything else.** A module
+  that received an incremental feature (IFA) has `current_version` ≥ 2 and all
+  of the above live under a version-suffixed base. Resolve it the way the tools
+  do (`config.get_module_version_path`):
+
+  ```bash
+  python3 -c "import sys; sys.path.insert(0,'governance/governance-tools'); \
+  import config; print(config.get_module_version_path('{MODULE}'))"
+  ```
+
+  - `current_version == 1` → base `governance/modules/{MODULE}/`      (no suffix)
+  - `current_version == N` (N ≥ 2) → base `governance/modules/{MODULE}/v{N}/`
+
+  Call it `{MBASE}`. Every `governance/modules/{MODULE}/…` and bare
+  `packages/…` / `execution-state.json` path below resolves under `{MBASE}`,
+  and the per-module command for a vN module is
+  `.claude/commands/{MODULE}/v{N}/execute-backend.md`. By default orchestrate
+  the CURRENT version; to drive an older frozen version, ask — never assume.
+  Never orchestrate the un-suffixed v1 tree for a module whose current_version
+  is ≥ 2.
 - `PHASE` (optional): if omitted, resume from `execution-state.json`'s
   `current_phase`/`current_sub` — this command ALWAYS resumes from the last
   completed point, it never restarts a module from scratch.

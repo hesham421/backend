@@ -25,7 +25,7 @@ this repo (see [Sanctioned cross-repo reads](#sanctioned-cross-repo-reads)).
 | Modules registry | `modules-registry.json` |
 | Module planning + execution artifacts | `modules/<MOD>/` |
 | Governance automation tooling (independent, backend-only — NOT synced with frontend's copy) | `governance-tools/` |
-| AI commands (generated setup, launcher prompts) | `.claude/commands/` |
+| AI commands (generated setup, launcher prompts) | repo-root `.claude/commands/` (not under `governance/` — moved 2026-09-05 so they auto-load as Claude Code slash commands, same reason skills moved) |
 | Postgres MCP server | wired in `../.mcp.json` (`postgres` = `postgres-mcp`, read-only); self-hosted reference copy in `mcp-servers/postgres/` |
 | Reporting / non-impacting markdown (audits, investigation notes) | `project-artifacts/` |
 | Reserved for a future cross-repo shared-content submodule (do not populate) | `governance-shared/` |

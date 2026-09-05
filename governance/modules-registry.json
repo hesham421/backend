@@ -5,9 +5,10 @@
       "description": "",
       "registered_at": "2026-09-03T20:22:14.350316",
       "versions": [
-        1
+        1,
+        2
       ],
-      "current_version": 1
+      "current_version": 2
     },
     "CU": {
       "code": "CU",

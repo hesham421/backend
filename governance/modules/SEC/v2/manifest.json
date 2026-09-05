@@ -1,0 +1,51 @@
+{
+  "module": "SEC",
+  "version": 2,
+  "status": {
+    "archived": true,
+    "split": false,
+    "backend_module_complete": false,
+    "ui_shell_complete": false
+  },
+  "artifacts": {
+    "p0": "modules/SEC/v2/P0",
+    "p0_5": "modules/SEC/v2/P0_5",
+    "p1": "modules/SEC/v2/P1",
+    "p2": "modules/SEC/v2/P2",
+    "p2_5": "modules/SEC/v2/P2_5",
+    "p3_1": "modules/SEC/v2/P3_1",
+    "p3_5_be": "modules/SEC/v2/P3_5_BE"
+  },
+  "registries": {
+    "srs": "modules/SEC/v2/P1/registry-srs-sec.md",
+    "db": "modules/SEC/v2/P2/registry-db-sec.md",
+    "exec_be": "modules/SEC/v2/P3_1/registry-exec-be-sec.md",
+    "test_be": "modules/SEC/v2/P3_5_BE/registry-test-be-sec.md"
+  },
+  "packages": {
+    "backend_execution": "modules/SEC/v2/packages/backend-execution",
+    "backend_test": "modules/SEC/v2/packages/backend-test"
+  },
+  "created_at": "2026-09-05T21:14:11.522817",
+  "archived_at": "2026-09-05T21:14:23.289005",
+  "archived_files": [
+    "backend-execution-plan.md"
+  ],
+  "skipped_files": [
+    "platform-summary.md",
+    "module-registry-sec.md",
+    "business-policies-sec.md",
+    "prd-sec.md",
+    "srs.md",
+    "registry-srs-sec.md",
+    "db-script.md",
+    "registry-db-sec.md",
+    "flow-diagram.md",
+    "ui-ux-spec.md",
+    "registry-exec-be-sec.md",
+    "backend-test-plan.md",
+    "test-execution-manifest.md",
+    "registry-test-be-sec.md"
+  ],
+  "skipped_existing_files": []
+}

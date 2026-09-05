@@ -1,7 +1,10 @@
 # Generate Backend Module Setup
 
 ```
-Lives at   : backend/governance/.claude/commands/generate-module-setup.md
+Lives at   : backend/.claude/commands/generate-module-setup.md (moved out of
+             backend/governance/.claude/commands/ on 2026-09-05 so this
+             auto-loads as a Claude Code slash command — see CLAUDE.md's
+             STRUCTURAL LAW ownership table)
 Invokes    : backend/governance/governance-tools/agent1_create_structure.py,
              agent2_archive.py, agent3_splitter.py — these tools know
              ONLY the backend. There is no track concept here; this
@@ -46,11 +49,42 @@ because backend work has no upstream gate to wait on.
 
 ---
 
+## Step 0.5 — Resolve the module VERSION base (IFA-aware) — MANDATORY
+
+A module that received an incremental feature via IFA has a current version
+≥ 2, and ALL its artifacts (packages, execution-state, api-docs, generated
+commands) live under a version-suffixed base — never over v1. Resolve the base
+BEFORE scanning, exactly the way the tools do (`config.get_module_version_path`):
+
+```bash
+python3 -c "import sys; sys.path.insert(0,'governance/governance-tools'); \
+import config; print(config.get_module_version_path('$MODULE'))"
+```
+
+Rule (mirror it if you resolve by hand):
+- `current_version == 1` → base = `governance/modules/$MODULE/`        (no suffix)
+- `current_version == N` (N ≥ 2) → base = `governance/modules/$MODULE/v$N/`
+
+Call this resolved path `$MBASE`. Every `governance/modules/$MODULE/…` path in
+the steps below means `$MBASE/…`. In particular, for a vN module:
+- scan `$MBASE/packages/backend-execution` and `$MBASE/packages/backend-test`
+- write `execution-state.json` to `$MBASE/execution-state.json`
+- `api_docs_path` = `$MBASE/api-docs/`
+- write the generated commands to `.claude/commands/[MODULE]/v$N/` (so the v1
+  commands, still valid history, are never overwritten). For v1 keep the flat
+  `.claude/commands/[MODULE]/`.
+
+NEVER hardcode the un-suffixed `modules/$MODULE/` for a module whose
+current_version is ≥ 2 — that would scan the frozen v1 packages and generate a
+v1 command for a v2 delta.
+
+---
+
 ## Step 1 — Scan the repo structure
 
 ```bash
-find governance/modules/$MODULE/packages/backend-execution -type f -name "*.md" | sort
-find governance/modules/$MODULE/packages/backend-test -type f -name "*.md" | sort
+find $MBASE/packages/backend-execution -type f -name "*.md" | sort
+find $MBASE/packages/backend-test -type f -name "*.md" | sort
 ```
 
 From the scan results:
@@ -96,7 +130,7 @@ Record weight and task count for every sub found.
 
 ## Step 2 — Generate `execution-state.json`
 
-Location: `governance/modules/$MODULE/execution-state.json`
+Location: `$MBASE/execution-state.json`  (resolved in Step 0.5 — v1 = no suffix, vN = /vN)
 
 ```json
 {
@@ -104,7 +138,7 @@ Location: `governance/modules/$MODULE/execution-state.json`
   "generated_at": "[today's date]",
   "current_phase": "[FIRST_PHASE]",
   "current_sub": "[FIRST_SUB or null]",
-  "api_docs_path": "governance/modules/[MODULE]/api-docs/",
+  "api_docs_path": "[MBASE]/api-docs/",
   "phases": [
     {
       "id": "[PHASE_NAME]",
@@ -320,7 +354,7 @@ Write to `reports/TEST-REPORT-[MODULE]-backend-[YYYY-MM-DD].md`. Any
 ══════════════════════════════════════════════════════
 BACKEND MODULE SETUP COMPLETE: [MODULE]
 ══════════════════════════════════════════════════════
-execution-state.json      ✓  governance/modules/[MODULE]/
+execution-state.json      ✓  [MBASE]/  (v1 = modules/[MODULE]/, vN = modules/[MODULE]/vN/)
 execute-backend.md        ✓  .claude/commands/[MODULE]/
 execute-backend-test.md   ✓  .claude/commands/[MODULE]/
 

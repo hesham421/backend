@@ -1,13 +1,18 @@
 # Bootstrap Legacy Frontend
 
 ```
-Lives at   : backend/governance/.claude/commands/bootstrap-legacy-frontend.md
+Lives at   : backend/.claude/commands/bootstrap-legacy-frontend.md (moved out
+             of backend/governance/.claude/commands/ on 2026-09-05 — it was
+             never actually discoverable as a slash command in that nested
+             location; see CLAUDE.md's STRUCTURAL LAW ownership table)
              (a copy also lives at frontend/governance/.claude/commands/
              bootstrap-legacy-frontend.md — IDENTICAL content, same reason
              governance-tools/ is duplicated: Claude Code resolves slash
-             commands from the CURRENT repo's .claude/commands/ folder,
+             commands from the CURRENT repo's root .claude/commands/ folder,
              so a developer working in either repo needs it locally
-             discoverable. Keep both copies in sync by hand.)
+             discoverable. The frontend copy has the SAME nested-path bug
+             and needs the analogous move made in that repo separately.
+             Keep both copies in sync by hand.)
 Invokes    : backend/governance/governance-tools/agent1_create_structure.py,
              agent2_archive.py, agent3_splitter.py — these Python tools
              live in ONE place only (backend/) and are invoked with

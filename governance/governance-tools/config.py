@@ -85,16 +85,17 @@ def register_module(mod: str, description: str = "") -> dict:
 
 def get_module_version_path(mod: str, version: "int | None" = None) -> Path:
     """
-    Path for a specific version of a module.
+    Path for a specific version of a module. Self-contained — never calls
+    get_module_path (which now delegates here), so no mutual recursion.
     Version 1 = modules/[MODCODE]/ (no suffix), version 2 = modules/[MODCODE]/v2/, etc.
+    mod is normalised to upper-case so v1 and v2 paths agree on casing.
     """
+    mod = mod.upper()
     registry = load_modules_registry()
     mod_entry = registry.get("modules", {}).get(mod)
-    if not mod_entry:
-        return get_module_path(mod)
 
     if version is None:
-        version = mod_entry.get("current_version") or 1
+        version = (mod_entry.get("current_version") if mod_entry else None) or 1
 
     if version == 1:
         return REPO_BASE_PATH / "modules" / mod
@@ -304,19 +305,25 @@ ALLOWED_PARENTS = {
 # HELPERS
 # ─────────────────────────────────────────────
 
-def get_module_path(mod: str) -> Path:
-    """Root path for a module. Auto-creates nothing — pure path resolution."""
-    return REPO_BASE_PATH / "modules" / mod.upper()
+def get_module_path(mod: str, version: "int | None" = None) -> Path:
+    """
+    Root path for a module. Auto-creates nothing — pure path resolution.
+    version=None → the module's current_version from the registry (v1 when
+    unregistered). This makes the whole path chain (stage/packages/ensure)
+    version-aware while every existing call site (no version arg) keeps
+    resolving to the current version, unchanged.
+    """
+    return get_module_version_path(mod.upper(), version)
 
 
-def get_stage_path(mod: str, stage: str) -> Path:
+def get_stage_path(mod: str, stage: str, version: "int | None" = None) -> Path:
     if stage not in MODULE_STRUCTURE:
         raise ValueError(f"Unknown backend stage: {stage}. Valid: {list(MODULE_STRUCTURE.keys())}")
-    return get_module_path(mod) / MODULE_STRUCTURE[stage]
+    return get_module_path(mod, version) / MODULE_STRUCTURE[stage]
 
 
-def get_packages_path(mod: str, artifact: str, sub: str = "") -> Path:
-    base = get_module_path(mod) / "packages" / artifact
+def get_packages_path(mod: str, artifact: str, sub: str = "", version: "int | None" = None) -> Path:
+    base = get_module_path(mod, version) / "packages" / artifact
     return base / sub if sub else base
 
 
@@ -350,16 +357,17 @@ def validate_module(mod: str, auto_register: bool = False, description: str = ""
     )
 
 
-def ensure_module_structure(mod: str) -> list[Path]:
+def ensure_module_structure(mod: str, version: "int | None" = None) -> list[Path]:
     """
     Create every backend stage folder + packages subfolder for a module
-    if missing — idempotent, safe to call from any tool (agent1
+    VERSION if missing — idempotent, safe to call from any tool (agent1
     explicitly, or agent2 automatically when the structure doesn't
-    exist yet). Returns the list of paths that were newly created.
+    exist yet). version=None → current version. Returns the list of
+    paths that were newly created.
     """
     created = []
     for stage in BACKEND_STAGES:
-        p = get_stage_path(mod, stage)
+        p = get_stage_path(mod, stage, version)
         if not p.exists():
             p.mkdir(parents=True, exist_ok=True)
             (p / ".gitkeep").touch()
@@ -368,13 +376,13 @@ def ensure_module_structure(mod: str) -> list[Path]:
         # Always create the artifact container itself — even when it has no
         # pre-created sub-folders (backend-test), Agent 3 writes flat files
         # directly into this container.
-        container = get_packages_path(mod, artifact)
+        container = get_packages_path(mod, artifact, version=version)
         if not container.exists():
             container.mkdir(parents=True, exist_ok=True)
             (container / ".gitkeep").touch()
             created.append(container)
         for sub in subs:
-            p = get_packages_path(mod, artifact, sub)
+            p = get_packages_path(mod, artifact, sub, version=version)
             if not p.exists():
                 p.mkdir(parents=True, exist_ok=True)
                 (p / ".gitkeep").touch()
