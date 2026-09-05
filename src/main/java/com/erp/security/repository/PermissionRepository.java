@@ -1,6 +1,7 @@
 package com.erp.security.repository;
 
 import com.erp.security.entity.Permission;
+import java.util.List;
 import java.util.Set;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -28,4 +29,25 @@ public interface PermissionRepository
      */
     @Query("SELECT p.permissionCode FROM Permission p WHERE p.page.id = :pageId")
     Set<String> findPermissionCodesByPageId(@Param("pageId") Long pageId);
+
+    /**
+     * QR-SEC-0031 (API-SEC-021/022 self) — the distinct ACTIVE Permissions granted to a user
+     * through any of its ACTIVE roles (Tier-2 union, RULE-SEC-016/017). SEC_USER_ACCOUNT →
+     * SEC_USER_ROLE → SEC_ROLE → SEC_ROLE_PERMISSION → SEC_PERMISSION. The role.isActive /
+     * permission.isActive guards mirror QR-SEC-0028 so a deactivated role or permission never
+     * counts as currently granted.
+     */
+    @Query("""
+        SELECT DISTINCT p
+        FROM Permission p, RolePermission rp, Role r, UserRole ur, UserAccount u
+        WHERE u.username = :username
+          AND ur.id.userAccountFk = u.id
+          AND r.id = ur.id.roleFk
+          AND r.isActive = true
+          AND rp.id.roleFk = ur.id.roleFk
+          AND p.id = rp.id.permissionFk
+          AND p.isActive = true
+        ORDER BY p.permissionCode
+        """)
+    List<Permission> findGrantedActivePermissionsByUsername(@Param("username") String username);
 }

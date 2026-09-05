@@ -1,22 +1,22 @@
 {
   "module": "SEC",
   "generated_at": "2026-09-05",
-  "current_phase": "SVC-API",
-  "current_sub": "SVC-API-SESSION",
+  "current_phase": "ALIGN-BE",
+  "current_sub": "ALIGN-BE",
   "api_docs_path": "governance/modules/SEC/v2/api-docs/",
   "phases": [
     {
       "id": "SVC-API",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "SVC-API-SESSION", "status": "PENDING" }
+        { "id": "SVC-API-SESSION", "status": "COMPLETE" }
       ]
     },
     {
       "id": "ALIGN-BE",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "ALIGN-BE", "status": "PENDING" }
+        { "id": "ALIGN-BE", "status": "COMPLETE" }
       ]
     }
   ],
