@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "postgres": {
+      "command": "uvx",
+      "args": ["postgres-mcp", "--access-mode=unrestricted"],
+      "env": {
+        "DATABASE_URI": "postgresql://${DB_USERNAME:-postgres}:${DB_PASSWORD:-postgres}@localhost:5432/${DB_NAME:-erp_db}"
+      }
+    },
+    "TestSprite": {
+      "command": "npx",
+      "args": [
+        "@testsprite/testsprite-mcp@latest"
+      ],
+      "env": {
+        "API_KEY": "${TESTSPRITE_API_KEY}"
+      }
+    }
+  }
+}

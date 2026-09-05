@@ -2,19 +2,20 @@
   "mcpServers": {
     "postgres": {
       "command": "uvx",
-      "args": ["postgres-mcp", "--access-mode=unrestricted"],
+      "args": [
+        "postgres-mcp",
+        "--access-mode=unrestricted"
+      ],
       "env": {
         "DATABASE_URI": "postgresql://${DB_USERNAME:-postgres}:${DB_PASSWORD:-postgres}@localhost:5432/${DB_NAME:-erp_db}"
       }
     },
     "TestSprite": {
-      "command": "npx",
+      "command": "bash",
       "args": [
-        "@testsprite/testsprite-mcp@latest"
-      ],
-      "env": {
-        "API_KEY": "${TESTSPRITE_API_KEY}"
-      }
+        "-c",
+        "set -a; [ -f ./.env ] && . ./.env; set +a; export API_KEY=\"$TESTSPRITE_API_KEY\"; exec npx -y @testsprite/testsprite-mcp@0.0.42"
+      ]
     }
   }
 }
