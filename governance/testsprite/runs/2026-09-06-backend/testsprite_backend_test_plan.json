@@ -1,0 +1,52 @@
+[
+  {
+    "id": "TC001",
+    "title": "create_new_configuration_entry",
+    "description": "Test creating a new configuration entry with valid configKey and configValue, expect 200 response with saved configuration data."
+  },
+  {
+    "id": "TC002",
+    "title": "search_configuration_entries_with_pagination",
+    "description": "Test searching configuration entries using filters with pagination, expect 200 response with paginated list of configurations."
+  },
+  {
+    "id": "TC003",
+    "title": "update_existing_configuration_entry",
+    "description": "Test updating an existing configuration entry by configKey with new configValue and notes, expect 200 response with updated configuration."
+  },
+  {
+    "id": "TC004",
+    "title": "get_configuration_entry_by_key",
+    "description": "Test retrieving a configuration entry by configKey, expect 200 response with configuration data if exists, 404 if not found."
+  },
+  {
+    "id": "TC005",
+    "title": "deactivate_configuration_entry_by_key",
+    "description": "Test deactivating a configuration entry by configKey, expect 204 no content on success, 404 if key not found."
+  },
+  {
+    "id": "TC006",
+    "title": "create_new_file_category",
+    "description": "Test creating a new file category with required fields, expect 200 response with created category data."
+  },
+  {
+    "id": "TC007",
+    "title": "search_file_categories_with_pagination",
+    "description": "Test searching file categories with filters and pagination, expect 200 response with paginated category list."
+  },
+  {
+    "id": "TC008",
+    "title": "update_file_category_by_id",
+    "description": "Test updating an existing file category by id with new names and optional fields, expect 200 response with updated category."
+  },
+  {
+    "id": "TC009",
+    "title": "upload_file_with_metadata",
+    "description": "Test uploading a file with required metadata fields (ownerId, ownerType, moduleCode), expect 200 response with file metadata."
+  },
+  {
+    "id": "TC010",
+    "title": "issue_access_token_for_file_download",
+    "description": "Test issuing a short-lived access token for a file by id, expect 200 response with access token for secure download."
+  }
+]
