@@ -307,7 +307,10 @@ Shape: `ApiResponseMeResponse`
 |---|---|---|---|---|---|
 | success | boolean | No |  |  |  |
 | data | MeResponse | No |  | Current authenticated user's self identity, roles and grants - الهوية الذاتية للمستخدم الحالي وأدواره وصلاحياته |  |
+| data.userId | integer (int64) | No | nullable | The caller's own numeric user id (nullable) - المعرف الرقمي للمستخدم الحالي (قابل لأن يكون فارغًا) | 1 |
 | data.username | string | No |  | Username of the authenticated caller - اسم مستخدم المستدعي المصادَق عليه | admin |
+| data.email | string | No | nullable | The caller's email (nullable) - البريد الإلكتروني للمستخدم الحالي (قابل لأن يكون فارغًا) | admin@example.com |
+| data.preferredLangId | string | No | nullable, enum: en \| ar | The caller's preferred UI language (nullable) - لغة الواجهة المفضّلة للمستخدم (قابلة لأن تكون فارغة) | en |
 | data.fullName | string | No |  | Full name of the authenticated caller - الاسم الكامل للمستدعي | System Administrator |
 | data.roleCodes | array<string> | No |  | Codes of the caller's currently active roles (union) - رموز الأدوار النشطة للمستخدم (اتحاد) | ['SEC_ADMIN'] |
 | data.roleNames | array<string> | No |  | Names of the caller's currently active roles (union) - أسماء الأدوار النشطة للمستخدم (اتحاد) | ['Security Administrator'] |
@@ -328,7 +331,10 @@ _(partial — only fields with a documented example are shown)_
 ```json
 {
   "data": {
+    "userId": 1,
     "username": "admin",
+    "email": "admin@example.com",
+    "preferredLangId": "en",
     "fullName": "System Administrator",
     "roleCodes": "['SEC_ADMIN']",
     "roleNames": "['Security Administrator']",

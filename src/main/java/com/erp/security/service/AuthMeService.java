@@ -49,6 +49,9 @@ public class AuthMeService {
 
         UserAccount account = userAccountRepository.findByUsername(username).orElse(null);
         String fullName = account != null ? account.getFullName() : null;
+        Long userId = account != null ? account.getId() : null;
+        String email = account != null ? account.getEmail() : null;
+        String preferredLangId = account != null ? account.getPreferredLangId() : null;
 
         List<Role> activeRoles = roleRepository.findActiveRolesByUsername(username);
         List<String> roleCodes = activeRoles.stream().map(Role::getRoleCode).toList();
@@ -65,7 +68,10 @@ public class AuthMeService {
             .toList();
 
         MeResponse response = MeResponse.builder()
+            .userId(userId)
             .username(username)
+            .email(email)
+            .preferredLangId(preferredLangId)
             .fullName(fullName)
             .roleCodes(roleCodes)
             .roleNames(roleNames)

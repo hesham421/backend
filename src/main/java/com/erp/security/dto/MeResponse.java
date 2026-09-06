@@ -21,8 +21,17 @@ import lombok.NoArgsConstructor;
 @Schema(description = "Current authenticated user's self identity, roles and grants - الهوية الذاتية للمستخدم الحالي وأدواره وصلاحياته")
 public class MeResponse {
 
+    @Schema(description = "The caller's own numeric user id (nullable) - المعرف الرقمي للمستخدم الحالي (قابل لأن يكون فارغًا)", example = "1", nullable = true)
+    private Long userId;
+
     @Schema(description = "Username of the authenticated caller - اسم مستخدم المستدعي المصادَق عليه", example = "admin")
     private String username;
+
+    @Schema(description = "The caller's email (nullable) - البريد الإلكتروني للمستخدم الحالي (قابل لأن يكون فارغًا)", example = "admin@example.com", nullable = true)
+    private String email;
+
+    @Schema(description = "The caller's preferred UI language (nullable) - لغة الواجهة المفضّلة للمستخدم (قابلة لأن تكون فارغة)", example = "en", nullable = true, allowableValues = {"en", "ar"})
+    private String preferredLangId;
 
     @Schema(description = "Full name of the authenticated caller - الاسم الكامل للمستدعي", example = "System Administrator")
     private String fullName;
