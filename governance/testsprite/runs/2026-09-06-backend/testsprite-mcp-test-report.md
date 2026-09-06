@@ -103,3 +103,21 @@
 2. **[High] File upload (`POST /api/v1/files`) always returns 500**, reproduced independently of TestSprite. Suspect the `@Lob @Basic(fetch = FetchType.LAZY)` mapping on `FileDocument.fileContent` (`byte[]`). This blocks upload, and transitively, access-token issuance and download testing (TC010).
 3. **[Medium] `/api/v1/files/categories/search` returns 500 instead of 400** for at least one filter payload shape TestSprite generated — an unhandled exception path should be replaced with proper validation/error handling in `FileCategoryService.search` / the shared `SpecBuilder`.
 4. **Test coverage caveat:** this run was deliberately scoped to CU + FILE only (per user request) using a hand-corrected `code_summary.yaml` — SECURITY, MDM, and NOTIF modules were not exercised in this run.
+
+---
+
+## 5️⃣ Fix Log (post-run, same day)
+
+Applied via the fix-bugs.md diagnose → fix → re-run loop, against the same running instance:
+
+| # | Root cause | Fix | File(s) | Verified |
+|---|---|---|---|---|
+| 1 | `FILE_CONTENT` is BYTEA but `@Lob` on `byte[]` made Hibernate bind it as a LOB (OID/bigint) | Removed `@Lob` | `file/entity/FileDocument.java` | TC009 upload now 201, re-run PASS |
+| 2 | Malformed/wrong-shaped JSON body threw unhandled `HttpMessageNotReadableException` → generic 500 instead of 400 | Added `@ExceptionHandler(HttpMessageNotReadableException.class)` → 400 VALIDATION_ERROR | `common/web/GlobalExceptionHandler.java` | TC007's real payload-shape bug (see #4) now surfaces as 400, not 500 |
+| 3 | `findMetadataById`/`findMetadataByOwner` (alias-select JPQL → `FileMetadataView` interface projection) failed with `Failed to convert from type [Object[]] to type [FileMetadataView]` under this project's Spring Data JPA 4.0.1 / Hibernate 7.2 combination — broke `GET /files/{id}`, `GET /files`, `POST /files/{id}/access-token` | Switched both queries to return `Tuple`; added `FileMetadataView.from(Tuple)` (a local record satisfying the interface via matching accessor names) | `file/repository/FileDocumentRepository.java`, `file/repository/FileMetadataView.java`, `file/service/FileService.java` | TC010 access-token step now 200, re-run PASS |
+| 4 | TC007's own payload used a wrong `filters` shape (nested object instead of `List<SearchFilter>`) and a DTO-name field (`isActiveFl`) instead of the entity property (`isActive`) — a **test bug**, exposed as a 500 until fix #2 turned it into a clear 400 | Corrected `filters` to `[{field, operator, value}, ...]` with `isActive` | `governance/modules/FILE/testsprite/tests/TC007_search_file_categories_with_pagination.py` | Re-run PASS |
+| 5 | TC010 asserted upload returns `200` (actual, correct contract: `201 Created`) and asserted response field `token` (actual field: `accessToken`) — **test bugs** | Corrected both assertions | `governance/modules/FILE/testsprite/tests/TC010_issue_access_token_for_file_download.py` | Re-run PASS |
+
+**Result:** FILE module archived suite — **5/5 PASS** after fixes (was 2/5).
+
+**CU module — NOT fixed, flagged instead:** `CONFIG_VIEW/CREATE/UPDATE/DEACTIVATE` cannot be seeded under the current SEC schema. `SEC_PERMISSION.PAGE_FK` is `NOT NULL` (`V2__sec_security_schema.sql`), and CU is explicitly documented as a **no-screens, backend-only** module (`governance/modules/CU/P1/srs.md` PART B: "لا SCR-IDs، لا SEC_PAGES، CORE-9 لا ينطبق"; SEC-BE.md: "SECURITY SEED DATA REQUIREMENTS: none"). A prior precedent for the identical structural conflict exists in `V7__notif_security_seed.sql` (NOTIF dispatch), which deliberately left the permission unseeded rather than force a page onto it. Seeding CU's authorities would require either (a) inventing a `SEC_PAGE` for a module explicitly documented as screen-less — contradicting that doc, or (b) relaxing `@PreAuthorize` to `isAuthenticated()` only (matching the NOTIF dispatch pattern) — a deliberate authorization-strength decision, not a bug fix. Per `fix-bugs.md`'s STOP rule for requirements conflicts, this needs an explicit human decision and was not changed. CU archived suite remains 0/5 PASS, unchanged (no regression — same root cause as the original run).

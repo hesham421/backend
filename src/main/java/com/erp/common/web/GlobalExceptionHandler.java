@@ -11,6 +11,7 @@ import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -50,6 +51,16 @@ public class GlobalExceptionHandler {
             .code("VALIDATION_ERROR")
             .message("Validation failed")
             .fieldErrors(fieldErrors)
+            .build();
+        return ResponseEntity.badRequest().body(ApiResponse.failure(error));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMalformedRequestBody(HttpMessageNotReadableException ex) {
+        log.warn("Malformed request body: {}", ex.getMessage());
+        ApiError error = ApiError.builder()
+            .code("VALIDATION_ERROR")
+            .message("The request body is malformed or does not match the expected structure")
             .build();
         return ResponseEntity.badRequest().body(ApiResponse.failure(error));
     }

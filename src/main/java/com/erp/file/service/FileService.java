@@ -119,7 +119,8 @@ public class FileService {
     public ServiceResult<AccessTokenResponse> issueAccessToken(Long id) {
         log.info("Issuing access token for file ID: {}", id);
 
-        FileMetadataView view = repository.findMetadataById(id)
+        FileMetadataView view = repository.findMetadataTupleById(id)
+            .map(FileMetadataView::from)
             .orElseThrow(() -> new LocalizedException(
                 Status.NOT_FOUND, FileErrorCodes.FILE_DOCUMENT_NOT_FOUND, id));
 
@@ -181,7 +182,8 @@ public class FileService {
     public ServiceResult<FileMetadataResponse> getMetadata(Long id) {
         log.debug("Fetching file metadata ID: {}", id);
 
-        FileMetadataView view = repository.findMetadataById(id)
+        FileMetadataView view = repository.findMetadataTupleById(id)
+            .map(FileMetadataView::from)
             .orElseThrow(() -> new LocalizedException(
                 Status.NOT_FOUND, FileErrorCodes.FILE_DOCUMENT_NOT_FOUND, id));
 
@@ -206,8 +208,9 @@ public class FileService {
             .build();
         Pageable pageable = PageableBuilder.from(pageRequest, ALLOWED_SORT_FIELDS);
 
-        Page<FileMetadataView> result = repository.findMetadataByOwner(
-            ownerId, ownerType, moduleCode, fileTypeId, fileStatusId, pageable);
+        Page<FileMetadataView> result = repository.findMetadataTupleByOwner(
+            ownerId, ownerType, moduleCode, fileTypeId, fileStatusId, pageable)
+            .map(FileMetadataView::from);
 
         return ServiceResult.success(result.map(mapper::toMetadataResponse));
     }

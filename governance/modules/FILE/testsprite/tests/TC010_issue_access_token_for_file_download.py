@@ -34,7 +34,7 @@ def test_issue_access_token_for_file_download():
             "moduleCode": "PROC"
         }
         upload_resp = session.post(FILES_URL, headers=headers, files=files, data=data, timeout=timeout)
-        assert upload_resp.status_code == 200, f"File upload failed: {upload_resp.text}"
+        assert upload_resp.status_code == 201, f"File upload failed: {upload_resp.text}"
         upload_json = upload_resp.json()
         assert upload_json.get("success") is True, "File upload success flag false"
         file_metadata = upload_json["data"]
@@ -48,8 +48,8 @@ def test_issue_access_token_for_file_download():
         token_json = token_resp.json()
         assert token_json.get("success") is True, "Access token success flag false"
         token_data = token_json["data"]
-        token = token_data.get("token")
-        assert token, "No token returned in access token response"
+        token = token_data.get("accessToken")
+        assert token, "No accessToken returned in access token response"
 
     finally:
         if file_id:

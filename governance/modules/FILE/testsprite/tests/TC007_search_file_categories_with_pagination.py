@@ -56,10 +56,10 @@ def test_search_file_categories_with_pagination():
     try:
         search_url = f"{BASE_URL}/api/v1/files/categories/search"
         search_payload = {
-            "filters": {
-                "categoryCode": category["categoryCode"],
-                "isActiveFl": True
-            },
+            "filters": [
+                {"field": "categoryCode", "operator": "EQUALS", "value": category["categoryCode"]},
+                {"field": "isActive", "operator": "EQUALS", "value": True}
+            ],
             "page": 0,
             "size": 10
         }

@@ -12,7 +12,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
@@ -77,7 +76,9 @@ public class FileDocument extends AuditableEntity implements FileMetadataView {
     @Column(name = "FILE_SIZE")
     private Long fileSize;
 
-    @Lob
+    // No @Lob: FILE_CONTENT is a plain BYTEA column (V8), not a Postgres large object (OID).
+    // @Lob on a byte[] makes Hibernate bind it as a LOB (OID/bigint), which PostgreSQL rejects
+    // against a BYTEA column ("column is of type bytea but expression is of type bigint").
     @Basic(fetch = FetchType.LAZY)
     @Column(name = "FILE_CONTENT", nullable = false)
     private byte[] fileContent;
