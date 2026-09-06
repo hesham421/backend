@@ -88,6 +88,19 @@ public class UserController {
         return operationCode.craftResponse(userRoleService.assign(id, request.getRoleId()));
     }
 
+    /**
+     * Revoke a single role from a user — the counterpart of assignRole. Returns a 200 status
+     * envelope (not a 204), mirroring the role↔permission and role↔module revoke endpoints on
+     * RoleController: a relationship mutation conveys a status envelope rather than an empty delete.
+     */
+    @DeleteMapping("/{id}/roles/{roleId}")
+    @Operation(summary = "Revoke role from user", description = "سحب دور من مستخدم")
+    public ResponseEntity<ApiResponse<Void>> revokeRole(
+            @PathVariable Long id,
+            @PathVariable Long roleId) {
+        return operationCode.craftResponse(userRoleService.revoke(id, roleId));
+    }
+
     @GetMapping("/{id}/roles")
     @Operation(summary = "List user's assigned roles", description = "أدوار المستخدم المُسنَدة")
     public ResponseEntity<ApiResponse<List<RoleResponse>>> getRoles(@PathVariable Long id) {

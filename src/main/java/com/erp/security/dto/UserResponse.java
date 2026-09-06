@@ -3,7 +3,6 @@ package com.erp.security.dto;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,7 +10,10 @@ import lombok.NoArgsConstructor;
 
 /**
  * API-SEC-007/008/009 response view of ENTITY-SEC-001 (UserAccount). Excludes passwordHash entirely
- * (RULE-SEC-004 — the hash is never exposed on any response).
+ * (RULE-SEC-004 — the hash is never exposed on any response). Also excludes the internal RULE-SEC-005
+ * lockout state (failedLoginCount, lockedUntil): exposing how close each account is to lockout, and
+ * its exact unlock time, to any USERS_VIEW caller is reconnaissance for a coordinated brute-force
+ * attempt and is not needed by the user-management screens.
  */
 @Data
 @Builder
@@ -40,12 +42,6 @@ public class UserResponse {
 
     @Schema(description = "Account lifecycle status (LOV-SEC-002) - حالة الحساب", example = "PENDING_ACTIVATION")
     private String userStatusId;
-
-    @Schema(description = "Failed login counter - عدّاد محاولات الدخول الفاشلة", example = "0")
-    private Short failedLoginCount;
-
-    @Schema(description = "Temporary lock expiry - انتهاء القفل المؤقت")
-    private LocalDateTime lockedUntil;
 
     @Schema(description = "Active status - حالة التفعيل", example = "true")
     private Boolean isActiveFl;

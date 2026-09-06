@@ -140,12 +140,11 @@ public class UserService {
             .orElseThrow(() -> new LocalizedException(
                 Status.NOT_FOUND, SecErrorCodes.USER_ACCOUNT_NOT_FOUND, id));
 
-        // RULE-SEC-001 — email uniqueness, only when it changed
-        if (!entity.getEmail().equals(request.getEmail())
-            && repository.existsByEmailAndIdNot(request.getEmail(), id)) {
-            throw new LocalizedException(
-                Status.ALREADY_EXISTS, SecErrorCodes.USER_ACCOUNT_EMAIL_DUPLICATE, request.getEmail());
-        }
+        // RULE-SEC-001 — email uniqueness. The service owns the lookup (only when the email changed);
+        // UserAccountDomain owns the decision, consistent with create().
+        boolean emailChanged = !entity.getEmail().equals(request.getEmail());
+        UserAccountDomain.assertEmailAvailable(request.getEmail(),
+            emailChanged && repository.existsByEmailAndIdNot(request.getEmail(), id));
 
         // RULE-SEC-012 — validate the lifecycle transition before applying it
         UserAccountDomain.from(entity).assertCanTransitionTo(request.getUserStatusId());

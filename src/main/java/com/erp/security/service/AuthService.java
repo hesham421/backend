@@ -59,7 +59,12 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final ApplicationEventPublisher eventPublisher;
 
-    @Transactional
+    // noRollbackFor: a rejected login (bad credentials / locked / inactive) is signalled by throwing
+    // LocalizedException, but the RULE-SEC-005 failed-attempt bookkeeping written just before the
+    // throw MUST persist — the default rollback-on-RuntimeException would silently undo it and the
+    // lockout could never engage. The only write on the reject path is that intended counter update,
+    // so committing it (rather than rolling back) is exactly the desired behaviour.
+    @Transactional(noRollbackFor = LocalizedException.class)
     public ServiceResult<TokenResponse> login(LoginRequest request) {
         log.info("Login attempt for username: {}", request.getUsername());
         LocalDateTime now = LocalDateTime.now();
@@ -175,11 +180,18 @@ public class AuthService {
         UserAccount user = token.getUserAccount();
         // RULE-SEC-009 — mirror requestReset: only an ACTIVE account can complete a reset, so a token
         // issued before the account was deactivated cannot silently "succeed" on a disabled account.
-        UserAccountDomain.from(user).assertLoginAllowed(now);
+        // Use assertActive (NOT assertLoginAllowed): a valid reset token is an out-of-band proof of
+        // ownership, so the transient RULE-SEC-005 login lock must not block the recovery path — a
+        // successful reset itself clears the lock below.
+        UserAccountDomain.from(user).assertActive();
 
         String encoded = passwordEncoder.encode(request.getNewPassword());
         UserAccountDomain.assertStoredHashed(request.getNewPassword(), encoded); // RULE-SEC-004
         user.setPasswordHash(encoded);
+        // A completed reset is a fresh start: clear any RULE-SEC-005 failed-attempt lock so the user
+        // can log in immediately with the new password.
+        user.setFailedLoginCount((short) 0);
+        user.setLockedUntil(null);
         userAccountRepository.save(user);
 
         token.markUsed();

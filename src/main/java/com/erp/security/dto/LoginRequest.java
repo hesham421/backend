@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 /**
  * API-SEC-001 request body. Credentials only — no id, no server-managed fields.
@@ -23,5 +24,6 @@ public class LoginRequest {
 
     @NotBlank(message = "{validation.required}")
     @Schema(description = "Raw password - كلمة المرور", example = "P@ssw0rd1")
+    @ToString.Exclude // never let the plaintext password reach a log via the generated toString()
     private String password;
 }

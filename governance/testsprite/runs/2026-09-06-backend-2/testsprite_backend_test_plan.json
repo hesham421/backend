@@ -1,0 +1,52 @@
+[
+  {
+    "id": "TC001",
+    "title": "post api v1 security auth login with valid credentials",
+    "description": "Test login endpoint with valid username and password to receive 200 response with accessToken and refreshToken."
+  },
+  {
+    "id": "TC002",
+    "title": "get api v1 security me modules with valid bearer token",
+    "description": "Test retrieval of current user's dashboard modules with valid Bearer accessToken to receive 200 response with list of modules."
+  },
+  {
+    "id": "TC003",
+    "title": "get api v1 security lookups lookupkey with valid bearer token",
+    "description": "Test security lookup endpoint with valid lookupKey and Bearer token to receive 200 response with lookup values."
+  },
+  {
+    "id": "TC004",
+    "title": "post api v1 security modules with valid data",
+    "description": "Test creation of a security module with valid moduleCode, names, and Bearer token to receive 200 response with created module details."
+  },
+  {
+    "id": "TC005",
+    "title": "post api v1 security pages with valid data",
+    "description": "Test creation of a security page with valid pageCode, moduleFk, names, and Bearer token to receive 200 response with created page and generated permissions."
+  },
+  {
+    "id": "TC006",
+    "title": "get api v1 security permissions with filters and bearer token",
+    "description": "Test listing of permissions with optional filters for pageFk, moduleFk, and permissionType with Bearer token to receive 200 response with paginated permissions."
+  },
+  {
+    "id": "TC007",
+    "title": "post api v1 security roles with valid data",
+    "description": "Test creation of a role with valid roleCode, names, and Bearer token to receive 200 response with created role."
+  },
+  {
+    "id": "TC008",
+    "title": "post api v1 security users with valid data",
+    "description": "Test creation of a user with valid profile data and Bearer token to receive 200 response with created pending-activation user."
+  },
+  {
+    "id": "TC009",
+    "title": "post api v1 common configurations with valid data",
+    "description": "Test creation of a new configuration entry with valid configKey, configValue, and Bearer token to receive 200 response with created configuration."
+  },
+  {
+    "id": "TC010",
+    "title": "post api v1 files with valid multipart data",
+    "description": "Test file upload endpoint with multipart/form-data including file, ownerId, ownerType, moduleCode, and Bearer token to receive 200 response with file metadata."
+  }
+]

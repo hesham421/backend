@@ -117,16 +117,12 @@ public class PageService {
             .orElseThrow(() -> new LocalizedException(
                 Status.NOT_FOUND, SecErrorCodes.PAGE_NOT_FOUND, id));
 
-        // pageCode immutability (RULE-SEC-010) needs no guard — it is absent from the request.
-        PageDomain.from(entity).assertCanUpdate(request.getNameAr(), request.getNameEn(),
-            request.getModuleFk());
-
-        Module module = requireActiveModule(request.getModuleFk());
-        Page parentPage = resolveParentPage(request.getParentPageFk());
+        // pageCode, the owning module and the parent page are all immutable (RULE-SEC-010 / RULE-SEC-014
+        // derivation stability) — absent from the request, so an update can only change the display
+        // names and the active flag. The module/parent are left exactly as persisted.
+        PageDomain.from(entity).assertCanUpdate(request.getNameAr(), request.getNameEn());
 
         mapper.updateEntityFromRequest(entity, request);
-        entity.setModule(module);
-        entity.setParentPage(parentPage);
 
         Page saved = repository.save(entity);
         log.info("Updated Page ID: {}", saved.getId());

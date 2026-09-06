@@ -68,8 +68,6 @@ public class UserMapper {
             .fullName(entity.getFullName())
             .preferredLangId(entity.getPreferredLangId())
             .userStatusId(entity.getUserStatusId())
-            .failedLoginCount(entity.getFailedLoginCount())
-            .lockedUntil(entity.getLockedUntil())
             .isActiveFl(Boolean.TRUE.equals(entity.getIsActive()))
             .createdAt(entity.getCreatedAt())
             .createdBy(entity.getCreatedBy())

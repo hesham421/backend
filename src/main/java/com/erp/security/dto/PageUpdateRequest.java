@@ -9,10 +9,11 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * API-SEC-013 update request body. Excludes pageCode — immutable after creation (RULE-SEC-010,
- * structurally enforced by omission). moduleFk stays part of the representation (the owning module
- * is NOT NULL) and is re-validated/re-assigned by the service; PageDomain rejects a null moduleFk.
- * parentPageFk is optional. isActiveFl, when present, drives reactivation/deactivation.
+ * API-SEC-013 update request body. Excludes pageCode, moduleFk and parentPageFk — all immutable
+ * after creation (RULE-SEC-010 / RULE-SEC-014 derivation stability), structurally enforced by
+ * omission per build-create-dto A.3.6 ("UpdateRequest excludes immutable fields — natural keys,
+ * FKs"). An update can only change the display names and the active flag; isActiveFl, when present,
+ * drives reactivation/deactivation.
  */
 @Data
 @Builder
@@ -30,12 +31,6 @@ public class PageUpdateRequest {
     @Size(max = 100, message = "{validation.size}")
     @Schema(description = "Page name (English) - اسم الشاشة بالإنجليزية", example = "Roles")
     private String nameEn;
-
-    @Schema(description = "Owning module identifier - معرف الموديل المالك", example = "1")
-    private Long moduleFk;
-
-    @Schema(description = "Parent page identifier (hierarchy) - معرف الشاشة الأصل", example = "2")
-    private Long parentPageFk;
 
     @Schema(description = "Active status; omit to leave unchanged - حالة التفعيل، اتركه فارغاً لعدم التغيير", example = "true")
     private Boolean isActiveFl;

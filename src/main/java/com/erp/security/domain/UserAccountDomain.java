@@ -73,6 +73,17 @@ public final class UserAccountDomain {
         return new UserAccountDomain(username, email, STATUS_PENDING_ACTIVATION, true, 0, null);
     }
 
+    /**
+     * RULE-SEC-001 (update path) — the new email must not already belong to a different account. The
+     * service owns the persistence lookup and passes the resulting flag (evaluated only when the
+     * email actually changed); this method owns the "is this allowed?" decision, mirroring create().
+     */
+    public static void assertEmailAvailable(String email, boolean emailAlreadyTaken) {
+        if (emailAlreadyTaken) {
+            throw new LocalizedException(Status.ALREADY_EXISTS, SecErrorCodes.USER_ACCOUNT_EMAIL_DUPLICATE, email);
+        }
+    }
+
     /** Reconstructs a Domain view over a persisted entity — no validation. */
     public static UserAccountDomain from(UserAccount entity) {
         return new UserAccountDomain(
@@ -117,13 +128,23 @@ public final class UserAccountDomain {
     }
 
     /**
+     * RULE-SEC-009 — the account must be ACTIVE (status ACTIVE and not soft-deactivated). This is the
+     * pure account-state gate WITHOUT the RULE-SEC-005 temporary login lock. Recovery/rotation flows
+     * that have already proven ownership out-of-band (password reset) use this so the transient
+     * failed-login lock cannot block the very path meant to clear it.
+     */
+    public void assertActive() {
+        if (!STATUS_ACTIVE.equals(userStatusId) || !active) {
+            throw new LocalizedException(Status.BUSINESS_RULE_VIOLATION, SecErrorCodes.USER_ACCOUNT_LOGIN_NOT_ACTIVE);
+        }
+    }
+
+    /**
      * RULE-SEC-009 (login blocked unless ACTIVE) + RULE-SEC-005 (temporary lock still in effect).
      * Called by the auth service before verifying credentials.
      */
     public void assertLoginAllowed(LocalDateTime now) {
-        if (!STATUS_ACTIVE.equals(userStatusId) || !active) {
-            throw new LocalizedException(Status.BUSINESS_RULE_VIOLATION, SecErrorCodes.USER_ACCOUNT_LOGIN_NOT_ACTIVE);
-        }
+        assertActive();
         if (lockedUntil != null && now.isBefore(lockedUntil)) {
             throw new LocalizedException(Status.BUSINESS_RULE_VIOLATION, SecErrorCodes.USER_ACCOUNT_LOCKED);
         }

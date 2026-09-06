@@ -6,6 +6,7 @@ import com.erp.common.exception.LocalizedException;
 import com.erp.security.domain.AuthorizationGrantDomainService;
 import com.erp.security.dto.PermissionResponse;
 import com.erp.security.entity.Permission;
+import com.erp.security.entity.Role;
 import com.erp.security.entity.RoleModuleId;
 import com.erp.security.entity.RolePermission;
 import com.erp.security.entity.RolePermissionId;
@@ -70,10 +71,15 @@ public class RolePermissionService {
     public ServiceResult<Void> grant(Long roleId, Long permissionId) {
         log.info("Granting Permission ID: {} to Role ID: {}", permissionId, roleId);
 
-        requireRole(roleId);
+        requireActiveRole(roleId);
         Permission permission = permissionRepository.findById(permissionId)
             .orElseThrow(() -> new LocalizedException(
                 Status.NOT_FOUND, SecErrorCodes.PERMISSION_NOT_FOUND, permissionId));
+        // Active guard mirrors the Tier-1 assignModule path: a deactivated permission is treated as
+        // not found so a grant cannot resurrect a dormant screen permission onto a role.
+        if (!Boolean.TRUE.equals(permission.getIsActive())) {
+            throw new LocalizedException(Status.NOT_FOUND, SecErrorCodes.PERMISSION_NOT_FOUND, permissionId);
+        }
 
         Long moduleFk = permission.getPage().getModule().getId();
         boolean roleHoldsPageModule = roleModuleRepository.existsById(new RoleModuleId(roleId, moduleFk));
@@ -115,5 +121,15 @@ public class RolePermissionService {
         roleRepository.findById(roleId)
             .orElseThrow(() -> new LocalizedException(
                 Status.NOT_FOUND, SecErrorCodes.ROLE_NOT_FOUND, roleId));
+    }
+
+    /** Existence + active guard for a role (grant path). Inactive is treated as not found. */
+    private void requireActiveRole(Long roleId) {
+        Role role = roleRepository.findById(roleId)
+            .orElseThrow(() -> new LocalizedException(
+                Status.NOT_FOUND, SecErrorCodes.ROLE_NOT_FOUND, roleId));
+        if (!Boolean.TRUE.equals(role.getIsActive())) {
+            throw new LocalizedException(Status.NOT_FOUND, SecErrorCodes.ROLE_NOT_FOUND, roleId);
+        }
     }
 }

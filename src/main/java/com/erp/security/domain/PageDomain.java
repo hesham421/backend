@@ -43,9 +43,13 @@ public final class PageDomain {
         return new PageDomain(entity.getPageCode(), Boolean.TRUE.equals(entity.getIsActive()));
     }
 
-    /** Required-field validation for UPDATE — called before the service mutates the entity. */
-    public void assertCanUpdate(String nameAr, String nameEn, Long moduleFk) {
-        if (isBlank(nameAr) || isBlank(nameEn) || moduleFk == null) {
+    /**
+     * Required-field validation for UPDATE — called before the service mutates the entity. The owning
+     * module and parent page are immutable after creation (structurally enforced by their omission
+     * from PageUpdateRequest), so only the mutable display names are validated here.
+     */
+    public void assertCanUpdate(String nameAr, String nameEn) {
+        if (isBlank(nameAr) || isBlank(nameEn)) {
             throw new LocalizedException(Status.VALIDATION_ERROR, SecErrorCodes.PAGE_FIELDS_REQUIRED);
         }
     }

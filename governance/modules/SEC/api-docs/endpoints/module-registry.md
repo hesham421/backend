@@ -290,6 +290,9 @@ Shape: `ApiResponsePageModuleResponse`
 | data | PageModuleResponse | No |  |  |  |
 | data.totalPages | integer (int32) | No |  |  |  |
 | data.totalElements | integer (int64) | No |  |  |  |
+| data.first | boolean | No |  |  |  |
+| data.last | boolean | No |  |  |  |
+| data.numberOfElements | integer (int32) | No |  |  |  |
 | data.pageable | Pageablenull | No |  |  |  |
 | data.pageable.paged | boolean | No |  |  |  |
 | data.pageable.pageNumber | integer (int32) | No |  |  |  |
@@ -304,9 +307,6 @@ Shape: `ApiResponsePageModuleResponse`
 | data.sort.sorted | boolean | No |  |  |  |
 | data.sort.unsorted | boolean | No |  |  |  |
 | data.sort.empty | boolean | No |  |  |  |
-| data.first | boolean | No |  |  |  |
-| data.last | boolean | No |  |  |  |
-| data.numberOfElements | integer (int32) | No |  |  |  |
 | data.size | integer (int32) | No |  |  |  |
 | data.content | array<ModuleResponse> | No |  |  |  |
 | data.content[].id | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
