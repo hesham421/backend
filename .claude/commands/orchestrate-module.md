@@ -357,71 +357,27 @@ When the last sub in a phase completes and every gap is resolved:
 
 ---
 
-## STEP 4 — Module completion pipeline (runs once, after ALIGN-BE closes clean)
+## Module implementation complete — informational banner (no auto-execution)
 
 Trigger: STEP 3 just closed `ALIGN-BE` — the LAST backend phase — and every
 gap opened during it is resolved (never escalated-and-still-open). This
-step never runs after any other phase, and never runs twice for the same
-module unless the user explicitly asks for a re-run. Same rule as every
-other step: the orchestrating session dispatches, reads, and reports — it
-never edits code or docs itself here either.
+orchestrator's job ends here — it is implementation-dispatch only. It does
+**not** itself run api-doc regeneration, TestSprite testing, or code review;
+those are separate commands the user runs deliberately, when ready. Print
+this banner and stop:
 
-1. **Regenerate api-docs.** Run, in this session (a documentation
-   regeneration, not a code change, so no dispatch needed):
-   ```bash
-   python3 governance/governance-tools/api-doc-generator/generate.py --module [MODULE] --function update
-   ```
-   This is the tool's own real CLI (confirmed against its README/`generate.py`
-   — normal use needs only `--module`/`--function`, everything else is
-   auto-discovered). Run it so the docs reflect the just-implemented code
-   before anything downstream reads them.
+```
+══════════════════════════════════════════════════════
+MODULE IMPLEMENTATION COMPLETE — [MODULE]
+══════════════════════════════════════════════════════
+All phases COMPLETE, all gaps resolved.
 
-2. **Run the module's test command.** Dispatch (or run directly if cheap)
-   `/[MODULE]/execute-backend-test` — the TestSprite-based command this
-   module's `generate-module-setup.md` run produced. Wait for it to finish
-   and read the report it writes at
-   `reports/TEST-REPORT-[MODULE]-backend-[YYYY-MM-DD].md`.
-
-3. **Hand off to code review — locally, no PR needed.** Run `debate-review`
-   (from the `review-skills` package, `amelnagdy/review-skills` — install
-   once via `npx skills add https://github.com/amelnagdy/review-skills --skill debate-review`
-   if not already available in this environment) against the accumulated
-   working-tree diff for this module:
-   ```bash
-   node "<debate-review skill dir>/scripts/review-pr.mjs" --local [--base <ref>]
-   ```
-   Per the skill's own documentation: `--local` reviews your local
-   uncommitted/branch changes directly — no PR or MR needs to exist yet.
-   Internally it runs a two-stage process (a main-reviewer pass, then a
-   debate-reviewer pass that tries to knock down or add to those findings,
-   with the main reviewer making the final call) and returns one
-   consolidated set of findings — there is no separate `review-main`/
-   `review-debate` flag for this orchestrator to dispatch itself; the skill
-   owns that internally.
-
-4. **Open question — `babysit-pr`, honestly stated.** `babysit-pr`'s
-   documented job is harvesting and resolving comment threads on a **live**
-   PR or MR (it picks the forge from the checked-out repo's git origin and
-   talks to that forge's API) — its own documentation does not describe a
-   `--local` mode the way `debate-review` does. So: **once this module's
-   branch is pushed and a PR is opened, run `babysit-pr` on it to close out
-   any review findings; until then, `debate-review --local`'s findings need
-   addressing manually, or revisited in a follow-up session once a PR
-   exists.** Do not assume `babysit-pr` runs at this step — it doesn't have
-   anything to attach to yet.
-
-5. **Print a module-completion summary:**
-   ```
-   ══════════════════════════════════════════════════════
-   MODULE COMPLETE — {MODULE}
-   ══════════════════════════════════════════════════════
-   Implementation   : all phases COMPLETE (CORE → ALIGN-BE)
-   api-docs         : regenerated [y/n]
-   Test report      : [pass/fail counts, path to report]
-   Code review      : debate-review --local — P0 [n] / P1 [n] / P2 [n]
-   Still open       : [unresolved review findings / no PR yet for babysit-pr / none]
-   ══════════════════════════════════════════════════════
-   ```
+Next steps (run separately, when ready):
+  Refresh API docs : python3 generate.py --module [MODULE] --function update
+                      (governance/governance-tools/api-doc-generator/)
+  Verify           : /[MODULE]/execute-backend-test
+══════════════════════════════════════════════════════
+```
 
 ---
 
