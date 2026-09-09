@@ -25,11 +25,13 @@ back to the flat `.claude/commands/execute-backend.md` (no module name,
 collides with every other module's setup, and silently overwrites whatever
 module was generated last).
 
-`execute-backend-test.md` drives TestSprite (this repo's sole adopted
-backend testing mechanism, wired in `.mcp.json` as the `TestSprite` MCP
-server) — see `governance/testsprite/TESTSPRITE-GOVERNANCE.md` for the
-shared mechanism, file-ownership rules, and failure taxonomy every
-generated test command follows; not regenerated per module.
+`execute-backend-test.md` is this module's combined verify command — it
+drives TestSprite (this repo's sole adopted backend testing mechanism,
+wired in `.mcp.json` as the `TestSprite` MCP server; see
+`governance/testsprite/TESTSPRITE-GOVERNANCE.md` for the shared mechanism,
+file-ownership rules, and failure taxonomy every generated test command
+follows) AND `debate-review --local` code review, one run, one report —
+not regenerated per module.
 
 ---
 
@@ -396,8 +398,46 @@ if nothing fits, use `ENVIRONMENT_FAILURE` and explain why in the detail.
 Write `reports/TEST-REPORT-[MODULE]-backend-[YYYY-MM-DD].md` — a
 module-scoped digest, distinct from TestSprite's own raw report (which
 stays archived under `governance/testsprite/runs/` per TESTSPRITE-GOVERNANCE.md
-§2, untouched). Any `FAIL` → hand off to `AUTONOMOUS-FULLSTACK-FIXING-AGENT.md`
-— never fix here.
+§2, untouched). This file stays open for STEP 3 to append to — do not
+treat it as closed once the test section is written.
+
+Any `FAIL` → hand off to `AUTONOMOUS-FULLSTACK-FIXING-AGENT.md` — never fix
+here.
+
+---
+
+## STEP 3 — Code review (`debate-review --local`)
+
+Run `debate-review` against this module's accumulated working-tree diff —
+this is the same command invocation as testing, one run covers both jobs:
+```bash
+node "<debate-review skill dir>/scripts/review-pr.mjs" --local [--base <ref>]
+```
+Per the skill's own documentation, `--local` reviews local
+uncommitted/branch changes directly — no PR needs to exist yet. It
+internally coordinates two lanes (a main-reviewer pass, then a
+debate-reviewer pass that tries to knock the main pass's findings down or
+add its own, with the main reviewer making the final call) and returns one
+consolidated finding set — this command does not dispatch those two lanes
+itself, the skill owns that internally.
+
+Append the findings to the **same** report file from STEP 2, as a clearly
+separate section — never merged into the test taxonomy table above, since
+these are a different kind of finding:
+
+```markdown
+## Code Review (debate-review --local)
+P0: [n]  P1: [n]  P2: [n]
+
+| Severity | File | Summary |
+|---|---|---|
+| P0 | ... | ... |
+```
+
+`babysit-pr` is a separate, later follow-up — it only operates on a live
+PR, so it does not run here. Once this module's branch is actually pushed
+and a PR exists, run it there to close out review threads; until then,
+these findings need addressing manually.
 
 ---
 
@@ -412,6 +452,11 @@ stays archived under `governance/testsprite/runs/` per TESTSPRITE-GOVERNANCE.md
 - NEVER modify application source code — report, don't fix
 - NEVER hand-edit an archived `.py` test file except under
   TESTSPRITE-GOVERNANCE.md §5's keep-in-sync exception
+- NEVER run `debate-review` before the STEP 1/STEP 2 test run finishes —
+  the report file's test section must exist before the review section is
+  appended
+- NEVER overwrite the STEP 2 test section when appending STEP 3's review
+  section — append, don't replace
 - ALWAYS classify every failure/skip
 - ALWAYS update execution-state.json after every sub
 ```
@@ -441,7 +486,7 @@ Heavy phases (require chunking): [list or "none"]
 To start execution:
   /[MODULE]/execute-backend [FIRST_PHASE]
 
-To run tests once implementation is COMPLETE:
+To verify (test + review) once implementation is COMPLETE:
   /[MODULE]/execute-backend-test
 ══════════════════════════════════════════════════════
 ```
