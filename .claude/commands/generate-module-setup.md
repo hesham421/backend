@@ -25,9 +25,11 @@ back to the flat `.claude/commands/execute-backend.md` (no module name,
 collides with every other module's setup, and silently overwrites whatever
 module was generated last).
 
-Both generated commands reference `TEST-EXECUTION-AGENT.md` for MCP
-boundaries and the failure taxonomy — shared across modules, not
-regenerated per module.
+`execute-backend-test.md` drives TestSprite (this repo's sole adopted
+backend testing mechanism, wired in `.mcp.json` as the `TestSprite` MCP
+server) — see `governance/testsprite/TESTSPRITE-GOVERNANCE.md` for the
+shared mechanism, file-ownership rules, and failure taxonomy every
+generated test command follows; not regenerated per module.
 
 ---
 
@@ -277,12 +279,20 @@ api_doc_gaps entries added.
 
 ## Step 3B — Generate `.claude/commands/[MODULE]/execute-backend-test.md`
 
+TestSprite treats the whole backend as ONE flat surface — there is no
+per-module bootstrap/PRD/plan. The generated command below scopes down to
+this module only at the `testIds` step (Branch B) and at archive time; it
+never regenerates or re-executes another module's coverage.
+
 ```markdown
 # /[MODULE]/execute-backend-test
 
-Execute test scenarios for [MODULE] — only for what's actually complete.
+Execute TestSprite-based test scenarios for [MODULE] — only for what's
+actually complete.
 
-> Read `TEST-EXECUTION-AGENT.md` first.
+> Read `governance/testsprite/TESTSPRITE-GOVERNANCE.md` in full before
+> doing anything else — it is the single source of truth for how
+> TestSprite is used against this repo, and for where its output lives.
 
 ## Usage
 /[MODULE]/execute-backend-test
@@ -304,44 +314,104 @@ If not all complete:
 Waiting on : [PHASE: status], ...
 ══════════════════════════════════════════════════════
 ```
-STOP. Do not generate or run any test.
+STOP. Do not call any TestSprite tool.
 
-### 0.2–0.4 — Same assessment/confirmation pattern as execute-backend.md
+### 0.2 — Confirm the app is reachable
+`http://localhost:7272/actuator/health` (start it via `mvn spring-boot:run`
+per `CLAUDE.md`'s "Running Locally" if it isn't running). Unreachable →
+classify `ENVIRONMENT_FAILURE`, stop, report — do not proceed.
+
+### 0.3–0.4 — Same assessment/confirmation pattern as execute-backend.md
 
 ---
 
 ## STEP 1 — Execution (after confirmation)
 
-### 1.0 — Read `header_file` once (if present)
+Pick the branch by whether this module already has archived tests:
 
-### Per sub:
-1. Read `packages/backend-test/[SUB].md` completely
-2. Identify all scenarios
-3. Generate: Spring Boot test class (`@SpringBootTest`/`@WebMvcTest` +
-   `MockMvc`), file `src/test/java/.../[Scenario]Test.java`
-4. Run: `mvn test -Dtest=[Class]` via bash. The `postgres` MCP server wired
-   in `.mcp.json` (`postgres-mcp`, `--access-mode=restricted`, read-only) for
-   any DB assertion.
-5. Classify every failure/skip using the shared taxonomy
-6. Update `execution-state.json`
+### Branch A — RERUN
+This module already has `.py` files under
+`governance/modules/[MODULE]/testsprite/tests/` and the API surface hasn't
+changed since. Follow `governance/testsprite/prompts/rerun-tests.md`'s
+mechanism exactly — no TestSprite MCP tool call at all: run each archived
+file directly (`python3 <path>`, never pytest — each file already calls
+its own `test_*()` at the bottom) and record pass/fail per file.
+
+### Branch B — NEW
+No archived tests exist yet for this module, or the API surface changed
+since the last archive. Follow `governance/testsprite/prompts/start-tests.md`'s
+pipeline, calling the TestSprite MCP tools as the live `TestSprite` server
+actually exposes them (verify current tool names/params against the
+connected server before calling — do not assume the names below never
+drift across a TestSprite MCP version bump):
+
+1. Housekeeping per TESTSPRITE-GOVERNANCE.md §4 — archive any leftover,
+   unarchived run sitting in `testsprite_tests/` before starting a new one.
+2. `testsprite_bootstrap` — ONLY if `testsprite_tests/tmp/config.json`
+   does not already exist (`type: backend`, `testScope: codebase`,
+   `localPort: 7272`, `projectPath: <repo root>`).
+3. `testsprite_generate_code_summary`
+4. `testsprite_generate_standardized_prd`
+5. `testsprite_generate_backend_test_plan` — (re)writes
+   `testsprite_tests/testsprite_backend_test_plan.json`, spanning the
+   WHOLE backend, not just this module.
+6. From that plan, select only the `TCnnn` entries whose endpoint matches
+   this module's prefix per TESTSPRITE-GOVERNANCE.md §3's table. Collect
+   their ids — this is the module scoping step.
+7. `testsprite_generate_code_and_execute` with `testIds` = exactly that
+   filtered id list (never the full-plan default, which would drag every
+   other module's scenarios into this module's run) — `projectName` /
+   `projectPath` as usual, `serverMode` matching how the app was actually
+   started (`production` only if it was built+started that way).
+8. Close out per TESTSPRITE-GOVERNANCE.md §4 "After a run finishes":
+   `git mv` this module's `TCnnn_*.py` files into
+   `governance/modules/[MODULE]/testsprite/tests/`, and the
+   PRD/plan/report trio into `governance/testsprite/runs/<today>-backend/`.
 
 ---
 
-## STEP 2 — Session Report
+## STEP 2 — Classify and report
 
-Write to `reports/TEST-REPORT-[MODULE]-backend-[YYYY-MM-DD].md`. Any
-`FAIL` → hand off to `AUTONOMOUS-FULLSTACK-FIXING-AGENT.md` — never fix here.
+Classify every failure/skip using this taxonomy — tool-agnostic, describes
+outcomes rather than any specific test framework:
+
+| Code | Meaning |
+|---|---|
+| `TEST_STRUCTURE_FAILURE` | Broken test script itself — not an app bug |
+| `DB_PRECONDITION` | Required seed/lookup/master data missing |
+| `ENVIRONMENT_FAILURE` | MCP, server, or config unreachable/broken |
+| `DEPENDENCY_FAILURE` | Skipped/failed because an upstream TC failed |
+| `MISSING_IMPLEMENTATION` | Endpoint or feature not built yet |
+| `AUTH_FAILURE` | Login / session / token issue |
+| `VALIDATION_FAILURE` | Backend rejected input that should have been valid |
+| `SERVER_ERROR` | 5xx from backend |
+| `CONTRACT_BREAK` | Response shape no longer matches the documented contract |
+| `API_REGRESSION` | API behavior changed vs. expected |
+| `DATA_INTEGRITY_ISSUE` | API step reported success but DB state is wrong |
+| `BUSINESS_LOGIC_ISSUE` | A functional/business rule behaves incorrectly |
+
+Every failed/skipped test gets exactly one code. Never invent a new one —
+if nothing fits, use `ENVIRONMENT_FAILURE` and explain why in the detail.
+
+Write `reports/TEST-REPORT-[MODULE]-backend-[YYYY-MM-DD].md` — a
+module-scoped digest, distinct from TestSprite's own raw report (which
+stays archived under `governance/testsprite/runs/` per TESTSPRITE-GOVERNANCE.md
+§2, untouched). Any `FAIL` → hand off to `AUTONOMOUS-FULLSTACK-FIXING-AGENT.md`
+— never fix here.
 
 ---
 
 ## Constraints (NON-NEGOTIABLE)
 
 - NEVER run before the gate check passes
-- NEVER treat `*-HEADER.md` as a sub
-- NEVER skip mandatory scenarios (the Mandatory-J TC blocks embedded inside
-  the RULE-SCENARIOS / API-SCENARIOS sub files)
+- NEVER call a TestSprite MCP tool in Branch A (RERUN) — direct `python3`
+  execution of the already-archived files only
+- NEVER call the bootstrap tool when `testsprite_tests/tmp/config.json`
+  already exists
+- NEVER skip TESTSPRITE-GOVERNANCE.md §4's housekeeping/archiving steps
 - NEVER modify application source code — report, don't fix
-- NEVER run mutating SQL via the PostgreSQL MCP (read-only only)
+- NEVER hand-edit an archived `.py` test file except under
+  TESTSPRITE-GOVERNANCE.md §5's keep-in-sync exception
 - ALWAYS classify every failure/skip
 - ALWAYS update execution-state.json after every sub
 ```
@@ -384,3 +454,8 @@ To run tests once implementation is COMPLETE:
 - NEVER invent a phase, sub, or file path not found in Step 1's scan
 - NEVER reach into `frontend/governance/` for anything — this command
   and the tools it calls have no concept of a frontend track at all
+- NEVER write a specific machine's absolute path into this file, into a
+  generated command, or into `execution-state.json`. Derive the backend
+  repo root at runtime (`git rev-parse --show-toplevel`, or by walking up
+  from this file's location) — never a remembered path from an earlier
+  session or machine.
