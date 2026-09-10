@@ -71,10 +71,10 @@ public class DispatchService {
 
     /**
      * Internal trusted-caller entry point (the pattern flagged as a future concern above, now that a
-     * principal-less caller exists): in-process {@code @EventListener}s such as
-     * {@link com.erp.notif.crossmodule.SecurityAuthEventListener} run with no HTTP principal (e.g. the
-     * public forgot-password flow), so they cannot go through {@link #dispatch}'s
-     * {@code isAuthenticated()} gate. Not exposed via any controller — callers within this JVM only.
+     * principal-less caller exists): in-process {@code @EventListener}s (e.g. a SEC-owned auth-event
+     * bridge for the public forgot-password/activation flows) run with no HTTP principal, so they
+     * cannot go through {@link #dispatch}'s {@code isAuthenticated()} gate. Not exposed via any
+     * controller — callers within this JVM only.
      *
      * <p>REQUIRES_NEW is deliberate, not decorative: an {@code AFTER_COMMIT}
      * {@code @TransactionalEventListener} (the only caller) runs while the just-committed outer
