@@ -66,4 +66,13 @@ public class OpenApiConfig {
             .packagesToScan("com.erp.file.controller")
             .build();
     }
+
+    @Bean
+    public GroupedOpenApi mdlApi() {
+        return GroupedOpenApi.builder()
+            .group("mdl")
+            .displayName("MDL — Master Data Lookup")
+            .packagesToScan("com.erp.mdl.controller")
+            .build();
+    }
 }

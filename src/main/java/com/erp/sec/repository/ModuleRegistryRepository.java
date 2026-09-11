@@ -32,6 +32,13 @@ public interface ModuleRegistryRepository
     Optional<ModuleRegistry> findByCode(String code);
 
     /**
+     * QR-MDL-012 — added by MDL's SVC-API-CRUD sub (XM-MDL-001) for {@code SecModuleRegistryApi}'s
+     * "is this module registered and active?" existence check (RULE-MDL-001). Additive only —
+     * every other method on this interface is unchanged.
+     */
+    boolean existsByCodeAndIsActiveFlTrue(String code);
+
+    /**
      * QR-SEC-027 — the modules one caller's roles reach (REQ-SEC-021/032). An inactive role is not
      * an effective grant: deactivation is SEC's only withdrawal (SCR-REQ-SEC-005 B4).
      */

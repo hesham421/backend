@@ -26,8 +26,10 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
  * was deleted in commit {@code 1361316} ("cc", 2026-09-03) as apparent collateral of a bulk
  * governance-file cleanup, and was never restored. Module packages have since been renamed
  * ({@code security}→{@code sec}, {@code notification}→{@code notif}, {@code org}→{@code cu});
- * {@code masterdata} has no source under {@code com.erp} yet. This version targets the current
- * package layout — see {@code src/main/java/com/erp/*}.
+ * {@code masterdata} had no source under {@code com.erp} at that time. This version targets the
+ * current package layout — see {@code src/main/java/com/erp/*}. {@code com.erp.mdl} (Master Data
+ * Lookup, the {@code masterdata} module's actual package prefix) was added to {@link #MODULES}
+ * once its first source classes landed, so it is no longer misclassified as {@code "shared"}.
  */
 @AnalyzeClasses(packages = "com.erp")
 public class CrossModuleBoundaryArchTest {
@@ -42,7 +44,8 @@ public class CrossModuleBoundaryArchTest {
             new Module("com.erp.sec", "com.erp.sec.crossmodule"),
             new Module("com.erp.notif", "com.erp.notif.crossmodule"),
             new Module("com.erp.file", "com.erp.file.crossmodule"),
-            new Module("com.erp.cu", "com.erp.cu.crossmodule")
+            new Module("com.erp.cu", "com.erp.cu.crossmodule"),
+            new Module("com.erp.mdl", "com.erp.mdl.crossmodule")
     );
 
     private record Module(String packagePrefix, String crossModulePackage) {
@@ -78,15 +81,29 @@ public class CrossModuleBoundaryArchTest {
         }
     }
 
+    /** Fully-qualified name of the one class exempted by {@link #spel_type_references_do_not_bypass_the_module_boundary}. */
+    private static final String PERMISSION_CONSTANTS_CLASS = "com.erp.sec.permission.PermissionConstants";
+
     /**
      * The half normal ArchUnit dependency rules structurally cannot see: a
      * {@code @PreAuthorize} SpEL string's {@code T(...)} type reference is a plain String
      * constant in bytecode, not a real class dependency. This walks every
      * {@code @PreAuthorize}-annotated method's expression looking for a
-     * {@code T(fully.qualified.Type)} reference that crosses a module boundary — currently none
-     * do (every {@code T(...)} reference in the codebase is {@code sec.permission.PermissionConstants}
-     * referenced from within {@code sec} itself). Any such reference found in the future is a new,
-     * unreviewed bypass of the structural rule above and must fail the build.
+     * {@code T(fully.qualified.Type)} reference that crosses a module boundary. Any such
+     * reference found is a new, unreviewed bypass of the structural rule above and must fail
+     * the build.
+     *
+     * <p><b>Deliberate, accepted exception:</b> a reference to exactly
+     * {@code com.erp.sec.permission.PermissionConstants} is allowed from any caller module.
+     * That class is a pure, stateless string-constants holder with no logic — the project's
+     * shared permission-naming registry, not a protected SEC-internal — and every module's
+     * {@code build-create-service} skill-generated {@code @PreAuthorize} checks are
+     * <em>mandated</em> to reference it by fully-qualified name (see
+     * {@code build-create-service/SKILL.md}'s {@code <PERMISSIONS_CLASS>} variable: "Fully-
+     * qualified name of the project's permission constants class"). This exception is an exact
+     * class-name match only — no other class under {@code com.erp.sec} is exempt, so a real
+     * future bypass (some other SEC-internal class referenced via SpEL {@code T(...)}) still
+     * fails.
      */
     @ArchTest
     static void spel_type_references_do_not_bypass_the_module_boundary(JavaClasses classes) {
@@ -100,6 +117,9 @@ public class CrossModuleBoundaryArchTest {
                 Matcher matcher = typeReference.matcher(expression);
                 while (matcher.find()) {
                     String referencedType = matcher.group(1);
+                    if (referencedType.equals(PERMISSION_CONSTANTS_CLASS)) {
+                        continue;
+                    }
                     String callerModule = topLevelModuleOf(clazz.getPackageName());
                     String referencedModule = topLevelModuleOf(packageOf(referencedType));
                     if (!callerModule.equals(referencedModule)) {
