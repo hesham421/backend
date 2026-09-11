@@ -84,8 +84,10 @@ public interface RoleActionGrantRepository
      * QR-SEC-027, permission-code shape — the caller's effective action grants, the read path
      * REQ-SEC-023's per-widget filter and CORE.md's REQ-SEC-033 gateway both name.
      */
-    @Query("SELECT DISTINCT g.action.permissionCode FROM RoleActionGrant g "
-        + "WHERE g.action.isActiveFl = TRUE AND g.role.isActiveFl = TRUE "
+    @Query("SELECT DISTINCT a.permissionCode FROM RoleActionGrant g "
+        + "JOIN g.action a JOIN a.screen s JOIN s.module m "
+        + "WHERE a.isActiveFl = TRUE AND g.role.isActiveFl = TRUE "
+        + "AND s.isActiveFl = TRUE AND m.isActiveFl = TRUE "
         + "AND g.role.rolePk IN ("
         + "  SELECT ura.role.rolePk FROM UserRoleAssignment ura WHERE ura.user.userPk = :userPk)")
     List<String> findEffectivePermissionCodesForUser(@Param("userPk") Long userPk);
@@ -98,7 +100,9 @@ public interface RoleActionGrantRepository
     @Query("SELECT DISTINCT ura.user.userPk FROM UserRoleAssignment ura "
         + "WHERE ura.role.rolePk IN ("
         + "  SELECT g.role.rolePk FROM RoleActionGrant g "
-        + "  WHERE g.action.permissionCode = :permissionCode "
-        + "  AND g.action.isActiveFl = TRUE AND g.role.isActiveFl = TRUE)")
+        + "  JOIN g.action a JOIN a.screen s JOIN s.module m "
+        + "  WHERE a.permissionCode = :permissionCode "
+        + "  AND a.isActiveFl = TRUE AND g.role.isActiveFl = TRUE "
+        + "  AND s.isActiveFl = TRUE AND m.isActiveFl = TRUE)")
     List<Long> findUserIdsHoldingPermission(@Param("permissionCode") String permissionCode);
 }

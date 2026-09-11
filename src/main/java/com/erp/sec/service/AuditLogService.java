@@ -50,6 +50,9 @@ public class AuditLogService {
     private static final String CSV_HEADER = "auditLogPk,eventTypeCode,actorUserId,occurredAt,"
         + "targetRef,detailsAr,detailsEn,ipAddress";
 
+    /** Leading characters a spreadsheet treats as the start of a formula — see {@link #cell}. */
+    private static final String FORMULA_TRIGGERS = "=+-@\t\r";
+
     private final AuditLogEntryRepository repository;
     private final UserRepository userRepository;
     private final AuditLogEntryMapper mapper;
@@ -142,11 +145,22 @@ public class AuditLogService {
         return csv.toString();
     }
 
-    /** RFC 4180 quoting — a stored value is exported byte-identical apart from that escaping. */
+    /**
+     * RFC 4180 quoting, plus formula-injection neutralization: a value whose first character is
+     * one a spreadsheet reads as the start of a formula ({@code = + - @}, TAB, CR) is prefixed
+     * with an apostrophe so the sheet renders it as text. Audit rows carry unauthenticated input
+     * verbatim — {@code AuthService.login} stores the submitted username as the {@code targetRef}
+     * of every {@code LOGIN_FAILED} row — so the export must not hand an admin's spreadsheet a
+     * formula an anonymous caller chose.
+     */
     private String cell(Object value) {
         if (value == null) {
             return "";
         }
-        return "\"" + String.valueOf(value).replace("\"", "\"\"") + "\"";
+        String text = String.valueOf(value);
+        if (!text.isEmpty() && FORMULA_TRIGGERS.indexOf(text.charAt(0)) >= 0) {
+            text = "'" + text;
+        }
+        return "\"" + text.replace("\"", "\"\"") + "\"";
     }
 }

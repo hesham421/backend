@@ -3,6 +3,7 @@ package com.erp.sec.service;
 import com.erp.common.domain.status.ServiceResult;
 import com.erp.common.domain.status.Status;
 import com.erp.common.exception.LocalizedException;
+import com.erp.common.util.SecurityContextHelper;
 import com.erp.common.util.TokenHasher;
 import com.erp.notif.crossmodule.DispatchCommand;
 import com.erp.notif.crossmodule.NotificationDispatchApi;
@@ -10,10 +11,12 @@ import com.erp.sec.domain.PasswordResetTokenDomain;
 import com.erp.sec.dto.ConfirmationResponse;
 import com.erp.sec.dto.PasswordResetCompleteRequest;
 import com.erp.sec.dto.PasswordResetRequest;
+import com.erp.sec.entity.ActiveSession;
 import com.erp.sec.entity.AuditLogEntry;
 import com.erp.sec.entity.PasswordResetToken;
 import com.erp.sec.entity.User;
 import com.erp.sec.exception.SecErrorCodes;
+import com.erp.sec.repository.ActiveSessionRepository;
 import com.erp.sec.repository.AuditLogEntryRepository;
 import com.erp.sec.repository.PasswordResetTokenRepository;
 import com.erp.sec.repository.UserRepository;
@@ -42,6 +45,7 @@ public class PasswordResetService {
     /** AUDIT_EVENT_TYPE codes (CHK_SEC_AUDIT_LOG_EVENT_TYPE). */
     private static final String EVENT_PASSWORD_RESET_REQUESTED = "PASSWORD_RESET_REQUESTED";
     private static final String EVENT_PASSWORD_RESET_COMPLETED = "PASSWORD_RESET_COMPLETED";
+    private static final String EVENT_SESSION_TERMINATED = "SESSION_TERMINATED";
 
     /** Seeded by V11__notif_email_channel_seed.sql / updated by V12 — never invented here. */
     private static final String TEMPLATE_PASSWORD_RESET = "PASSWORD_RESET";
@@ -59,6 +63,7 @@ public class PasswordResetService {
     private final PasswordResetTokenRepository repository;
     private final UserRepository userRepository;
     private final AuditLogEntryRepository auditLogEntryRepository;
+    private final ActiveSessionRepository activeSessionRepository;
     private final PasswordEncoder passwordEncoder;
     private final NotificationDispatchApi notificationDispatchApi;
 
@@ -98,6 +103,8 @@ public class PasswordResetService {
         token.markUsed();
         repository.save(token);
 
+        terminateOpenSessions(user, now);
+
         auditLogEntryRepository.save(AuditLogEntry.builder()
             .eventTypeCode(EVENT_PASSWORD_RESET_COMPLETED)
             .actor(user)
@@ -113,6 +120,36 @@ public class PasswordResetService {
             .messageAr(COMPLETE_CONFIRMATION_AR)
             .messageEn(COMPLETE_CONFIRMATION_EN)
             .build());
+    }
+
+    /**
+     * A reset is the action a user takes to lock an attacker out, but {@code JwtAuthenticationFilter}
+     * authenticates against {@code ActiveSession.tokenRef}/{@code terminatedAt} alone — independent
+     * of the password hash — so a token issued before the reset would otherwise survive it. Mirrors
+     * the termination loop of {@code UserService.deactivate}; no {@code assertCanTerminate} guard is
+     * needed because the query already returns only non-terminated rows, and a 409 raised here would
+     * abort a reset that has already succeeded. The principal is {@code SYSTEM}, since API-SEC-004
+     * is pre-authentication and the context therefore carries no caller.
+     */
+    private void terminateOpenSessions(User user, Instant now) {
+        String principal = SecurityContextHelper.getCurrentUsername();
+        List<ActiveSession> openSessions =
+            activeSessionRepository.findNonTerminatedByUser(user.getUserPk());
+        for (ActiveSession session : openSessions) {
+            session.terminate(principal);
+            auditLogEntryRepository.save(AuditLogEntry.builder()
+                .eventTypeCode(EVENT_SESSION_TERMINATED)
+                .actor(user)
+                .occurredAt(now)
+                .targetRef(String.valueOf(session.getActiveSessionPk()))
+                .detailsAr("إنهاء الجلسة بسبب إعادة تعيين كلمة المرور")
+                .detailsEn("Session terminated because the password was reset")
+                .build());
+        }
+        activeSessionRepository.saveAll(openSessions);
+
+        log.info("Password reset terminated sessions: {} for User ID: {}",
+            openSessions.size(), user.getUserPk());
     }
 
     private void issueToken(User user) {

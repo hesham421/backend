@@ -28,7 +28,10 @@ DTO MEMBERSHIP: create-request excludes {userPk, passwordHash(raw password field
 LOOKUP FIELDS: `statusCode` → key `USER_STATUS` → GET /api/v1/mdl/lookups?type=USER_STATUS (once MDL exists; v1 validates server-side against the closed set per ADR-SEC-001) — stores the code, never a numeric FK.
 DOMAIN RULES: none scoped to User alone (RULE-SEC-005 scopes ENT-SEC-003/009, cited there).
 STATE MACHINE: `statusCode` (USER_STATUS) — values PENDING/ACTIVE/DISABLED; initial ACTIVE (direct create, API-SEC-006) or PENDING (via sign-up approval, API-SEC-011); transitions PENDING→ACTIVE (API-SEC-011, actor: administrator), ACTIVE→DISABLED (API-SEC-009, actor: administrator), DISABLED→ACTIVE (API-SEC-010, actor: administrator); no terminal state; no invalid-transition RULE beyond "the four listed transitions are the only ones exposed" (enforced by which endpoint exists, not a DB CHECK on the transition itself).
-CROSS-MODULE: none (SEC is ROOT).
+CROSS-MODULE: none CONSUMED (SEC is ROOT). EXPOSED since 2026-09-11: the contact projection
+(email + both display names + active, DBF-SEC-003/005/006/007) and this entity's pk as the
+permission-holder result, both read-only via `com.erp.sec.crossmodule.SecUserDirectoryApi`
+(REQ-SEC-034, REQ-SEC-035) — no table, column or FK registered, so still no XM row (§PHASE 6).
 REPOSITORY OPS → QR-SEC-001 (FIND_ONE by username), QR-SEC-005 (FIND_BY_CRITERIA), QR-SEC-006 (SAVE), QR-SEC-007 (UPDATE), QR-SEC-009 (UPDATE, deactivate), QR-SEC-010 (UPDATE, reactivate), QR-SEC-033 (EXISTS, uniqueness).
 
 #### ENT-SEC-002 — Role      kind: security

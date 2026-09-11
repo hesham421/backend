@@ -30,7 +30,7 @@ Each of its ten rows was re-checked against the current artifacts and the implem
 | MANIFEST (§4) | only the 4 mandated columns beyond DBF/ENT; all 104 DBF listed; 0 ⏸ rows (0 XM) | **HOLDS** | 104 distinct DBF ids in the manifest, matching db-script §1 exactly; db-script §2 XM REGISTER reads "None — SEC is ROOT"; no ⏸ row present |
 | QRC (§5) | every API with a DB operation has ≥1 QR; "logical spec, not code" framing; no join for a lookup label; exact generation object named | **PARTLY** | Verified mechanically: all 27 API atoms in `packages/backend-execution/SVC-API/*.md` cite at least one `QR-SEC-nnn`; the catalog header carries the framing; lookups are CHECK-constrained so no label join exists. Two defects the row does not report: the generation object it names is superseded (see BINDING), and **QR-SEC-025's declared query was dead code** — `ActiveSessionRepository.findNonTerminated(Pageable)` had no caller anywhere in `src/main/java` after API-SEC-025 moved to a `SpecBuilder`-driven `POST /search` (finding F-ALIGN-1, A.2.9 — **FIXED** 2026-09-11 by deleting the orphan method; `plan:792` declares `join NONE`, so no artifact ever required the query) |
 | API (R3) | every RULE in a Validations line has a catalog row; platform errors carry PLATFORM-STD + ADR-SEC-002; create/update requests exclude PK/audit/system fields | **PARTLY** | The catalog half holds, restated after the 2026-09-11 fix: the §Error Catalog has **28 rows** — 27 module-owned `SEC-*` rows pairing 1:1 with the **27** `SecErrorCodes` constants, all 27 present in **both** `messages.properties` and `messages_ar.properties`, plus **1** platform row (`INTERNAL_ERROR`) that the shared `GlobalExceptionHandler` owns and SEC neither declares nor throws. As originally written this row read "28 catalog rows = 28 `SecErrorCodes` constants", which held only while SEC wrongly declared `SEC_500`. The DTO half holds: no `*CreateRequest`/`*UpdateRequest` carries a PK, audit or system field, and `UserUpdateRequest` correctly omits the immutable `username`/`password`. But the check only ever tests *exclusion*, never whether a field an API **names** is actually **defined** — which is exactly why it passed API-SEC-011 while the approved sign-up's credential was unspecified (`api_doc_gaps` **#4**) and API-SEC-022 while three of its Response figures were undefined (`api_doc_gaps` **#6**). Separately, `SEC-500` — named by **8** API blocks (the report originally said nine; the true count is eight) as their only error — was never emitted (finding F-ALIGN-2, **FIXED** 2026-09-11) |
-| CROSS-MODULE | 0 XM from db-script, 0 placed, 0 mismatched; inbound stub uses XM-INBOUND-STUB-1 notation, not TODO | **PARTLY** | True at the **schema** level and only there: db-script §2 records no consumed entity, table or FK, so the XM-row count is genuinely 0/0/0, and `XM-INBOUND-STUB-1` is present in `INT-R.md` as claimed. At the **API** level SEC is not isolated — `PasswordResetService` imports and calls `com.erp.notif.crossmodule.NotificationDispatchApi` (with `DispatchCommand`); those are the only two non-`com.erp.sec`/`com.erp.common` imports in the module, and the call is srs-sec.md §A8's one declared SOFT integration. INT-R additionally recorded two inbound contracts SEC does **not** satisfy: XM-INBOUND-GAP-1 and XM-INBOUND-GAP-2 (`api_doc_gaps` #8, #9). `src/main/java/com/erp/sec/crossmodule` does not exist |
+| CROSS-MODULE | 0 XM from db-script, 0 placed, 0 mismatched; inbound stub uses XM-INBOUND-STUB-1 notation, not TODO | **PARTLY** | True at the **schema** level and only there: db-script §2 records no consumed entity, table or FK, so the XM-row count is genuinely 0/0/0 in the CONSUME direction, and `XM-INBOUND-STUB-1` is present in `INT-R.md` as claimed. At the **API** level SEC is not isolated — `PasswordResetService` imports and calls `com.erp.notif.crossmodule.NotificationDispatchApi` (with `DispatchCommand`), srs-sec.md §A8's one declared SOFT integration. INT-R additionally recorded two inbound contracts SEC did **not** satisfy: XM-INBOUND-GAP-1 and XM-INBOUND-GAP-2 (`api_doc_gaps` #8, #9). **SUPERSEDED 2026-09-11:** the sentence "`src/main/java/com/erp/sec/crossmodule` does not exist" was true when this row was written and is now false — SEC exposes `SecUserDirectoryApi` (`findContact` → REQ-SEC-034; `findUserIdsHoldingPermission` → REQ-SEC-035, QR-SEC-039) with `UserContact` and `SecUserDirectoryApiImpl`, and both inbound gaps are CLOSED. The XM-row count is still 0: the surface registers no entity, table or column. Note the resulting MODULE-level cycle once NOTIF adopts it (SEC→NOTIF dispatch, NOTIF→SEC contact) — not a crossmodule-interface cycle, but stated rather than left to be discovered |
 | SECURITY (R7) | every secured API declares its PERM_*; every secured screen has a Phase 7 seed row; ERP-4: every mutation endpoint declares its PERM_* | **PARTLY** | The seed half now **holds and is checkable**: all 9 Phase 7 page codes (`SEC_LOGIN`, `SEC_SIGNUP`, `SEC_PWD_RESET`, `SEC_USERS`, `SEC_ROLES`, `SEC_MODULE_REGISTRY`, `SEC_DASHBOARD`, `SEC_AUDIT_LOG`, `SEC_SESSIONS`) are seeded by `V17__sec_security_seed.sql`, which also seeds all 13 permission codes the Phase 7 matrix names. The API half holds with two stated exceptions and one false sub-claim: 22 of 27 `Security :` lines name a `PERM_*` and exactly 22 `PERM_`-based `@PreAuthorize` annotations exist in `com.erp.sec.service` — a clean 1:1 — while API-SEC-027 has no page code of its own (SRS B4) and is gated `isAuthenticated()`, and API-SEC-001..004 are public by contract. **The ERP-4 sub-claim is false as written**: API-SEC-002, API-SEC-003 and API-SEC-004 are `POST` mutations that write `SEC_SIGNUP_REQUEST` / `SEC_PWD_RESET_TOKEN` / `SEC_USER` rows and state "public — no permission required", so "every POST/PUT/PATCH/DELETE API above states one" is untrue. `PERM_SEC_ROLES_DELETE` is seeded but absent from `PermissionConstants` (finding F-ALIGN-3) |
 | CORE (R1) | layers, domain placement, error signalling (`SEC-<HTTP-status>-<SCENARIO>`) and type mapping all declared | **HOLDS — but only after a correction** | The declared format now matches reality: all **27** `SecErrorCodes` values have the shape `SEC-<HTTP>-<SCENARIO>`. At ALIGN-BE there were 28, of which `SEC-500` was the one scenario-less generic row; it was removed on 2026-09-11 (F-ALIGN-2), so the shape is now exceptionless. As **generated**, this row certified `SEC-<3-digit-sequence>` — a format matching no catalog row and no emitted code. That was `api_doc_gaps` **#1**; the row passes today because the gap was corrected, not because the check worked |
 | DECISIONS | ADR-SEC-001 and ADR-SEC-002 both ACCEPTED, non-breaking; no BLOCKED ADR | **FALSE** | `find . -iname 'ADR-SEC-*'` returns nothing, and no `decisions/` directory exists anywhere in the repository. Both are cited as `erp/decisions/SEC/ADR-SEC-00N.md` — in the plan, `_SECTIONS.md`, `governance/modules/project-registry.md:176-177` and across the MDL artifacts — and neither file has ever existed here. Their content is stated inline in the artifacts that cite them and nowhere else; the "ACCEPTED" status is therefore unevidenced. (Independently noted at `governance/project-artifacts/generator-defect-report-and-fix-prompt.md:155-156`.) Correct on its own terms: there is no BLOCKED ADR |
@@ -72,8 +72,11 @@ Present: entity, repository, `*CreateRequest` (5), `UserUpdateRequest`, `*Respon
   contracts, so nothing would consume it — but the skill lists it among the 15 mandatory files,
   so the point is not awarded.
 - `dto/<Entity>OptionResponse.java` — conditional, not counted; SEC exposes no dropdown endpoint.
-- `crossmodule/<Name>Api.java` — conditional, not counted; SEC publishes no cross-module surface.
-  Flagged, because `api_doc_gaps` #8 and #9 are precisely two consumers that need one.
+- `crossmodule/<Name>Api.java` — conditional, not counted. **SUPERSEDED 2026-09-11:** as scored,
+  this line read "SEC publishes no cross-module surface", flagged because `api_doc_gaps` #8 and #9
+  were precisely two consumers that needed one. SEC now publishes exactly one:
+  `crossmodule/SecUserDirectoryApi.java` (+ `UserContact.java`, `SecUserDirectoryApiImpl.java`),
+  REQ-SEC-034 / REQ-SEC-035. The file is conditional, so the 14/15 score is unchanged.
 
 ### STAGE 2 — Layer contracts — 73 / 78 applicable (7 N/A)
 
@@ -126,8 +129,11 @@ Verified: zero raw/generic exceptions in the module; all codes in both bundles (
 the 2026-09-11 `SEC_500` removal — re-verified, 27 keys in each bundle); zero caching
 annotations; zero `@ControllerAdvice` in `com.erp.sec`; all 28 public service methods return
 `ServiceResult<T>` (30 `ServiceResult.success(...)`, 9 `Status.CREATED`, 7 `Status.UPDATED`);
-zero `@ResponseStatus` anywhere in the controllers; the one cross-module dependency is injected
-only into `PasswordResetService` and never into a Domain, mapper or controller.
+zero `@ResponseStatus` anywhere in the controllers; the one cross-module dependency SEC *consumes*
+is injected only into `PasswordResetService` and never into a Domain, mapper or controller (still
+true after the 2026-09-11 amendment: the interface SEC *exposes*, `SecUserDirectoryApi`, is
+implemented by a dedicated `@Component` delegating to `UserService` and is referenced by no
+Domain, mapper or controller either).
 
 ### STAGE 4 — Compilation — 2 / 2
 
@@ -215,9 +221,15 @@ All nine are in `governance/modules/SEC/execution-state.json`, each with its own
   in), #6 the three undefined dashboard figures (N = 10, stalled = 7 days, privileged = holds a
   non-VIEW action grant), #5 the internal-caller pattern (authorization half closed; the
   transaction half explicitly still open).
-- **Open, needing a decision outside SEC (3):** #7 no producer for the published `api-docs`
-  artifact, #8 XM-INBOUND-GAP-1 (FIN assumes a role-members read API that does not exist),
-  #9 XM-INBOUND-GAP-2 (NOTIF cannot resolve a SEC user's email, so REQ-SEC-029 does not deliver).
+- **Open, needing a decision outside SEC (3 as scored; 1 today):** #7 no producer for the
+  published `api-docs` artifact, #8 XM-INBOUND-GAP-1 (FIN assumes a role-members read API that
+  does not exist), #9 XM-INBOUND-GAP-2 (NOTIF cannot resolve a SEC user's email, so REQ-SEC-029
+  does not deliver). **UPDATED 2026-09-11:** #8 and #9 are both CLOSED — the human authorized
+  the P1/P2 decision this summary said was owed, and SEC gained its first cross-module read
+  surface (`SecUserDirectoryApi`), so #7 is the only one of the three still open. Re-derived
+  across all 13 `api_doc_gaps[]` entries the same day: 8 closed · 3 answered by an
+  implementation choice with a human-only question left over · 0 partially closed · 2 open
+  (#7, #13).
 
 ### New at ALIGN-BE
 
@@ -318,6 +330,21 @@ plan's twin table already carried `POST .../search`. The five rows were brought 
 agreement with the plan on 2026-09-11 (the plan's table is authoritative, and matches the five
 `@PostMapping("/search")` controllers); the two tables now `diff` clean. API-SEC-022, 024 and 027
 are genuinely `GET` and were left alone.
+
+**Amendment landed after this phase (2026-09-11).** SEC gained its first cross-module read
+surface on an explicit human authorization, closing `api_doc_gaps` #8 and #9 together:
+`src/main/java/com/erp/sec/crossmodule/{SecUserDirectoryApi,UserContact,SecUserDirectoryApiImpl}.java`,
+`UserService.findContact` / `findUserIdsHoldingPermission`,
+`RoleActionGrantRepository.findUserIdsHoldingPermission` (QR-SEC-039), and `User.STATUS_ACTIVE`
+widened to `public` so the derivation of `UserContact.active` does not repeat the literal. No
+migration (existing columns only) and nothing under `src/test/`. Reflected into the analysis
+artifacts as the human required: REQ-SEC-034/035 + AC + the US-SEC-007 / US-SEC-012 rows + a
+third §A8 table in `P1/srs-sec.md`; §2 XM REGISTER in `P2/db-script-sec.md`; the QRC, the QR id
+definitions, the PRE-GENERATION counts, PHASE 6 INT-R and the ALIGN CROSS-MODULE / RESULT rows
+in `P3_1/backend-execution-plan-sec.md` and its `packages/backend-execution/` twins
+(`_SECTIONS.md`, `INT-R/INT-R.md`, `DATA-DOM/DATA-DOM-MASTER.md`); TC-SEC-034/035 in
+`test_gen/backend-test-plan-sec.md`. Nothing under `governance/modules/FIN|NOTIF|CU|MDL|FILE/`
+or `src/main/java/com/erp/{notif,cu,file,masterdata,common}/` was touched.
 
 **Fixes landed after this phase (2026-09-11).** F-ALIGN-1 and F-ALIGN-2 are now closed — see their
 entries in Part 4. `src/` is no longer untouched: `ActiveSessionRepository.java`,

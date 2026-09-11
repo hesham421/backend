@@ -778,3 +778,89 @@ report's Part 5 was untrue of the file as a whole. The five rows were copied fro
 (authoritative, and matching the five `@PostMapping("/search")` controllers); the two tables now
 `diff` clean. API-SEC-022, 024 and 027 are genuinely `GET` and were left alone. Recorded as a new
 `NAMING_MISMATCH` entry in `api_doc_gaps[]`, already resolved.
+
+---
+
+## 14. SEC's first cross-module read surface — gaps #8 and #9 closed together (2026-09-11)
+
+`api_doc_gaps[]` #8 (`XM-INBOUND-GAP-1`) and #9 (`XM-INBOUND-GAP-2`) were the two findings that
+pointed *outward*: FIN assuming a SEC read API that did not exist, and NOTIF unable to resolve a
+bare `recipientId`. A second-agent analysis converged on one answer for both, and the human
+authorized it together with the requirement that it be reflected back into the analysis
+artifacts. This section supersedes §11's closing sentence that
+"`com.erp.sec.crossmodule` does not exist".
+
+### The shape, and why it is not an endpoint
+
+`.claude/skills/build-create-service/SKILL.md`'s "Cross-Module Calls" settles it: "Modules are
+package-by-feature areas inside one deployable — always deployed together. Cross-module reads go
+through **direct Spring interface injection**, not loopback HTTP." So the candidate both gap
+entries first listed — "SEC v1 gains a read API" — was the one shape the binding skill forbids.
+The original findings still stand exactly as written: no SEC *endpoint* returns a role's user set,
+and none was added. The 27-endpoint HTTP surface is unchanged, and `/v3/api-docs` gained no path.
+
+Built per the same skill's "Exposing this module to others" — a narrow interface plus its
+read-model, implemented by a small dedicated class delegating to the internal service rather than
+on the service itself:
+
+- `crossmodule/SecUserDirectoryApi.java` — two read methods, nothing else.
+- `crossmodule/UserContact.java` — a `record` carrying DBF-SEC-001 `user_pk`, DBF-SEC-003 `email`,
+  DBF-SEC-005/006 display names and `active`, derived from DBF-SEC-007 `status_code`. Never
+  `passwordHash` (DBF-SEC-004, POL-SEC-004), never a reset or session token, an audit row, or any
+  role/grant data — and never the `User` entity or an internal DTO.
+- `crossmodule/SecUserDirectoryApiImpl.java` — `@Component`, injects `UserService` and **no**
+  repository (A.2.3), so the exposed surface stays narrower than the internal service.
+
+### #8 — the permission-holder read
+
+`SecUserDirectoryApi.findUserIdsHoldingPermission(String)` → `UserService` →
+`RoleActionGrantRepository.findUserIdsHoldingPermission`, registered as **QR-SEC-039**: the
+DISTINCT `UserRoleAssignment` user pks whose role appears in the `RoleActionGrant` rows for that
+`permission_code`, with the action and the role both active. It is the exact inverse of
+`findEffectivePermissionCodesForUser` (QR-SEC-027) and mirrors its active-flag predicates. Every
+column already existed — DBF-SEC-026/027, DBF-SEC-071/072, DBF-SEC-050/055, DBF-SEC-020 — so **no
+migration was written**. The method answers with user ids only: SEC neither learns nor evaluates
+FIN's conflicting pair, so REQ-SEC-020's "inert in SEC v1" Note is untouched.
+
+No `PERM_` constant was invented for it. `db-script-sec.md` makes `SEC_ACTION_REG.screen_id` NOT
+NULL (DBF-SEC-051, and the §3 DDL `screen_id BIGINT NOT NULL`), so a screenless permission cannot
+be seeded and a dedicated code for this read cannot exist. Both new service methods are therefore
+gated `@PreAuthorize("isAuthenticated()")` — the same exception the ALIGN `SECURITY (R7)` row
+already records for API-SEC-027, and the same reasoning NOTIF's `DispatchService` records for its
+own gate.
+
+### #9 — the contact read
+
+`SecUserDirectoryApi.findContact(Long)` returns `Optional<UserContact>`, served by the inherited
+`findById` (no new QR id — `UserRepository`'s own convention for its inherited finders). An
+unknown id answers `Optional.empty()`, not a 404: the caller holds only an id, so absence is a
+legitimate cross-module answer. With the delivery half already closed by carrying `email` among
+the `DispatchCommand` variables, gap #9 is now closed on both halves.
+
+`com.erp.notif.crossmodule.DefaultRecipientStatusReader` was **deliberately left as a stub**.
+`UserContact.active` is precisely the recipient-active fact its `XM-NOTIF-001` TODO waits for, but
+replacing it is NOTIF's call in NOTIF's own pass; nothing under `src/main/java/com/erp/notif/` or
+`governance/modules/NOTIF/` was touched.
+
+### One entity change, and why
+
+`User.STATUS_ACTIVE` was widened from `private` to `public static final`. Deriving
+`UserContact.active` from DBF-SEC-007 had to use the constant the entity already declares rather
+than repeat the literal `"ACTIVE"`; the value, the lifecycle and every other member are unchanged.
+`STATUS_DISABLED` stays private — nothing outside the entity needs it.
+
+### The module-level cycle, stated rather than discovered
+
+SEC already consumes NOTIF's `NotificationDispatchApi`. Once NOTIF adopts `SecUserDirectoryApi`,
+the two modules point at each other at the **module** level. That is not the circular dependency
+`build-create-service` forbids — neither crossmodule interface calls the other, and the two paths
+are independent (SEC→NOTIF at reset-token issuance; NOTIF→SEC at delivery, to resolve a bare
+`recipientId`) — but it is real, and is now recorded in the ALIGN `CROSS-MODULE` row so it is
+weighed before any further surface is added in either direction.
+
+### Owed elsewhere, deliberately not written here
+
+`governance/modules/FIN/P3_1/backend-execution-plan-fin.md:383-386` still says RULE-FIN-015 reads
+the two sets "through SEC's role/grant read APIs". That wording is superseded — it describes
+loopback HTTP between two modules of one deployable — but correcting it is FIN's own pass.
+`governance/modules/FIN/**` was not modified.
