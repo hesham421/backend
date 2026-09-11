@@ -85,8 +85,8 @@ v1 command for a v2 delta.
 
 ```bash
 find $MBASE/packages/backend-execution -type f -name "*.md" | sort
-ls $MBASE/backend-test/backend-test-plan-*.md 2>/dev/null
 ls $MBASE/test_gen/backend-test-plan-*.md 2>/dev/null
+ls $MBASE/backend-test/backend-test-plan-*.md 2>/dev/null
 ```
 
 From the scan results:
@@ -107,9 +107,11 @@ CORE → DATA-DOM → SVC-API → DOC → INT-C → INT-R → SEC-BE → ALIGN-B
 ### Test phase(s) — scan generically, from the flat test-gen delivery — never assume a fixed shape
 
 The test-gen stage delivers ONE flat, per-module plan file directly under
-`$MBASE/` — `backend-test/backend-test-plan-<mod-lowercase>.md` (current
-folder name) or, for a module not yet on that name, `test_gen/backend-test-plan-<mod-lowercase>.md`
-(fallback — check both on the filesystem, never assume one without checking).
+`$MBASE/` — `test_gen/backend-test-plan-<mod-lowercase>.md` (current
+folder name) or, for a module on the other naming, `backend-test/backend-test-plan-<mod-lowercase>.md`
+(fallback — check both on the filesystem, never assume one without checking;
+this folder name has changed before and may change again, so always verify
+on disk rather than trusting a remembered name).
 This command does **not** read `packages/backend-test/` — that split-folder
 shape was produced by the governance-tools splitter (`agent3_splitter.py`),
 which this project no longer relies on; the flat file is the sole source of
@@ -182,7 +184,7 @@ Location: `$MBASE/execution-state.json`  (resolved in Step 0.5 — v1 = no suffi
       "id": "[TEST_PHASE_NAME]",
       "status": "PENDING",
       "gated_by_phases": ["CORE", "DATA-DOM", "SVC-API", "DOC", "INT-C", "INT-R", "SEC-BE", "ALIGN-BE"],
-      "header_file": "[MBASE]/backend-test/backend-test-plan-<mod-lowercase>.md (or the test_gen/ fallback path actually used) — the flat file itself, since there is no separate *-HEADER.md",
+      "header_file": "[MBASE]/test_gen/backend-test-plan-<mod-lowercase>.md (or the backend-test/ fallback path actually used) — the flat file itself, since there is no separate *-HEADER.md",
       "subs": [
         { "id": "[SUB_NAME]", "status": "PENDING" }
       ]
@@ -341,8 +343,8 @@ actually complete.
 
 ### 0.1 — Load the delivered test-gen plan (the REQUIRED COVERAGE)
 Before any TestSprite call, read every `TC-[MODULE]-<seq>` block out of this
-module's flat test-gen plan file — `governance/modules/[MODULE]/backend-test/backend-test-plan-<mod-lowercase>.md`
-(current location), falling back to `governance/modules/[MODULE]/test_gen/backend-test-plan-<mod-lowercase>.md`
+module's flat test-gen plan file — `governance/modules/[MODULE]/test_gen/backend-test-plan-<mod-lowercase>.md`
+(current location), falling back to `governance/modules/[MODULE]/backend-test/backend-test-plan-<mod-lowercase>.md`
 if the former doesn't exist. This command does not read `packages/backend-test/`
 — that split-folder shape depended on governance-tools splitter tooling this
 project no longer relies on; the flat file is the sole source of truth. Across
