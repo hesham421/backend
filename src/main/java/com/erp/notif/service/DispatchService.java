@@ -70,21 +70,28 @@ public class DispatchService {
     }
 
     /**
-     * Internal trusted-caller entry point (the pattern flagged as a future concern above, now that a
-     * principal-less caller exists): in-process {@code @EventListener}s (e.g. a SEC-owned auth-event
-     * bridge for the public forgot-password/activation flows) run with no HTTP principal, so they
-     * cannot go through {@link #dispatch}'s {@code isAuthenticated()} gate. Not exposed via any
-     * controller — callers within this JVM only.
+     * Independent-transaction entry point, reached from within this JVM only — never from a
+     * controller. Its declared caller is {@code NotificationDispatchApi.dispatchIndependently}, the
+     * cross-module surface a consuming module uses when its own writes must survive a failed
+     * dispatch (SEC's password-reset token issuance, API-SEC-003). An in-process
+     * {@code @EventListener} with no HTTP principal is the other anticipated shape.
      *
-     * <p>REQUIRES_NEW is deliberate, not decorative: an {@code AFTER_COMMIT}
-     * {@code @TransactionalEventListener} (the only caller) runs while the just-committed outer
-     * transaction's synchronization is still winding down, so the default REQUIRED propagation
+     * <p>Gated by the same {@code isAuthenticated()} check as {@link #dispatch} (RULE-NOTIF-005): a
+     * principal-less in-process caller satisfies it by wrapping the call in its own internal-caller
+     * utility, which installs a synthetic authentication for the duration of the call.
+     *
+     * <p>REQUIRES_NEW is deliberate, not decorative. Two independent reasons:
+     * (1) a failure inside dispatch must not mark a consuming module's transaction rollback-only —
+     * that flag survives a consuming-side catch and would fail the caller's commit; and
+     * (2) an {@code AFTER_COMMIT} {@code @TransactionalEventListener} runs while the just-committed
+     * outer transaction's synchronization is still winding down, so the default REQUIRED propagation
      * silently "joins" it instead of opening a fresh one — {@code isNewTransaction()} comes back
      * false, this method's own commit never fires, and the NOTIF_LOG row is dropped with no
      * exception (confirmed empirically: the sequence advances, the row never appears). REQUIRES_NEW
      * forces a genuinely independent transaction so the write actually commits.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @PreAuthorize("isAuthenticated()")
     public ServiceResult<DispatchResponse> dispatchSystem(DispatchRequest request) {
         return doDispatch(request);
     }

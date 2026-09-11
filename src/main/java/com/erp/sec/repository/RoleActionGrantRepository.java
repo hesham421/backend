@@ -89,4 +89,16 @@ public interface RoleActionGrantRepository
         + "AND g.role.rolePk IN ("
         + "  SELECT ura.role.rolePk FROM UserRoleAssignment ura WHERE ura.user.userPk = :userPk)")
     List<String> findEffectivePermissionCodesForUser(@Param("userPk") Long userPk);
+
+    /**
+     * QR-SEC-039 (REQ-SEC-035) — the user ids holding {@code permissionCode} through an active
+     * role: the inverse of {@link #findEffectivePermissionCodesForUser}, with the same active-flag
+     * predicates. Caller: {@code UserService.findUserIdsHoldingPermission} (A.2.9).
+     */
+    @Query("SELECT DISTINCT ura.user.userPk FROM UserRoleAssignment ura "
+        + "WHERE ura.role.rolePk IN ("
+        + "  SELECT g.role.rolePk FROM RoleActionGrant g "
+        + "  WHERE g.action.permissionCode = :permissionCode "
+        + "  AND g.action.isActiveFl = TRUE AND g.role.isActiveFl = TRUE)")
+    List<Long> findUserIdsHoldingPermission(@Param("permissionCode") String permissionCode);
 }

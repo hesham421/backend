@@ -173,10 +173,4 @@ public final class SecErrorCodes {
      * API: every search API. HTTP 400.
      */
     public static final String SEC_400_INVALID_SORT = "SEC-400-INVALID-SORT";
-
-    /**
-     * PLATFORM-STD (infrastructure) — unhandled server error.
-     * API: any. HTTP 500.
-     */
-    public static final String SEC_500 = "SEC-500";
 }

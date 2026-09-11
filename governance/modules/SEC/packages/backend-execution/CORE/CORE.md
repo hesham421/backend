@@ -5,16 +5,19 @@
 
 **Layers** (`profile.stack.backend.layers`): controller → service → mapper → domain → repository.
 - **controller**: HTTP binding, request validation shape (types/required), maps DTO ↔ command; never queries the repository directly; never contains a RULE-* check.
-- **service**: orchestration — loads, validates every RULE-*, integrates (none for SEC — zero XM), persists via repository; the sole place RULE-* logic runs; the sole place PERM_* is asserted before any mutation proceeds.
+- **service**: orchestration — loads, validates every RULE-*, integrates (for SEC only the optional NOTIF password-reset dispatch — REQ-SEC-029, §PHASE 5 INT-C; still zero XM), persists via repository; the sole place RULE-* logic runs; the sole place PERM_* is asserted before any mutation proceeds.
 - **mapper**: entity ↔ DTO conversion only; no business logic, no query.
 - **domain**: entity classes; domain-behaviour placement = **in entity methods** for single-entity invariants (e.g. `User.deactivate()` flips `isActiveFl`/`statusCode`), and in the service layer for any rule spanning more than one entity (e.g. RULE-SEC-001/002/003/005/007, which read another table).
 - **repository**: Spring Data JPA repositories, one per entity/table; every non-trivial query is a named method backed by a `QR-SEC-*` spec (§Query Reference Catalog); no business logic.
 
 **Error signalling**: `LocalizedException → {code, messageAr, messageEn}`. Runtime `code` format:
 `SEC-<HTTP-status>-<SCENARIO>` (module-scoped, stated once here so `api-verify` can assert on it —
-e.g. `SEC-409-USER-DUP`; the `-<SCENARIO>` segment is omitted only for the generic infrastructure
-row `SEC-500`). Every catalog row (§Error Catalog) is registered as a
-static enum/constant the controller-advice layer maps to the envelope; `messageAr`/`messageEn`
+e.g. `SEC-409-USER-DUP`). EVERY `SecErrorCodes` value carries that full three-segment shape; no
+scenario-less `SEC-<HTTP-status>` code exists, because the 500 path is not module-scoped at all.
+Every module-owned catalog row (§Error Catalog) is registered as a static constant in
+`SecErrorCodes` that the shared exception→envelope mapping resolves; the single PLATFORM-STD 500
+row (`INTERNAL_ERROR`) is owned and emitted by the shared `GlobalExceptionHandler` in
+`com.erp.common.web`, so SEC neither declares nor throws it. `messageAr`/`messageEn`
 are copied character-perfect from the SRS RULE message or from this plan where PLATFORM-STD.
 
 **Transaction scope defaults**: `READ_ONLY` for every `FIND_*`/`EXISTS`/`AGGREGATE` QR;
@@ -63,8 +66,9 @@ dedicated action endpoint, never a workflow definition.
 in both `ar` and `en` in every DTO and every response — a single-language value anywhere is
 incomplete per §Error Catalog / §6.1 rule.
 
-**Cross-module contract placement**: not applicable this version — SEC has zero XM (it is
-ROOT); no inversion-of-control interface is consumed by SEC. SEC itself is consumed by every
+**Cross-module contract placement**: no XM contract to place this version — SEC has zero XM (it
+is ROOT). The one interface SEC injects is NOTIF-owned, not SEC-owned: `NotificationDispatchApi`
+for the REQ-SEC-029 password-reset dispatch (§PHASE 5 INT-C). SEC itself is consumed by every
 future module through its own REST surface (§SVC-API below), not through an injected interface.
 
 **Cross-cutting authorization (REQ-SEC-033)**: a single servlet filter / method-level

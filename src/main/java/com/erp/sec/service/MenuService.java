@@ -82,9 +82,13 @@ public class MenuService {
     }
 
     /**
-     * Becomes correct the moment SEC-BE installs the JWT validating filter; until then
-     * {@code getCurrentUsername()} falls back to "system" — no SEC_USER row — so both callers
-     * degrade to an empty result rather than a 404 (both APIs list SEC-500 only).
+     * Resolves the SEC_USER row behind the authenticated caller. Both callers are gated on
+     * {@code isAuthenticated()}, and since SEC-BE {@code JwtAuthenticationFilter} publishes the
+     * access token's subject — the username — as the principal, so this lookup normally hits the
+     * very row the filter already resolved; {@code getCurrentUsername()}'s {@code "system"}
+     * fallback is unreachable from here. An unmatched principal still yields an empty Optional
+     * rather than a throw, so both callers degrade to an empty result instead of a 404 — neither
+     * API contracts a not-found error (both list the platform-standard INTERNAL_ERROR only).
      */
     private Optional<User> resolveCaller() {
         return userRepository.findByUsername(SecurityContextHelper.getCurrentUsername());

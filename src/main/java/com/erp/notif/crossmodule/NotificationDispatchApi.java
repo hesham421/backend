@@ -18,4 +18,12 @@ public interface NotificationDispatchApi {
      * empty when the recipient is inactive (RULE-NOTIF-007).
      */
     List<Long> dispatch(DispatchCommand command);
+
+    /**
+     * Same semantics as {@link #dispatch}, but committed in its OWN transaction (REQUIRES_NEW), so a
+     * dispatch failure can never mark the caller's transaction rollback-only. A caller whose own
+     * writes must survive a failed notification — it catches and logs the failure and still expects
+     * to commit, e.g. SEC's password-reset token issuance — MUST use this entry point.
+     */
+    List<Long> dispatchIndependently(DispatchCommand command);
 }

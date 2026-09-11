@@ -137,20 +137,31 @@ public class PasswordResetService {
     /**
      * REQ-SEC-029, the SRS A8 SOFT/optional integration, called from the anonymous API-SEC-003:
      * {@link InternalCallerContext} supplies the principal NOTIF's {@code isAuthenticated()} gate
-     * requires. Propagation intent: NOTIF's {@code dispatch} declares plain {@code REQUIRED} and
-     * joins this transaction — a failure inside it still marks the shared transaction
-     * rollback-only, which this catch cannot undo (see execution-state.json gap #5).
+     * requires. Propagation intent: the call goes through NOTIF's {@code dispatchIndependently}
+     * entry point, which declares {@code REQUIRES_NEW} — the dispatch commits or rolls back on its
+     * own, so a failure inside it can never mark this transaction rollback-only and the
+     * PasswordResetToken + audit rows still commit (the catch below is therefore effective).
+     *
+     * <p>The recipient's {@code email} travels among the dispatch variables because that is NOTIF's
+     * published contract to callers: {@code DefaultChannelProvider} reads the destination address
+     * from {@code variables.get("email")} "since NOTIF has no crossmodule contact-lookup for a bare
+     * recipientId", and returns {@code failure("missing recipient email address")} without it.
+     * ENT-SEC-001's {@code email} field is specified for exactly this — "used for password-reset
+     * delivery".
      */
     private void dispatchResetNotification(User user, PasswordResetToken token, String rawToken) {
         try {
-            InternalCallerContext.call(() -> notificationDispatchApi.dispatch(new DispatchCommand(
-                user.getUserPk(),
-                TEMPLATE_PASSWORD_RESET,
-                List.of(CHANNEL_EMAIL),
-                MODULE_CODE,
-                token.getPwdResetTokenPk(),
-                REFERENCE_TYPE,
-                Map.of("token", rawToken, "expiresAt", String.valueOf(token.getExpiresAt())))));
+            InternalCallerContext.call(() -> notificationDispatchApi.dispatchIndependently(
+                new DispatchCommand(
+                    user.getUserPk(),
+                    TEMPLATE_PASSWORD_RESET,
+                    List.of(CHANNEL_EMAIL),
+                    MODULE_CODE,
+                    token.getPwdResetTokenPk(),
+                    REFERENCE_TYPE,
+                    Map.of("token", rawToken,
+                        "expiresAt", String.valueOf(token.getExpiresAt()),
+                        "email", user.getEmail()))));
         } catch (RuntimeException e) {
             log.warn("Password-reset notification dispatch failed for User ID {} — the reset "
                 + "request itself still succeeds (REQ-SEC-029 is optional)", user.getUserPk(), e);

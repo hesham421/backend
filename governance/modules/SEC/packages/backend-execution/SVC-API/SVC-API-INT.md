@@ -40,7 +40,7 @@ Request      : body `{email}`
 Response     : 200 · generic confirmation `{message}` — always the same shape whether or not the email exists (never reveals which)
 Validations  : none exposed to the caller (existence check is internal only, never surfaced)
 Errors       : none beyond platform-standard
-Orchestration: look up user by email (internal) → if found: create PasswordResetToken (QR-SEC-003, expiresAt=now+30min) → append AuditLogEntry `PASSWORD_RESET_REQUESTED` → **Where** the Notifications integration is enabled (REQ-SEC-029, optional pattern): dispatch a `dispatch()` call per `new project/integration-notifications-fileservice.md` §1.2 with `templateCode` identifying the reset message, `recipientId=userPk`, `moduleCode="SEC"` → if not found: do nothing further (still returns the same generic 200) → return
+Orchestration: look up user by email (internal) → if found: create PasswordResetToken (QR-SEC-003, expiresAt=now+30min) → append AuditLogEntry `PASSWORD_RESET_REQUESTED` → **Where** the Notifications integration is enabled (REQ-SEC-029, optional pattern): dispatch per `new project/integration-notifications-fileservice.md` §1.2 through NOTIF's `NotificationDispatchApi.dispatchIndependently()` crossmodule entry point — not `dispatch()`: `dispatchIndependently` runs in an independent transaction (`REQUIRES_NEW`), so a dispatch failure commits or rolls back on its own and can never mark SEC's transaction rollback-only, leaving the token and audit rows intact — with `templateCode` identifying the reset message, `recipientId=userPk`, `moduleCode="SEC"`, and the recipient's `email` carried among the dispatch `variables` (alongside `token` / `expiresAt`) because NOTIF resolves the destination address from `variables.get("email")`, having no crossmodule contact-lookup for a bare recipientId → if not found: do nothing further (still returns the same generic 200) → return
 Repository   : QR-SEC-003 · join NONE · transaction READ_WRITE
 Security     : screen SEC_PWD_RESET · public — no permission required
 Localization : generic confirmation message in ar + en
@@ -109,7 +109,7 @@ Layers       : controller → `AuditLogController.export` ; service → `AuditLo
 Request      : query params — same filter set as API-SEC-023 (eventTypeCode, actorUserId, occurredFrom/occurredTo), no paging (exports the full filtered set)
 Response     : 200 · `Content-Type: text/csv` body, one row per matching AuditLogEntry, all fields
 Validations  : none
-Errors       : SEC-500 only
+Errors       : INTERNAL_ERROR only (platform-standard, shared handler)
 Orchestration: load the full filtered set (QR-SEC-024, same filters as QR-SEC-023, unpaged) → serialize to CSV → return (REQ-SEC-026: "exactly the filtered entries' fields")
 Repository   : QR-SEC-024 · join NONE · transaction READ_ONLY
 Security     : screen SEC_AUDIT_LOG · permission `PERM_SEC_AUDIT_LOG_VIEW` (shares VIEW — export is not a separate mutation, SRS Access summary)

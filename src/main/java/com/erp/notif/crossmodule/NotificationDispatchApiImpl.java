@@ -21,7 +21,19 @@ public class NotificationDispatchApiImpl implements NotificationDispatchApi {
 
     @Override
     public List<Long> dispatch(DispatchCommand command) {
-        DispatchRequest request = DispatchRequest.builder()
+        return dispatchService.dispatch(toRequest(command)).getData().getLogIds();
+    }
+
+    @Override
+    public List<Long> dispatchIndependently(DispatchCommand command) {
+        // Delegates to the REQUIRES_NEW entry point so the dispatch commits or rolls back on its own
+        // and never marks the consuming module's transaction rollback-only.
+        return dispatchService.dispatchSystem(toRequest(command)).getData().getLogIds();
+    }
+
+    /** Maps the narrow cross-module read-model onto NOTIF's internal request DTO. */
+    private DispatchRequest toRequest(DispatchCommand command) {
+        return DispatchRequest.builder()
             .recipientId(command.recipientId())
             .templateCode(command.templateCode())
             .channelHint(command.channelHint())
@@ -30,6 +42,5 @@ public class NotificationDispatchApiImpl implements NotificationDispatchApi {
             .referenceType(command.referenceType())
             .variables(command.variables())
             .build();
-        return dispatchService.dispatch(request).getData().getLogIds();
     }
 }

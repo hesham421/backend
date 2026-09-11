@@ -40,8 +40,12 @@ import lombok.experimental.SuperBuilder;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @SuperBuilder
 public class User extends AuditableEntity {
 
-    /** USER_STATUS codes (A6 closed set, CHK_SEC_USER_STATUS) used by this entity itself. */
-    private static final String STATUS_ACTIVE = "ACTIVE";
+    /**
+     * USER_STATUS codes (A6 closed set, CHK_SEC_USER_STATUS). {@code STATUS_ACTIVE} is public only
+     * so {@code UserService} can derive {@code UserContact.active} (REQ-SEC-034) from DBF-SEC-007
+     * instead of repeating the literal; the value and the lifecycle are unchanged.
+     */
+    public static final String STATUS_ACTIVE = "ACTIVE";
     private static final String STATUS_DISABLED = "DISABLED";
 
     @Id

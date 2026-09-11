@@ -9,6 +9,7 @@ import com.erp.common.search.SearchRequest;
 import com.erp.common.search.SetAllowedFields;
 import com.erp.common.search.SpecBuilder;
 import com.erp.common.util.SecurityContextHelper;
+import com.erp.sec.crossmodule.UserContact;
 import com.erp.sec.domain.ActiveSessionDomain;
 import com.erp.sec.domain.UserDomain;
 import com.erp.sec.dto.UserCreateRequest;
@@ -23,10 +24,12 @@ import com.erp.sec.exception.SecErrorCodes;
 import com.erp.sec.mapper.UserMapper;
 import com.erp.sec.repository.ActiveSessionRepository;
 import com.erp.sec.repository.AuditLogEntryRepository;
+import com.erp.sec.repository.RoleActionGrantRepository;
 import com.erp.sec.repository.UserRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -57,6 +60,7 @@ public class UserService {
     private final UserRepository repository;
     private final ActiveSessionRepository activeSessionRepository;
     private final AuditLogEntryRepository auditLogEntryRepository;
+    private final RoleActionGrantRepository roleActionGrantRepository;
     private final UserMapper mapper;
     private final PasswordEncoder passwordEncoder;
 
@@ -171,6 +175,35 @@ public class UserService {
     }
 
     /**
+     * REQ-SEC-034, reached only through {@code SecUserDirectoryApi.findContact}. Served by the
+     * inherited {@code findById}, so it carries no QR id of its own (this repository's own
+     * convention). An unknown id is an empty Optional, not a 404: the caller holds only an id and
+     * absence is a legitimate cross-module answer.
+     */
+    @Transactional(readOnly = true)
+    @PreAuthorize("isAuthenticated()")
+    public ServiceResult<Optional<UserContact>> findContact(Long userPk) {
+        log.debug("Resolving the cross-module contact of User ID: {}", userPk);
+
+        return ServiceResult.success(repository.findById(userPk).map(UserService::toContact));
+    }
+
+    /**
+     * REQ-SEC-035 / QR-SEC-039, reached only through
+     * {@code SecUserDirectoryApi.findUserIdsHoldingPermission}. Gated on authentication alone: no
+     * PERM_* of its own can exist, because DBF-SEC-051 makes SEC_ACTION_REG.screen_id NOT NULL, so
+     * a screenless permission cannot be seeded — the API-SEC-027 exception the ALIGN block records.
+     */
+    @Transactional(readOnly = true)
+    @PreAuthorize("isAuthenticated()")
+    public ServiceResult<List<Long>> findUserIdsHoldingPermission(String permissionCode) {
+        log.debug("Resolving the holders of permission code: {}", permissionCode);
+
+        return ServiceResult.success(
+            roleActionGrantRepository.findUserIdsHoldingPermission(permissionCode));
+    }
+
+    /**
      * {@code fullName} matches either language column (API-SEC-005 Request line); the shared
      * {@code SearchOperator} set has no OR, so this one predicate is expressed directly.
      */
@@ -185,6 +218,12 @@ public class UserService {
         return repository.findById(id)
             .orElseThrow(() -> new LocalizedException(
                 Status.NOT_FOUND, SecErrorCodes.SEC_404_USER, id));
+    }
+
+    /** DBF-SEC-001/003/005/006 only; {@code active} derived from DBF-SEC-007 (never the hash). */
+    private static UserContact toContact(User user) {
+        return new UserContact(user.getUserPk(), user.getEmail(), user.getFullNameAr(),
+            user.getFullNameEn(), User.STATUS_ACTIVE.equals(user.getStatusCode()));
     }
 
     /** DBF-SEC-085 is nullable — an actor the token cannot resolve is recorded as null. */

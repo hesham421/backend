@@ -402,10 +402,12 @@ covers the lenient case.
 
 `P3_1/backend-execution-plan-sec.md` (base plan — API table rows, `Endpoint :` and `Request :`
 lines, API contract summary), `packages/backend-execution/SVC-API/SVC-API-SEARCH.md` (the same five
-`Endpoint :` and `Request :` lines) and `test_gen/backend-test-plan-sec.md` (TC-SEC-025 and
-TC-SEC-027 verb/endpoint only — no status code, error code or ar/en message text touched). The P1
-SRS B5 tables still show the GET form for these five operations; they were left alone because they
-are requirements text, not the implementation contract.
+`Endpoint :` and `Request :` lines), `packages/backend-execution/_SECTIONS.md` (the EXECUTION PLAN
+INDEX API table's five rows — missed on the day and brought into line only on 2026-09-11, see §13)
+and `test_gen/backend-test-plan-sec.md` (TC-SEC-025 and TC-SEC-027 verb/endpoint only — no status
+code, error code or ar/en message text touched). The P1 SRS B5 tables were realigned too: all five
+rows (`srs-sec.md:905, 932, 961, 1003, 1025`) now read `POST .../search`, changed in commit
+`d916c62`, so requirements text and implementation contract agree on the verb and path.
 
 ---
 
@@ -521,3 +523,258 @@ outside `com.erp.sec`, all `isAuthenticated()` and all satisfied by any authenti
 comments and stays inert — nothing was added or removed in those modules. The practical change for
 them is the chain's own `anyRequest().authenticated()`: their endpoints now answer `401` without a
 token where they previously answered `200`.
+
+---
+
+## 10. Analysis artifacts realigned to what was built (2026-09-11)
+
+Five of the six `api_doc_gaps[]` entries in `governance/modules/SEC/execution-state.json` were
+decided during execution but left the upstream analysis documents still saying the old thing. This
+pass corrected the **base** (unsplit) files as well as the split package files, so the two agree
+line for line; each gap's `resolution` field was extended with the files it touched. Gap #5 (the
+internal-caller pattern, §9 above) was already documented and was not reopened. `P2/db-script-sec.md`
+was correct in every one of these and was not touched; `test_gen/backend-test-plan-sec.md` was not
+touched either — nothing here changes a test.
+
+Nothing was invented to close a gap. Where the specification is genuinely silent (gaps 3, 4, 6) the
+documents now say so plainly and name the open decision, rather than reading as though the answer had
+always been there.
+
+| gap | what was untrue | what it now says | files touched |
+|---|---|---|---|
+| 1 — error-code format | CORE declared the runtime `code` format as `SEC-<3-digit-sequence>`, e.g. `SEC-001`; no Error Catalog row has that shape | format is `SEC-<HTTP-status>-<SCENARIO>`, e.g. `SEC-409-USER-DUP`, with the scenario segment omitted only for the generic `SEC-500` row | `P3_1/backend-execution-plan-sec.md` (Error-signalling paragraph, Error Catalog header, ALIGN `CORE (R1)` row), `packages/backend-execution/CORE/CORE.md`, `packages/backend-execution/_SECTIONS.md` |
+| 2 — `grant_at` | ENT-SEC-007's FIELDS table gave DBF-SEC-064's column as `grant_at` | `granted_at`, matching db-script, the sibling grant tables, the entity and `V16__sec_schema.sql` | `P3_1/backend-execution-plan-sec.md`, `packages/backend-execution/DATA-DOM/DATA-DOM-TRANSACTIONAL.md` |
+| 3 — RULE-SEC-005 has no pair source | read as an enforced rule, though SEC v1 declares no conflicting pair anywhere | DEFERRED in v1: no declaration surface exists, the guards are implemented and inert, the platform's only real pair is FIN-owned and FIN-enforced (`governance/modules/FIN/P3_1/backend-execution-plan-fin.md:1061-1066`), and a SEC-side register is an open P1/P2 decision | `P1/srs-sec.md` (REQ-SEC-020, RULE-SEC-005), `P3_1/backend-execution-plan-sec.md`, `packages/backend-execution/DATA-DOM/DATA-DOM-TRANSACTIONAL.md` |
+| 4 — the approved sign-up's credential | APPROVE named no credential although `password_hash` is NOT NULL, and nothing said the owner is ever told the account exists | the account is created with an unusable random secret and the owner's route in is the existing API-SEC-003 → API-SEC-004 reset pair (RULE-SEC-006); the notification silence is recorded as an open product decision with its two candidate answers, neither chosen | `P1/srs-sec.md` (REQ-SEC-004), `P3_1/backend-execution-plan-sec.md` (API-SEC-011), `packages/backend-execution/SVC-API/SVC-API-CRUD.md` |
+| 6 — three undefined dashboard figures | `recentActivity`'s N, the stalled window and "privileged" were named but defined nowhere | the operative values, marked as implementation-chosen defaults awaiting confirmation: N = 10, stalled = PENDING older than 7 days, privileged = holds ≥ 1 action grant whose `actionCode` is not the VIEW gateway | `P1/srs-sec.md` (REQ-SEC-022), `P3_1/backend-execution-plan-sec.md` (API-SEC-022), `packages/backend-execution/SVC-API/SVC-API-SEARCH.md` |
+
+The three gap-6 values are read straight out of `DashboardService` (`RECENT_ACTIVITY_LIMIT`,
+`STALLED_SIGNUP_AGE`, and `RoleActionGrantDomain.GATEWAY_ACTION_CODE` passed to
+`RoleActionGrantRepository.countPrivilegedRoles`), so the documents quote the code rather than a
+remembered value.
+
+---
+
+## 11. INT-C / INT-R — the one sanctioned cross-module call, and two inbound gaps (2026-09-11)
+
+Both phases are documentation-and-verification only; no `.java` file was written, and NOTIF was
+read but never changed.
+
+### INT-C — "SEC consumes no other module's API" was false, and the fix was not to delete the call
+
+`PasswordResetService.dispatchResetNotification` injects NOTIF's
+`com.erp.notif.crossmodule.NotificationDispatchApi` and calls `dispatch(..)` on the API-SEC-003
+path. That is a real in-process consumption of another module's API, and it is legitimate:
+`srs-sec.md` §A8's *External service* table declares exactly one integration — Notifications, for
+the password-reset message (REQ-SEC-029), `SOFT / optional` — and `build-create-service`'s
+Cross-Module Calls section permits consuming a producing module's designated `crossmodule`
+interface, which is precisely what `NotificationDispatchApi` is.
+
+It is still not an `XM-*` row. The db-script §2 XM REGISTER records **consumed entities, tables
+and FKs**; this call consumes none, so "0 XM · SEC is ROOT" stays true exactly as written. The two
+statements only looked contradictory because INT-C had generalised a schema fact into a blanket
+claim about APIs.
+
+Compliance re-checked against the skill, by grep rather than assumption: SEC imports only
+`com.erp.notif.crossmodule.{DispatchCommand, NotificationDispatchApi}` and nothing from
+`notif.service` / `repository` / `entity` / `dto`; `PasswordResetService` is the only file in
+`com.erp.sec` that names either type, so no Domain, mapper or controller holds the reference; the
+argument is `DispatchCommand`, NOTIF's own record, not a JPA entity or internal DTO;
+propagation intent is stated in the method's javadoc at the call site; and the call is wrapped in
+`try/catch (RuntimeException)` that logs at WARN with the stack trace, so it neither surfaces as a
+500 nor is silently swallowed. The one thing the catch cannot do — clear a rollback-only flag set
+inside NOTIF's joined transaction — is already `api_doc_gaps` #5 and stays open there.
+
+Two further statements were made untrue by the same call and were corrected in PHASE 1 CORE (base
+plan and `CORE/CORE.md`, kept byte-identical): the layer list said the service "integrates (none
+for SEC — zero XM)", and *Cross-module contract placement* said "no inversion-of-control interface
+is consumed by SEC". Every other `SEC is ROOT` / `zero XM` statement in the module is schema- or
+entity-scoped and was left alone.
+
+### INT-R — two inbound-contract gaps recorded, neither closed
+
+`XM-INBOUND-GAP-1`: FIN's plan (`backend-execution-plan-fin.md:383-386`) runs RULE-FIN-015's SoD
+check by "reading the two roles' user sets through SEC's role/grant read APIs". No such API
+exists. Across the 27 implemented endpoints, `RoleGrantController` is write-only, role search
+returns role attributes with no member list, user search has no role predicate, there is no
+`GET /users/{id}/roles`, and API-SEC-027 (`GET /api/v1/sec/menu`) takes no input at all — it
+resolves the caller from the session and returns modules→screens. Adding an endpoint is a P1/P2
+decision, so none was added.
+
+`XM-INBOUND-GAP-2`: NOTIF cannot resolve a SEC recipient's address.
+`DefaultChannelProvider.sendEmail` reads it from `variables.get("email")` — its javadoc says NOTIF
+has no crossmodule contact-lookup for a bare `recipientId` — while SEC's `DispatchCommand` carries
+only `token` and `expiresAt`. Hence the SEC-BE run's `NOTIF_LOG` row `FAILED — missing recipient
+email address`: REQ-SEC-029's inbound half now works (gap #5) but the outbound half does not
+deliver. The same absence keeps NOTIF's own `XM-NOTIF-001` stubbed —
+`DefaultRecipientStatusReader` short-circuits RULE-NOTIF-007 to `true` because
+`com.erp.sec.crossmodule` does not exist. Either SEC supplies `email` among the dispatch
+variables, or SEC exposes a `crossmodule` contact/status reader (which would also close
+`XM-NOTIF-001`); the second is a new cross-module surface and therefore a human decision.
+
+---
+
+## 12. ALIGN-BE — the self-check re-run honestly, and what it found (2026-09-11)
+
+Phase 8 is verification and reporting only; no `.java` file, migration or i18n key was written.
+
+### The generated verdict was false
+
+`packages/backend-execution/ALIGN-BE/ALIGN-BE.md` defines its own content as the
+`## Alignment self-check (ALIGN)` block in `packages/backend-execution/_SECTIONS.md` (mirrored
+in `P3_1/backend-execution-plan-sec.md`). That block closed with `RESULT  PASSED ✓ — 0 findings`
+while nine `api_doc_gaps[]` entries stood recorded against the same module. Re-checking its ten
+assertion rows one at a time against the current artifacts and the implemented sources: **two
+hold as written** (TRACEABILITY, MANIFEST), **one holds only because a gap corrected it**
+(CORE R1 — as generated it certified a `SEC-<3-digit-sequence>` format that matched no catalog
+row and no emitted code, `api_doc_gaps` #1), **four are partly true** (BINDING, QRC, API R3,
+CROSS-MODULE, SECURITY R7 — five, counting SECURITY) and **one is outright false** (DECISIONS).
+
+The single hardest fact: **`ADR-SEC-001` and `ADR-SEC-002` do not exist.** They are cited as
+`erp/decisions/SEC/ADR-SEC-00N.md` throughout P2, P3.1 and `modules/project-registry.md`, and
+`find . -iname 'ADR-SEC-*'` returns nothing — there is no `decisions/` directory anywhere in this
+repository. Both decisions are stated inline in the artifacts that cite them and nowhere else, so
+their "ACCEPTED" status has no artifact behind it. (Independently noted at
+`governance/project-artifacts/generator-defect-report-and-fix-prompt.md:155-156`.)
+
+Two more rows deserve naming here because they certify the opposite of what was built:
+
+- **BINDING and QRC both name `GENERATED ALWAYS AS IDENTITY` as the generation object.** The
+  module ships 13 `SEQ_SEC_*` sequences and `GenerationType.SEQUENCE`, per §4.1 and
+  `GOVERNANCE-RULES.md` §Convention Precedence 1. The decision is settled and correct; the plan
+  text was simply never brought along, so the self-check certified a fiction.
+- **SECURITY (R7)'s ERP-4 sub-claim — "every POST/PUT/PATCH/DELETE API above states one" — is
+  false.** API-SEC-002, API-SEC-003 and API-SEC-004 are POST mutations that write
+  `SEC_SIGNUP_REQUEST`, `SEC_PWD_RESET_TOKEN` and `SEC_USER` rows and state "public — no
+  permission required". The *seed* half of the same row, by contrast, is now genuinely checkable
+  and genuinely true: all 9 Phase 7 page codes and all 13 permission codes are in
+  `V17__sec_security_seed.sql`.
+
+The block in both files was rewritten to say all of this, its `RESULT` row replaced with the real
+count, and the two copies verified byte-identical (sha256 over the whole block region).
+
+### The master validation, re-run
+
+`gov-validate-backend-feature` was run for real against the implemented module — STAGE 0 build
+order, STAGE 1 inventory, the 85 layer checks, the 37 cross-cutting checks, a real
+`mvn -DskipTests clean compile`, and the CU.1–CU.8 gate. **122 / 133 applicable checks (91.7%) →
+CONDITIONAL.** Fifteen checks are N/A with a stated reason and were removed from both numerator
+and denominator rather than counted as passes; nine decided deviations (the PK strategy, native
+`BOOLEAN`, `UQ_` naming, the missing `UsageResponse`, the POST/GET split, the reset-token 409,
+the four public endpoints, the three DELETE-verb endpoints, the CSV export) are labelled and
+costed, not silently passed. The CU gate passes 8/8. The compile is clean: 241 sources, exit 0,
+no warning attributable to SEC.
+
+What the module does genuinely well, verified rather than assumed: every one of the 21
+business-rule throws lives in a `com.erp.sec.domain.*` class and none in a service (A.5.18);
+all 28 error codes then registered are in both bundles (27 after §13's `SEC_500` removal);
+27/27 endpoints carry `@Operation`, 20/20 request bodies
+carry `@Valid`; and the 22 `PERM_`-based `@PreAuthorize` annotations match the 22 plan `Security`
+lines that name a permission, one for one.
+
+### Two new findings, appended to `api_doc_gaps[]`
+
+1. **`ActiveSessionRepository.findNonTerminated(Pageable)` is dead code** (as found; closed at
+   §13) — the only one of the
+   module's repository methods with no caller. It carried QR-SEC-025's declared `JOIN FETCH`
+   + count query, orphaned when §8 moved API-SEC-025 onto `SpecBuilder`. A.2.9 is on the
+   automatic-rejection list. **Closed 2026-09-11 — see §13.**
+2. **`SEC-500` is contracted but unreachable** — eight API blocks (the finding first said nine;
+   the true count is eight) name it as their only error and both bundle messages exist, but
+   `SecErrorCodes.SEC_500` has zero references and the shared
+   `GlobalExceptionHandler` answers `INTERNAL_ERROR`. No fix is available inside SEC:
+   `GlobalExceptionHandler` is shared foundation and CU.7 forbids a per-module `@ControllerAdvice`.
+   **Closed 2026-09-11 — see §13:** SEC stopped claiming the code instead.
+
+Three further findings were reported but **not** appended, each with its reason: the seeded
+`PERM_SEC_ROLES_DELETE` missing from `PermissionConstants` (the Phase 7 matrix already marks it
+reserved), `/api/v1/sec/roles` being served by two controllers (a code-structure question, not a
+documentation gap), and the two absent ADRs (already recorded in
+`generator-defect-report-and-fix-prompt.md`).
+
+One observation worth carrying into the test phase: `activate()`/`deactivate()` on `Role`,
+`ModuleRegistry`, `ScreenRegistry` and `ActionRegistry` have no caller, because SEC v1 exposes no
+endpoint that deactivates a role or a registry row — while `V17` seeds and grants
+`PERM_SEC_ROLES_DELETE` for exactly that, and SRS B4 calls deactivation the role's only DELETE.
+
+Full per-check evidence, every N/A reason and every deviation's justification:
+**`governance/project-artifacts/sec-alignment-report.md`**.
+
+---
+
+## 13. The two ALIGN-BE gaps closed, and the index-table drift they uncovered (2026-09-11)
+
+`api_doc_gaps[]` #10 (F-ALIGN-1) and #11 (F-ALIGN-2) were the only two findings ALIGN-BE left
+open inside SEC's own boundary. Both are now closed. A second-agent debate (STEP 1.4 of the
+backend orchestration protocol) converged on candidate (a) for each, the contested facts were
+re-verified against the files, and the human chose the source-side disposition for #11.
+
+### #10 — the dead QR-SEC-025 query, deleted
+
+`ActiveSessionRepository.findNonTerminated(Pageable)` was the module's only repository method with
+no caller (A.2.9, an automatic-rejection trigger). The decisive fact is that **no artifact ever
+required it**: `P3_1/backend-execution-plan-sec.md:792` reads
+`Repository : QR-SEC-025 · join NONE · transaction READ_ONLY`, and the QRC at `plan:376` already
+registers QR-SEC-025 as `FIND_BY_CRITERIA`. The plan therefore already describes the
+`SpecBuilder` + `PageableBuilder` path `SessionService` actually runs; the orphan `@Query` was the
+divergence. The method and its two now-unused imports (`Page`, `Pageable`) were deleted and **no
+governance file was touched for this gap**.
+
+Accepted consequence, deliberately not fixed: that method was the module's only fetch join for
+API-SEC-025's page, so `ActiveSessionMapper.toResponse` now dereferences the LAZY `user` once per
+row inside the read-only transaction — an N+1. Correct but slower. `join NONE` mandates no fetch
+join, so adding an `@EntityGraph` would be an un-mandated optimisation and was left out of scope.
+
+### #11 — SEC stops claiming a code it does not own
+
+The shared `com.erp.common.web.GlobalExceptionHandler`'s `@ExceptionHandler(Exception.class)`
+answers `.code("INTERNAL_ERROR")`, `CommonErrorCodes.INTERNAL_ERROR` already exists, and
+`gov-enforce-error-handling` both forbids a module modifying shared exception infrastructure and
+assigns platform-standard codes to `CommonErrorCodes`. CU.7 forbids a per-module
+`@ControllerAdvice`. SEC could not make its own claim true, so it stopped asserting it.
+
+Governance amended (plan and its `packages/backend-execution/` twins kept identical):
+
+- The **8** `Errors :` lines — `plan:719, 733, 747, 761, 776, 790, 804, 1093`, twinned at
+  `SVC-API/SVC-API-SEARCH.md:14, 28, 42, 56, 71, 85, 99` and `SVC-API/SVC-API-INT.md:112` — now
+  read `INTERNAL_ERROR only (platform-standard, shared handler)` / `none beyond platform-standard
+  (§Error Catalog INTERNAL_ERROR)`. The count is **eight**, not the nine §12 and the alignment
+  report first recorded.
+- The §Error Catalog row is now `INTERNAL_ERROR | PLATFORM-STD (infrastructure, shared
+  GlobalExceptionHandler — not module-scoped)`, with both message cells copied verbatim from the
+  `INTERNAL_ERROR=` entries in `messages.properties` / `messages_ar.properties`, so the catalog
+  states what the wire actually carries.
+- The CORE error-signalling paragraph (`plan` + `CORE/CORE.md`) no longer claims a scenario-less
+  code exists: **every** `SecErrorCodes` value carries the full `SEC-<HTTP-status>-<SCENARIO>`
+  shape, and the platform 500 row is owned and emitted by the shared handler, not registered by
+  the module.
+- `P3_1/registry-exec-be-sec.md`'s CATALOG arithmetic was wrong independently of this change
+  (`27 + 2 generic = 29`); the catalog has **28** rows, so it now reads `26 + 2 generic = 28`.
+
+Source, on an explicit human decision — **no rule compelled it** (the automatic-rejection list
+covers dead *repository methods*, not constants); it matches CU, NOTIF and FILE, none of which
+declare a `_500` constant:
+
+- `SecErrorCodes.SEC_500` deleted with its javadoc → **27** constants.
+- `SEC-500=` deleted from `messages.properties` and `messages_ar.properties` → **27** SEC keys in
+  each bundle, pairing 1:1 with the 27 constants (gov-enforce-error-handling CHECK 4).
+- `MenuService.resolveCaller()`'s javadoc rewritten: it named `SEC-500`, and it also still claimed
+  the JWT validating filter was not yet installed — false since §9. No executable line changed.
+
+`com.erp.common` was not touched, and no `@ControllerAdvice` was added under `com.erp.sec`.
+
+**Durable cross-module note.** `governance/modules/MDL/P3_1/backend-execution-plan-mdl.md:540` and
+`governance/modules/FIN/P3_1/backend-execution-plan-fin.md:1118` carry the byte-identical
+`<MOD>-500 | PLATFORM-STD (infrastructure) | any | 500 | unhandled server error | حدث خطأ في الخادم
+| A server error occurred |` row. This is a generator-level defect, not a SEC one, and it will
+recur verbatim when MDL and FIN are built. Neither file was modified.
+
+### The drift the debate uncovered
+
+`packages/backend-execution/_SECTIONS.md`'s EXECUTION PLAN INDEX API table still carried the
+pre-§8 `GET` verbs and collection paths for API-SEC-005, 012, 021, 023 and 025, while the plan's
+twin table already carried `POST .../search` — so the "kept byte-identical" claim in the alignment
+report's Part 5 was untrue of the file as a whole. The five rows were copied from the plan
+(authoritative, and matching the five `@PostMapping("/search")` controllers); the two tables now
+`diff` clean. API-SEC-022, 024 and 027 are genuinely `GET` and were left alone. Recorded as a new
+`NAMING_MISMATCH` entry in `api_doc_gaps[]`, already resolved.

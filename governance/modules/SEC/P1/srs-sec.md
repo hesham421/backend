@@ -293,6 +293,7 @@ Entities   : ENT-SEC-013, ENT-SEC-001
 Rationale  : conversion from pending to real, permission-bearing identity
 Source     : security-module-plan-en.md §3
 Priority   : MEDIUM
+Note       : the credential of the created account is unspecified here and in AC-SEC-004, yet DBF-SEC-004 `password_hash` is NOT NULL. Operative behaviour: the account is created with an unusable random secret (never logged, returned or transmitted), so it is ACTIVE but cannot be authenticated against; the owner's route to a real credential is the existing REQ-SEC-006 → REQ-SEC-007 password-reset pair (RULE-SEC-006). OPEN for a human (not decided here): no SEC artifact says the approved owner is notified or that a reset token is issued at approval — REQ-SEC-029 triggers on token issuance, not approval, and is itself `optional` — and the state is undiscoverable from outside, since login answers the deliberately uniform "Invalid credentials" error (POL-SEC-004) and the reset request answers the same generic 200 whether or not the email exists, making "approved", "still pending" and "rejected" indistinguishable. The two candidate answers are (a) SEC issues a reset token at approval time — which introduces a NOTIF dependency into a module declared ROOT — or (b) the spec states plainly that the owner is informed out of band.
 #### AC-SEC-004 — [REQ-SEC-004]
 Given a SignupRequest with status PENDING
 When an administrator approves it
@@ -567,6 +568,7 @@ Entities   : ENT-SEC-001, ENT-SEC-002, ENT-SEC-010, ENT-SEC-011
 Rationale  : POL-SEC-010
 Source     : security-module-plan-en.md §5.1-§5.2
 Priority   : MEDIUM
+Note       : three of the widget figures API-SEC-022 returns are named but never defined here or in AC-SEC-022 — `recentActivity`'s N, the age at which a PENDING sign-up counts as stalled, and what makes a role `privileged` (SCR-REQ-SEC-007 B1-B5, prd-sec.md and all 104 DBF are silent too). Operative definitions, chosen at implementation to fill that silence and subject to a human's confirmation: N = 10 most recent AuditLogEntry rows; stalled = a SignupRequest still PENDING more than 7 days; privileged role = a role holding at least one action grant whose action code is not the VIEW gateway (RULE-SEC-007 / REQ-SEC-030's own VIEW-vs-other distinction). Whether SEC v1 should state these three, or drop the figures from the contract, is an open P1/P2 decision.
 #### AC-SEC-022 — [REQ-SEC-022]
 Given the dashboard is opened
 When it renders
@@ -675,6 +677,34 @@ Priority   : HIGH
 Given a role holds CREATE on a screen but not VIEW on that same screen
 When that role's user attempts the CREATE action
 Then the system denies it until VIEW is also granted on that screen
+
+### REQ-SEC-034 — قراءة بيانات الاتصال بالمستخدم عبر الوحدات / Cross-module read of a user's contact details
+Pattern    : optional
+Statement  : Where another module must reach a user out of band, the system shall expose that user's email address, bilingual display names and active state — and nothing else — through a read-only cross-module interface.
+Traces     : US-SEC-012
+Entities   : ENT-SEC-001
+Rationale  : REQ-SEC-029's delivery half needs an address for a bare user id; NOTIF's XM-NOTIF-001 recipient-active check needs the same row's state
+Source     : AMENDMENT 2026-09-11 — build-create-service "Exposing this module to others"; execution-state.json api_doc_gaps #9
+Priority   : LOW
+Note       : The surface is `com.erp.sec.crossmodule.SecUserDirectoryApi`, an injected Spring interface — not an HTTP endpoint: `build-create-service` requires cross-module reads to go through "direct Spring interface injection, not loopback HTTP". See §A8's third table.
+#### AC-SEC-034 — [REQ-SEC-034]
+Given a consumer module that holds only a user id
+When it asks SEC for that user's contact details
+Then the system returns the email address, both display names and the active flag, and never the password hash (POL-SEC-004) or any role, grant or session data
+
+### REQ-SEC-035 — قراءة حاملي صلاحية معيّنة عبر الوحدات / Cross-module read of the holders of a permission code
+Pattern    : optional
+Statement  : Where another module enforces a separation-of-duties rule over its own permission codes, the system shall expose to that module the set of user ids currently holding a given permission code through their roles.
+Traces     : US-SEC-007
+Entities   : ENT-SEC-001, ENT-SEC-003, ENT-SEC-006, ENT-SEC-009
+Rationale  : RULE-SEC-005 is inert in SEC v1 (REQ-SEC-020 Note); the platform's only real conflicting pair is FIN-owned and FIN-enforced (RULE-FIN-015), and FIN needs the holder set to enforce it
+Source     : AMENDMENT 2026-09-11 — build-create-service "Exposing this module to others"; execution-state.json api_doc_gaps #8
+Priority   : MEDIUM
+Note       : Same surface as REQ-SEC-034 (`SecUserDirectoryApi`, QR-SEC-039), not an endpoint. It answers with user ids only — the consumer decides; SEC neither learns nor evaluates the consumer's conflicting pair, so REQ-SEC-020's Note stands unchanged.
+#### AC-SEC-035 — [REQ-SEC-035]
+Given two permission codes that a consumer module declares as conflicting
+When that module asks SEC which users hold each of them
+Then the system returns, for each code, the set of user ids computed across every active role assignment, and returns nothing else about those users
 
 ## A5 — Business rules
 
@@ -813,6 +843,16 @@ None — SEC is ROOT; it consumes no entity owned by another in-scope module.
 | External service | Purpose | Integration kind |
 |---|---|---|
 | Notifications (ready, external) | password-reset message (REQ-SEC-029) | SOFT / optional, per new project/integration-notifications-fileservice.md §1 |
+
+**AMENDMENT 2026-09-11 — the EXPOSED direction.** The two tables above describe only what SEC
+*consumes*; both remain true. SEC additionally exposes one read-only inbound surface. It registers
+no entity, table or column, so it carries no XM row here — formal `XM-*` ids for this direction are
+assigned by the *consuming* module's own P2, not by SEC.
+
+| Exposed entity | Owner ENT id | Consumer | Read-model | Surface |
+|---|---|---|---|---|
+| User (contact details only: email + both display names + active) | ENT-SEC-001 | NOTIF — XM-NOTIF-001, and REQ-SEC-029's delivery half | `UserContact` | `com.erp.sec.crossmodule.SecUserDirectoryApi` (REQ-SEC-034) |
+| Holders of a permission code (spans User → UserRoleAssignment → RoleActionGrant → ActionRegistry) | ENT-SEC-001, ENT-SEC-003, ENT-SEC-006, ENT-SEC-009 | FIN — RULE-FIN-015 separation of duties | `List<Long>` (user ids only) | `com.erp.sec.crossmodule.SecUserDirectoryApi` (REQ-SEC-035, QR-SEC-039) |
 
 # PART B — SCREEN REQUIREMENTS
 
@@ -1056,12 +1096,12 @@ per-user by the same module/screen grants each target page already enforces (REQ
 | US-SEC-004 | REQ-SEC-009, REQ-SEC-010, REQ-SEC-011, REQ-SEC-031 | AC-SEC-009…011, AC-SEC-031 | — | ENT-SEC-001, ENT-SEC-002, ENT-SEC-003, ENT-SEC-010 | SCR-REQ-SEC-004 |
 | US-SEC-005 | REQ-SEC-012, REQ-SEC-013, REQ-SEC-014, REQ-SEC-015, REQ-SEC-030 | AC-SEC-012…015, AC-SEC-030 | RULE-SEC-001, RULE-SEC-002, RULE-SEC-003, RULE-SEC-007 | ENT-SEC-002, ENT-SEC-004…009 | SCR-REQ-SEC-005 |
 | US-SEC-006 | REQ-SEC-016, REQ-SEC-017, REQ-SEC-018, REQ-SEC-019 | AC-SEC-016…019 | RULE-SEC-004 | ENT-SEC-004, ENT-SEC-005, ENT-SEC-006 | SCR-REQ-SEC-006 |
-| US-SEC-007 | REQ-SEC-020 | AC-SEC-020 | RULE-SEC-005 | ENT-SEC-001, ENT-SEC-003, ENT-SEC-006, ENT-SEC-009 | SCR-REQ-SEC-005 |
+| US-SEC-007 | REQ-SEC-020, REQ-SEC-035 | AC-SEC-020, AC-SEC-035 | RULE-SEC-005 | ENT-SEC-001, ENT-SEC-003, ENT-SEC-006, ENT-SEC-009 | SCR-REQ-SEC-005 |
 | US-SEC-008 | REQ-SEC-021, REQ-SEC-032, REQ-SEC-033 | AC-SEC-021, AC-SEC-032, AC-SEC-033 | — | ENT-SEC-004, ENT-SEC-005, ENT-SEC-007, ENT-SEC-008 | SCR-REQ-SEC-010 |
 | US-SEC-009 | REQ-SEC-022, REQ-SEC-023 | AC-SEC-022, AC-SEC-023 | — | ENT-SEC-001, ENT-SEC-002, ENT-SEC-010, ENT-SEC-011 | SCR-REQ-SEC-007 |
 | US-SEC-010 | REQ-SEC-024, REQ-SEC-025, REQ-SEC-026 | AC-SEC-024…026 | — | ENT-SEC-011 | SCR-REQ-SEC-008 |
 | US-SEC-011 | REQ-SEC-027, REQ-SEC-028 | AC-SEC-027, AC-SEC-028 | — | ENT-SEC-010 | SCR-REQ-SEC-009 |
-| US-SEC-012 | REQ-SEC-029 | AC-SEC-029 | — | ENT-SEC-012 | SCR-REQ-SEC-003 |
+| US-SEC-012 | REQ-SEC-029, REQ-SEC-034 | AC-SEC-029, AC-SEC-034 | — | ENT-SEC-012, ENT-SEC-001 | SCR-REQ-SEC-003 |
 
 Every story traces to ≥1 REQ; every REQ traces to ≥1 AC; every RULE traces to a REQ;
 every SCR-REQ traces to ≥1 REQ (rows above). No orphan, no dangling id.
