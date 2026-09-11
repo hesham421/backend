@@ -29,6 +29,12 @@ public class AuditLogEntrySearchRequest extends BaseSearchContractRequest {
         return toCommonSearchRequest(Set.of(ACTOR_USER_ID));
     }
 
+    /**
+     * Not a settable request field — {@code filters: [{"field":"actorUserId",...}]} is the client
+     * contract (see class doc). Hidden from the OpenAPI schema so bean introspection doesn't
+     * publish it as though it were an independent top-level field a client can POST directly.
+     */
+    @Schema(hidden = true)
     public Long getActorUserId() {
         return extractLongFilter(ACTOR_USER_ID);
     }

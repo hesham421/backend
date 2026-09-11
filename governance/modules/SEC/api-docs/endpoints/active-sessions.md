@@ -32,7 +32,6 @@ Schema: `ActiveSessionSearchRequest` (application/json)
 | sortDirection | string | No | enum: ASC, DESC | Sort direction - اتجاه الترتيب |  |
 | page | integer (int32) | No |  | Page number, zero-based - رقم الصفحة | 0 |
 | size | integer (int32) | No |  | Page size - حجم الصفحة | 20 |
-| userId | integer (int64) | No |  |  |  |
 
 **Request Example**
 
