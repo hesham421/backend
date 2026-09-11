@@ -2,10 +2,11 @@
 
 Shared ERP tool that generates frontend-ready API documentation directly from
 an implemented Spring Boot module. It is not built for any specific module —
-it works identically for ORG, Security, Master Data, Finance, and any future
-module that follows this platform's existing conventions (Maven reactor,
-`GroupedOpenApi` per module, shared `erp-common-utils`), with no generator
-change required to support a new one. There is no governance coupling, no
+it works identically for SEC, CU, NOTIF, FILE and any future module that follows
+this platform's existing conventions (a `GroupedOpenApi` bean per module, a
+shared `com.erp.common` foundation), with no generator change required to
+support a new one. It works under both layouts this platform has used: the
+single consolidated POM it builds as today, and a multi-module Maven reactor. There is no governance coupling, no
 execution-plan parsing, no drift/contract verification here. **The
 implemented backend is the only source of truth.**
 
@@ -20,9 +21,9 @@ under-annotated), not the doc generator.
 ## Quick start
 
 ```bash
-python3 generate.py --module ORG --function generate
-python3 generate.py --module ORG --function update
-python3 generate.py --module ORG --function review
+python3 generate.py --module SEC --function generate
+python3 generate.py --module SEC --function update
+python3 generate.py --module SEC --function review
 ```
 
 That's it in normal use — see "Automatic discovery" below for what these two
@@ -35,8 +36,8 @@ generate.py              CLI entrypoint. Parses --module/--function (+ rare
                          explicit overrides), calls discovery.py, then calls
                          generator.run(). Owns no pipeline logic itself.
 discovery.py             Resolves --module into a RepositoryContext by reading
-                         real repository artifacts (Maven reactor, springdoc
-                         group config) -- never a per-module lookup table,
+                         real repository artifacts (pom.xml, springdoc group
+                         config, application*.properties) -- never a per-module lookup table,
                          and never a WORKSPACE.md (no such file exists in
                          this repo). See "Automatic
                          discovery" below. RepositoryContext is the ONLY
@@ -59,7 +60,9 @@ models/
                          Every field is Optional — absence means "not
                          discoverable", never "invent something reasonable".
 extractors/
-  openapi_extractor.py   Loads the OpenAPI JSON (file or URL), walks paths/
+  openapi_extractor.py   Loads the OpenAPI JSON (file or URL), raising
+                         OpenApiLoadError naming the URL tried and the
+                         server's own response body on failure. Walks paths/
                          operations into Endpoint objects: method, path,
                          summary/description, tag, path/query/header params,
                          auth requirement + scheme names. Also reads `info.version`.
@@ -97,7 +100,10 @@ extractors/
   error_mapping_extractor.py  BEST-EFFORT, only runs when shared/common
                          source roots are available. Reads the shared,
                          module-independent Status -> HttpStatus table from
-                         OperationCodeImpl, the framework-level error codes
+                         wherever this platform currently keeps it — the
+                         Status enum's own constructor today, an explicit
+                         OperationCodeImpl table historically; both are
+                         recognised — the framework-level error codes
                          (validation, not-found, forbidden, ...) with their
                          real HTTP status from GlobalExceptionHandler, and
                          (per module) the Status a module's own error code
@@ -183,7 +189,7 @@ stubs), write a new `Renderer` subclass — no extractor changes needed.
 
 ## Automatic discovery
 
-`discovery.py` is what makes `--module ORG --function generate` sufficient on
+`discovery.py` is what makes `--module SEC --function generate` sufficient on
 its own. It reads real, versioned repository artifacts — not a per-module
 lookup table — so a brand-new module works the moment it follows the same
 conventions every current module already does, with zero generator changes:
@@ -196,18 +202,27 @@ conventions every current module already does, with zero generator changes:
    first, falling back to its scanned package(s) only if nothing more
    specific matched (and preferring the most specific match, so a combined
    "all modules" group never wins by accident).
-2. **What's the OpenAPI URL?** `http://localhost:<port>/api-docs/<group-id>`,
-   where `<port>` is read from the backend's own
-   `@Value("${server.port:XXXX})` default.
-3. **Where's the module's own source?** Whichever Maven module's
-   `src/main/java` actually contains the matched group's controller
-   package(s) — found by existence check, not by guessing a directory name
-   like `erp-org`.
-4. **Where's its shared/common source?** Every *other* reactor module (from
-   the root `pom.xml`'s `<modules>` list) that this module's own `pom.xml`
-   declares as a `<dependency>` — the real, build-enforced dependency graph,
-   not an assumption that it's specifically called `erp-common-utils` (a
-   module can depend on several; all of them are searched).
+2. **What's the OpenAPI URL?**
+   `http://localhost:<port><context-path><api-docs-path>/<group-id>` — all
+   three parts read from the backend's own `application*.properties`
+   (`server.port`, `server.servlet.context-path`, `springdoc.api-docs.path`),
+   because all three move independently and none has a safe assumed value. A
+   `@Value("${server.port:XXXX}")` default in Java is honoured as a fallback.
+   On this backend today that resolves to
+   `http://localhost:7272/v3/api-docs/<group-id>`.
+3. **Where's the module's own source?** Whichever `src/main/java` tree
+   actually contains the matched group's controller package(s) — found by
+   existence check, not by guessing a directory name. Scoped to the domain
+   root (the parent of `controller/`), so a module's best-effort source
+   extractors only ever see that module's own code even under the single
+   consolidated POM, where every module shares one `src/main/java`.
+4. **Where's its shared/common source?** Under a multi-module reactor: every
+   *other* reactor module (from the root `pom.xml`'s `<modules>` list) that
+   this module's own `pom.xml` declares as a `<dependency>` — the real,
+   build-enforced dependency graph, not an assumption about a module's name
+   (a module can depend on several; all are searched). Under the single
+   consolidated POM this platform builds as today, shared code already lives
+   in the same `src/main/java` tree, so that whole tree is the common root.
 5. **Where does output go?** `governance-repo/modules/<MODULE>/api-docs/` —
    this tool's own repository, so no discovery is needed, just the
    already-established convention.
@@ -229,11 +244,11 @@ whatever specific `Path`(s) `generator.build_document()` hands it.
 # Explicit overrides — only for what discovery genuinely can't resolve
 # (server not running on its default port, an unusual checkout, a saved
 # OpenAPI file instead of a live server, ...). Never required for normal use.
-python3 generate.py --module ORG --function generate \
+python3 generate.py --module SEC --function generate \
     --openapi ./openapi.json \
-    --source ../../../backend/erp-org/src/main/java \
-    --common-source ../../../backend/erp-common-utils/src/main/java \
-    --output ../../modules/ORG/api-docs/
+    --source ../../../src/main/java/com/erp/sec \
+    --common-source ../../../src/main/java \
+    --output ../../modules/SEC/api-docs/
 ```
 
 ## Execution modes (`--function`)
@@ -336,29 +351,30 @@ modules/ORG/api-docs/
 
 ## Limitations
 
-- **Per-endpoint error responses are not documented.** No controller in this
-  codebase declares `@ApiResponse`/`@ApiResponses`, so there's nothing to
-  extract per endpoint — only the module-level error-code appendix exists,
-  now with Status/HTTP status attached where a throw site makes it
-  discoverable, but still not attributed to a specific endpoint.
-- **No `enum` schema arrays exist yet in this codebase** (e.g.
-  finance-gl's `accountType` is a plain `String` documented only in
-  free-text `@Operation` descriptions). The generator will render an
-  `enum: [...]` list the moment a schema actually has one, but don't expect
-  it today.
-- **A search contract's `operator` allowed values are not discoverable.**
-  `ContractFilter.operator` is a plain `String`; the values actually accepted
-  live inside `BaseSearchContractRequest.mapOperator()`'s method body, not on
-  any annotation. This is a backend annotation gap, not something this
-  generator should reverse-engineer from arbitrary method bodies — see the
-  enhancement report for why.
+- **Per-endpoint BUSINESS error responses are not documented.** No controller
+  in this codebase declares `@ApiResponse`/`@ApiResponses`. Framework errors
+  structurally guaranteed by an endpoint's own shape are attached per
+  endpoint, but which business error code a given endpoint can raise stays a
+  module-level appendix — with Status/HTTP status attached where a throw site
+  makes it discoverable.
+- **No security scheme is declared in the OpenAPI document.** `OpenApiConfig`
+  declares `GroupedOpenApi` beans but no `SecurityScheme`/`OpenAPI` bean, and
+  no operation carries a `security` requirement — so every endpoint's
+  Authentication line reads "Not determined from the OpenAPI document," even
+  though the app really is behind a JWT filter chain. This is a backend
+  annotation gap: declare the bearer scheme in `OpenApiConfig` and this
+  generator documents it with no change of its own. Required permissions are
+  unaffected — those come from source.
 - **Permission and error/status discovery are source-text heuristics, not a
   real Java parser.** They rely on conventions actually observed across this
   codebase's modules (one delegate call per controller method under the same
   method name; `throw new (BusinessException|LocalizedException)(Status.X,
   SomeErrorCodes.Y, ...)` at the point of use). They silently return nothing
-  for anything they can't confidently resolve — never guess.
-- **Requires `/api-docs/<group>` to actually work as a path segment**, not a
+  for anything they can't confidently resolve — never guess. The class names
+  they depend on (the permission-constants holder, the Status table's home)
+  are matched structurally rather than hardcoded, so a rename degrades into
+  partial output instead of silently emptying a whole section.
+- **Requires `<api-docs-path>/<group>` to actually work as a path segment**, not a
   query string — springdoc groups aren't filterable via `?group=x`.
 
 ## Extension points

@@ -12,25 +12,51 @@ This module does not talk to Java source at all — everything here comes
 from the OpenAPI JSON that's already been resolved by dto_extractor.
 """
 
+import json
+import re
 from typing import Optional
 
 from models.api_doc_model import FieldSpec
 
+# springdoc names the schema for a type it could not fully resolve a
+# nullability wrapper for by appending "null" (e.g. Spring Data's Pageable ->
+# "Pageablenull", Sort -> "Sortnull"). That suffix is a generator artefact,
+# not part of any type a frontend or test will ever see on the wire, so it is
+# stripped for DISPLAY only -- the original name is still what $ref lookups
+# use, so nothing downstream stops resolving.
+_SPRINGDOC_NULL_SUFFIX_RE = re.compile(r"^([A-Z]\w*?)null$")
+
+
+def display_type_name(name: Optional[str]) -> Optional[str]:
+    if not name:
+        return name
+    m = _SPRINGDOC_NULL_SUFFIX_RE.match(name)
+    return m.group(1) if m else name
+
 
 def _type_label(resolved: dict, ref_name: Optional[str], is_array: bool, item_type: Optional[str]) -> str:
     if is_array:
-        return f"array<{item_type or 'object'}>"
+        return f"array<{display_type_name(item_type) or 'object'}>"
     if ref_name:
-        return ref_name
+        return display_type_name(ref_name)
     t = resolved.get("type", "object")
     fmt = resolved.get("format")
     return f"{t} ({fmt})" if fmt else t
 
 
 def _stringify(value) -> Optional[str]:
+    """Display form of an example. A non-string JSON value is rendered as the
+    JSON literal it actually is -- Python's str() would turn `true` into
+    "True" and `null` into "None", neither of which is valid JSON, and that
+    string was previously what ended up in the copy-pasteable example blocks."""
     if value is None:
         return None
-    return str(value)
+    if isinstance(value, str):
+        return value
+    try:
+        return json.dumps(value, ensure_ascii=False)
+    except (TypeError, ValueError):
+        return str(value)
 
 
 def build_field_spec(name: str, prop: dict, required: bool, resolve_ref) -> FieldSpec:
@@ -52,6 +78,7 @@ def build_field_spec(name: str, prop: dict, required: bool, resolve_ref) -> Fiel
         required=required,
         description=resolved.get("description"),
         example=_stringify(resolved.get("example")),
+        example_raw=resolved.get("example"),
         min_length=resolved.get("minLength"),
         max_length=resolved.get("maxLength"),
         pattern=resolved.get("pattern"),

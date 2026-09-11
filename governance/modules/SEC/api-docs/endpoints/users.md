@@ -22,6 +22,8 @@ Operation ID: `update`
 
 Not determined from the OpenAPI document.
 
+**Required permission(s)**: PERM_SEC_USERS_UPDATE (found on service:UserService)
+
 ### Path Parameters
 
 | Name | Type | Required | Description |
@@ -50,36 +52,27 @@ Schema: `UserUpdateRequest` (application/json)
 
 ### Response `200` — OK
 
-Shape: `ApiResponseUserResponse`
+Shape: `UserResponse`
 
 | Field | Type | Required | Constraints | Description | Example |
 |---|---|---|---|---|---|
-| success | boolean | No |  |  |  |
-| data | UserResponse | No |  | User - مستخدم |  |
-| data.userPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
-| data.username | string | No |  | Login identity - اسم الدخول | u2 |
-| data.email | string | No |  | Email address - البريد الإلكتروني | u2@example.com |
-| data.fullNameAr | string | No |  | Full name (Arabic) - الاسم الكامل بالعربية | أحمد علي |
-| data.fullNameEn | string | No |  | Full name (English) - الاسم الكامل بالإنجليزية | Ahmed Ali |
-| data.statusCode | string | No |  | USER_STATUS code - رمز الحالة | ACTIVE |
-| data.lastLoginAt | string (date-time) | No |  | Last login timestamp - تاريخ آخر دخول |  |
-| data.isActiveFl | boolean | No |  | Active status - حالة التفعيل | True |
-| data.roles | array<RoleSummaryResponse> | No |  | Assigned roles, returned by the role-assignment API - الأدوار المُسندة |  |
-| data.roles[].roleId | integer (int64) | No |  | Role identifier - معرّف الدور | 1 |
-| data.roles[].code | string | No |  | Role code - رمز الدور | SEC_ADMIN |
-| data.roles[].nameAr | string | No |  | Role name (Arabic) - اسم الدور بالعربية | مدير الأمان |
-| data.roles[].nameEn | string | No |  | Role name (English) - اسم الدور بالإنجليزية | Security administrator |
-| data.createdAt | string (date-time) | No |  | Created timestamp - تاريخ الإنشاء |  |
-| data.createdBy | string | No |  | Created by - أنشئ بواسطة | admin |
-| data.updatedAt | string (date-time) | No |  | Updated timestamp - تاريخ التحديث |  |
-| data.updatedBy | string | No |  | Updated by - حُدّث بواسطة | admin |
-| error | ApiError | No |  |  |  |
-| error.code | string | No |  |  |  |
-| error.message | string | No |  |  |  |
-| error.fieldErrors | array<FieldErrorItem> | No |  |  |  |
-| error.fieldErrors[].field | string | No |  |  |  |
-| error.fieldErrors[].message | string | No |  |  |  |
-| timestamp | string (date-time) | No |  |  |  |
+| userPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
+| username | string | No |  | Login identity - اسم الدخول | u2 |
+| email | string | No |  | Email address - البريد الإلكتروني | u2@example.com |
+| fullNameAr | string | No |  | Full name (Arabic) - الاسم الكامل بالعربية | أحمد علي |
+| fullNameEn | string | No |  | Full name (English) - الاسم الكامل بالإنجليزية | Ahmed Ali |
+| statusCode | string | No |  | USER_STATUS code - رمز الحالة | ACTIVE |
+| lastLoginAt | string (date-time) | No |  | Last login timestamp - تاريخ آخر دخول |  |
+| isActiveFl | boolean | No |  | Active status - حالة التفعيل | true |
+| roles | array<RoleSummaryResponse> | No |  | Assigned roles, returned by the role-assignment API - الأدوار المُسندة |  |
+| roles[].roleId | integer (int64) | No |  | Role identifier - معرّف الدور | 1 |
+| roles[].code | string | No |  | Role code - رمز الدور | SEC_ADMIN |
+| roles[].nameAr | string | No |  | Role name (Arabic) - اسم الدور بالعربية | مدير الأمان |
+| roles[].nameEn | string | No |  | Role name (English) - اسم الدور بالإنجليزية | Security administrator |
+| createdAt | string (date-time) | No |  | Created timestamp - تاريخ الإنشاء |  |
+| createdBy | string | No |  | Created by - أنشئ بواسطة | admin |
+| updatedAt | string (date-time) | No |  | Updated timestamp - تاريخ التحديث |  |
+| updatedBy | string | No |  | Updated by - حُدّث بواسطة | admin |
 
 **Response Example**
 
@@ -87,27 +80,34 @@ _(partial — only fields with a documented example are shown)_
 
 ```json
 {
-  "data": {
-    "userPk": 1,
-    "username": "u2",
-    "email": "u2@example.com",
-    "fullNameAr": "أحمد علي",
-    "fullNameEn": "Ahmed Ali",
-    "statusCode": "ACTIVE",
-    "isActiveFl": "True",
-    "roles": [
-      {
-        "roleId": 1,
-        "code": "SEC_ADMIN",
-        "nameAr": "مدير الأمان",
-        "nameEn": "Security administrator"
-      }
-    ],
-    "createdBy": "admin",
-    "updatedBy": "admin"
-  }
+  "userPk": 1,
+  "username": "u2",
+  "email": "u2@example.com",
+  "fullNameAr": "أحمد علي",
+  "fullNameEn": "Ahmed Ali",
+  "statusCode": "ACTIVE",
+  "isActiveFl": true,
+  "roles": [
+    {
+      "roleId": 1,
+      "code": "SEC_ADMIN",
+      "nameAr": "مدير الأمان",
+      "nameEn": "Security administrator"
+    }
+  ],
+  "createdBy": "admin",
+  "updatedBy": "admin"
 }
 ```
+
+### Other Possible Responses
+
+Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
+
+| HTTP Status | Code | Why |
+|---|---|---|
+| 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
+| 400 BAD_REQUEST | VALIDATION_ERROR | Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status. |
 
 ## DELETE /api/v1/sec/users/{id}
 
@@ -121,6 +121,8 @@ Operation ID: `deactivate`
 
 Not determined from the OpenAPI document.
 
+**Required permission(s)**: PERM_SEC_USERS_UPDATE (found on service:UserService)
+
 ### Path Parameters
 
 | Name | Type | Required | Description |
@@ -129,34 +131,29 @@ Not determined from the OpenAPI document.
 
 ### Response `200` — OK
 
-Shape: `ApiResponseUserStatusResponse`
+Shape: `UserStatusResponse`
 
 | Field | Type | Required | Constraints | Description | Example |
 |---|---|---|---|---|---|
-| success | boolean | No |  |  |  |
-| data | UserStatusResponse | No |  | User status confirmation - تأكيد حالة المستخدم |  |
-| data.userPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
-| data.statusCode | string | No |  | USER_STATUS code after the transition - رمز الحالة بعد الانتقال | DISABLED |
-| error | ApiError | No |  |  |  |
-| error.code | string | No |  |  |  |
-| error.message | string | No |  |  |  |
-| error.fieldErrors | array<FieldErrorItem> | No |  |  |  |
-| error.fieldErrors[].field | string | No |  |  |  |
-| error.fieldErrors[].message | string | No |  |  |  |
-| timestamp | string (date-time) | No |  |  |  |
+| userPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
+| statusCode | string | No |  | USER_STATUS code after the transition - رمز الحالة بعد الانتقال | DISABLED |
 
 **Response Example**
 
-_(partial — only fields with a documented example are shown)_
-
 ```json
 {
-  "data": {
-    "userPk": 1,
-    "statusCode": "DISABLED"
-  }
+  "userPk": 1,
+  "statusCode": "DISABLED"
 }
 ```
+
+### Other Possible Responses
+
+Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
+
+| HTTP Status | Code | Why |
+|---|---|---|
+| 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
 
 ## PATCH /api/v1/sec/users/{id}
 
@@ -170,6 +167,8 @@ Operation ID: `reactivate`
 
 Not determined from the OpenAPI document.
 
+**Required permission(s)**: PERM_SEC_USERS_UPDATE (found on service:UserService)
+
 ### Path Parameters
 
 | Name | Type | Required | Description |
@@ -178,34 +177,29 @@ Not determined from the OpenAPI document.
 
 ### Response `200` — OK
 
-Shape: `ApiResponseUserStatusResponse`
+Shape: `UserStatusResponse`
 
 | Field | Type | Required | Constraints | Description | Example |
 |---|---|---|---|---|---|
-| success | boolean | No |  |  |  |
-| data | UserStatusResponse | No |  | User status confirmation - تأكيد حالة المستخدم |  |
-| data.userPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
-| data.statusCode | string | No |  | USER_STATUS code after the transition - رمز الحالة بعد الانتقال | DISABLED |
-| error | ApiError | No |  |  |  |
-| error.code | string | No |  |  |  |
-| error.message | string | No |  |  |  |
-| error.fieldErrors | array<FieldErrorItem> | No |  |  |  |
-| error.fieldErrors[].field | string | No |  |  |  |
-| error.fieldErrors[].message | string | No |  |  |  |
-| timestamp | string (date-time) | No |  |  |  |
+| userPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
+| statusCode | string | No |  | USER_STATUS code after the transition - رمز الحالة بعد الانتقال | DISABLED |
 
 **Response Example**
 
-_(partial — only fields with a documented example are shown)_
-
 ```json
 {
-  "data": {
-    "userPk": 1,
-    "statusCode": "DISABLED"
-  }
+  "userPk": 1,
+  "statusCode": "DISABLED"
 }
 ```
+
+### Other Possible Responses
+
+Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
+
+| HTTP Status | Code | Why |
+|---|---|---|
+| 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
 
 ## PUT /api/v1/sec/users/{id}/roles
 
@@ -218,6 +212,8 @@ Operation ID: `assignRoles`
 **Authentication**
 
 Not determined from the OpenAPI document.
+
+**Required permission(s)**: PERM_SEC_USERS_UPDATE (found on service:UserRoleService)
 
 ### Path Parameters
 
@@ -246,36 +242,27 @@ Schema: `UserRoleAssignmentRequest` (application/json)
 
 ### Response `200` — OK
 
-Shape: `ApiResponseUserResponse`
+Shape: `UserResponse`
 
 | Field | Type | Required | Constraints | Description | Example |
 |---|---|---|---|---|---|
-| success | boolean | No |  |  |  |
-| data | UserResponse | No |  | User - مستخدم |  |
-| data.userPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
-| data.username | string | No |  | Login identity - اسم الدخول | u2 |
-| data.email | string | No |  | Email address - البريد الإلكتروني | u2@example.com |
-| data.fullNameAr | string | No |  | Full name (Arabic) - الاسم الكامل بالعربية | أحمد علي |
-| data.fullNameEn | string | No |  | Full name (English) - الاسم الكامل بالإنجليزية | Ahmed Ali |
-| data.statusCode | string | No |  | USER_STATUS code - رمز الحالة | ACTIVE |
-| data.lastLoginAt | string (date-time) | No |  | Last login timestamp - تاريخ آخر دخول |  |
-| data.isActiveFl | boolean | No |  | Active status - حالة التفعيل | True |
-| data.roles | array<RoleSummaryResponse> | No |  | Assigned roles, returned by the role-assignment API - الأدوار المُسندة |  |
-| data.roles[].roleId | integer (int64) | No |  | Role identifier - معرّف الدور | 1 |
-| data.roles[].code | string | No |  | Role code - رمز الدور | SEC_ADMIN |
-| data.roles[].nameAr | string | No |  | Role name (Arabic) - اسم الدور بالعربية | مدير الأمان |
-| data.roles[].nameEn | string | No |  | Role name (English) - اسم الدور بالإنجليزية | Security administrator |
-| data.createdAt | string (date-time) | No |  | Created timestamp - تاريخ الإنشاء |  |
-| data.createdBy | string | No |  | Created by - أنشئ بواسطة | admin |
-| data.updatedAt | string (date-time) | No |  | Updated timestamp - تاريخ التحديث |  |
-| data.updatedBy | string | No |  | Updated by - حُدّث بواسطة | admin |
-| error | ApiError | No |  |  |  |
-| error.code | string | No |  |  |  |
-| error.message | string | No |  |  |  |
-| error.fieldErrors | array<FieldErrorItem> | No |  |  |  |
-| error.fieldErrors[].field | string | No |  |  |  |
-| error.fieldErrors[].message | string | No |  |  |  |
-| timestamp | string (date-time) | No |  |  |  |
+| userPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
+| username | string | No |  | Login identity - اسم الدخول | u2 |
+| email | string | No |  | Email address - البريد الإلكتروني | u2@example.com |
+| fullNameAr | string | No |  | Full name (Arabic) - الاسم الكامل بالعربية | أحمد علي |
+| fullNameEn | string | No |  | Full name (English) - الاسم الكامل بالإنجليزية | Ahmed Ali |
+| statusCode | string | No |  | USER_STATUS code - رمز الحالة | ACTIVE |
+| lastLoginAt | string (date-time) | No |  | Last login timestamp - تاريخ آخر دخول |  |
+| isActiveFl | boolean | No |  | Active status - حالة التفعيل | true |
+| roles | array<RoleSummaryResponse> | No |  | Assigned roles, returned by the role-assignment API - الأدوار المُسندة |  |
+| roles[].roleId | integer (int64) | No |  | Role identifier - معرّف الدور | 1 |
+| roles[].code | string | No |  | Role code - رمز الدور | SEC_ADMIN |
+| roles[].nameAr | string | No |  | Role name (Arabic) - اسم الدور بالعربية | مدير الأمان |
+| roles[].nameEn | string | No |  | Role name (English) - اسم الدور بالإنجليزية | Security administrator |
+| createdAt | string (date-time) | No |  | Created timestamp - تاريخ الإنشاء |  |
+| createdBy | string | No |  | Created by - أنشئ بواسطة | admin |
+| updatedAt | string (date-time) | No |  | Updated timestamp - تاريخ التحديث |  |
+| updatedBy | string | No |  | Updated by - حُدّث بواسطة | admin |
 
 **Response Example**
 
@@ -283,27 +270,34 @@ _(partial — only fields with a documented example are shown)_
 
 ```json
 {
-  "data": {
-    "userPk": 1,
-    "username": "u2",
-    "email": "u2@example.com",
-    "fullNameAr": "أحمد علي",
-    "fullNameEn": "Ahmed Ali",
-    "statusCode": "ACTIVE",
-    "isActiveFl": "True",
-    "roles": [
-      {
-        "roleId": 1,
-        "code": "SEC_ADMIN",
-        "nameAr": "مدير الأمان",
-        "nameEn": "Security administrator"
-      }
-    ],
-    "createdBy": "admin",
-    "updatedBy": "admin"
-  }
+  "userPk": 1,
+  "username": "u2",
+  "email": "u2@example.com",
+  "fullNameAr": "أحمد علي",
+  "fullNameEn": "Ahmed Ali",
+  "statusCode": "ACTIVE",
+  "isActiveFl": true,
+  "roles": [
+    {
+      "roleId": 1,
+      "code": "SEC_ADMIN",
+      "nameAr": "مدير الأمان",
+      "nameEn": "Security administrator"
+    }
+  ],
+  "createdBy": "admin",
+  "updatedBy": "admin"
 }
 ```
+
+### Other Possible Responses
+
+Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
+
+| HTTP Status | Code | Why |
+|---|---|---|
+| 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
+| 400 BAD_REQUEST | VALIDATION_ERROR | Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status. |
 
 ## POST /api/v1/sec/users
 
@@ -316,6 +310,8 @@ Operation ID: `create`
 **Authentication**
 
 Not determined from the OpenAPI document.
+
+**Required permission(s)**: PERM_SEC_USERS_CREATE (found on service:UserService)
 
 ### Request Body
 
@@ -343,36 +339,27 @@ Schema: `UserCreateRequest` (application/json)
 
 ### Response `200` — OK
 
-Shape: `ApiResponseUserResponse`
+Shape: `UserResponse`
 
 | Field | Type | Required | Constraints | Description | Example |
 |---|---|---|---|---|---|
-| success | boolean | No |  |  |  |
-| data | UserResponse | No |  | User - مستخدم |  |
-| data.userPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
-| data.username | string | No |  | Login identity - اسم الدخول | u2 |
-| data.email | string | No |  | Email address - البريد الإلكتروني | u2@example.com |
-| data.fullNameAr | string | No |  | Full name (Arabic) - الاسم الكامل بالعربية | أحمد علي |
-| data.fullNameEn | string | No |  | Full name (English) - الاسم الكامل بالإنجليزية | Ahmed Ali |
-| data.statusCode | string | No |  | USER_STATUS code - رمز الحالة | ACTIVE |
-| data.lastLoginAt | string (date-time) | No |  | Last login timestamp - تاريخ آخر دخول |  |
-| data.isActiveFl | boolean | No |  | Active status - حالة التفعيل | True |
-| data.roles | array<RoleSummaryResponse> | No |  | Assigned roles, returned by the role-assignment API - الأدوار المُسندة |  |
-| data.roles[].roleId | integer (int64) | No |  | Role identifier - معرّف الدور | 1 |
-| data.roles[].code | string | No |  | Role code - رمز الدور | SEC_ADMIN |
-| data.roles[].nameAr | string | No |  | Role name (Arabic) - اسم الدور بالعربية | مدير الأمان |
-| data.roles[].nameEn | string | No |  | Role name (English) - اسم الدور بالإنجليزية | Security administrator |
-| data.createdAt | string (date-time) | No |  | Created timestamp - تاريخ الإنشاء |  |
-| data.createdBy | string | No |  | Created by - أنشئ بواسطة | admin |
-| data.updatedAt | string (date-time) | No |  | Updated timestamp - تاريخ التحديث |  |
-| data.updatedBy | string | No |  | Updated by - حُدّث بواسطة | admin |
-| error | ApiError | No |  |  |  |
-| error.code | string | No |  |  |  |
-| error.message | string | No |  |  |  |
-| error.fieldErrors | array<FieldErrorItem> | No |  |  |  |
-| error.fieldErrors[].field | string | No |  |  |  |
-| error.fieldErrors[].message | string | No |  |  |  |
-| timestamp | string (date-time) | No |  |  |  |
+| userPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
+| username | string | No |  | Login identity - اسم الدخول | u2 |
+| email | string | No |  | Email address - البريد الإلكتروني | u2@example.com |
+| fullNameAr | string | No |  | Full name (Arabic) - الاسم الكامل بالعربية | أحمد علي |
+| fullNameEn | string | No |  | Full name (English) - الاسم الكامل بالإنجليزية | Ahmed Ali |
+| statusCode | string | No |  | USER_STATUS code - رمز الحالة | ACTIVE |
+| lastLoginAt | string (date-time) | No |  | Last login timestamp - تاريخ آخر دخول |  |
+| isActiveFl | boolean | No |  | Active status - حالة التفعيل | true |
+| roles | array<RoleSummaryResponse> | No |  | Assigned roles, returned by the role-assignment API - الأدوار المُسندة |  |
+| roles[].roleId | integer (int64) | No |  | Role identifier - معرّف الدور | 1 |
+| roles[].code | string | No |  | Role code - رمز الدور | SEC_ADMIN |
+| roles[].nameAr | string | No |  | Role name (Arabic) - اسم الدور بالعربية | مدير الأمان |
+| roles[].nameEn | string | No |  | Role name (English) - اسم الدور بالإنجليزية | Security administrator |
+| createdAt | string (date-time) | No |  | Created timestamp - تاريخ الإنشاء |  |
+| createdBy | string | No |  | Created by - أنشئ بواسطة | admin |
+| updatedAt | string (date-time) | No |  | Updated timestamp - تاريخ التحديث |  |
+| updatedBy | string | No |  | Updated by - حُدّث بواسطة | admin |
 
 **Response Example**
 
@@ -380,27 +367,34 @@ _(partial — only fields with a documented example are shown)_
 
 ```json
 {
-  "data": {
-    "userPk": 1,
-    "username": "u2",
-    "email": "u2@example.com",
-    "fullNameAr": "أحمد علي",
-    "fullNameEn": "Ahmed Ali",
-    "statusCode": "ACTIVE",
-    "isActiveFl": "True",
-    "roles": [
-      {
-        "roleId": 1,
-        "code": "SEC_ADMIN",
-        "nameAr": "مدير الأمان",
-        "nameEn": "Security administrator"
-      }
-    ],
-    "createdBy": "admin",
-    "updatedBy": "admin"
-  }
+  "userPk": 1,
+  "username": "u2",
+  "email": "u2@example.com",
+  "fullNameAr": "أحمد علي",
+  "fullNameEn": "Ahmed Ali",
+  "statusCode": "ACTIVE",
+  "isActiveFl": true,
+  "roles": [
+    {
+      "roleId": 1,
+      "code": "SEC_ADMIN",
+      "nameAr": "مدير الأمان",
+      "nameEn": "Security administrator"
+    }
+  ],
+  "createdBy": "admin",
+  "updatedBy": "admin"
 }
 ```
+
+### Other Possible Responses
+
+Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
+
+| HTTP Status | Code | Why |
+|---|---|---|
+| 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
+| 400 BAD_REQUEST | VALIDATION_ERROR | Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status. |
 
 ## POST /api/v1/sec/users/search
 
@@ -413,6 +407,8 @@ Operation ID: `search`
 **Authentication**
 
 Not determined from the OpenAPI document.
+
+**Required permission(s)**: PERM_SEC_USERS_VIEW (found on service:UserService)
 
 ### Request Body
 
@@ -443,59 +439,27 @@ _(partial — only fields with a documented example are shown)_
 
 ### Response `200` — OK
 
-Shape: `ApiResponsePageUserResponse`
+Shape: `paginated list of UserResponse (see Pagination Envelope in index.md)`
 
 | Field | Type | Required | Constraints | Description | Example |
 |---|---|---|---|---|---|
-| success | boolean | No |  |  |  |
-| data | PageUserResponse | No |  |  |  |
-| data.totalPages | integer (int32) | No |  |  |  |
-| data.totalElements | integer (int64) | No |  |  |  |
-| data.first | boolean | No |  |  |  |
-| data.last | boolean | No |  |  |  |
-| data.numberOfElements | integer (int32) | No |  |  |  |
-| data.pageable | Pageablenull | No |  |  |  |
-| data.pageable.paged | boolean | No |  |  |  |
-| data.pageable.pageNumber | integer (int32) | No |  |  |  |
-| data.pageable.pageSize | integer (int32) | No |  |  |  |
-| data.pageable.sort | Sortnull | No |  |  |  |
-| data.pageable.sort.sorted | boolean | No |  |  |  |
-| data.pageable.sort.unsorted | boolean | No |  |  |  |
-| data.pageable.sort.empty | boolean | No |  |  |  |
-| data.pageable.unpaged | boolean | No |  |  |  |
-| data.pageable.offset | integer (int64) | No |  |  |  |
-| data.sort | Sortnull | No |  |  |  |
-| data.sort.sorted | boolean | No |  |  |  |
-| data.sort.unsorted | boolean | No |  |  |  |
-| data.sort.empty | boolean | No |  |  |  |
-| data.size | integer (int32) | No |  |  |  |
-| data.content | array<UserResponse> | No |  |  |  |
-| data.content[].userPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
-| data.content[].username | string | No |  | Login identity - اسم الدخول | u2 |
-| data.content[].email | string | No |  | Email address - البريد الإلكتروني | u2@example.com |
-| data.content[].fullNameAr | string | No |  | Full name (Arabic) - الاسم الكامل بالعربية | أحمد علي |
-| data.content[].fullNameEn | string | No |  | Full name (English) - الاسم الكامل بالإنجليزية | Ahmed Ali |
-| data.content[].statusCode | string | No |  | USER_STATUS code - رمز الحالة | ACTIVE |
-| data.content[].lastLoginAt | string (date-time) | No |  | Last login timestamp - تاريخ آخر دخول |  |
-| data.content[].isActiveFl | boolean | No |  | Active status - حالة التفعيل | True |
-| data.content[].roles | array<RoleSummaryResponse> | No |  | Assigned roles, returned by the role-assignment API - الأدوار المُسندة |  |
-| data.content[].roles[].roleId | integer (int64) | No |  | Role identifier - معرّف الدور | 1 |
-| data.content[].roles[].code | string | No |  | Role code - رمز الدور | SEC_ADMIN |
-| data.content[].roles[].nameAr | string | No |  | Role name (Arabic) - اسم الدور بالعربية | مدير الأمان |
-| data.content[].roles[].nameEn | string | No |  | Role name (English) - اسم الدور بالإنجليزية | Security administrator |
-| data.content[].createdAt | string (date-time) | No |  | Created timestamp - تاريخ الإنشاء |  |
-| data.content[].createdBy | string | No |  | Created by - أنشئ بواسطة | admin |
-| data.content[].updatedAt | string (date-time) | No |  | Updated timestamp - تاريخ التحديث |  |
-| data.content[].updatedBy | string | No |  | Updated by - حُدّث بواسطة | admin |
-| data.number | integer (int32) | No |  |  |  |
-| data.empty | boolean | No |  |  |  |
-| error | ApiError | No |  |  |  |
-| error.code | string | No |  |  |  |
-| error.message | string | No |  |  |  |
-| error.fieldErrors | array<FieldErrorItem> | No |  |  |  |
-| error.fieldErrors[].field | string | No |  |  |  |
-| error.fieldErrors[].message | string | No |  |  |  |
-| timestamp | string (date-time) | No |  |  |  |
+| userPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
+| username | string | No |  | Login identity - اسم الدخول | u2 |
+| email | string | No |  | Email address - البريد الإلكتروني | u2@example.com |
+| fullNameAr | string | No |  | Full name (Arabic) - الاسم الكامل بالعربية | أحمد علي |
+| fullNameEn | string | No |  | Full name (English) - الاسم الكامل بالإنجليزية | Ahmed Ali |
+| statusCode | string | No |  | USER_STATUS code - رمز الحالة | ACTIVE |
+| lastLoginAt | string (date-time) | No |  | Last login timestamp - تاريخ آخر دخول |  |
+| isActiveFl | boolean | No |  | Active status - حالة التفعيل | true |
+| roles | array<RoleSummaryResponse> | No |  | Assigned roles, returned by the role-assignment API - الأدوار المُسندة |  |
+| roles[].roleId | integer (int64) | No |  | Role identifier - معرّف الدور | 1 |
+| roles[].code | string | No |  | Role code - رمز الدور | SEC_ADMIN |
+| roles[].nameAr | string | No |  | Role name (Arabic) - اسم الدور بالعربية | مدير الأمان |
+| roles[].nameEn | string | No |  | Role name (English) - اسم الدور بالإنجليزية | Security administrator |
+| createdAt | string (date-time) | No |  | Created timestamp - تاريخ الإنشاء |  |
+| createdBy | string | No |  | Created by - أنشئ بواسطة | admin |
+| updatedAt | string (date-time) | No |  | Updated timestamp - تاريخ التحديث |  |
+| updatedBy | string | No |  | Updated by - حُدّث بواسطة | admin |
 
 **Response Example**
 
@@ -503,28 +467,31 @@ _(partial — only fields with a documented example are shown)_
 
 ```json
 {
-  "data": {
-    "content": [
-      {
-        "userPk": 1,
-        "username": "u2",
-        "email": "u2@example.com",
-        "fullNameAr": "أحمد علي",
-        "fullNameEn": "Ahmed Ali",
-        "statusCode": "ACTIVE",
-        "isActiveFl": "True",
-        "roles": [
-          {
-            "roleId": 1,
-            "code": "SEC_ADMIN",
-            "nameAr": "مدير الأمان",
-            "nameEn": "Security administrator"
-          }
-        ],
-        "createdBy": "admin",
-        "updatedBy": "admin"
-      }
-    ]
-  }
+  "userPk": 1,
+  "username": "u2",
+  "email": "u2@example.com",
+  "fullNameAr": "أحمد علي",
+  "fullNameEn": "Ahmed Ali",
+  "statusCode": "ACTIVE",
+  "isActiveFl": true,
+  "roles": [
+    {
+      "roleId": 1,
+      "code": "SEC_ADMIN",
+      "nameAr": "مدير الأمان",
+      "nameEn": "Security administrator"
+    }
+  ],
+  "createdBy": "admin",
+  "updatedBy": "admin"
 }
 ```
+
+### Other Possible Responses
+
+Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
+
+| HTTP Status | Code | Why |
+|---|---|---|
+| 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
+| 400 BAD_REQUEST | VALIDATION_ERROR | Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status. |

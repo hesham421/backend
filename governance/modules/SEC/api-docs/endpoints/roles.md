@@ -18,6 +18,8 @@ Operation ID: `create_1`
 
 Not determined from the OpenAPI document.
 
+**Required permission(s)**: PERM_SEC_ROLES_CREATE (found on service:RoleService)
+
 ### Request Body
 
 Schema: `RoleCreateRequest` (application/json)
@@ -44,30 +46,21 @@ Schema: `RoleCreateRequest` (application/json)
 
 ### Response `200` — OK
 
-Shape: `ApiResponseRoleResponse`
+Shape: `RoleResponse`
 
 | Field | Type | Required | Constraints | Description | Example |
 |---|---|---|---|---|---|
-| success | boolean | No |  |  |  |
-| data | RoleResponse | No |  | Role - دور |  |
-| data.rolePk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
-| data.code | string | No |  | Unique role code - رمز الدور الفريد | SEC_ADMIN |
-| data.nameAr | string | No |  | Role name (Arabic) - اسم الدور بالعربية | مدير الأمان |
-| data.nameEn | string | No |  | Role name (English) - اسم الدور بالإنجليزية | Security administrator |
-| data.descriptionAr | string | No |  | Description (Arabic) - الوصف بالعربية | إدارة المستخدمين والأدوار |
-| data.descriptionEn | string | No |  | Description (English) - الوصف بالإنجليزية | Manages users and roles |
-| data.isActiveFl | boolean | No |  | Active status - حالة التفعيل | True |
-| data.createdAt | string (date-time) | No |  | Created timestamp - تاريخ الإنشاء |  |
-| data.createdBy | string | No |  | Created by - أنشئ بواسطة | admin |
-| data.updatedAt | string (date-time) | No |  | Updated timestamp - تاريخ التحديث |  |
-| data.updatedBy | string | No |  | Updated by - حُدّث بواسطة | admin |
-| error | ApiError | No |  |  |  |
-| error.code | string | No |  |  |  |
-| error.message | string | No |  |  |  |
-| error.fieldErrors | array<FieldErrorItem> | No |  |  |  |
-| error.fieldErrors[].field | string | No |  |  |  |
-| error.fieldErrors[].message | string | No |  |  |  |
-| timestamp | string (date-time) | No |  |  |  |
+| rolePk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
+| code | string | No |  | Unique role code - رمز الدور الفريد | SEC_ADMIN |
+| nameAr | string | No |  | Role name (Arabic) - اسم الدور بالعربية | مدير الأمان |
+| nameEn | string | No |  | Role name (English) - اسم الدور بالإنجليزية | Security administrator |
+| descriptionAr | string | No |  | Description (Arabic) - الوصف بالعربية | إدارة المستخدمين والأدوار |
+| descriptionEn | string | No |  | Description (English) - الوصف بالإنجليزية | Manages users and roles |
+| isActiveFl | boolean | No |  | Active status - حالة التفعيل | true |
+| createdAt | string (date-time) | No |  | Created timestamp - تاريخ الإنشاء |  |
+| createdBy | string | No |  | Created by - أنشئ بواسطة | admin |
+| updatedAt | string (date-time) | No |  | Updated timestamp - تاريخ التحديث |  |
+| updatedBy | string | No |  | Updated by - حُدّث بواسطة | admin |
 
 **Response Example**
 
@@ -75,19 +68,26 @@ _(partial — only fields with a documented example are shown)_
 
 ```json
 {
-  "data": {
-    "rolePk": 1,
-    "code": "SEC_ADMIN",
-    "nameAr": "مدير الأمان",
-    "nameEn": "Security administrator",
-    "descriptionAr": "إدارة المستخدمين والأدوار",
-    "descriptionEn": "Manages users and roles",
-    "isActiveFl": "True",
-    "createdBy": "admin",
-    "updatedBy": "admin"
-  }
+  "rolePk": 1,
+  "code": "SEC_ADMIN",
+  "nameAr": "مدير الأمان",
+  "nameEn": "Security administrator",
+  "descriptionAr": "إدارة المستخدمين والأدوار",
+  "descriptionEn": "Manages users and roles",
+  "isActiveFl": true,
+  "createdBy": "admin",
+  "updatedBy": "admin"
 }
 ```
+
+### Other Possible Responses
+
+Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
+
+| HTTP Status | Code | Why |
+|---|---|---|
+| 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
+| 400 BAD_REQUEST | VALIDATION_ERROR | Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status. |
 
 ## POST /api/v1/sec/roles/search
 
@@ -100,6 +100,8 @@ Operation ID: `search_2`
 **Authentication**
 
 Not determined from the OpenAPI document.
+
+**Required permission(s)**: PERM_SEC_ROLES_VIEW (found on service:RoleService)
 
 ### Request Body
 
@@ -130,53 +132,21 @@ _(partial — only fields with a documented example are shown)_
 
 ### Response `200` — OK
 
-Shape: `ApiResponsePageRoleResponse`
+Shape: `paginated list of RoleResponse (see Pagination Envelope in index.md)`
 
 | Field | Type | Required | Constraints | Description | Example |
 |---|---|---|---|---|---|
-| success | boolean | No |  |  |  |
-| data | PageRoleResponse | No |  |  |  |
-| data.totalPages | integer (int32) | No |  |  |  |
-| data.totalElements | integer (int64) | No |  |  |  |
-| data.first | boolean | No |  |  |  |
-| data.last | boolean | No |  |  |  |
-| data.numberOfElements | integer (int32) | No |  |  |  |
-| data.pageable | Pageablenull | No |  |  |  |
-| data.pageable.paged | boolean | No |  |  |  |
-| data.pageable.pageNumber | integer (int32) | No |  |  |  |
-| data.pageable.pageSize | integer (int32) | No |  |  |  |
-| data.pageable.sort | Sortnull | No |  |  |  |
-| data.pageable.sort.sorted | boolean | No |  |  |  |
-| data.pageable.sort.unsorted | boolean | No |  |  |  |
-| data.pageable.sort.empty | boolean | No |  |  |  |
-| data.pageable.unpaged | boolean | No |  |  |  |
-| data.pageable.offset | integer (int64) | No |  |  |  |
-| data.sort | Sortnull | No |  |  |  |
-| data.sort.sorted | boolean | No |  |  |  |
-| data.sort.unsorted | boolean | No |  |  |  |
-| data.sort.empty | boolean | No |  |  |  |
-| data.size | integer (int32) | No |  |  |  |
-| data.content | array<RoleResponse> | No |  |  |  |
-| data.content[].rolePk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
-| data.content[].code | string | No |  | Unique role code - رمز الدور الفريد | SEC_ADMIN |
-| data.content[].nameAr | string | No |  | Role name (Arabic) - اسم الدور بالعربية | مدير الأمان |
-| data.content[].nameEn | string | No |  | Role name (English) - اسم الدور بالإنجليزية | Security administrator |
-| data.content[].descriptionAr | string | No |  | Description (Arabic) - الوصف بالعربية | إدارة المستخدمين والأدوار |
-| data.content[].descriptionEn | string | No |  | Description (English) - الوصف بالإنجليزية | Manages users and roles |
-| data.content[].isActiveFl | boolean | No |  | Active status - حالة التفعيل | True |
-| data.content[].createdAt | string (date-time) | No |  | Created timestamp - تاريخ الإنشاء |  |
-| data.content[].createdBy | string | No |  | Created by - أنشئ بواسطة | admin |
-| data.content[].updatedAt | string (date-time) | No |  | Updated timestamp - تاريخ التحديث |  |
-| data.content[].updatedBy | string | No |  | Updated by - حُدّث بواسطة | admin |
-| data.number | integer (int32) | No |  |  |  |
-| data.empty | boolean | No |  |  |  |
-| error | ApiError | No |  |  |  |
-| error.code | string | No |  |  |  |
-| error.message | string | No |  |  |  |
-| error.fieldErrors | array<FieldErrorItem> | No |  |  |  |
-| error.fieldErrors[].field | string | No |  |  |  |
-| error.fieldErrors[].message | string | No |  |  |  |
-| timestamp | string (date-time) | No |  |  |  |
+| rolePk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
+| code | string | No |  | Unique role code - رمز الدور الفريد | SEC_ADMIN |
+| nameAr | string | No |  | Role name (Arabic) - اسم الدور بالعربية | مدير الأمان |
+| nameEn | string | No |  | Role name (English) - اسم الدور بالإنجليزية | Security administrator |
+| descriptionAr | string | No |  | Description (Arabic) - الوصف بالعربية | إدارة المستخدمين والأدوار |
+| descriptionEn | string | No |  | Description (English) - الوصف بالإنجليزية | Manages users and roles |
+| isActiveFl | boolean | No |  | Active status - حالة التفعيل | true |
+| createdAt | string (date-time) | No |  | Created timestamp - تاريخ الإنشاء |  |
+| createdBy | string | No |  | Created by - أنشئ بواسطة | admin |
+| updatedAt | string (date-time) | No |  | Updated timestamp - تاريخ التحديث |  |
+| updatedBy | string | No |  | Updated by - حُدّث بواسطة | admin |
 
 **Response Example**
 
@@ -184,20 +154,23 @@ _(partial — only fields with a documented example are shown)_
 
 ```json
 {
-  "data": {
-    "content": [
-      {
-        "rolePk": 1,
-        "code": "SEC_ADMIN",
-        "nameAr": "مدير الأمان",
-        "nameEn": "Security administrator",
-        "descriptionAr": "إدارة المستخدمين والأدوار",
-        "descriptionEn": "Manages users and roles",
-        "isActiveFl": "True",
-        "createdBy": "admin",
-        "updatedBy": "admin"
-      }
-    ]
-  }
+  "rolePk": 1,
+  "code": "SEC_ADMIN",
+  "nameAr": "مدير الأمان",
+  "nameEn": "Security administrator",
+  "descriptionAr": "إدارة المستخدمين والأدوار",
+  "descriptionEn": "Manages users and roles",
+  "isActiveFl": true,
+  "createdBy": "admin",
+  "updatedBy": "admin"
 }
 ```
+
+### Other Possible Responses
+
+Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
+
+| HTTP Status | Code | Why |
+|---|---|---|
+| 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
+| 400 BAD_REQUEST | VALIDATION_ERROR | Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status. |

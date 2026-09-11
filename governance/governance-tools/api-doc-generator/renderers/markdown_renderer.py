@@ -30,6 +30,31 @@ def _slugify(text: str) -> str:
     return text or "root"
 
 
+def group_file_paths(groups: list[str]) -> dict[str, str]:
+    """{group name: output path}, guaranteeing one distinct file per group.
+
+    Two different @Tag values can slugify to the same filename ("Role Grants"
+    and "Role-Grants" both give "role-grants"), and writing both to one path
+    would silently drop a whole controller's documentation. Collisions are
+    disambiguated by suffix in group order, which is deterministic for a given
+    OpenAPI document, so the same backend always renders the same paths.
+
+    This is the single definition of a group's path -- sync.py imports it
+    rather than recomputing one, so the file a group renders to and the file
+    sync diffs/deletes it as can never drift apart."""
+    paths: dict[str, str] = {}
+    used: set[str] = set()
+    for group in groups:
+        base = _slugify(group)
+        slug, n = base, 1
+        while slug in used:
+            n += 1
+            slug = f"{base}-{n}"
+        used.add(slug)
+        paths[group] = f"endpoints/{slug}.md"
+    return paths
+
+
 def _anchor_slug(method: str, path: str) -> str:
     """Reproduces the GitHub-flavored-markdown anchor a '## {method} {path}'
     heading resolves to: lowercase, strip everything but word chars/spaces/
@@ -130,6 +155,12 @@ def _build_example_value(fields: list[FieldSpec]) -> tuple[dict, bool]:
             obj[f.name] = [nested_obj] if f.is_array else nested_obj
             complete = complete and nested_complete
             continue
+        if f.example_raw is not None:
+            # The OpenAPI document's own value, untouched -- a boolean stays a
+            # boolean, a number stays a number. Only the display string went
+            # through str()/json.dumps().
+            obj[f.name] = f.example_raw
+            continue
         if not f.example:
             complete = False
             continue
@@ -190,11 +221,14 @@ def _status_mappings_section(mappings: list[StatusMapping]) -> str:
         "Shared, module-independent mapping every business error code's `Status` "
         "resolves through (see each error code's own Status column above, when known).",
         "",
-        "| Status | HTTP Status | Category |",
-        "|---|---|---|",
     ]
+    has_category = any(m.category for m in mappings)
+    header = ["Status", "HTTP Status"] + (["Category"] if has_category else [])
+    lines.append("| " + " | ".join(header) + " |")
+    lines.append("|" + "|".join(["---"] * len(header)) + "|")
     for m in mappings:
-        lines.append(f"| {m.name} | {m.http_status} | {m.category or ''} |")
+        row = [m.name, m.http_status] + ([m.category or ""] if has_category else [])
+        lines.append("| " + " | ".join(row) + " |")
     lines.append("")
     return "\n".join(lines)
 
@@ -240,10 +274,16 @@ def _auth_section(ep: Endpoint) -> str:
         lines.append(f"Required ({schemes}).")
     else:
         lines.append("Not required.")
+    source = f" (found on {ep.permission_source})" if ep.permission_source else ""
     if ep.permission:
-        source = f" (found on {ep.permission_source})" if ep.permission_source else ""
         lines.append("")
         lines.append(f"**Required permission(s)**: {', '.join(ep.permission)}{source}")
+    elif ep.permission_expression:
+        # A real authorization rule that names no permission constant
+        # (e.g. isAuthenticated()). Shown verbatim rather than dropped, so
+        # the endpoint doesn't read as unprotected.
+        lines.append("")
+        lines.append(f"**Authorization rule**: `{ep.permission_expression}`{source}")
     lines.append("")
     return "\n".join(lines)
 
@@ -334,12 +374,12 @@ def _endpoint_markdown(ep: Endpoint) -> str:
     return "\n".join(parts).rstrip() + "\n"
 
 
-def _catalog_table(endpoints: list[Endpoint], group: str) -> str:
+def _catalog_table(endpoints: list[Endpoint], group: str, group_file: str) -> str:
     lines = ["| Method | Path | Summary | Doc |", "|---|---|---|---|"]
     for ep in endpoints:
         if (ep.group or "Ungrouped") != group:
             continue
-        link = f"endpoints/{_slugify(group)}.md#{_anchor_slug(ep.method, ep.path)}"
+        link = f"{group_file}#{_anchor_slug(ep.method, ep.path)}"
         lines.append(f"| {ep.method} | `{ep.path}` | {ep.summary or ''} | [{ep.slug()}]({link}) |")
     return "\n".join(lines)
 
@@ -363,6 +403,7 @@ def _group_markdown(group: str, endpoints: list[Endpoint]) -> str:
 
 
 def _index_markdown(doc: ApiDocument) -> str:
+    group_files = group_file_paths(doc.groups())
     parts = [f"# {doc.module} API Documentation", ""]
     if doc.title:
         parts.append(f"_{doc.title}_")
@@ -403,7 +444,7 @@ def _index_markdown(doc: ApiDocument) -> str:
     for group in doc.groups():
         parts.append(f"### {group}")
         parts.append("")
-        parts.append(_catalog_table(doc.endpoints, group))
+        parts.append(_catalog_table(doc.endpoints, group, group_files[group]))
         parts.append("")
 
     return "\n".join(p for p in parts if p is not None).strip() + "\n"
@@ -413,9 +454,9 @@ class MarkdownRenderer(Renderer):
 
     def render(self, document: ApiDocument) -> dict[str, str]:
         files: dict[str, str] = {"index.md": _index_markdown(document)}
-        for group in document.groups():
+        group_files = group_file_paths(document.groups())
+        for group, group_file in group_files.items():
             group_endpoints = [ep for ep in document.endpoints
                                 if (ep.group or "Ungrouped") == group]
-            group_slug = _slugify(group)
-            files[f"endpoints/{group_slug}.md"] = _group_markdown(group, group_endpoints)
+            files[group_file] = _group_markdown(group, group_endpoints)
         return files

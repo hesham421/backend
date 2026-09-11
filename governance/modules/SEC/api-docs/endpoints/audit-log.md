@@ -18,6 +18,8 @@ Operation ID: `search_4`
 
 Not determined from the OpenAPI document.
 
+**Required permission(s)**: PERM_SEC_AUDIT_LOG_VIEW (found on service:AuditLogService)
+
 ### Request Body
 
 Schema: `AuditLogEntrySearchRequest` (application/json)
@@ -46,50 +48,18 @@ _(partial — only fields with a documented example are shown)_
 
 ### Response `200` — OK
 
-Shape: `ApiResponsePageAuditLogEntryResponse`
+Shape: `paginated list of AuditLogEntryResponse (see Pagination Envelope in index.md)`
 
 | Field | Type | Required | Constraints | Description | Example |
 |---|---|---|---|---|---|
-| success | boolean | No |  |  |  |
-| data | PageAuditLogEntryResponse | No |  |  |  |
-| data.totalPages | integer (int32) | No |  |  |  |
-| data.totalElements | integer (int64) | No |  |  |  |
-| data.first | boolean | No |  |  |  |
-| data.last | boolean | No |  |  |  |
-| data.numberOfElements | integer (int32) | No |  |  |  |
-| data.pageable | Pageablenull | No |  |  |  |
-| data.pageable.paged | boolean | No |  |  |  |
-| data.pageable.pageNumber | integer (int32) | No |  |  |  |
-| data.pageable.pageSize | integer (int32) | No |  |  |  |
-| data.pageable.sort | Sortnull | No |  |  |  |
-| data.pageable.sort.sorted | boolean | No |  |  |  |
-| data.pageable.sort.unsorted | boolean | No |  |  |  |
-| data.pageable.sort.empty | boolean | No |  |  |  |
-| data.pageable.unpaged | boolean | No |  |  |  |
-| data.pageable.offset | integer (int64) | No |  |  |  |
-| data.sort | Sortnull | No |  |  |  |
-| data.sort.sorted | boolean | No |  |  |  |
-| data.sort.unsorted | boolean | No |  |  |  |
-| data.sort.empty | boolean | No |  |  |  |
-| data.size | integer (int32) | No |  |  |  |
-| data.content | array<AuditLogEntryResponse> | No |  |  |  |
-| data.content[].auditLogPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
-| data.content[].eventTypeCode | string | No |  | AUDIT_EVENT_TYPE code - رمز نوع الحدث | LOGIN_FAILED |
-| data.content[].actorUserId | integer (int64) | No |  | Acting user id, null when unknown - معرف المستخدم الفاعل | 1 |
-| data.content[].occurredAt | string (date-time) | No |  | Event timestamp - تاريخ وقوع الحدث |  |
-| data.content[].targetRef | string | No |  | Affected record reference - مرجع السجل المتأثر | 12 |
-| data.content[].detailsAr | string | No |  | Details (Arabic) - التفاصيل بالعربية | محاولة دخول فاشلة |
-| data.content[].detailsEn | string | No |  | Details (English) - التفاصيل بالإنجليزية | Failed login attempt |
-| data.content[].ipAddress | string | No |  | Client IP address - عنوان الـ IP | 10.0.0.8 |
-| data.number | integer (int32) | No |  |  |  |
-| data.empty | boolean | No |  |  |  |
-| error | ApiError | No |  |  |  |
-| error.code | string | No |  |  |  |
-| error.message | string | No |  |  |  |
-| error.fieldErrors | array<FieldErrorItem> | No |  |  |  |
-| error.fieldErrors[].field | string | No |  |  |  |
-| error.fieldErrors[].message | string | No |  |  |  |
-| timestamp | string (date-time) | No |  |  |  |
+| auditLogPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
+| eventTypeCode | string | No |  | AUDIT_EVENT_TYPE code - رمز نوع الحدث | LOGIN_FAILED |
+| actorUserId | integer (int64) | No |  | Acting user id, null when unknown - معرف المستخدم الفاعل | 1 |
+| occurredAt | string (date-time) | No |  | Event timestamp - تاريخ وقوع الحدث |  |
+| targetRef | string | No |  | Affected record reference - مرجع السجل المتأثر | 12 |
+| detailsAr | string | No |  | Details (Arabic) - التفاصيل بالعربية | محاولة دخول فاشلة |
+| detailsEn | string | No |  | Details (English) - التفاصيل بالإنجليزية | Failed login attempt |
+| ipAddress | string | No |  | Client IP address - عنوان الـ IP | 10.0.0.8 |
 
 **Response Example**
 
@@ -97,21 +67,24 @@ _(partial — only fields with a documented example are shown)_
 
 ```json
 {
-  "data": {
-    "content": [
-      {
-        "auditLogPk": 1,
-        "eventTypeCode": "LOGIN_FAILED",
-        "actorUserId": 1,
-        "targetRef": 12,
-        "detailsAr": "محاولة دخول فاشلة",
-        "detailsEn": "Failed login attempt",
-        "ipAddress": "10.0.0.8"
-      }
-    ]
-  }
+  "auditLogPk": 1,
+  "eventTypeCode": "LOGIN_FAILED",
+  "actorUserId": 1,
+  "targetRef": 12,
+  "detailsAr": "محاولة دخول فاشلة",
+  "detailsEn": "Failed login attempt",
+  "ipAddress": "10.0.0.8"
 }
 ```
+
+### Other Possible Responses
+
+Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
+
+| HTTP Status | Code | Why |
+|---|---|---|
+| 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
+| 400 BAD_REQUEST | VALIDATION_ERROR | Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status. |
 
 ## GET /api/v1/sec/audit-log/export
 
@@ -125,6 +98,8 @@ Operation ID: `export`
 
 Not determined from the OpenAPI document.
 
+**Required permission(s)**: PERM_SEC_AUDIT_LOG_VIEW (found on service:AuditLogService)
+
 ### Query Parameters
 
 | Name | Type | Required | Description |
@@ -135,3 +110,11 @@ Not determined from the OpenAPI document.
 | occurredTo | string | No |  |
 
 ### Response `200` — OK
+
+### Other Possible Responses
+
+Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
+
+| HTTP Status | Code | Why |
+|---|---|---|
+| 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |

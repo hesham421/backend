@@ -18,6 +18,8 @@ Operation ID: `search_1`
 
 Not determined from the OpenAPI document.
 
+**Required permission(s)**: PERM_SEC_SESSIONS_VIEW (found on service:SessionService)
+
 ### Request Body
 
 Schema: `ActiveSessionSearchRequest` (application/json)
@@ -46,48 +48,16 @@ _(partial — only fields with a documented example are shown)_
 
 ### Response `200` — OK
 
-Shape: `ApiResponsePageActiveSessionResponse`
+Shape: `paginated list of ActiveSessionResponse (see Pagination Envelope in index.md)`
 
 | Field | Type | Required | Constraints | Description | Example |
 |---|---|---|---|---|---|
-| success | boolean | No |  |  |  |
-| data | PageActiveSessionResponse | No |  |  |  |
-| data.totalPages | integer (int32) | No |  |  |  |
-| data.totalElements | integer (int64) | No |  |  |  |
-| data.first | boolean | No |  |  |  |
-| data.last | boolean | No |  |  |  |
-| data.numberOfElements | integer (int32) | No |  |  |  |
-| data.pageable | Pageablenull | No |  |  |  |
-| data.pageable.paged | boolean | No |  |  |  |
-| data.pageable.pageNumber | integer (int32) | No |  |  |  |
-| data.pageable.pageSize | integer (int32) | No |  |  |  |
-| data.pageable.sort | Sortnull | No |  |  |  |
-| data.pageable.sort.sorted | boolean | No |  |  |  |
-| data.pageable.sort.unsorted | boolean | No |  |  |  |
-| data.pageable.sort.empty | boolean | No |  |  |  |
-| data.pageable.unpaged | boolean | No |  |  |  |
-| data.pageable.offset | integer (int64) | No |  |  |  |
-| data.sort | Sortnull | No |  |  |  |
-| data.sort.sorted | boolean | No |  |  |  |
-| data.sort.unsorted | boolean | No |  |  |  |
-| data.sort.empty | boolean | No |  |  |  |
-| data.size | integer (int32) | No |  |  |  |
-| data.content | array<ActiveSessionResponse> | No |  |  |  |
-| data.content[].activeSessionPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
-| data.content[].userId | integer (int64) | No |  | Session owner id - معرف صاحب الجلسة | 1 |
-| data.content[].username | string | No |  | Session owner login - اسم دخول صاحب الجلسة | u2 |
-| data.content[].startedAt | string (date-time) | No |  | Session start timestamp - تاريخ بدء الجلسة |  |
-| data.content[].lastActivityAt | string (date-time) | No |  | Last activity timestamp - تاريخ آخر نشاط |  |
-| data.content[].ipAddress | string | No |  | Client IP address - عنوان الـ IP | 10.0.0.8 |
-| data.number | integer (int32) | No |  |  |  |
-| data.empty | boolean | No |  |  |  |
-| error | ApiError | No |  |  |  |
-| error.code | string | No |  |  |  |
-| error.message | string | No |  |  |  |
-| error.fieldErrors | array<FieldErrorItem> | No |  |  |  |
-| error.fieldErrors[].field | string | No |  |  |  |
-| error.fieldErrors[].message | string | No |  |  |  |
-| timestamp | string (date-time) | No |  |  |  |
+| activeSessionPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
+| userId | integer (int64) | No |  | Session owner id - معرف صاحب الجلسة | 1 |
+| username | string | No |  | Session owner login - اسم دخول صاحب الجلسة | u2 |
+| startedAt | string (date-time) | No |  | Session start timestamp - تاريخ بدء الجلسة |  |
+| lastActivityAt | string (date-time) | No |  | Last activity timestamp - تاريخ آخر نشاط |  |
+| ipAddress | string | No |  | Client IP address - عنوان الـ IP | 10.0.0.8 |
 
 **Response Example**
 
@@ -95,18 +65,21 @@ _(partial — only fields with a documented example are shown)_
 
 ```json
 {
-  "data": {
-    "content": [
-      {
-        "activeSessionPk": 1,
-        "userId": 1,
-        "username": "u2",
-        "ipAddress": "10.0.0.8"
-      }
-    ]
-  }
+  "activeSessionPk": 1,
+  "userId": 1,
+  "username": "u2",
+  "ipAddress": "10.0.0.8"
 }
 ```
+
+### Other Possible Responses
+
+Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
+
+| HTTP Status | Code | Why |
+|---|---|---|
+| 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
+| 400 BAD_REQUEST | VALIDATION_ERROR | Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status. |
 
 ## DELETE /api/v1/sec/sessions/{id}
 
@@ -120,6 +93,8 @@ Operation ID: `terminate`
 
 Not determined from the OpenAPI document.
 
+**Required permission(s)**: PERM_SEC_SESSIONS_DELETE (found on service:SessionService)
+
 ### Path Parameters
 
 | Name | Type | Required | Description |
@@ -128,21 +103,12 @@ Not determined from the OpenAPI document.
 
 ### Response `200` — OK
 
-Shape: `ApiResponseSessionTerminationResponse`
+Shape: `SessionTerminationResponse`
 
 | Field | Type | Required | Constraints | Description | Example |
 |---|---|---|---|---|---|
-| success | boolean | No |  |  |  |
-| data | SessionTerminationResponse | No |  | Session termination confirmation - تأكيد إنهاء الجلسة |  |
-| data.activeSessionPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
-| data.terminatedAt | string (date-time) | No |  | Termination timestamp - تاريخ الإنهاء |  |
-| error | ApiError | No |  |  |  |
-| error.code | string | No |  |  |  |
-| error.message | string | No |  |  |  |
-| error.fieldErrors | array<FieldErrorItem> | No |  |  |  |
-| error.fieldErrors[].field | string | No |  |  |  |
-| error.fieldErrors[].message | string | No |  |  |  |
-| timestamp | string (date-time) | No |  |  |  |
+| activeSessionPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
+| terminatedAt | string (date-time) | No |  | Termination timestamp - تاريخ الإنهاء |  |
 
 **Response Example**
 
@@ -150,8 +116,14 @@ _(partial — only fields with a documented example are shown)_
 
 ```json
 {
-  "data": {
-    "activeSessionPk": 1
-  }
+  "activeSessionPk": 1
 }
 ```
+
+### Other Possible Responses
+
+Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
+
+| HTTP Status | Code | Why |
+|---|---|---|
+| 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |

@@ -13,6 +13,8 @@ Operation ID: `decide`
 
 Not determined from the OpenAPI document.
 
+**Required permission(s)**: PERM_SEC_USERS_UPDATE (found on service:SignupRequestService)
+
 ### Path Parameters
 
 | Name | Type | Required | Description |
@@ -37,16 +39,11 @@ Schema: `SignupDecisionRequest` (application/json)
 
 ### Response `200` — OK
 
-Shape: `ApiResponseObject`
+### Other Possible Responses
 
-| Field | Type | Required | Constraints | Description |
-|---|---|---|---|---|
-| success | boolean | No |  |  |
-| data | object | No |  |  |
-| error | ApiError | No |  |  |
-| error.code | string | No |  |  |
-| error.message | string | No |  |  |
-| error.fieldErrors | array<FieldErrorItem> | No |  |  |
-| error.fieldErrors[].field | string | No |  |  |
-| error.fieldErrors[].message | string | No |  |  |
-| timestamp | string (date-time) | No |  |  |
+Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
+
+| HTTP Status | Code | Why |
+|---|---|---|
+| 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
+| 400 BAD_REQUEST | VALIDATION_ERROR | Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status. |

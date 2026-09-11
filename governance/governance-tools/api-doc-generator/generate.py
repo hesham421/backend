@@ -68,7 +68,9 @@ def main() -> int:
     except Exception as exc:  # noqa: BLE001 - surface any load/parse failure to the user
         print(f"ERROR: {exc}", file=sys.stderr)
         if not args.openapi:
-            print("Hint: pass --openapi explicitly if the backend isn't running on its auto-discovered URL.", file=sys.stderr)
+            print(f"Hint: the OpenAPI URL above was derived from this backend's own "
+                  f"application.properties (server.port / springdoc.api-docs.path). Pass --openapi "
+                  f"explicitly to point at a different server or a saved JSON file.", file=sys.stderr)
         return 1
 
     print(report)

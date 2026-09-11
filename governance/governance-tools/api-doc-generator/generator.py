@@ -64,9 +64,12 @@ def build_document(context: RepositoryContext):
             if not controller_file or not method_name:
                 continue
             controller_source = controller_file.read_text(encoding="utf-8")
-            permission, source_label = security_extractor.resolve_permission(controller_source, method_name, source_root)
+            permission, source_label, expression = security_extractor.resolve_permission(
+                controller_source, method_name, source_root
+            )
             ep.permission = permission
             ep.permission_source = source_label
+            ep.permission_expression = expression
 
     if context.common_source_roots:
         document.error_codes, document.status_mappings = error_mapping_extractor.enrich_error_codes(

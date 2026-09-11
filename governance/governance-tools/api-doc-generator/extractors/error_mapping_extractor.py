@@ -32,22 +32,83 @@ from typing import Optional
 
 from models.api_doc_model import ApiDocument, ErrorCode, PossibleError, StatusMapping
 
+# Two shapes of the same shared table are recognised, because this platform
+# has used both: an explicit statusMappings.put(...) table in a helper class,
+# and -- currently -- the Status enum carrying its own HttpStatus in its
+# constructor (NOT_FOUND(HttpStatus.NOT_FOUND), ...). Only matching the first
+# meant the whole Status -> HTTP mapping silently came back empty, so every
+# error code documented its business Status with a blank HTTP status beside it.
 STATUS_MAPPING_RE = re.compile(r"statusMappings\.put\(\s*Status\.(\w+)\s*,\s*HttpStatus\.(\w+)\s*\)")
-CREATE_ERROR_CODE_RE = re.compile(r'createError\(\s*"([A-Z0-9_]+)"')
+STATUS_ENUM_CONSTANT_RE = re.compile(r"^\s*([A-Z][A-Z0-9_]*)\s*\(\s*HttpStatus\.(\w+)\s*\)", re.MULTILINE)
+STATUS_ENUM_DECL_RE = re.compile(r"\benum\s+Status\b")
+
+# Framework handlers are matched in both the helper form (createError("X"))
+# and the builder form this codebase uses (ApiError.builder().code("X")),
+# paired with the HTTP status of the same @ExceptionHandler method -- written
+# either as ResponseEntity.status(HttpStatus.X) or one of ResponseEntity's
+# named shortcuts (badRequest()/notFound()/...).
+CREATE_ERROR_CODE_RE = re.compile(r'(?:createError|\.code)\(\s*"([A-Z0-9_]+)"')
 RESPONSE_STATUS_RE = re.compile(r"ResponseEntity\.status\(\s*HttpStatus\.(\w+)\s*\)")
+RESPONSE_SHORTCUT_RE = re.compile(r"ResponseEntity\.(badRequest|notFound|unprocessableEntity)\s*\(")
+RESPONSE_SHORTCUT_STATUS = {
+    "badRequest": "BAD_REQUEST",
+    "notFound": "NOT_FOUND",
+    "unprocessableEntity": "UNPROCESSABLE_ENTITY",
+}
+
+# Spring's own HttpStatus constant -> numeric code. A test asserting on a
+# status needs the number, and the constant name alone never carries it.
+# Only constants this platform's Status enum / GlobalExceptionHandler can
+# actually produce are listed; an unlisted one renders as its bare name
+# rather than a guessed number.
+HTTP_STATUS_CODES = {
+    "OK": 200, "CREATED": 201, "ACCEPTED": 202, "NO_CONTENT": 204,
+    "BAD_REQUEST": 400, "UNAUTHORIZED": 401, "FORBIDDEN": 403, "NOT_FOUND": 404,
+    "METHOD_NOT_ALLOWED": 405, "NOT_ACCEPTABLE": 406, "CONFLICT": 409, "GONE": 410,
+    "PAYLOAD_TOO_LARGE": 413, "CONTENT_TOO_LARGE": 413, "URI_TOO_LONG": 414,
+    "UNSUPPORTED_MEDIA_TYPE": 415, "UNPROCESSABLE_ENTITY": 422,
+    "UNPROCESSABLE_CONTENT": 422, "TOO_MANY_REQUESTS": 429,
+    "INTERNAL_SERVER_ERROR": 500, "NOT_IMPLEMENTED": 501, "BAD_GATEWAY": 502,
+    "SERVICE_UNAVAILABLE": 503, "GATEWAY_TIMEOUT": 504,
+}
+
+
+def http_status_label(constant: Optional[str]) -> Optional[str]:
+    """"CONFLICT" -> "409 CONFLICT". Left as the bare constant when its
+    numeric code isn't known -- never guessed."""
+    if not constant:
+        return constant
+    code = HTTP_STATUS_CODES.get(constant)
+    return f"{code} {constant}" if code else constant
 THROW_RE = re.compile(r"new\s+(?:BusinessException|LocalizedException)\(\s*Status\.(\w+)\s*,\s*\w+\.(\w+)")
 
 
 def find_status_http_mapping(common_source_roots: list[Path]) -> dict[str, str]:
-    """Status enum constant name -> HttpStatus constant name, parsed from the
-    shared OperationCodeImpl's static mapping table."""
+    return find_status_http_mapping_with_source(common_source_roots)[0]
+
+
+def find_status_http_mapping_with_source(
+    common_source_roots: list[Path],
+) -> tuple[dict[str, str], Optional[str]]:
+    """(Status constant name -> HttpStatus constant name, the file it was read
+    from). The source file is returned rather than assumed, since the table
+    has lived in more than one place on this platform."""
     for root in common_source_roots:
         for path in sorted(root.rglob("OperationCodeImpl.java")):
             text = path.read_text(encoding="utf-8")
             mapping = {m.group(1): m.group(2) for m in STATUS_MAPPING_RE.finditer(text)}
             if mapping:
-                return mapping
-    return {}
+                return mapping, path.name
+
+    for root in common_source_roots:
+        for path in sorted(root.rglob("Status.java")):
+            text = path.read_text(encoding="utf-8")
+            if not STATUS_ENUM_DECL_RE.search(text):
+                continue
+            mapping = {m.group(1): m.group(2) for m in STATUS_ENUM_CONSTANT_RE.finditer(text)}
+            if mapping:
+                return mapping, path.name
+    return {}, None
 
 
 def _split_handler_methods(text: str) -> list[str]:
@@ -69,14 +130,24 @@ def find_framework_error_codes(common_source_roots: list[Path]) -> list[ErrorCod
                 rel = path.name
             for chunk in _split_handler_methods(text):
                 code_m = CREATE_ERROR_CODE_RE.search(chunk)
-                status_m = RESPONSE_STATUS_RE.search(chunk)
-                if not code_m or not status_m:
+                if not code_m:
                     continue
+                status_m = RESPONSE_STATUS_RE.search(chunk)
+                if status_m:
+                    http = status_m.group(1)
+                else:
+                    shortcut_m = RESPONSE_SHORTCUT_RE.search(chunk)
+                    if not shortcut_m:
+                        # e.g. the LocalizedException handler, whose status is
+                        # ex.getStatus().getHttpStatus() -- per-throw-site, not
+                        # a fixed framework status. Nothing to record here.
+                        continue
+                    http = RESPONSE_SHORTCUT_STATUS[shortcut_m.group(1)]
                 code = code_m.group(1)
                 if code in seen:
                     continue
                 seen.add(code)
-                codes.append(ErrorCode(name=code, value=code, source_file=rel, http_status=status_m.group(1)))
+                codes.append(ErrorCode(name=code, value=code, source_file=rel, http_status=http))
     return codes
 
 
@@ -104,9 +175,9 @@ def enrich_error_codes(
     returns the shared Status->HttpStatus table for rendering once. Every
     piece here is best-effort and silently omitted when not found -- never
     fabricated. No-ops entirely if no common_source_roots were discovered."""
-    status_http = find_status_http_mapping(common_source_roots)
+    status_http, table_source = find_status_http_mapping_with_source(common_source_roots)
     status_mappings = [
-        StatusMapping(name=name, http_status=http, source_file="OperationCodeImpl.java")
+        StatusMapping(name=name, http_status=http_status_label(http), source_file=table_source)
         for name, http in sorted(status_http.items())
     ]
 
@@ -119,9 +190,11 @@ def enrich_error_codes(
             code.status = status_name
             http = status_http.get(status_name)
             if http:
-                code.http_status = http
+                code.http_status = http_status_label(http)
 
     framework_codes = find_framework_error_codes(common_source_roots)
+    for code in framework_codes:
+        code.http_status = http_status_label(code.http_status)
     return module_error_codes + framework_codes, status_mappings
 
 
@@ -132,34 +205,39 @@ def attach_endpoint_error_codes(document: ApiDocument) -> None:
     (requires_auth from the OpenAPI security requirement, permission from a
     real @PreAuthorize/@Secured found by security_extractor, request_body
     from the OpenAPI request body), and (b) a framework error code this run
-    actually found in GlobalExceptionHandler, with its real HTTP status --
-    looked up by name, never hardcoded, so if a future GlobalExceptionHandler
-    stops declaring one of these handlers, this silently stops claiming it
-    rather than asserting a stale fact.
+    actually found in GlobalExceptionHandler.
+
+    Codes are looked up by the HTTP STATUS the handler really returns, not by
+    a hardcoded code name: a code's name is a project naming choice that
+    changes (this platform returns ACCESS_DENIED, not "FORBIDDEN", and has no
+    "INVALID_JSON" at all), whereas "the handler that answers 403" is the
+    fact being asserted. If no handler for that status was found, nothing is
+    claimed -- as before, silence rather than a stale assertion.
 
     Deliberately narrow: three rules, each unconditionally true of the
     Spring MVC/Security stack this platform runs on, never a guess about
     business logic:
-      - requires_auth       -> UNAUTHORIZED (global security filter runs
-                                before every authenticated endpoint;
-                                AuthenticationException is handled globally)
-      - permission found    -> FORBIDDEN (a real @PreAuthorize/@Secured
+      - requires_auth       -> the 401 handler, when one exists
+      - permission found    -> the 403 handler (a real @PreAuthorize/@Secured
                                 expression was found for this exact endpoint;
                                 AccessDeniedException is handled globally)
-      - has a request body  -> INVALID_JSON (any @RequestBody is deserialized
-                                by Jackson before the controller method runs,
-                                unconditionally, independent of whether Bean
-                                Validation is also wired up; the framework
+      - has a request body  -> the 400 handler (any @RequestBody is
+                                deserialized by Jackson before the controller
+                                method runs, unconditionally; the framework
                                 catches malformed JSON globally)
-    VALIDATION_ERROR is deliberately NOT attached here: it would require
-    confirming @Valid is present on this specific parameter, which isn't
-    verified by anything currently extracted -- attaching it from "has a
-    request body" alone would be a convention-based guess, not a proof.
     """
-    by_name = {c.name: c for c in document.error_codes if c.http_status}
+    by_status: dict[str, ErrorCode] = {}
+    for code in document.error_codes:
+        if not code.http_status or code.status:
+            # code.status set => a module business code enriched from its own
+            # throw site, not a framework handler. Only framework-level codes
+            # (which carry an HTTP status and no business Status) qualify.
+            continue
+        constant = code.http_status.split()[-1]
+        by_status.setdefault(constant, code)
 
-    def _attach(ep, code_name: str, reason: str) -> None:
-        code = by_name.get(code_name)
+    def _attach(ep, status_constant: str, reason: str) -> None:
+        code = by_status.get(status_constant)
         if not code:
             return
         ep.possible_errors.append(PossibleError(code=code.name, http_status=code.http_status, reason=reason))
@@ -169,17 +247,17 @@ def attach_endpoint_error_codes(document: ApiDocument) -> None:
             _attach(
                 ep, "UNAUTHORIZED",
                 "Endpoint requires authentication (global security requirement); "
-                "GlobalExceptionHandler maps AuthenticationException to this status for every such endpoint.",
+                "an unauthenticated call is rejected before the controller method runs.",
             )
-        if ep.permission:
+        if ep.permission or ep.permission_expression:
             _attach(
                 ep, "FORBIDDEN",
-                "A specific permission check was found for this endpoint "
+                "An authorization check was found for this endpoint "
                 "(@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status.",
             )
         if ep.request_body is not None:
             _attach(
-                ep, "INVALID_JSON",
-                "Endpoint accepts a JSON request body; GlobalExceptionHandler maps "
-                "HttpMessageNotReadableException (malformed JSON) to this status for any @RequestBody, unconditionally.",
+                ep, "BAD_REQUEST",
+                "Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or "
+                "invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status.",
             )

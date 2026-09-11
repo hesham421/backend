@@ -20,6 +20,8 @@ Operation ID: `search_3`
 
 Not determined from the OpenAPI document.
 
+**Required permission(s)**: PERM_SEC_MODULE_REGISTRY_VIEW (found on service:RegistryService)
+
 ### Request Body
 
 Schema: `RegistrySearchRequest` (application/json)
@@ -49,76 +51,44 @@ _(partial — only fields with a documented example are shown)_
 
 ### Response `200` — OK
 
-Shape: `ApiResponsePageRegistryRowResponse`
+Shape: `paginated list of RegistryRowResponse (see Pagination Envelope in index.md)`
 
 | Field | Type | Required | Constraints | Description | Example |
 |---|---|---|---|---|---|
-| success | boolean | No |  |  |  |
-| data | PageRegistryRowResponse | No |  |  |  |
-| data.totalPages | integer (int32) | No |  |  |  |
-| data.totalElements | integer (int64) | No |  |  |  |
-| data.first | boolean | No |  |  |  |
-| data.last | boolean | No |  |  |  |
-| data.numberOfElements | integer (int32) | No |  |  |  |
-| data.pageable | Pageablenull | No |  |  |  |
-| data.pageable.paged | boolean | No |  |  |  |
-| data.pageable.pageNumber | integer (int32) | No |  |  |  |
-| data.pageable.pageSize | integer (int32) | No |  |  |  |
-| data.pageable.sort | Sortnull | No |  |  |  |
-| data.pageable.sort.sorted | boolean | No |  |  |  |
-| data.pageable.sort.unsorted | boolean | No |  |  |  |
-| data.pageable.sort.empty | boolean | No |  |  |  |
-| data.pageable.unpaged | boolean | No |  |  |  |
-| data.pageable.offset | integer (int64) | No |  |  |  |
-| data.sort | Sortnull | No |  |  |  |
-| data.sort.sorted | boolean | No |  |  |  |
-| data.sort.unsorted | boolean | No |  |  |  |
-| data.sort.empty | boolean | No |  |  |  |
-| data.size | integer (int32) | No |  |  |  |
-| data.content | array<RegistryRowResponse> | No |  |  |  |
-| data.content[].moduleRegPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
-| data.content[].code | string | No |  | Module code - رمز الوحدة | FIN |
-| data.content[].nameAr | string | No |  | Module name (Arabic) - اسم الوحدة بالعربية | المالية |
-| data.content[].nameEn | string | No |  | Module name (English) - اسم الوحدة بالإنجليزية | Finance |
-| data.content[].isActiveFl | boolean | No |  | Active status - حالة التفعيل | True |
-| data.content[].screens | array<ScreenRegistryResponse> | No |  | Active screens of this module - الشاشات النشطة للوحدة |  |
-| data.content[].screens[].screenRegPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
-| data.content[].screens[].pageCode | string | No |  | Page code - رمز الصفحة | TST_SCREEN |
-| data.content[].screens[].moduleId | integer (int64) | No |  | Owning module id - معرف الوحدة المالكة | 1 |
-| data.content[].screens[].moduleCode | string | No |  | Owning module code - رمز الوحدة المالكة | TST |
-| data.content[].screens[].nameAr | string | No |  | Screen name (Arabic) - اسم الشاشة بالعربية | شاشة الاختبار |
-| data.content[].screens[].nameEn | string | No |  | Screen name (English) - اسم الشاشة بالإنجليزية | Test screen |
-| data.content[].screens[].isActiveFl | boolean | No |  | Active status - حالة التفعيل | True |
-| data.content[].screens[].actions | array<ActionRegistryResponse> | No |  | Active actions of this screen, returned by the registry search - إجراءات الشاشة النشطة |  |
-| data.content[].screens[].actions[].actionRegPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
-| data.content[].screens[].actions[].permissionCode | string | No |  | Server-derived permission code - رمز الصلاحية المشتق | PERM_TST_SCREEN_VIEW |
-| data.content[].screens[].actions[].screenId | integer (int64) | No |  | Owning screen id - معرف الشاشة المالكة | 1 |
-| data.content[].screens[].actions[].pageCode | string | No |  | Owning screen page code - رمز صفحة الشاشة المالكة | TST_SCREEN |
-| data.content[].screens[].actions[].actionCode | string | No |  | Action code - رمز الإجراء | VIEW |
-| data.content[].screens[].actions[].nameAr | string | No |  | Action name (Arabic) - اسم الإجراء بالعربية | عرض |
-| data.content[].screens[].actions[].nameEn | string | No |  | Action name (English) - اسم الإجراء بالإنجليزية | View |
-| data.content[].screens[].actions[].isActiveFl | boolean | No |  | Active status - حالة التفعيل | True |
-| data.content[].screens[].actions[].createdAt | string (date-time) | No |  | Created timestamp - تاريخ الإنشاء |  |
-| data.content[].screens[].actions[].createdBy | string | No |  | Created by - أنشئ بواسطة | admin |
-| data.content[].screens[].actions[].updatedAt | string (date-time) | No |  | Updated timestamp - تاريخ التحديث |  |
-| data.content[].screens[].actions[].updatedBy | string | No |  | Updated by - حُدّث بواسطة | admin |
-| data.content[].screens[].createdAt | string (date-time) | No |  | Created timestamp - تاريخ الإنشاء |  |
-| data.content[].screens[].createdBy | string | No |  | Created by - أنشئ بواسطة | admin |
-| data.content[].screens[].updatedAt | string (date-time) | No |  | Updated timestamp - تاريخ التحديث |  |
-| data.content[].screens[].updatedBy | string | No |  | Updated by - حُدّث بواسطة | admin |
-| data.content[].createdAt | string (date-time) | No |  | Created timestamp - تاريخ الإنشاء |  |
-| data.content[].createdBy | string | No |  | Created by - أنشئ بواسطة | admin |
-| data.content[].updatedAt | string (date-time) | No |  | Updated timestamp - تاريخ التحديث |  |
-| data.content[].updatedBy | string | No |  | Updated by - حُدّث بواسطة | admin |
-| data.number | integer (int32) | No |  |  |  |
-| data.empty | boolean | No |  |  |  |
-| error | ApiError | No |  |  |  |
-| error.code | string | No |  |  |  |
-| error.message | string | No |  |  |  |
-| error.fieldErrors | array<FieldErrorItem> | No |  |  |  |
-| error.fieldErrors[].field | string | No |  |  |  |
-| error.fieldErrors[].message | string | No |  |  |  |
-| timestamp | string (date-time) | No |  |  |  |
+| moduleRegPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
+| code | string | No |  | Module code - رمز الوحدة | FIN |
+| nameAr | string | No |  | Module name (Arabic) - اسم الوحدة بالعربية | المالية |
+| nameEn | string | No |  | Module name (English) - اسم الوحدة بالإنجليزية | Finance |
+| isActiveFl | boolean | No |  | Active status - حالة التفعيل | true |
+| screens | array<ScreenRegistryResponse> | No |  | Active screens of this module - الشاشات النشطة للوحدة |  |
+| screens[].screenRegPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
+| screens[].pageCode | string | No |  | Page code - رمز الصفحة | TST_SCREEN |
+| screens[].moduleId | integer (int64) | No |  | Owning module id - معرف الوحدة المالكة | 1 |
+| screens[].moduleCode | string | No |  | Owning module code - رمز الوحدة المالكة | TST |
+| screens[].nameAr | string | No |  | Screen name (Arabic) - اسم الشاشة بالعربية | شاشة الاختبار |
+| screens[].nameEn | string | No |  | Screen name (English) - اسم الشاشة بالإنجليزية | Test screen |
+| screens[].isActiveFl | boolean | No |  | Active status - حالة التفعيل | true |
+| screens[].actions | array<ActionRegistryResponse> | No |  | Active actions of this screen, returned by the registry search - إجراءات الشاشة النشطة |  |
+| screens[].actions[].actionRegPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
+| screens[].actions[].permissionCode | string | No |  | Server-derived permission code - رمز الصلاحية المشتق | PERM_TST_SCREEN_VIEW |
+| screens[].actions[].screenId | integer (int64) | No |  | Owning screen id - معرف الشاشة المالكة | 1 |
+| screens[].actions[].pageCode | string | No |  | Owning screen page code - رمز صفحة الشاشة المالكة | TST_SCREEN |
+| screens[].actions[].actionCode | string | No |  | Action code - رمز الإجراء | VIEW |
+| screens[].actions[].nameAr | string | No |  | Action name (Arabic) - اسم الإجراء بالعربية | عرض |
+| screens[].actions[].nameEn | string | No |  | Action name (English) - اسم الإجراء بالإنجليزية | View |
+| screens[].actions[].isActiveFl | boolean | No |  | Active status - حالة التفعيل | true |
+| screens[].actions[].createdAt | string (date-time) | No |  | Created timestamp - تاريخ الإنشاء |  |
+| screens[].actions[].createdBy | string | No |  | Created by - أنشئ بواسطة | admin |
+| screens[].actions[].updatedAt | string (date-time) | No |  | Updated timestamp - تاريخ التحديث |  |
+| screens[].actions[].updatedBy | string | No |  | Updated by - حُدّث بواسطة | admin |
+| screens[].createdAt | string (date-time) | No |  | Created timestamp - تاريخ الإنشاء |  |
+| screens[].createdBy | string | No |  | Created by - أنشئ بواسطة | admin |
+| screens[].updatedAt | string (date-time) | No |  | Updated timestamp - تاريخ التحديث |  |
+| screens[].updatedBy | string | No |  | Updated by - حُدّث بواسطة | admin |
+| createdAt | string (date-time) | No |  | Created timestamp - تاريخ الإنشاء |  |
+| createdBy | string | No |  | Created by - أنشئ بواسطة | admin |
+| updatedAt | string (date-time) | No |  | Updated timestamp - تاريخ التحديث |  |
+| updatedBy | string | No |  | Updated by - حُدّث بواسطة | admin |
 
 **Response Example**
 
@@ -126,48 +96,51 @@ _(partial — only fields with a documented example are shown)_
 
 ```json
 {
-  "data": {
-    "content": [
-      {
-        "moduleRegPk": 1,
-        "code": "FIN",
-        "nameAr": "المالية",
-        "nameEn": "Finance",
-        "isActiveFl": "True",
-        "screens": [
-          {
-            "screenRegPk": 1,
-            "pageCode": "TST_SCREEN",
-            "moduleId": 1,
-            "moduleCode": "TST",
-            "nameAr": "شاشة الاختبار",
-            "nameEn": "Test screen",
-            "isActiveFl": "True",
-            "actions": [
-              {
-                "actionRegPk": 1,
-                "permissionCode": "PERM_TST_SCREEN_VIEW",
-                "screenId": 1,
-                "pageCode": "TST_SCREEN",
-                "actionCode": "VIEW",
-                "nameAr": "عرض",
-                "nameEn": "View",
-                "isActiveFl": "True",
-                "createdBy": "admin",
-                "updatedBy": "admin"
-              }
-            ],
-            "createdBy": "admin",
-            "updatedBy": "admin"
-          }
-        ],
-        "createdBy": "admin",
-        "updatedBy": "admin"
-      }
-    ]
-  }
+  "moduleRegPk": 1,
+  "code": "FIN",
+  "nameAr": "المالية",
+  "nameEn": "Finance",
+  "isActiveFl": true,
+  "screens": [
+    {
+      "screenRegPk": 1,
+      "pageCode": "TST_SCREEN",
+      "moduleId": 1,
+      "moduleCode": "TST",
+      "nameAr": "شاشة الاختبار",
+      "nameEn": "Test screen",
+      "isActiveFl": true,
+      "actions": [
+        {
+          "actionRegPk": 1,
+          "permissionCode": "PERM_TST_SCREEN_VIEW",
+          "screenId": 1,
+          "pageCode": "TST_SCREEN",
+          "actionCode": "VIEW",
+          "nameAr": "عرض",
+          "nameEn": "View",
+          "isActiveFl": true,
+          "createdBy": "admin",
+          "updatedBy": "admin"
+        }
+      ],
+      "createdBy": "admin",
+      "updatedBy": "admin"
+    }
+  ],
+  "createdBy": "admin",
+  "updatedBy": "admin"
 }
 ```
+
+### Other Possible Responses
+
+Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
+
+| HTTP Status | Code | Why |
+|---|---|---|
+| 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
+| 400 BAD_REQUEST | VALIDATION_ERROR | Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status. |
 
 ## POST /api/v1/sec/registry/screens
 
@@ -180,6 +153,8 @@ Operation ID: `registerScreen`
 **Authentication**
 
 Not determined from the OpenAPI document.
+
+**Required permission(s)**: PERM_SEC_MODULE_REGISTRY_UPDATE (found on service:RegistryService)
 
 ### Request Body
 
@@ -205,43 +180,34 @@ Schema: `ScreenRegistryCreateRequest` (application/json)
 
 ### Response `200` — OK
 
-Shape: `ApiResponseScreenRegistryResponse`
+Shape: `ScreenRegistryResponse`
 
 | Field | Type | Required | Constraints | Description | Example |
 |---|---|---|---|---|---|
-| success | boolean | No |  |  |  |
-| data | ScreenRegistryResponse | No |  | Registered screen - شاشة مسجَّلة |  |
-| data.screenRegPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
-| data.pageCode | string | No |  | Page code - رمز الصفحة | TST_SCREEN |
-| data.moduleId | integer (int64) | No |  | Owning module id - معرف الوحدة المالكة | 1 |
-| data.moduleCode | string | No |  | Owning module code - رمز الوحدة المالكة | TST |
-| data.nameAr | string | No |  | Screen name (Arabic) - اسم الشاشة بالعربية | شاشة الاختبار |
-| data.nameEn | string | No |  | Screen name (English) - اسم الشاشة بالإنجليزية | Test screen |
-| data.isActiveFl | boolean | No |  | Active status - حالة التفعيل | True |
-| data.actions | array<ActionRegistryResponse> | No |  | Active actions of this screen, returned by the registry search - إجراءات الشاشة النشطة |  |
-| data.actions[].actionRegPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
-| data.actions[].permissionCode | string | No |  | Server-derived permission code - رمز الصلاحية المشتق | PERM_TST_SCREEN_VIEW |
-| data.actions[].screenId | integer (int64) | No |  | Owning screen id - معرف الشاشة المالكة | 1 |
-| data.actions[].pageCode | string | No |  | Owning screen page code - رمز صفحة الشاشة المالكة | TST_SCREEN |
-| data.actions[].actionCode | string | No |  | Action code - رمز الإجراء | VIEW |
-| data.actions[].nameAr | string | No |  | Action name (Arabic) - اسم الإجراء بالعربية | عرض |
-| data.actions[].nameEn | string | No |  | Action name (English) - اسم الإجراء بالإنجليزية | View |
-| data.actions[].isActiveFl | boolean | No |  | Active status - حالة التفعيل | True |
-| data.actions[].createdAt | string (date-time) | No |  | Created timestamp - تاريخ الإنشاء |  |
-| data.actions[].createdBy | string | No |  | Created by - أنشئ بواسطة | admin |
-| data.actions[].updatedAt | string (date-time) | No |  | Updated timestamp - تاريخ التحديث |  |
-| data.actions[].updatedBy | string | No |  | Updated by - حُدّث بواسطة | admin |
-| data.createdAt | string (date-time) | No |  | Created timestamp - تاريخ الإنشاء |  |
-| data.createdBy | string | No |  | Created by - أنشئ بواسطة | admin |
-| data.updatedAt | string (date-time) | No |  | Updated timestamp - تاريخ التحديث |  |
-| data.updatedBy | string | No |  | Updated by - حُدّث بواسطة | admin |
-| error | ApiError | No |  |  |  |
-| error.code | string | No |  |  |  |
-| error.message | string | No |  |  |  |
-| error.fieldErrors | array<FieldErrorItem> | No |  |  |  |
-| error.fieldErrors[].field | string | No |  |  |  |
-| error.fieldErrors[].message | string | No |  |  |  |
-| timestamp | string (date-time) | No |  |  |  |
+| screenRegPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
+| pageCode | string | No |  | Page code - رمز الصفحة | TST_SCREEN |
+| moduleId | integer (int64) | No |  | Owning module id - معرف الوحدة المالكة | 1 |
+| moduleCode | string | No |  | Owning module code - رمز الوحدة المالكة | TST |
+| nameAr | string | No |  | Screen name (Arabic) - اسم الشاشة بالعربية | شاشة الاختبار |
+| nameEn | string | No |  | Screen name (English) - اسم الشاشة بالإنجليزية | Test screen |
+| isActiveFl | boolean | No |  | Active status - حالة التفعيل | true |
+| actions | array<ActionRegistryResponse> | No |  | Active actions of this screen, returned by the registry search - إجراءات الشاشة النشطة |  |
+| actions[].actionRegPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
+| actions[].permissionCode | string | No |  | Server-derived permission code - رمز الصلاحية المشتق | PERM_TST_SCREEN_VIEW |
+| actions[].screenId | integer (int64) | No |  | Owning screen id - معرف الشاشة المالكة | 1 |
+| actions[].pageCode | string | No |  | Owning screen page code - رمز صفحة الشاشة المالكة | TST_SCREEN |
+| actions[].actionCode | string | No |  | Action code - رمز الإجراء | VIEW |
+| actions[].nameAr | string | No |  | Action name (Arabic) - اسم الإجراء بالعربية | عرض |
+| actions[].nameEn | string | No |  | Action name (English) - اسم الإجراء بالإنجليزية | View |
+| actions[].isActiveFl | boolean | No |  | Active status - حالة التفعيل | true |
+| actions[].createdAt | string (date-time) | No |  | Created timestamp - تاريخ الإنشاء |  |
+| actions[].createdBy | string | No |  | Created by - أنشئ بواسطة | admin |
+| actions[].updatedAt | string (date-time) | No |  | Updated timestamp - تاريخ التحديث |  |
+| actions[].updatedBy | string | No |  | Updated by - حُدّث بواسطة | admin |
+| createdAt | string (date-time) | No |  | Created timestamp - تاريخ الإنشاء |  |
+| createdBy | string | No |  | Created by - أنشئ بواسطة | admin |
+| updatedAt | string (date-time) | No |  | Updated timestamp - تاريخ التحديث |  |
+| updatedBy | string | No |  | Updated by - حُدّث بواسطة | admin |
 
 **Response Example**
 
@@ -249,33 +215,40 @@ _(partial — only fields with a documented example are shown)_
 
 ```json
 {
-  "data": {
-    "screenRegPk": 1,
-    "pageCode": "TST_SCREEN",
-    "moduleId": 1,
-    "moduleCode": "TST",
-    "nameAr": "شاشة الاختبار",
-    "nameEn": "Test screen",
-    "isActiveFl": "True",
-    "actions": [
-      {
-        "actionRegPk": 1,
-        "permissionCode": "PERM_TST_SCREEN_VIEW",
-        "screenId": 1,
-        "pageCode": "TST_SCREEN",
-        "actionCode": "VIEW",
-        "nameAr": "عرض",
-        "nameEn": "View",
-        "isActiveFl": "True",
-        "createdBy": "admin",
-        "updatedBy": "admin"
-      }
-    ],
-    "createdBy": "admin",
-    "updatedBy": "admin"
-  }
+  "screenRegPk": 1,
+  "pageCode": "TST_SCREEN",
+  "moduleId": 1,
+  "moduleCode": "TST",
+  "nameAr": "شاشة الاختبار",
+  "nameEn": "Test screen",
+  "isActiveFl": true,
+  "actions": [
+    {
+      "actionRegPk": 1,
+      "permissionCode": "PERM_TST_SCREEN_VIEW",
+      "screenId": 1,
+      "pageCode": "TST_SCREEN",
+      "actionCode": "VIEW",
+      "nameAr": "عرض",
+      "nameEn": "View",
+      "isActiveFl": true,
+      "createdBy": "admin",
+      "updatedBy": "admin"
+    }
+  ],
+  "createdBy": "admin",
+  "updatedBy": "admin"
 }
 ```
+
+### Other Possible Responses
+
+Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
+
+| HTTP Status | Code | Why |
+|---|---|---|
+| 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
+| 400 BAD_REQUEST | VALIDATION_ERROR | Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status. |
 
 ## POST /api/v1/sec/registry/modules
 
@@ -288,6 +261,8 @@ Operation ID: `registerModule`
 **Authentication**
 
 Not determined from the OpenAPI document.
+
+**Required permission(s)**: PERM_SEC_MODULE_REGISTRY_UPDATE (found on service:RegistryService)
 
 ### Request Body
 
@@ -311,28 +286,19 @@ Schema: `ModuleRegistryCreateRequest` (application/json)
 
 ### Response `200` — OK
 
-Shape: `ApiResponseModuleRegistryResponse`
+Shape: `ModuleRegistryResponse`
 
 | Field | Type | Required | Constraints | Description | Example |
 |---|---|---|---|---|---|
-| success | boolean | No |  |  |  |
-| data | ModuleRegistryResponse | No |  | Registered module - وحدة مسجَّلة |  |
-| data.moduleRegPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
-| data.code | string | No |  | Module code - رمز الوحدة | TST |
-| data.nameAr | string | No |  | Module name (Arabic) - اسم الوحدة بالعربية | وحدة الاختبار |
-| data.nameEn | string | No |  | Module name (English) - اسم الوحدة بالإنجليزية | Test module |
-| data.isActiveFl | boolean | No |  | Active status - حالة التفعيل | True |
-| data.createdAt | string (date-time) | No |  | Created timestamp - تاريخ الإنشاء |  |
-| data.createdBy | string | No |  | Created by - أنشئ بواسطة | admin |
-| data.updatedAt | string (date-time) | No |  | Updated timestamp - تاريخ التحديث |  |
-| data.updatedBy | string | No |  | Updated by - حُدّث بواسطة | admin |
-| error | ApiError | No |  |  |  |
-| error.code | string | No |  |  |  |
-| error.message | string | No |  |  |  |
-| error.fieldErrors | array<FieldErrorItem> | No |  |  |  |
-| error.fieldErrors[].field | string | No |  |  |  |
-| error.fieldErrors[].message | string | No |  |  |  |
-| timestamp | string (date-time) | No |  |  |  |
+| moduleRegPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
+| code | string | No |  | Module code - رمز الوحدة | TST |
+| nameAr | string | No |  | Module name (Arabic) - اسم الوحدة بالعربية | وحدة الاختبار |
+| nameEn | string | No |  | Module name (English) - اسم الوحدة بالإنجليزية | Test module |
+| isActiveFl | boolean | No |  | Active status - حالة التفعيل | true |
+| createdAt | string (date-time) | No |  | Created timestamp - تاريخ الإنشاء |  |
+| createdBy | string | No |  | Created by - أنشئ بواسطة | admin |
+| updatedAt | string (date-time) | No |  | Updated timestamp - تاريخ التحديث |  |
+| updatedBy | string | No |  | Updated by - حُدّث بواسطة | admin |
 
 **Response Example**
 
@@ -340,17 +306,24 @@ _(partial — only fields with a documented example are shown)_
 
 ```json
 {
-  "data": {
-    "moduleRegPk": 1,
-    "code": "TST",
-    "nameAr": "وحدة الاختبار",
-    "nameEn": "Test module",
-    "isActiveFl": "True",
-    "createdBy": "admin",
-    "updatedBy": "admin"
-  }
+  "moduleRegPk": 1,
+  "code": "TST",
+  "nameAr": "وحدة الاختبار",
+  "nameEn": "Test module",
+  "isActiveFl": true,
+  "createdBy": "admin",
+  "updatedBy": "admin"
 }
 ```
+
+### Other Possible Responses
+
+Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
+
+| HTTP Status | Code | Why |
+|---|---|---|
+| 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
+| 400 BAD_REQUEST | VALIDATION_ERROR | Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status. |
 
 ## POST /api/v1/sec/registry/actions
 
@@ -363,6 +336,8 @@ Operation ID: `registerAction`
 **Authentication**
 
 Not determined from the OpenAPI document.
+
+**Required permission(s)**: PERM_SEC_MODULE_REGISTRY_UPDATE (found on service:RegistryService)
 
 ### Request Body
 
@@ -388,31 +363,22 @@ Schema: `ActionRegistryCreateRequest` (application/json)
 
 ### Response `200` — OK
 
-Shape: `ApiResponseActionRegistryResponse`
+Shape: `ActionRegistryResponse`
 
 | Field | Type | Required | Constraints | Description | Example |
 |---|---|---|---|---|---|
-| success | boolean | No |  |  |  |
-| data | ActionRegistryResponse | No |  | Registered action - إجراء مسجَّل |  |
-| data.actionRegPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
-| data.permissionCode | string | No |  | Server-derived permission code - رمز الصلاحية المشتق | PERM_TST_SCREEN_VIEW |
-| data.screenId | integer (int64) | No |  | Owning screen id - معرف الشاشة المالكة | 1 |
-| data.pageCode | string | No |  | Owning screen page code - رمز صفحة الشاشة المالكة | TST_SCREEN |
-| data.actionCode | string | No |  | Action code - رمز الإجراء | VIEW |
-| data.nameAr | string | No |  | Action name (Arabic) - اسم الإجراء بالعربية | عرض |
-| data.nameEn | string | No |  | Action name (English) - اسم الإجراء بالإنجليزية | View |
-| data.isActiveFl | boolean | No |  | Active status - حالة التفعيل | True |
-| data.createdAt | string (date-time) | No |  | Created timestamp - تاريخ الإنشاء |  |
-| data.createdBy | string | No |  | Created by - أنشئ بواسطة | admin |
-| data.updatedAt | string (date-time) | No |  | Updated timestamp - تاريخ التحديث |  |
-| data.updatedBy | string | No |  | Updated by - حُدّث بواسطة | admin |
-| error | ApiError | No |  |  |  |
-| error.code | string | No |  |  |  |
-| error.message | string | No |  |  |  |
-| error.fieldErrors | array<FieldErrorItem> | No |  |  |  |
-| error.fieldErrors[].field | string | No |  |  |  |
-| error.fieldErrors[].message | string | No |  |  |  |
-| timestamp | string (date-time) | No |  |  |  |
+| actionRegPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
+| permissionCode | string | No |  | Server-derived permission code - رمز الصلاحية المشتق | PERM_TST_SCREEN_VIEW |
+| screenId | integer (int64) | No |  | Owning screen id - معرف الشاشة المالكة | 1 |
+| pageCode | string | No |  | Owning screen page code - رمز صفحة الشاشة المالكة | TST_SCREEN |
+| actionCode | string | No |  | Action code - رمز الإجراء | VIEW |
+| nameAr | string | No |  | Action name (Arabic) - اسم الإجراء بالعربية | عرض |
+| nameEn | string | No |  | Action name (English) - اسم الإجراء بالإنجليزية | View |
+| isActiveFl | boolean | No |  | Active status - حالة التفعيل | true |
+| createdAt | string (date-time) | No |  | Created timestamp - تاريخ الإنشاء |  |
+| createdBy | string | No |  | Created by - أنشئ بواسطة | admin |
+| updatedAt | string (date-time) | No |  | Updated timestamp - تاريخ التحديث |  |
+| updatedBy | string | No |  | Updated by - حُدّث بواسطة | admin |
 
 **Response Example**
 
@@ -420,17 +386,24 @@ _(partial — only fields with a documented example are shown)_
 
 ```json
 {
-  "data": {
-    "actionRegPk": 1,
-    "permissionCode": "PERM_TST_SCREEN_VIEW",
-    "screenId": 1,
-    "pageCode": "TST_SCREEN",
-    "actionCode": "VIEW",
-    "nameAr": "عرض",
-    "nameEn": "View",
-    "isActiveFl": "True",
-    "createdBy": "admin",
-    "updatedBy": "admin"
-  }
+  "actionRegPk": 1,
+  "permissionCode": "PERM_TST_SCREEN_VIEW",
+  "screenId": 1,
+  "pageCode": "TST_SCREEN",
+  "actionCode": "VIEW",
+  "nameAr": "عرض",
+  "nameEn": "View",
+  "isActiveFl": true,
+  "createdBy": "admin",
+  "updatedBy": "admin"
 }
 ```
+
+### Other Possible Responses
+
+Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
+
+| HTTP Status | Code | Why |
+|---|---|---|
+| 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
+| 400 BAD_REQUEST | VALIDATION_ERROR | Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status. |

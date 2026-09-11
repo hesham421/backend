@@ -10,8 +10,8 @@ operation. That part needs no source access and lives in openapi_extractor.
 What is NOT visible in the OpenAPI JSON is the specific business permission
 (e.g. "BRANCH_CREATE") required to call an endpoint, because this codebase
 puts `@PreAuthorize` in two different places depending on the module:
-  - erp-org / erp-finance-gl / erp-masterdata: on the *service* method
-  - erp-security: directly on some *controller* methods
+  - most modules: on the *service* method
+  - some modules: directly on the *controller* method
 
 There is no springdoc customizer projecting this into the OpenAPI doc, so the
 only way to discover it is to read the Java source: check the controller
@@ -40,7 +40,15 @@ from pathlib import Path
 from typing import Optional
 
 PREAUTH_RE = re.compile(r'@(?:PreAuthorize|Secured)\s*\(\s*"([^"]*)"\s*\)')
-PERMISSION_CONST_RE = re.compile(r"SecurityPermissions\)\.([A-Z0-9_]+)")
+# The SpEL form is hasAuthority(T(<fully.qualified.Holder>).CONSTANT). The
+# holder class name is a per-project choice (this platform uses
+# PermissionConstants; an earlier one used SecurityPermissions), so it is
+# matched structurally -- any T(...) type reference followed by a SCREAMING_CASE
+# constant -- rather than by a hardcoded class name that silently yields zero
+# permissions the moment the class is renamed.
+PERMISSION_CONST_RE = re.compile(r"T\(\s*[\w.]+\s*\)\s*\.\s*([A-Z][A-Z0-9_]*)")
+# The literal form, hasAuthority('PERM_X') / hasRole("ADMIN").
+PERMISSION_LITERAL_RE = re.compile(r"has(?:Authority|Role)\(\s*['\"]([A-Za-z0-9_]+)['\"]\s*\)")
 FIELD_DECL_TEMPLATE = r"private\s+final\s+(\w+)\s+{name}\s*;"
 SERVICE_FIELD_DECL_RE = re.compile(r"private\s+final\s+(\w+Service)\s+(\w+)\s*;")
 
@@ -193,27 +201,37 @@ def find_delegate(source: str, method_name: str) -> tuple[Optional[str], Optiona
 
 
 def extract_permission_constants(spel_expression: str) -> list[str]:
-    return PERMISSION_CONST_RE.findall(spel_expression)
+    found = PERMISSION_CONST_RE.findall(spel_expression)
+    found += [c for c in PERMISSION_LITERAL_RE.findall(spel_expression) if c not in found]
+    return found
 
 
-def resolve_permission(controller_source: str, method_name: str, source_root: Path) -> tuple[list[str], Optional[str]]:
-    """Returns (permission_constants, source_label). source_label is
-    "controller" or "service:<ClassName>". Empty list + None means
-    not discoverable — caller must omit the field entirely, never guess."""
+def resolve_permission(
+    controller_source: str, method_name: str, source_root: Path
+) -> tuple[list[str], Optional[str], Optional[str]]:
+    """Returns (permission_constants, source_label, raw_expression).
+    source_label is "controller" or "service:<ClassName>".
+
+    The raw expression is returned alongside the constants because a real
+    authorization rule does not always name a permission constant -- e.g.
+    `@PreAuthorize("isAuthenticated()")`. Returning only constants made such
+    an endpoint indistinguishable from one with no check at all, which reads
+    as "unprotected" to anyone building a client or a test against these docs.
+    (None, None, None) still means genuinely not discoverable -- never a guess."""
     expr = find_preauthorize(controller_source, method_name)
     if expr:
-        return extract_permission_constants(expr), "controller"
+        return extract_permission_constants(expr), "controller", expr
 
     service_class, service_method = find_delegate(controller_source, method_name)
     if not service_class or not service_method:
-        return [], None
+        return [], None, None
 
     matches = list(source_root.rglob(f"{service_class}.java"))
     if not matches:
-        return [], None
+        return [], None, None
 
     service_source = matches[0].read_text(encoding="utf-8")
     expr = find_preauthorize(service_source, service_method)
     if not expr:
-        return [], None
-    return extract_permission_constants(expr), f"service:{service_class}"
+        return [], None, None
+    return extract_permission_constants(expr), f"service:{service_class}", expr

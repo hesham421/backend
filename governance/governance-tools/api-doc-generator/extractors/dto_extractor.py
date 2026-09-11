@@ -17,7 +17,17 @@ from typing import Optional
 from extractors import validation_extractor
 from models.api_doc_model import FieldSpec
 
-ENVELOPE_KEYS = {"success", "message", "data", "error", "timestamp"}
+# The envelope is recognised by shape, not by an exact key set: matching the
+# full set meant one optional field's absence silently disabled envelope
+# detection everywhere -- which is what happened when this platform's
+# ApiResponse<T> turned out to carry no `message` field, leaving every
+# endpoint's response table showing the wrapper instead of the payload, and
+# no shared envelope section at all. Requiring the two fields that DEFINE the
+# wrapper, plus at least one of its supporting fields, keeps detection
+# resistant to an optional field being added or dropped without matching a
+# plain DTO that merely happens to have a `data` property.
+ENVELOPE_REQUIRED_KEYS = {"success", "data"}
+ENVELOPE_SUPPORTING_KEYS = {"error", "timestamp", "message"}
 PAGE_KEYS = {"content", "totalElements"}
 
 
@@ -73,7 +83,8 @@ def _expand_nested(f: FieldSpec, components: dict, visited: frozenset) -> None:
 
 
 def is_envelope_shape(resolved: dict) -> bool:
-    return ENVELOPE_KEYS.issubset(resolved.get("properties", {}).keys())
+    props = set(resolved.get("properties", {}).keys())
+    return ENVELOPE_REQUIRED_KEYS.issubset(props) and bool(props & ENVELOPE_SUPPORTING_KEYS)
 
 
 def is_page_shape(resolved: dict) -> bool:
@@ -103,6 +114,21 @@ def describe_payload(schema: dict, components: dict) -> tuple[list[FieldSpec], b
     return schema_fields(schema, components), False, False, name
 
 
+def _generic_schema_name(names: list[str]) -> Optional[str]:
+    """["PageUserResponse", "PageRoleResponse"] -> "Page<T>". Returns the
+    single name unchanged when there is only one, and never invents a base
+    when the names share no prefix."""
+    if not names:
+        return None
+    if len(names) == 1:
+        return names[0]
+    prefix = names[0]
+    for name in names[1:]:
+        while prefix and not name.startswith(prefix):
+            prefix = prefix[:-1]
+    return f"{prefix}<T>" if prefix else names[0]
+
+
 def find_page_envelope(openapi: dict) -> tuple[Optional[str], list[FieldSpec]]:
     """Finds the first Spring Page<T> wrapper schema and describes its own
     bookkeeping fields (totalElements, totalPages, size, number, ...),
@@ -111,6 +137,13 @@ def find_page_envelope(openapi: dict) -> tuple[Optional[str], list[FieldSpec]]:
     fields), or (None, []) if no Page-shaped schema exists anywhere."""
     components = openapi.get("components", {})
     schemas = components.get("schemas", {})
+
+    # springdoc emits one Page schema per item type (PageUserResponse,
+    # PageActiveSessionResponse, ...). Their bookkeeping fields are identical,
+    # so the section is named for the generic wrapper rather than for whichever
+    # instantiation happened to come first in the document.
+    page_names = [name for name, schema in schemas.items() if is_page_shape(schema)]
+    generic_name = _generic_schema_name(page_names)
 
     for name, schema in schemas.items():
         if not is_page_shape(schema):
@@ -125,6 +158,6 @@ def find_page_envelope(openapi: dict) -> tuple[Optional[str], list[FieldSpec]]:
             for key, prop in props.items()
             if key != "content"
         ]
-        return name, fields
+        return generic_name, fields
 
     return None, []

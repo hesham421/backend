@@ -25,11 +25,50 @@ from models.api_doc_model import (
 HTTP_METHODS = ("get", "post", "put", "patch", "delete")
 
 
+class OpenApiLoadError(Exception):
+    """Raised with the URL/path actually tried and whatever the server said,
+    so a failure is diagnosable without re-running curl by hand. A bare
+    "HTTP Error 500" names neither which document failed nor why."""
+
+
 def load_openapi(source: str) -> dict:
     if source.startswith("http://") or source.startswith("https://"):
-        with urllib.request.urlopen(source, timeout=10) as resp:
-            return json.loads(resp.read().decode("utf-8"))
-    return json.loads(Path(source).read_text(encoding="utf-8"))
+        try:
+            with urllib.request.urlopen(source, timeout=30) as resp:
+                raw = resp.read().decode("utf-8")
+        except urllib.error.HTTPError as exc:
+            body = ""
+            try:
+                body = exc.read().decode("utf-8", errors="replace")[:500].strip()
+            except Exception:  # noqa: BLE001 - a body is a bonus, never required
+                pass
+            detail = f" Response body: {body}" if body else ""
+            raise OpenApiLoadError(
+                f"The backend returned HTTP {exc.code} for {source}. The application is running but "
+                f"could not produce this group's OpenAPI document -- this is a backend/springdoc "
+                f"problem, not a documentation one; check the application log for the stack trace."
+                f"{detail}"
+            ) from exc
+        except urllib.error.URLError as exc:
+            raise OpenApiLoadError(
+                f"Could not reach {source} ({exc.reason}). Start the backend, or pass --openapi "
+                f"pointing at a saved OpenAPI JSON file."
+            ) from exc
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise OpenApiLoadError(
+                f"{source} did not return valid JSON ({exc}). Confirm springdoc.api-docs.path and "
+                f"the group id -- a wrong path is typically served as an HTML error page."
+            ) from exc
+
+    path = Path(source)
+    if not path.exists():
+        raise OpenApiLoadError(f"OpenAPI file not found: {path}")
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise OpenApiLoadError(f"{path} is not valid JSON ({exc}).") from exc
 
 
 def _security_schemes(openapi: dict) -> list[SecurityScheme]:

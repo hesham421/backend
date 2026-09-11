@@ -7,8 +7,10 @@ must never fabricate a value to fill a gap, and renderers must skip a
 subsection entirely rather than print a placeholder for missing data.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Any, Optional
 
 
 @dataclass
@@ -18,6 +20,11 @@ class FieldSpec:
     required: bool = False
     description: Optional[str] = None
     example: Optional[str] = None
+    # The example exactly as it appeared in the OpenAPI document (bool/int/
+    # dict/... -- NOT stringified), so renderers can emit a real JSON literal
+    # instead of Python's str() of it ("True" is not valid JSON). `example`
+    # above stays the display string used in documentation tables.
+    example_raw: Optional[Any] = None
     min_length: Optional[int] = None
     max_length: Optional[int] = None
     pattern: Optional[str] = None
@@ -82,6 +89,12 @@ class Endpoint:
     # Populated only by security_extractor.py, only when --source is given.
     permission: list[str] = field(default_factory=list)
     permission_source: Optional[str] = None   # "controller" | "service:<ClassName>"
+    # The raw @PreAuthorize/@Secured SpEL expression, kept verbatim when it
+    # carries no SecurityPermissions-style constant to extract (e.g.
+    # "isAuthenticated()", "hasRole('ADMIN')"). Never evaluated -- it is
+    # rendered as-is so an endpoint with a real, non-constant authorization
+    # rule stops looking unprotected in the docs.
+    permission_expression: Optional[str] = None
     # Populated only by error_mapping_extractor.attach_endpoint_error_codes(),
     # only when common source roots are available -- see PossibleError.
     possible_errors: list[PossibleError] = field(default_factory=list)

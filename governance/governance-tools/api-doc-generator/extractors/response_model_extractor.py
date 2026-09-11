@@ -17,19 +17,36 @@ from extractors import dto_extractor
 from models.api_doc_model import ResponseEnvelope
 
 
+def _generic_name(names: list[str]) -> str:
+    """"ApiResponseUserResponse" + "ApiResponsePageUserResponse" -> "ApiResponse<T>".
+    Falls back to the single/only name when there is no shared prefix to
+    derive a generic base from -- never invents one."""
+    if len(names) == 1:
+        return names[0]
+    prefix = names[0]
+    for name in names[1:]:
+        while prefix and not name.startswith(prefix):
+            prefix = prefix[:-1]
+    return f"{prefix}<T>" if prefix else names[0]
+
+
 def find_envelope(openapi: dict) -> Optional[ResponseEnvelope]:
     components = openapi.get("components", {})
     schemas = components.get("schemas", {})
 
-    envelope_name = None
-    envelope_schema = None
-    for name, schema in schemas.items():
-        if dto_extractor.is_envelope_shape(schema):
-            envelope_name, envelope_schema = name, schema
-            break
-
-    if not envelope_schema:
+    # springdoc emits one schema per generic instantiation
+    # (ApiResponseUserResponse, ApiResponsePageUserResponse, ...). Picking
+    # whichever happens to come first and printing its name would document
+    # the shared envelope under one arbitrary endpoint's payload type, so the
+    # generic name is recovered from the instantiations' common prefix
+    # instead -- derived from the real schema names, not hardcoded.
+    matches = [(name, schema) for name, schema in schemas.items()
+               if dto_extractor.is_envelope_shape(schema)]
+    if not matches:
         return None
+
+    envelope_name = _generic_name([name for name, _ in matches])
+    envelope_schema = matches[0][1]
 
     # Walk every declared property generically (not a fixed key subset) so any
     # envelope field beyond the five originally assumed here -- e.g.

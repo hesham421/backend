@@ -20,6 +20,8 @@ Operation ID: `grantScreen`
 
 Not determined from the OpenAPI document.
 
+**Required permission(s)**: PERM_SEC_ROLES_UPDATE (found on service:RoleGrantService)
+
 ### Path Parameters
 
 | Name | Type | Required | Description |
@@ -44,24 +46,15 @@ Schema: `RoleScreenGrantRequest` (application/json)
 
 ### Response `200` — OK
 
-Shape: `ApiResponseRoleScreenGrantResponse`
+Shape: `RoleScreenGrantResponse`
 
 | Field | Type | Required | Constraints | Description | Example |
 |---|---|---|---|---|---|
-| success | boolean | No |  |  |  |
-| data | RoleScreenGrantResponse | No |  | Role screen grant - منح شاشة لدور |  |
-| data.roleScreenGrantPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
-| data.roleId | integer (int64) | No |  | Role identifier - معرّف الدور | 1 |
-| data.screenId | integer (int64) | No |  | Registered screen identifier - معرّف الشاشة المسجّلة | 1 |
-| data.grantedBy | string | No |  | Granted by - مُنح بواسطة | admin |
-| data.grantedAt | string (date-time) | No |  | Granted timestamp - تاريخ المنح |  |
-| error | ApiError | No |  |  |  |
-| error.code | string | No |  |  |  |
-| error.message | string | No |  |  |  |
-| error.fieldErrors | array<FieldErrorItem> | No |  |  |  |
-| error.fieldErrors[].field | string | No |  |  |  |
-| error.fieldErrors[].message | string | No |  |  |  |
-| timestamp | string (date-time) | No |  |  |  |
+| roleScreenGrantPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
+| roleId | integer (int64) | No |  | Role identifier - معرّف الدور | 1 |
+| screenId | integer (int64) | No |  | Registered screen identifier - معرّف الشاشة المسجّلة | 1 |
+| grantedBy | string | No |  | Granted by - مُنح بواسطة | admin |
+| grantedAt | string (date-time) | No |  | Granted timestamp - تاريخ المنح |  |
 
 **Response Example**
 
@@ -69,14 +62,21 @@ _(partial — only fields with a documented example are shown)_
 
 ```json
 {
-  "data": {
-    "roleScreenGrantPk": 1,
-    "roleId": 1,
-    "screenId": 1,
-    "grantedBy": "admin"
-  }
+  "roleScreenGrantPk": 1,
+  "roleId": 1,
+  "screenId": 1,
+  "grantedBy": "admin"
 }
 ```
+
+### Other Possible Responses
+
+Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
+
+| HTTP Status | Code | Why |
+|---|---|---|
+| 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
+| 400 BAD_REQUEST | VALIDATION_ERROR | Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status. |
 
 ## POST /api/v1/sec/roles/{id}/modules
 
@@ -89,6 +89,8 @@ Operation ID: `grantModule`
 **Authentication**
 
 Not determined from the OpenAPI document.
+
+**Required permission(s)**: PERM_SEC_ROLES_UPDATE (found on service:RoleGrantService)
 
 ### Path Parameters
 
@@ -114,24 +116,15 @@ Schema: `RoleModuleGrantRequest` (application/json)
 
 ### Response `200` — OK
 
-Shape: `ApiResponseRoleModuleGrantResponse`
+Shape: `RoleModuleGrantResponse`
 
 | Field | Type | Required | Constraints | Description | Example |
 |---|---|---|---|---|---|
-| success | boolean | No |  |  |  |
-| data | RoleModuleGrantResponse | No |  | Role module grant - منح وحدة لدور |  |
-| data.roleModuleGrantPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
-| data.roleId | integer (int64) | No |  | Role identifier - معرّف الدور | 1 |
-| data.moduleId | integer (int64) | No |  | Registered module identifier - معرّف الوحدة المسجّلة | 1 |
-| data.grantedBy | string | No |  | Granted by - مُنح بواسطة | admin |
-| data.grantedAt | string (date-time) | No |  | Granted timestamp - تاريخ المنح |  |
-| error | ApiError | No |  |  |  |
-| error.code | string | No |  |  |  |
-| error.message | string | No |  |  |  |
-| error.fieldErrors | array<FieldErrorItem> | No |  |  |  |
-| error.fieldErrors[].field | string | No |  |  |  |
-| error.fieldErrors[].message | string | No |  |  |  |
-| timestamp | string (date-time) | No |  |  |  |
+| roleModuleGrantPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
+| roleId | integer (int64) | No |  | Role identifier - معرّف الدور | 1 |
+| moduleId | integer (int64) | No |  | Registered module identifier - معرّف الوحدة المسجّلة | 1 |
+| grantedBy | string | No |  | Granted by - مُنح بواسطة | admin |
+| grantedAt | string (date-time) | No |  | Granted timestamp - تاريخ المنح |  |
 
 **Response Example**
 
@@ -139,14 +132,21 @@ _(partial — only fields with a documented example are shown)_
 
 ```json
 {
-  "data": {
-    "roleModuleGrantPk": 1,
-    "roleId": 1,
-    "moduleId": 1,
-    "grantedBy": "admin"
-  }
+  "roleModuleGrantPk": 1,
+  "roleId": 1,
+  "moduleId": 1,
+  "grantedBy": "admin"
 }
 ```
+
+### Other Possible Responses
+
+Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
+
+| HTTP Status | Code | Why |
+|---|---|---|
+| 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
+| 400 BAD_REQUEST | VALIDATION_ERROR | Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status. |
 
 ## POST /api/v1/sec/roles/{id}/actions
 
@@ -159,6 +159,8 @@ Operation ID: `grantAction`
 **Authentication**
 
 Not determined from the OpenAPI document.
+
+**Required permission(s)**: PERM_SEC_ROLES_UPDATE (found on service:RoleGrantService)
 
 ### Path Parameters
 
@@ -184,24 +186,15 @@ Schema: `RoleActionGrantRequest` (application/json)
 
 ### Response `200` — OK
 
-Shape: `ApiResponseRoleActionGrantResponse`
+Shape: `RoleActionGrantResponse`
 
 | Field | Type | Required | Constraints | Description | Example |
 |---|---|---|---|---|---|
-| success | boolean | No |  |  |  |
-| data | RoleActionGrantResponse | No |  | Role action grant - منح إجراء لدور |  |
-| data.roleActionGrantPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
-| data.roleId | integer (int64) | No |  | Role identifier - معرّف الدور | 1 |
-| data.actionId | integer (int64) | No |  | Registered action identifier - معرّف الإجراء المسجّل | 1 |
-| data.grantedBy | string | No |  | Granted by - مُنح بواسطة | admin |
-| data.grantedAt | string (date-time) | No |  | Granted timestamp - تاريخ المنح |  |
-| error | ApiError | No |  |  |  |
-| error.code | string | No |  |  |  |
-| error.message | string | No |  |  |  |
-| error.fieldErrors | array<FieldErrorItem> | No |  |  |  |
-| error.fieldErrors[].field | string | No |  |  |  |
-| error.fieldErrors[].message | string | No |  |  |  |
-| timestamp | string (date-time) | No |  |  |  |
+| roleActionGrantPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
+| roleId | integer (int64) | No |  | Role identifier - معرّف الدور | 1 |
+| actionId | integer (int64) | No |  | Registered action identifier - معرّف الإجراء المسجّل | 1 |
+| grantedBy | string | No |  | Granted by - مُنح بواسطة | admin |
+| grantedAt | string (date-time) | No |  | Granted timestamp - تاريخ المنح |  |
 
 **Response Example**
 
@@ -209,14 +202,21 @@ _(partial — only fields with a documented example are shown)_
 
 ```json
 {
-  "data": {
-    "roleActionGrantPk": 1,
-    "roleId": 1,
-    "actionId": 1,
-    "grantedBy": "admin"
-  }
+  "roleActionGrantPk": 1,
+  "roleId": 1,
+  "actionId": 1,
+  "grantedBy": "admin"
 }
 ```
+
+### Other Possible Responses
+
+Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
+
+| HTTP Status | Code | Why |
+|---|---|---|
+| 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
+| 400 BAD_REQUEST | VALIDATION_ERROR | Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status. |
 
 ## DELETE /api/v1/sec/roles/{id}/modules/{moduleId}
 
@@ -230,6 +230,8 @@ Operation ID: `revokeModule`
 
 Not determined from the OpenAPI document.
 
+**Required permission(s)**: PERM_SEC_ROLES_UPDATE (found on service:RoleGrantService)
+
 ### Path Parameters
 
 | Name | Type | Required | Description |
@@ -239,31 +241,26 @@ Not determined from the OpenAPI document.
 
 ### Response `200` — OK
 
-Shape: `ApiResponseModuleGrantRevokeResponse`
+Shape: `ModuleGrantRevokeResponse`
 
 | Field | Type | Required | Constraints | Description | Example |
 |---|---|---|---|---|---|
-| success | boolean | No |  |  |  |
-| data | ModuleGrantRevokeResponse | No |  | Module grant revocation result - نتيجة سحب منح الوحدة |  |
-| data.revokedScreenGrants | integer (int32) | No |  | Cascaded screen grants removed - عدد منح الشاشات المسحوبة | 2 |
-| data.revokedActionGrants | integer (int32) | No |  | Cascaded action grants removed - عدد منح الإجراءات المسحوبة | 3 |
-| error | ApiError | No |  |  |  |
-| error.code | string | No |  |  |  |
-| error.message | string | No |  |  |  |
-| error.fieldErrors | array<FieldErrorItem> | No |  |  |  |
-| error.fieldErrors[].field | string | No |  |  |  |
-| error.fieldErrors[].message | string | No |  |  |  |
-| timestamp | string (date-time) | No |  |  |  |
+| revokedScreenGrants | integer (int32) | No |  | Cascaded screen grants removed - عدد منح الشاشات المسحوبة | 2 |
+| revokedActionGrants | integer (int32) | No |  | Cascaded action grants removed - عدد منح الإجراءات المسحوبة | 3 |
 
 **Response Example**
 
-_(partial — only fields with a documented example are shown)_
-
 ```json
 {
-  "data": {
-    "revokedScreenGrants": 2,
-    "revokedActionGrants": 3
-  }
+  "revokedScreenGrants": 2,
+  "revokedActionGrants": 3
 }
 ```
+
+### Other Possible Responses
+
+Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
+
+| HTTP Status | Code | Why |
+|---|---|---|
+| 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |

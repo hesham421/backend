@@ -10,10 +10,25 @@ API version: `v0`
 - http://localhost:7272
 
 
+## Common Response Envelope
+
+Schema: `ApiResponse<T>`
+
+| Field | Type | Required | Constraints | Description |
+|---|---|---|---|---|
+| success | boolean | No |  |  |
+| data | object | No |  | Endpoint-specific payload — see each endpoint's Response section |
+| error | ApiError | No |  | Present only when success=false |
+| error.code | string | No |  |  |
+| error.message | string | No |  |  |
+| error.fieldErrors | array<FieldErrorItem> | No |  |  |
+| error.fieldErrors[].field | string | No |  |  |
+| error.fieldErrors[].message | string | No |  |  |
+| timestamp | string (date-time) | No |  |  |
 
 ## Pagination Envelope
 
-Schema: `PageUserResponse`
+Schema: `Page<T>`
 
 | Field | Type | Required | Constraints | Description |
 |---|---|---|---|---|
@@ -22,8 +37,8 @@ Schema: `PageUserResponse`
 | first | boolean | No |  |  |
 | last | boolean | No |  |  |
 | numberOfElements | integer (int32) | No |  |  |
-| pageable | Pageablenull | No |  |  |
-| sort | Sortnull | No |  |  |
+| pageable | Pageable | No |  |  |
+| sort | Sort | No |  |  |
 | size | integer (int32) | No |  |  |
 | number | integer (int32) | No |  |  |
 | empty | boolean | No |  |  |
@@ -34,40 +49,65 @@ Source: `com/erp/common/search/PageableBuilder.java`
 
 | Constraint | Value |
 |---|---|
+| Default page | 0 |
+| Default size | 20 |
 | Maximum size | 200 |
 
 ## Known Error Codes
 
 | Code | Value | Source | Status | HTTP Status |
 |---|---|---|---|---|
-| SEC_401_INVALID_CREDENTIALS | `SEC-401-INVALID-CREDENTIALS` | exception/SecErrorCodes.java | UNAUTHORIZED |  |
-| SEC_409_USER_DUP | `SEC-409-USER-DUP` | exception/SecErrorCodes.java | ALREADY_EXISTS |  |
-| SEC_404_USER | `SEC-404-USER` | exception/SecErrorCodes.java | NOT_FOUND |  |
-| SEC_409_SOD_CONFLICT | `SEC-409-SOD-CONFLICT` | exception/SecErrorCodes.java | CONFLICT |  |
-| SEC_404_ROLE | `SEC-404-ROLE` | exception/SecErrorCodes.java | NOT_FOUND |  |
-| SEC_409_INVALID_TRANSITION | `SEC-409-INVALID-TRANSITION` | exception/SecErrorCodes.java | CONFLICT |  |
-| SEC_404_SIGNUP | `SEC-404-SIGNUP` | exception/SecErrorCodes.java | NOT_FOUND |  |
-| SEC_409_ROLE_DUP | `SEC-409-ROLE-DUP` | exception/SecErrorCodes.java | ALREADY_EXISTS |  |
-| SEC_409_GRANT_DUP | `SEC-409-GRANT-DUP` | exception/SecErrorCodes.java | ALREADY_EXISTS |  |
-| SEC_404_MODULE | `SEC-404-MODULE` | exception/SecErrorCodes.java | NOT_FOUND |  |
-| SEC_404_GRANT | `SEC-404-GRANT` | exception/SecErrorCodes.java | NOT_FOUND |  |
-| SEC_409_NO_MODULE_GRANT | `SEC-409-NO-MODULE-GRANT` | exception/SecErrorCodes.java | CONFLICT |  |
-| SEC_404_SCREEN | `SEC-404-SCREEN` | exception/SecErrorCodes.java | NOT_FOUND |  |
-| SEC_409_NO_SCREEN_GRANT | `SEC-409-NO-SCREEN-GRANT` | exception/SecErrorCodes.java | CONFLICT |  |
-| SEC_409_NO_VIEW_GRANT | `SEC-409-NO-VIEW-GRANT` | exception/SecErrorCodes.java | CONFLICT |  |
-| SEC_404_ACTION | `SEC-404-ACTION` | exception/SecErrorCodes.java | NOT_FOUND |  |
-| SEC_409_MODULE_DUP | `SEC-409-MODULE-DUP` | exception/SecErrorCodes.java | ALREADY_EXISTS |  |
-| SEC_409_MODULE_NOT_REGISTERED | `SEC-409-MODULE-NOT-REGISTERED` | exception/SecErrorCodes.java | CONFLICT |  |
-| SEC_409_SCREEN_DUP | `SEC-409-SCREEN-DUP` | exception/SecErrorCodes.java | ALREADY_EXISTS |  |
-| SEC_409_SCREEN_NOT_REGISTERED | `SEC-409-SCREEN-NOT-REGISTERED` | exception/SecErrorCodes.java | CONFLICT |  |
-| SEC_409_ACTION_DUP | `SEC-409-ACTION-DUP` | exception/SecErrorCodes.java | ALREADY_EXISTS |  |
-| SEC_409_RESET_TOKEN_INVALID | `SEC-409-RESET-TOKEN-INVALID` | exception/SecErrorCodes.java | CONFLICT |  |
-| SEC_409_SIGNUP_DUP | `SEC-409-SIGNUP-DUP` | exception/SecErrorCodes.java | ALREADY_EXISTS |  |
-| SEC_404_SESSION | `SEC-404-SESSION` | exception/SecErrorCodes.java | NOT_FOUND |  |
-| SEC_409_ALREADY_TERMINATED | `SEC-409-ALREADY-TERMINATED` | exception/SecErrorCodes.java | CONFLICT |  |
-| SEC_403_FORBIDDEN | `SEC-403-FORBIDDEN` | exception/SecErrorCodes.java | FORBIDDEN |  |
-| SEC_400_INVALID_SORT | `SEC-400-INVALID-SORT` | exception/SecErrorCodes.java | VALIDATION_ERROR |  |
+| SEC_401_INVALID_CREDENTIALS | `SEC-401-INVALID-CREDENTIALS` | exception/SecErrorCodes.java | UNAUTHORIZED | 401 UNAUTHORIZED |
+| SEC_409_USER_DUP | `SEC-409-USER-DUP` | exception/SecErrorCodes.java | ALREADY_EXISTS | 409 CONFLICT |
+| SEC_404_USER | `SEC-404-USER` | exception/SecErrorCodes.java | NOT_FOUND | 404 NOT_FOUND |
+| SEC_409_SOD_CONFLICT | `SEC-409-SOD-CONFLICT` | exception/SecErrorCodes.java | CONFLICT | 409 CONFLICT |
+| SEC_404_ROLE | `SEC-404-ROLE` | exception/SecErrorCodes.java | NOT_FOUND | 404 NOT_FOUND |
+| SEC_409_INVALID_TRANSITION | `SEC-409-INVALID-TRANSITION` | exception/SecErrorCodes.java | CONFLICT | 409 CONFLICT |
+| SEC_404_SIGNUP | `SEC-404-SIGNUP` | exception/SecErrorCodes.java | NOT_FOUND | 404 NOT_FOUND |
+| SEC_409_ROLE_DUP | `SEC-409-ROLE-DUP` | exception/SecErrorCodes.java | ALREADY_EXISTS | 409 CONFLICT |
+| SEC_409_GRANT_DUP | `SEC-409-GRANT-DUP` | exception/SecErrorCodes.java | ALREADY_EXISTS | 409 CONFLICT |
+| SEC_404_MODULE | `SEC-404-MODULE` | exception/SecErrorCodes.java | NOT_FOUND | 404 NOT_FOUND |
+| SEC_404_GRANT | `SEC-404-GRANT` | exception/SecErrorCodes.java | NOT_FOUND | 404 NOT_FOUND |
+| SEC_409_NO_MODULE_GRANT | `SEC-409-NO-MODULE-GRANT` | exception/SecErrorCodes.java | CONFLICT | 409 CONFLICT |
+| SEC_404_SCREEN | `SEC-404-SCREEN` | exception/SecErrorCodes.java | NOT_FOUND | 404 NOT_FOUND |
+| SEC_409_NO_SCREEN_GRANT | `SEC-409-NO-SCREEN-GRANT` | exception/SecErrorCodes.java | CONFLICT | 409 CONFLICT |
+| SEC_409_NO_VIEW_GRANT | `SEC-409-NO-VIEW-GRANT` | exception/SecErrorCodes.java | CONFLICT | 409 CONFLICT |
+| SEC_404_ACTION | `SEC-404-ACTION` | exception/SecErrorCodes.java | NOT_FOUND | 404 NOT_FOUND |
+| SEC_409_MODULE_DUP | `SEC-409-MODULE-DUP` | exception/SecErrorCodes.java | ALREADY_EXISTS | 409 CONFLICT |
+| SEC_409_MODULE_NOT_REGISTERED | `SEC-409-MODULE-NOT-REGISTERED` | exception/SecErrorCodes.java | CONFLICT | 409 CONFLICT |
+| SEC_409_SCREEN_DUP | `SEC-409-SCREEN-DUP` | exception/SecErrorCodes.java | ALREADY_EXISTS | 409 CONFLICT |
+| SEC_409_SCREEN_NOT_REGISTERED | `SEC-409-SCREEN-NOT-REGISTERED` | exception/SecErrorCodes.java | CONFLICT | 409 CONFLICT |
+| SEC_409_ACTION_DUP | `SEC-409-ACTION-DUP` | exception/SecErrorCodes.java | ALREADY_EXISTS | 409 CONFLICT |
+| SEC_409_RESET_TOKEN_INVALID | `SEC-409-RESET-TOKEN-INVALID` | exception/SecErrorCodes.java | CONFLICT | 409 CONFLICT |
+| SEC_409_SIGNUP_DUP | `SEC-409-SIGNUP-DUP` | exception/SecErrorCodes.java | ALREADY_EXISTS | 409 CONFLICT |
+| SEC_404_SESSION | `SEC-404-SESSION` | exception/SecErrorCodes.java | NOT_FOUND | 404 NOT_FOUND |
+| SEC_409_ALREADY_TERMINATED | `SEC-409-ALREADY-TERMINATED` | exception/SecErrorCodes.java | CONFLICT | 409 CONFLICT |
+| SEC_403_FORBIDDEN | `SEC-403-FORBIDDEN` | exception/SecErrorCodes.java | FORBIDDEN | 403 FORBIDDEN |
+| SEC_400_INVALID_SORT | `SEC-400-INVALID-SORT` | exception/SecErrorCodes.java | VALIDATION_ERROR | 400 BAD_REQUEST |
+| VALIDATION_ERROR | `VALIDATION_ERROR` | com/erp/common/web/GlobalExceptionHandler.java |  | 400 BAD_REQUEST |
+| DATA_INTEGRITY_VIOLATION | `DATA_INTEGRITY_VIOLATION` | com/erp/common/web/GlobalExceptionHandler.java |  | 409 CONFLICT |
+| ACCESS_DENIED | `ACCESS_DENIED` | com/erp/common/web/GlobalExceptionHandler.java |  | 403 FORBIDDEN |
+| INTERNAL_ERROR | `INTERNAL_ERROR` | com/erp/common/web/GlobalExceptionHandler.java |  | 500 INTERNAL_SERVER_ERROR |
 
+## Status -> HTTP Status Reference
+
+Shared, module-independent mapping every business error code's `Status` resolves through (see each error code's own Status column above, when known).
+
+| Status | HTTP Status |
+|---|---|
+| ALREADY_EXISTS | 409 CONFLICT |
+| BUSINESS_RULE_VIOLATION | 422 UNPROCESSABLE_CONTENT |
+| CONFLICT | 409 CONFLICT |
+| CREATED | 201 CREATED |
+| FORBIDDEN | 403 FORBIDDEN |
+| INTERNAL_ERROR | 500 INTERNAL_SERVER_ERROR |
+| NOT_FOUND | 404 NOT_FOUND |
+| PAYLOAD_TOO_LARGE | 413 CONTENT_TOO_LARGE |
+| SUCCESS | 200 OK |
+| UNAUTHORIZED | 401 UNAUTHORIZED |
+| UNSUPPORTED_MEDIA_TYPE | 415 UNSUPPORTED_MEDIA_TYPE |
+| UPDATED | 200 OK |
+| VALIDATION_ERROR | 400 BAD_REQUEST |
 
 ## API Catalog
 

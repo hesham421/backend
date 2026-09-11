@@ -13,52 +13,47 @@ Operation ID: `effective`
 
 Not determined from the OpenAPI document.
 
+**Authorization rule**: `isAuthenticated()` (found on service:MenuService)
+
 ### Response `200` — OK
 
-Shape: `ApiResponseListModuleMenuResponse`
+Shape: `array of ModuleMenuResponse`
 
 | Field | Type | Required | Constraints | Description | Example |
 |---|---|---|---|---|---|
-| success | boolean | No |  |  |  |
-| data | array<ModuleMenuResponse> | No |  |  |  |
-| data[].moduleRegPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
-| data[].code | string | No |  | Module code - رمز الوحدة | FIN |
-| data[].nameAr | string | No |  | Module name (Arabic) - اسم الوحدة بالعربية | المالية |
-| data[].nameEn | string | No |  | Module name (English) - اسم الوحدة بالإنجليزية | Finance |
-| data[].screens | array<ScreenMenuResponse> | No |  | Granted screens beneath this module - الشاشات الممنوحة ضمن الوحدة |  |
-| data[].screens[].screenRegPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
-| data[].screens[].pageCode | string | No |  | Page code - رمز الصفحة | FIN_JOURNAL_ENTRIES |
-| data[].screens[].nameAr | string | No |  | Screen name (Arabic) - اسم الشاشة بالعربية | قيود اليومية |
-| data[].screens[].nameEn | string | No |  | Screen name (English) - اسم الشاشة بالإنجليزية | Journal entries |
-| error | ApiError | No |  |  |  |
-| error.code | string | No |  |  |  |
-| error.message | string | No |  |  |  |
-| error.fieldErrors | array<FieldErrorItem> | No |  |  |  |
-| error.fieldErrors[].field | string | No |  |  |  |
-| error.fieldErrors[].message | string | No |  |  |  |
-| timestamp | string (date-time) | No |  |  |  |
+| moduleRegPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
+| code | string | No |  | Module code - رمز الوحدة | FIN |
+| nameAr | string | No |  | Module name (Arabic) - اسم الوحدة بالعربية | المالية |
+| nameEn | string | No |  | Module name (English) - اسم الوحدة بالإنجليزية | Finance |
+| screens | array<ScreenMenuResponse> | No |  | Granted screens beneath this module - الشاشات الممنوحة ضمن الوحدة |  |
+| screens[].screenRegPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
+| screens[].pageCode | string | No |  | Page code - رمز الصفحة | FIN_JOURNAL_ENTRIES |
+| screens[].nameAr | string | No |  | Screen name (Arabic) - اسم الشاشة بالعربية | قيود اليومية |
+| screens[].nameEn | string | No |  | Screen name (English) - اسم الشاشة بالإنجليزية | Journal entries |
 
 **Response Example**
 
-_(partial — only fields with a documented example are shown)_
-
 ```json
 {
-  "data": [
+  "moduleRegPk": 1,
+  "code": "FIN",
+  "nameAr": "المالية",
+  "nameEn": "Finance",
+  "screens": [
     {
-      "moduleRegPk": 1,
-      "code": "FIN",
-      "nameAr": "المالية",
-      "nameEn": "Finance",
-      "screens": [
-        {
-          "screenRegPk": 1,
-          "pageCode": "FIN_JOURNAL_ENTRIES",
-          "nameAr": "قيود اليومية",
-          "nameEn": "Journal entries"
-        }
-      ]
+      "screenRegPk": 1,
+      "pageCode": "FIN_JOURNAL_ENTRIES",
+      "nameAr": "قيود اليومية",
+      "nameEn": "Journal entries"
     }
   ]
 }
 ```
+
+### Other Possible Responses
+
+Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
+
+| HTTP Status | Code | Why |
+|---|---|---|
+| 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |

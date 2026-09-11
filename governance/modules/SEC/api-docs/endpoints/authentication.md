@@ -42,27 +42,18 @@ Schema: `SignupSubmitRequest` (application/json)
 
 ### Response `200` — OK
 
-Shape: `ApiResponseSignupRequestResponse`
+Shape: `SignupRequestResponse`
 
 | Field | Type | Required | Constraints | Description | Example |
 |---|---|---|---|---|---|
-| success | boolean | No |  |  |  |
-| data | SignupRequestResponse | No |  | Sign-up request - طلب تسجيل |  |
-| data.signupRequestPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
-| data.email | string | No |  | Email address, becomes the login on approval - البريد الإلكتروني | new@example.com |
-| data.fullNameAr | string | No |  | Full name (Arabic) - الاسم الكامل بالعربية | أحمد علي |
-| data.fullNameEn | string | No |  | Full name (English) - الاسم الكامل بالإنجليزية | Ahmed Ali |
-| data.submittedAt | string (date-time) | No |  | Submitted timestamp - تاريخ التقديم |  |
-| data.statusCode | string | No |  | SIGNUP_STATUS code - رمز الحالة | PENDING |
-| data.reviewedBy | string | No |  | Reviewed by - روجع بواسطة | admin |
-| data.reviewedAt | string (date-time) | No |  | Reviewed timestamp - تاريخ المراجعة |  |
-| error | ApiError | No |  |  |  |
-| error.code | string | No |  |  |  |
-| error.message | string | No |  |  |  |
-| error.fieldErrors | array<FieldErrorItem> | No |  |  |  |
-| error.fieldErrors[].field | string | No |  |  |  |
-| error.fieldErrors[].message | string | No |  |  |  |
-| timestamp | string (date-time) | No |  |  |  |
+| signupRequestPk | integer (int64) | No |  | Unique identifier - المعرف الفريد | 1 |
+| email | string | No |  | Email address, becomes the login on approval - البريد الإلكتروني | new@example.com |
+| fullNameAr | string | No |  | Full name (Arabic) - الاسم الكامل بالعربية | أحمد علي |
+| fullNameEn | string | No |  | Full name (English) - الاسم الكامل بالإنجليزية | Ahmed Ali |
+| submittedAt | string (date-time) | No |  | Submitted timestamp - تاريخ التقديم |  |
+| statusCode | string | No |  | SIGNUP_STATUS code - رمز الحالة | PENDING |
+| reviewedBy | string | No |  | Reviewed by - روجع بواسطة | admin |
+| reviewedAt | string (date-time) | No |  | Reviewed timestamp - تاريخ المراجعة |  |
 
 **Response Example**
 
@@ -70,16 +61,22 @@ _(partial — only fields with a documented example are shown)_
 
 ```json
 {
-  "data": {
-    "signupRequestPk": 1,
-    "email": "new@example.com",
-    "fullNameAr": "أحمد علي",
-    "fullNameEn": "Ahmed Ali",
-    "statusCode": "PENDING",
-    "reviewedBy": "admin"
-  }
+  "signupRequestPk": 1,
+  "email": "new@example.com",
+  "fullNameAr": "أحمد علي",
+  "fullNameEn": "Ahmed Ali",
+  "statusCode": "PENDING",
+  "reviewedBy": "admin"
 }
 ```
+
+### Other Possible Responses
+
+Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
+
+| HTTP Status | Code | Why |
+|---|---|---|
+| 400 BAD_REQUEST | VALIDATION_ERROR | Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status. |
 
 ## POST /api/v1/sec/auth/password-reset/request
 
@@ -111,34 +108,29 @@ Schema: `PasswordResetRequest` (application/json)
 
 ### Response `200` — OK
 
-Shape: `ApiResponseConfirmationResponse`
+Shape: `ConfirmationResponse`
 
 | Field | Type | Required | Constraints | Description | Example |
 |---|---|---|---|---|---|
-| success | boolean | No |  |  |  |
-| data | ConfirmationResponse | No |  | Generic confirmation - تأكيد عام |  |
-| data.messageAr | string | No |  | Confirmation message (Arabic) - رسالة التأكيد بالعربية | إذا كان البريد الإلكتروني مسجلًا فسيتم إرسال رابط إعادة التعيين |
-| data.messageEn | string | No |  | Confirmation message (English) - رسالة التأكيد بالإنجليزية | If that email is registered, a reset link has been sent |
-| error | ApiError | No |  |  |  |
-| error.code | string | No |  |  |  |
-| error.message | string | No |  |  |  |
-| error.fieldErrors | array<FieldErrorItem> | No |  |  |  |
-| error.fieldErrors[].field | string | No |  |  |  |
-| error.fieldErrors[].message | string | No |  |  |  |
-| timestamp | string (date-time) | No |  |  |  |
+| messageAr | string | No |  | Confirmation message (Arabic) - رسالة التأكيد بالعربية | إذا كان البريد الإلكتروني مسجلًا فسيتم إرسال رابط إعادة التعيين |
+| messageEn | string | No |  | Confirmation message (English) - رسالة التأكيد بالإنجليزية | If that email is registered, a reset link has been sent |
 
 **Response Example**
 
-_(partial — only fields with a documented example are shown)_
-
 ```json
 {
-  "data": {
-    "messageAr": "إذا كان البريد الإلكتروني مسجلًا فسيتم إرسال رابط إعادة التعيين",
-    "messageEn": "If that email is registered, a reset link has been sent"
-  }
+  "messageAr": "إذا كان البريد الإلكتروني مسجلًا فسيتم إرسال رابط إعادة التعيين",
+  "messageEn": "If that email is registered, a reset link has been sent"
 }
 ```
+
+### Other Possible Responses
+
+Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
+
+| HTTP Status | Code | Why |
+|---|---|---|
+| 400 BAD_REQUEST | VALIDATION_ERROR | Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status. |
 
 ## POST /api/v1/sec/auth/password-reset/complete
 
@@ -172,34 +164,29 @@ Schema: `PasswordResetCompleteRequest` (application/json)
 
 ### Response `200` — OK
 
-Shape: `ApiResponseConfirmationResponse`
+Shape: `ConfirmationResponse`
 
 | Field | Type | Required | Constraints | Description | Example |
 |---|---|---|---|---|---|
-| success | boolean | No |  |  |  |
-| data | ConfirmationResponse | No |  | Generic confirmation - تأكيد عام |  |
-| data.messageAr | string | No |  | Confirmation message (Arabic) - رسالة التأكيد بالعربية | إذا كان البريد الإلكتروني مسجلًا فسيتم إرسال رابط إعادة التعيين |
-| data.messageEn | string | No |  | Confirmation message (English) - رسالة التأكيد بالإنجليزية | If that email is registered, a reset link has been sent |
-| error | ApiError | No |  |  |  |
-| error.code | string | No |  |  |  |
-| error.message | string | No |  |  |  |
-| error.fieldErrors | array<FieldErrorItem> | No |  |  |  |
-| error.fieldErrors[].field | string | No |  |  |  |
-| error.fieldErrors[].message | string | No |  |  |  |
-| timestamp | string (date-time) | No |  |  |  |
+| messageAr | string | No |  | Confirmation message (Arabic) - رسالة التأكيد بالعربية | إذا كان البريد الإلكتروني مسجلًا فسيتم إرسال رابط إعادة التعيين |
+| messageEn | string | No |  | Confirmation message (English) - رسالة التأكيد بالإنجليزية | If that email is registered, a reset link has been sent |
 
 **Response Example**
 
-_(partial — only fields with a documented example are shown)_
-
 ```json
 {
-  "data": {
-    "messageAr": "إذا كان البريد الإلكتروني مسجلًا فسيتم إرسال رابط إعادة التعيين",
-    "messageEn": "If that email is registered, a reset link has been sent"
-  }
+  "messageAr": "إذا كان البريد الإلكتروني مسجلًا فسيتم إرسال رابط إعادة التعيين",
+  "messageEn": "If that email is registered, a reset link has been sent"
 }
 ```
+
+### Other Possible Responses
+
+Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
+
+| HTTP Status | Code | Why |
+|---|---|---|
+| 400 BAD_REQUEST | VALIDATION_ERROR | Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status. |
 
 ## POST /api/v1/sec/auth/login
 
@@ -233,33 +220,28 @@ Schema: `LoginRequest` (application/json)
 
 ### Response `200` — OK
 
-Shape: `ApiResponseLoginResponse`
+Shape: `LoginResponse`
 
 | Field | Type | Required | Constraints | Description | Example |
 |---|---|---|---|---|---|
-| success | boolean | No |  |  |  |
-| data | LoginResponse | No |  | Issued access token - رمز الوصول الصادر |  |
-| data.accessToken | string | No |  | Signed JWT access token - رمز الوصول الموقَّع | eyJhbGciOiJIUzI1NiJ9... |
-| data.tokenType | string | No |  | Token type - نوع الرمز | Bearer |
-| data.expiresIn | integer (int64) | No |  | Lifetime in seconds - مدة الصلاحية بالثواني | 3600 |
-| error | ApiError | No |  |  |  |
-| error.code | string | No |  |  |  |
-| error.message | string | No |  |  |  |
-| error.fieldErrors | array<FieldErrorItem> | No |  |  |  |
-| error.fieldErrors[].field | string | No |  |  |  |
-| error.fieldErrors[].message | string | No |  |  |  |
-| timestamp | string (date-time) | No |  |  |  |
+| accessToken | string | No |  | Signed JWT access token - رمز الوصول الموقَّع | eyJhbGciOiJIUzI1NiJ9... |
+| tokenType | string | No |  | Token type - نوع الرمز | Bearer |
+| expiresIn | integer (int64) | No |  | Lifetime in seconds - مدة الصلاحية بالثواني | 3600 |
 
 **Response Example**
 
-_(partial — only fields with a documented example are shown)_
-
 ```json
 {
-  "data": {
-    "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
-    "tokenType": "Bearer",
-    "expiresIn": 3600
-  }
+  "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+  "tokenType": "Bearer",
+  "expiresIn": 3600
 }
 ```
+
+### Other Possible Responses
+
+Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
+
+| HTTP Status | Code | Why |
+|---|---|---|
+| 400 BAD_REQUEST | VALIDATION_ERROR | Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status. |

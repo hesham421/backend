@@ -5,10 +5,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.erp.common.domain.status.ServiceResult;
 import com.erp.common.util.TokenHasher;
 import com.erp.main.ErpMainApplication;
-import com.erp.notif.entity.NotificationChannelConfig;
-import com.erp.notif.entity.NotificationLog;
-import com.erp.notif.repository.NotificationChannelConfigRepository;
-import com.erp.notif.repository.NotificationLogRepository;
+import com.erp.notif.crossmodule.DispatchLogRecord;
+import com.erp.notif.crossmodule.NotificationChannelAdminApi;
+import com.erp.notif.crossmodule.NotificationLogQueryApi;
 import com.erp.sec.controller.AuditLogController;
 import com.erp.sec.crossmodule.SecUserDirectoryApi;
 import com.erp.sec.crossmodule.UserContact;
@@ -114,9 +113,9 @@ class SecCoverageIntegrationTest {
     private AuditLogEntryRepository auditLogEntryRepository;
 
     @Autowired
-    private NotificationLogRepository notificationLogRepository;
+    private NotificationLogQueryApi notificationLogQueryApi;
     @Autowired
-    private NotificationChannelConfigRepository notificationChannelConfigRepository;
+    private NotificationChannelAdminApi notificationChannelAdminApi;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -279,37 +278,31 @@ class SecCoverageIntegrationTest {
         // Covers: TC-SEC-029, AC-SEC-029
         //
         // Half 1 ("integration ON"): request() must dispatch one NOTIF_LOG row carrying the
-        // password-reset templateCode. SEC has no read endpoint of its own for this — it is NOTIF's
-        // own log table, read here directly via NOTIF's repository (a cross-module read that is
-        // legitimate in a test, mirroring how a consuming module would query its own data).
+        // password-reset templateCode. SEC has no read endpoint of its own for this — read via
+        // NOTIF's own crossmodule.NotificationLogQueryApi (added 2026-09-11) rather than reaching
+        // into notif.repository/notif.entity directly, per CrossModuleBoundaryArchTest.
         User userWithNotifOn = persistUser("pwresetnotifon");
         passwordResetService.request(
             PasswordResetRequest.builder().email(userWithNotifOn.getEmail()).build());
 
-        Specification<NotificationLog> resetLogsForUser = (root, query, cb) -> cb.and(
-            cb.equal(root.get("recipientId"), userWithNotifOn.getUserPk()),
-            cb.equal(root.get("moduleCode"), "SEC"),
-            cb.equal(root.get("referenceType"), "SEC_PWD_RESET_TOKEN"));
-        List<NotificationLog> logsOn = notificationLogRepository.findAll(resetLogsForUser);
+        List<DispatchLogRecord> logsOn = notificationLogQueryApi.findByRecipientModuleAndReference(
+            userWithNotifOn.getUserPk(), "SEC", "SEC_PWD_RESET_TOKEN");
 
         assertThat(logsOn).isNotEmpty();
         assertThat(logsOn)
-            .allSatisfy(log -> assertThat(log.getTemplateFk().getTemplateCode())
-                .isEqualTo("PASSWORD_RESET"));
+            .allSatisfy(log -> assertThat(log.templateCode()).isEqualTo("PASSWORD_RESET"));
 
         // Half 2 ("integration OFF/unavailable"): REQ-SEC-006 must still succeed unchanged.
         // PasswordResetService.dispatchResetNotification only ever catches a RuntimeException from
         // the dispatch call; disabling the EMAIL channel config does not make NOTIF throw (RULE-
         // NOTIF-003 routes a disabled channel to a CHANNEL_DISABLED log row instead) — so this
         // exercises the "integration unavailable" half exactly the way NOTIF actually reports it,
-        // rather than assuming a hard failure. Mutating the shared channel row is safe: the whole
-        // test method is wrapped in the class-level @Transactional and rolls back on completion.
-        NotificationChannelConfig emailChannel = notificationChannelConfigRepository
-            .findByChannelTypeId("EMAIL")
-            .orElseThrow(() -> new IllegalStateException(
-                "EMAIL channel config not seeded — cannot exercise the integration-off half"));
-        emailChannel.setIsEnabled(Boolean.FALSE);
-        notificationChannelConfigRepository.save(emailChannel);
+        // rather than assuming a hard failure. Toggled via NOTIF's own crossmodule.
+        // NotificationChannelAdminApi (added 2026-09-11) rather than mutating the entity/repository
+        // directly, so NOTIF's own update path (and any future validation on it) still runs. Safe
+        // to mutate: the whole test method is wrapped in the class-level @Transactional and rolls
+        // back on completion.
+        notificationChannelAdminApi.setChannelEnabled("EMAIL", false);
 
         User userWithNotifOff = persistUser("pwresetnotifoff");
         ServiceResult<ConfirmationResponse> resultOff = passwordResetService.request(

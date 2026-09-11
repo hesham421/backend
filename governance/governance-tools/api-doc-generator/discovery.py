@@ -16,11 +16,14 @@ module's name:
   - governance's location inside this backend/ checkout (governance/ is a
     subfolder of backend/ as of the backend/frontend governance split;
     see backend/governance/governance-tools/README.md)
-  - the Maven reactor descriptors (root pom.xml <modules>, each module's own
-    <dependencies>) for module source + shared/common source roots
-  - erp-main's GroupedOpenApi bean declarations for the springdoc group id,
+  - the Maven descriptors (root pom.xml; its <modules> reactor list when one
+    exists, each module's own <dependencies> otherwise) for module source +
+    shared/common source roots. This platform currently builds as a single
+    consolidated POM, which find_common_source_roots handles explicitly.
+  - the GroupedOpenApi bean declarations for the springdoc group id,
     package(s), and display name that identify "which module is ORG"
-  - the @Value("${server.port:...}") default for the dev server's base URL
+  - application*.properties' own server.port / springdoc.api-docs.path /
+    server.servlet.context-path for the dev server's OpenAPI URL
 
 Every discovery step degrades to "not found" rather than guessing, exactly
 like the existing best-effort extractors (security_extractor.py,
@@ -171,19 +174,86 @@ def match_openapi_group(groups: list[OpenApiGroupInfo], module: str) -> Optional
 
 
 # ---------------------------------------------------------------------------
-# Server port discovery
+# Server / springdoc URL discovery
 # ---------------------------------------------------------------------------
+# The OpenAPI document's URL is NOT "localhost:8080/api-docs/<group>" by
+# assumption -- all three of its parts are configuration this backend already
+# declares in its own application*.properties, and all three move
+# independently:
+#
+#   server.port                  -- this platform runs on 7272, not Spring's 8080 default
+#   springdoc.api-docs.path      -- springdoc's own default is /v3/api-docs, and a group is
+#                                   served at <that path>/<groupId>; /api-docs is NOT a
+#                                   valid fallback, it is simply a different path
+#   server.servlet.context-path  -- prefixes everything when set
+#
+# So they are read from the property files themselves. The @Value("${server.port:NNNN}")
+# Java form is still honoured as a fallback for a backend that declares the
+# default in code instead, and only then does a literal default apply.
 
-_PORT_RE = re.compile(r'@Value\(\s*"\$\{server\.port:(\d+)\}"\s*\)')
+_PORT_VALUE_ANNOTATION_RE = re.compile(r'@Value\(\s*"\$\{server\.port:(\d+)\}"\s*\)')
+
+_PROPERTY_RE_CACHE: dict[str, re.Pattern] = {}
+
+SPRINGDOC_DEFAULT_API_DOCS_PATH = "/v3/api-docs"   # springdoc-openapi's own documented default
+
+
+def _property_files(backend_root: Path) -> list[Path]:
+    """application.properties first (the un-profiled base every profile
+    inherits), then any profile-specific file, so a base declaration wins
+    over a profile override this tool has no way to know is active."""
+    resources = backend_root / "src" / "main" / "resources"
+    if not resources.is_dir():
+        return []
+    base = resources / "application.properties"
+    files = [base] if base.exists() else []
+    files += sorted(p for p in resources.glob("application-*.properties") if p != base)
+    return files
+
+
+def _read_property(backend_root: Path, key: str) -> Optional[str]:
+    pattern = _PROPERTY_RE_CACHE.get(key)
+    if pattern is None:
+        pattern = re.compile(rf"^\s*{re.escape(key)}\s*[=:]\s*(\S+)\s*$", re.MULTILINE)
+        _PROPERTY_RE_CACHE[key] = pattern
+    for path in _property_files(backend_root):
+        m = pattern.search(path.read_text(encoding="utf-8", errors="ignore"))
+        if m:
+            return m.group(1)
+    return None
 
 
 def find_server_port(backend_root: Path, default: str = "8080") -> str:
+    declared = _read_property(backend_root, "server.port")
+    if declared and declared.isdigit():
+        return declared
     for path in sorted(backend_root.rglob("*.java")):
         text = path.read_text(encoding="utf-8", errors="ignore")
-        m = _PORT_RE.search(text)
+        m = _PORT_VALUE_ANNOTATION_RE.search(text)
         if m:
             return m.group(1)
     return default
+
+
+def find_api_docs_path(backend_root: Path) -> str:
+    path = _read_property(backend_root, "springdoc.api-docs.path") or SPRINGDOC_DEFAULT_API_DOCS_PATH
+    return "/" + path.strip("/")
+
+
+def find_context_path(backend_root: Path) -> str:
+    path = _read_property(backend_root, "server.servlet.context-path")
+    if not path or path.strip("/") == "":
+        return ""
+    return "/" + path.strip("/")
+
+
+def build_openapi_url(backend_root: Path, group_id: str) -> str:
+    """The live URL springdoc actually serves this group at, assembled from
+    the backend's own declared configuration rather than assumed."""
+    port = find_server_port(backend_root)
+    context = find_context_path(backend_root)
+    api_docs = find_api_docs_path(backend_root)
+    return f"http://localhost:{port}{context}{api_docs}/{group_id}"
 
 
 # ---------------------------------------------------------------------------
@@ -326,8 +396,7 @@ def resolve(
                 f"Could not identify a unique springdoc GroupedOpenApi group for module '{module}' "
                 f"under '{backend_root}'. Pass --openapi explicitly (a live URL or a saved JSON file)."
             )
-        port = find_server_port(backend_root)
-        openapi_source = f"http://localhost:{port}/api-docs/{matched.group_id}"
+        openapi_source = build_openapi_url(backend_root, matched.group_id)
 
     if source_root is None and matched is not None:
         source_root = find_module_source_root(backend_root, matched.packages)

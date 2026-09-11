@@ -50,6 +50,15 @@ MAX_SIZE_CONST_RE = re.compile(r"MAX_PAGE_SIZE\s*=\s*([\d_]+)")
 MIN_SIZE_CONST_RE = re.compile(r"MIN_PAGE_SIZE\s*=\s*([\d_]+)")
 MAX_PAGE_NUMBER_CONST_RE = re.compile(r"MAX_PAGE_NUMBER\s*=\s*([\d_]+)")
 
+# The class is identified by NAME, not by "any class declaring page/size
+# defaults": this platform's common module also has an internal, service-layer
+# SearchRequest with the same coincidental defaults that is never bound
+# directly from a frontend request, so a shape-only match would cite the wrong
+# source. An earlier shape test looked for nested ContractFilter/ContractSort
+# types that this platform no longer declares (its filter type is SearchFilter),
+# which silently reported no pagination defaults at all.
+SEARCH_CONTRACT_FILE = "BaseSearchContractRequest.java"
+
 DEFAULT_PAGE_FIELD_RE = re.compile(r"private\s+int\s+page\s*=\s*(\d+)\s*;")
 DEFAULT_SIZE_FIELD_RE = re.compile(r"private\s+int\s+size\s*=\s*(\d+)\s*;")
 
@@ -75,19 +84,12 @@ def _module_imports(source_root: Path, fqcn: str) -> bool:
 
 
 def _find_page_size_defaults(common_source_roots: list[Path]) -> tuple[Optional[int], Optional[int], Optional[str]]:
-    """BaseSearchContractRequest is the shared base class every search
-    request DTO actually extends (confirmed by ORG's own imports) -- found by
-    its distinctive shape (declares the ContractFilter/ContractSort nested
-    types), not just by "a class with page/size field defaults": this
-    platform's common-utils also has an internal, service-layer SearchRequest
-    class with the *same* coincidental defaults but that is never bound
-    directly from a frontend request, so matching on page/size alone would
-    silently cite the wrong (if numerically coincidental) source."""
+    """Reads the page/size defaults off BaseSearchContractRequest, the shared
+    base class every search request DTO extends. See SEARCH_CONTRACT_FILE for
+    why it is located by name."""
     for root in common_source_roots:
-        for path in sorted(root.rglob("*.java")):
+        for path in sorted(root.rglob(SEARCH_CONTRACT_FILE)):
             text = _read_stripped(path)
-            if "ContractFilter" not in text or "ContractSort" not in text:
-                continue
             page_m = DEFAULT_PAGE_FIELD_RE.search(text)
             size_m = DEFAULT_SIZE_FIELD_RE.search(text)
             if page_m and size_m:
