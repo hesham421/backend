@@ -4,7 +4,8 @@
 ## PHASE 4 — DOC
 
 **API contract summary** (R4 — backend self-check only; the frontend stage binds to the
-real `api-docs-sec.md` published after implementation, never to this table):
+real generated api-docs published under `governance/modules/SEC/api-docs/` after
+implementation — `index.md` plus `endpoints/<group-slug>.md` — never to this table):
 
 | API | Path | Verb | Request DTO | Response DTO | Stability |
 |---|---|---|---|---|---|
