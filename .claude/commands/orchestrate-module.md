@@ -448,10 +448,15 @@ Treat the test phase exactly like `CORE … ALIGN-BE`:
 3. **On confirmation, dispatch `/[MODULE]/execute-backend-test`** as this run's
    next phase, using the SAME one-dispatch / wait-for-report / verify discipline
    as a sub (STEP 1.2 dispatch, STEP 1.3 verification). That command reads the
-   delivered `TC-[MODULE]-<seq>` plan from `packages/backend-test/` BEFORE
-   calling TestSprite, runs TestSprite scoped to this module, and emits the
-   governed-plan ↔ TestSprite coverage table (`TC-[MODULE]-<seq>` → `TCnnn` or
-   "✗ no matching test"). Read that report and that table.
+   delivered `TC-[MODULE]-<seq>` plan from `packages/backend-test/`, then —
+   BEFORE any verification runs — regenerates this module's api-docs via
+   `governance/governance-tools/api-doc-generator` (never verify against a
+   possibly-stale copy), then invokes the `api-verify` skill
+   (`.claude/skills/api-verify/SKILL.md`, this repo's sole adopted backend API
+   verification mechanism — TestSprite is retired, never dispatch it) scoped to
+   this module, and emits the governed-plan ↔ api-verify coverage table
+   (`TC-[MODULE]-<seq>` → the matching `test_<entity>()` traceability comment,
+   or "✗ no matching test"). Read that report and that table.
 
 4. **Coverage decision — adopt a second agent to debate it.** Do not accept the
    run's verdict as final on its own. Dispatch a SECOND agent (read-only,
@@ -462,9 +467,10 @@ Treat the test phase exactly like `CORE … ALIGN-BE`:
      plan, and the delivered test plan under `packages/backend-test/` (including
      any `INT-XM` phase and the `XM-*`/`UXD-*` those integration `TC-*` trace).
    - For every claimed GAP it asks: is this genuinely uncovered, or already
-     exercised by another `TCnnn` under a different `TC-*`? For every claimed
-     PASS it asks: does the `AC-*`/`XM-*`/`UXD-*` behind that `TC-*` actually
-     get verified, or only touched superficially?
+     exercised by another `test_<entity>()` traceability comment under a
+     different `TC-*`? For every claimed PASS it asks: does the
+     `AC-*`/`XM-*`/`UXD-*` behind that `TC-*` actually get verified, or only
+     touched superficially?
    - The two agents exchange until they converge on ONE agreed set of real
      failures / real coverage gaps / blocked items. Only that agreed set is
      written to the report as the verdict — a disputed "gap" that the debate

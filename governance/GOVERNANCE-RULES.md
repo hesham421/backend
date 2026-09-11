@@ -19,6 +19,7 @@ reference this document, not restate it.
 | Governance automation tools | `governance/governance-tools/` | ✅ |
 | Backend TestSprite governance (mechanism, prompts, module archive) | `governance/testsprite/` | ✅ rules restored 2026-09-11 (`TESTSPRITE-GOVERNANCE.md` + `prompts/`, recovered from `b9bb8a2^` after the same silent-deletion failure as this file). Dated `runs/` bundles were NOT restored — they are ephemeral output, not rules. |
 | Module execution plans | `governance/modules/` | ✅ — CU, FILE, FIN, MDL, NOTIF, SEC present |
+| `api-verify` run requirements (stack conventions, input/output paths — module-agnostic) | `governance/api-verify-config.md` | ✅ |
 | Backend architecture context | `governance/.github/context/backend.md` | ❌ not present |
 | Frontend skills | `frontend/governance/.github/skills/frontend/` — **the frontend repo, not this one** | n/a here |
 | DevOps / deploy skill | the `deploy` repo | n/a here |
@@ -69,6 +70,7 @@ their own repos at `.github/skills/<category>/<skill-name>/SKILL.md`.
 | Add / review caching | `gov-enforce-caching-rules` |
 | Add / review error handling | `gov-enforce-error-handling` |
 | Validate a complete feature | `gov-validate-backend-feature` |
+| Verify a module's live API against its api-docs (post-implementation, on demand, never a gate) | `api-verify` — run requirements (stack conventions, input/output paths) live in `governance/api-verify-config.md`, not in the skill itself |
 
 ### Frontend (code lives in `frontend` repo)
 

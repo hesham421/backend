@@ -19,14 +19,21 @@ collides with every other module's setup, and silently overwrites whatever
 module was generated last).
 
 `execute-backend-test.md` is this module's test-verification command — it
-drives TestSprite (this repo's sole adopted backend testing mechanism,
-wired in `.mcp.json` as the `TestSprite` MCP server), producing one
+regenerates this module's api-docs via `governance/governance-tools/api-doc-generator`
+(so verification always runs against the real, current implementation, never a
+stale snapshot) and then drives the `api-verify` skill
+(`.claude/skills/api-verify/SKILL.md`, this repo's sole adopted backend API
+verification mechanism) to turn those api-docs — plus the test-execution-manifest
+when present — into one runnable script and a problems report, producing one
 coverage report — not regenerated per module.
-The generated command is **fully self-contained**: it depends only on the
-wired `TestSprite` MCP server and this module's own artifacts under
+The generated command is **fully self-contained**: it depends only on
+`governance/governance-tools/api-doc-generator`, the `api-verify` skill,
+`governance/api-verify-config.md`, and this module's own artifacts under
 `governance/modules/[MODULE]/` — never on an external governance/mechanism
-doc. Every rule it needs (bootstrap conditions, module scoping, archiving,
-failure taxonomy) is written into the generated command itself, below.
+doc, and never on TestSprite (retired as this project's backend test
+mechanism — do not reintroduce a `TestSprite` MCP dependency here). Every rule
+it needs (api-doc regeneration, module scoping, failure taxonomy) is written
+into the generated command itself, below.
 
 ---
 
@@ -318,32 +325,36 @@ api_doc_gaps entries added.
 
 ## Step 3B — Generate `.claude/commands/[MODULE]/execute-backend-test.md`
 
-TestSprite treats the whole backend as ONE flat surface — there is no
-per-module bootstrap/PRD/plan. The generated command below scopes down to
-this module only at the `testIds` step (Branch B) and at archive time; it
-never regenerates or re-executes another module's coverage.
+`api-verify` is module-agnostic and reads only this module's own api-docs (+
+test-execution-manifest when present) — there is no whole-backend bootstrap/PRD/plan
+step to share across modules, unlike the retired TestSprite mechanism. The
+generated command below always regenerates this module's api-docs first (so the
+verification script is never built against a stale contract), then runs
+`api-verify` scoped to this module only; it never touches another module's
+api-docs or output.
 
 ```markdown
 # /[MODULE]/execute-backend-test
 
-Execute TestSprite-based test scenarios for [MODULE] — only for what's
-actually complete.
+Execute API verification for [MODULE] — only for what's actually complete.
 
-> **Self-contained.** This command needs only the `TestSprite` MCP server
-> (wired in `.mcp.json`) and this module's own artifacts under
-> `governance/modules/[MODULE]/`. Every rule it relies on is written below —
-> it reads no external mechanism/governance doc, and never stops waiting on one.
+> **Self-contained.** This command needs `governance/governance-tools/api-doc-generator`,
+> the `api-verify` skill (`.claude/skills/api-verify/SKILL.md`), `governance/api-verify-config.md`,
+> and this module's own artifacts under `governance/modules/[MODULE]/`. Every rule it relies
+> on is written below or in those two files — it reads no other external mechanism/governance
+> doc, never stops waiting on one, and never calls TestSprite (retired as this project's
+> backend test mechanism).
 
 ## Usage
 /[MODULE]/execute-backend-test
 
 ---
 
-## STEP 0 — Plan Load, Gate Check + Assessment
+## STEP 0 — Plan Load, Gate Check, API-Doc Regeneration + Assessment
 
 ### 0.1 — Load the delivered test-gen plan (the REQUIRED COVERAGE)
-Before any TestSprite call, read every `TC-[MODULE]-<seq>` block out of this
-module's flat test-gen plan file — `governance/modules/[MODULE]/test_gen/backend-test-plan-<mod-lowercase>.md`
+Read every `TC-[MODULE]-<seq>` block out of this module's flat test-gen plan
+file — `governance/modules/[MODULE]/test_gen/backend-test-plan-<mod-lowercase>.md`
 (current location), falling back to `governance/modules/[MODULE]/backend-test/backend-test-plan-<mod-lowercase>.md`
 if the former doesn't exist. This command does not read `packages/backend-test/`
 — that split-folder shape depended on governance-tools splitter tooling this
@@ -354,7 +365,7 @@ block), extract per TC: its `TC-[MODULE]-<seq>` id, the `AC-*` / `XM-*` /
 `UXD-*` it traces (from its `traces=` marker attribute / `Derived from` line),
 and its one-line scenario. This list is the **REQUIRED COVERAGE** for this
 run — it is what the system's own analysis says must be tested, independent
-of whatever TestSprite later discovers from the code surface. If neither
+of whatever `api-verify` later discovers from the api-docs. If neither
 location yields a `backend-test-plan-*.md` file, or the file holds no `TC-*`
 block, STOP and report it — there is nothing governed to verify.
 
@@ -371,88 +382,89 @@ If not all complete:
 Waiting on : [PHASE: status], ...
 ══════════════════════════════════════════════════════
 ```
-STOP. Do not call any TestSprite tool.
+STOP. Do not regenerate api-docs and do not invoke `api-verify`.
 
-### 0.3 — Confirm the app is reachable
+### 0.3 — Regenerate api-docs (MANDATORY, every run, BEFORE api-verify)
+`api-verify` treats stale api-docs as a hard blocker — it must never read a
+possibly-outdated copy. Regenerate this module's api-docs from the real,
+current implementation first:
+```bash
+cd governance/governance-tools/api-doc-generator
+python3 generate.py --module [MODULE] --function generate
+```
+(consult that tool's own `README.md` for `--function generate` vs `update` vs
+`review` semantics before assuming — use whichever actually (re)writes
+`governance/modules/[MODULE]/api-docs/` in full for this run). Confirm
+`governance/modules/[MODULE]/api-docs/index.md` was written/updated before
+proceeding to STEP 0.4 — do not invoke `api-verify` against missing or
+unrefreshed api-docs.
+
+### 0.4 — Confirm the app is reachable
 `http://localhost:7272/actuator/health` (start it with `mvn spring-boot:run`
 if it isn't running). Unreachable →
-classify `ENVIRONMENT_FAILURE`, stop, report — do not proceed.
+classify `ENVIRONMENT_FAILURE`, stop, report — do not proceed. (If this
+module's api-doc-generator run in 0.3 itself needs the live app — e.g. to read
+a running OpenAPI endpoint rather than a static build artifact — confirm
+reachability before 0.3 instead; check the tool's own discovery method rather
+than assuming.)
 
-### 0.4 — Same assessment/confirmation pattern as execute-backend.md
+### 0.5 — Same assessment/confirmation pattern as execute-backend.md
 
 ---
 
 ## STEP 1 — Execution (after confirmation)
 
-Pick the branch by whether this module already has archived tests:
+Invoke the `api-verify` skill (`.claude/skills/api-verify/SKILL.md`) for
+`<MOD>` = `[MODULE]`. Per the skill's own procedure it reads:
+- `governance/modules/[MODULE]/api-docs/` — regenerated in STEP 0.3, mandatory;
+- `governance/modules/[MODULE]/test_gen/test-execution-manifest-<mod-lowercase>.md`
+  when present (Full tier: happy-path CRUD + negative RULE checks, dependency
+  order read verbatim from the manifest) — otherwise Minimal tier (happy-path
+  CRUD only, FK order inferred, negatives stated as skipped and why);
+- `governance/api-verify-config.md` for every stack convention (base path,
+  envelope shapes, error-code format, permission pattern) — never re-derived
+  here.
 
-### Branch A — RERUN
-This module already has `.py` files under
-`governance/modules/[MODULE]/testsprite/tests/` and the API surface hasn't
-changed since. No TestSprite MCP tool call at all: run each archived file
-directly (`python3 <path>`, never pytest — each file already calls its own
-`test_*()` at the bottom) and record pass/fail per file.
+It produces, under `governance/modules/[MODULE]/test-api/`:
+- `test_[mod-lowercase]_apis.py` — one runnable script, one `test_<entity>()`
+  per entity in dependency order, each create/update/negative call tagged with
+  a traceability comment (`Covers: API-… ; Negative: RULE-… / <code> / TC-…`),
+  self-tearing-down;
+- `[mod-lowercase]_problems_report.md` — failures bucketed likely-real-bug /
+  test-assumption-mismatch / infrastructure.
 
-### Branch B — NEW
-No archived tests exist yet for this module, or the API surface changed
-since the last archive. Run the TestSprite pipeline via the wired `TestSprite`
-MCP server, calling its tools as the live server actually exposes them (verify
-current tool names/params against the connected server before calling — do not
-assume the names below never drift across a TestSprite MCP version bump):
-
-1. **Housekeeping** — if any leftover, unarchived run is sitting in the repo-root
-   `testsprite_tests/` working directory, archive it (Branch-B close-out below)
-   before starting a new one; never let two runs' output mix.
-2. `testsprite_bootstrap` — ONLY if `testsprite_tests/tmp/config.json`
-   does not already exist (`type: backend`, `testScope: codebase`,
-   `localPort: 7272`, `projectPath: <repo root>`).
-3. `testsprite_generate_code_summary`
-4. `testsprite_generate_standardized_prd`
-5. `testsprite_generate_backend_test_plan` — (re)writes
-   `testsprite_tests/testsprite_backend_test_plan.json`, spanning the
-   WHOLE backend, not just this module.
-6. **Module scoping (self-contained).** From that plan, select only the `TCnnn`
-   entries whose endpoint path matches THIS module's own API path prefix(es).
-   Discover the prefix(es) directly from this module's own artifacts — the exact
-   `/api/v...` paths written in its `packages/backend-execution/SVC-API/` files
-   (and its `api-docs/` if present) — never from an external table. Collect the
-   matching ids; this is the module scoping step.
-7. `testsprite_generate_code_and_execute` with `testIds` = exactly that
-   filtered id list (never the full-plan default, which would drag every
-   other module's scenarios into this module's run) — `projectName` /
-   `projectPath` as usual, `serverMode` matching how the app was actually
-   started (`production` only if it was built+started that way).
-8. **Close out (self-contained archive).** `git mv` this module's `TCnnn_*.py`
-   files into `governance/modules/[MODULE]/testsprite/tests/`, and the run's
-   PRD/plan/report trio into `governance/modules/[MODULE]/testsprite/runs/<today>/`
-   (create the folders if absent — everything for a module lives under its own
-   `governance/modules/[MODULE]/testsprite/`). Leave the repo-root
-   `testsprite_tests/` working directory clean afterward.
+Run the generated script (`python3 governance/modules/[MODULE]/test-api/test_[mod-lowercase]_apis.py`)
+against the app confirmed reachable in STEP 0.4, and record its pass/fail per
+`test_<entity>()` suite. This command never hand-writes verification code
+itself and never calls a TestSprite tool.
 
 ---
 
-## STEP 1.9 — Coverage cross-check (governed plan ↔ TestSprite) — MANDATORY
+## STEP 1.9 — Coverage cross-check (governed plan ↔ api-verify) — MANDATORY
 
 This is the connective tissue between the delivered test-gen plan (STEP 0.1)
-and TestSprite's own output. Without it the two id spaces (`TC-[MODULE]-<seq>`
-vs TestSprite's `TCnnn`) stay permanently disconnected and TestSprite's
-code-surface discovery silently becomes the only coverage that counts.
-
-Map every REQUIRED-COVERAGE `TC-[MODULE]-<seq>` from STEP 0.1 to the TestSprite
-`TCnnn` file(s) that actually exercise it — matched by endpoint + scenario, not
-by number (the two numbering schemes are unrelated). Produce this table for the
-report:
+and `api-verify`'s own output. `api-verify`'s Full-tier negatives are already
+tagged with the SAME `TC-[MODULE]-<seq>` id space the test-gen plan uses (no
+separate numbering scheme to bridge, unlike the retired TestSprite `TCnnn`
+ids) — map every REQUIRED-COVERAGE `TC-[MODULE]-<seq>` from STEP 0.1 to the
+`test_<entity>()` function(s) in `test_[mod-lowercase]_apis.py` whose
+traceability comment names it, and to that function's actual pass/fail result
+from STEP 1. A happy-path `TC-*` with no corresponding `Covers:` entry, or a
+negative `TC-*` with no corresponding `Negative:` entry, is a gap — the same is
+true when a tier is Minimal and the manifest that would have produced a
+negative test simply doesn't exist yet (state that explicitly, don't silently
+treat it as covered). Produce this table for the report:
 
 ```
-GOVERNED PLAN ↔ TESTSPRITE COVERAGE — [MODULE]
-TC-[MODULE]-<seq>  │ traces (AC/XM/UXD) │ scenario        │ TestSprite TCnnn │ result
-───────────────────┼────────────────────┼─────────────────┼──────────────────┼────────
-TC-[MODULE]-001    │ AC-…               │ …               │ TC003            │ PASS
-TC-[MODULE]-0NN    │ XM-… / UXD-…       │ …               │ ✗ none           │ GAP
+GOVERNED PLAN ↔ API-VERIFY COVERAGE — [MODULE]  (tier: Full | Minimal)
+TC-[MODULE]-<seq>  │ traces (AC/XM/UXD) │ scenario        │ test_<entity>() ref     │ result
+───────────────────┼────────────────────┼─────────────────┼─────────────────────────┼────────
+TC-[MODULE]-001    │ AC-…               │ …               │ test_widget (Covers)   │ PASS
+TC-[MODULE]-0NN    │ XM-… / UXD-…       │ …               │ ✗ none                 │ GAP
 ```
 
-- A delivered `TC-*` with NO matching TestSprite test is a **coverage gap** —
-  list it prominently; it is never dropped silently.
+- A delivered `TC-*` with no matching `test_<entity>()` reference is a
+  **coverage gap** — list it prominently; it is never dropped silently.
 - Integration `TC-*` (those tracing `XM-*` or `UXD-*`, from an `INT-XM` phase
   or the like) are checked here exactly like any other — a cross-module
   dependency with no exercising test is a gap, same as an uncovered `AC-*`.
@@ -484,12 +496,13 @@ Every failed/skipped test gets exactly one code. Never invent a new one —
 if nothing fits, use `ENVIRONMENT_FAILURE` and explain why in the detail.
 
 Write `reports/TEST-REPORT-[MODULE]-backend-[YYYY-MM-DD].md` — a
-module-scoped digest, distinct from TestSprite's own raw report (which is
-archived under `governance/modules/[MODULE]/testsprite/runs/<today>/`,
-untouched). It MUST include the STEP 1.9 coverage table (governed plan ↔
-TestSprite) and the coverage ratio, ABOVE the failure taxonomy — a green
-taxonomy over an incomplete plan is not a pass. This report is complete once
-the test/coverage section above is written.
+module-scoped digest, distinct from `api-verify`'s own raw output
+(`[mod-lowercase]_problems_report.md`, left under
+`governance/modules/[MODULE]/test-api/`, untouched). It MUST include the
+STEP 1.9 coverage table (governed plan ↔ api-verify) and the coverage ratio,
+ABOVE the failure taxonomy — a green taxonomy over an incomplete plan is not
+a pass. This report is complete once the test/coverage section above is
+written.
 
 Any `FAIL` or coverage GAP → report it here with its taxonomy code and STOP;
 this command never fixes source itself. Fixing is a separate, deliberate step
@@ -498,29 +511,27 @@ the user runs afterward — do not auto-invoke any fixing agent from here.
 ### 2.1 — Update `execution-state.json` `test_phases[]` (MANDATORY)
 For each entry in `test_phases[]`, set its status from the STEP 1.9 result:
 - `COMPLETE` only when EVERY `TC-*` under that phase (STEP 0.1) has a passing
-  TestSprite counterpart (STEP 1.9).
+  `api-verify` counterpart (STEP 1.9).
 - `PARTIAL` when some pass but at least one `TC-*` is a gap or a fail — attach
   the gap/fail `TC-*` list to the entry.
 - `PENDING` if the phase never ran.
 Scope the edit to `test_phases[]` (and, if a real doc gap surfaced, one
 `api_doc_gaps[]` append in the canonical shape) — touch nothing else. The
-TestSprite run MUST leave `test_phases[]` reflecting exactly what it verified.
+`api-verify` run MUST leave `test_phases[]` reflecting exactly what it verified.
 
 ---
 
 ## Constraints (NON-NEGOTIABLE)
 
-- NEVER run before the gate check passes
-- NEVER call a TestSprite MCP tool in Branch A (RERUN) — direct `python3`
-  execution of the already-archived files only
-- NEVER call the bootstrap tool when `testsprite_tests/tmp/config.json`
-  already exists
-- NEVER skip STEP 1's housekeeping/archiving steps
+- NEVER run before the gate check (0.2) passes
+- NEVER invoke `api-verify` (STEP 1) before this run's own api-doc-generator
+  regeneration (STEP 0.3) has completed and been confirmed written — a stale
+  api-docs copy produces a script that tests the wrong contract
+- NEVER call a TestSprite tool of any kind — TestSprite is retired as this
+  project's backend test mechanism; `api-verify` is the sole adopted one
 - NEVER modify application source code — report, don't fix
-- NEVER hand-edit an archived `.py` test file, EXCEPT the one sanctioned case:
-  when backend code an archived test already covers changed (endpoint path,
-  request/response fields, status/error codes, auth), update that test's
-  payload/assertions to match rather than leave it silently broken
+- NEVER hand-edit a generated `test-api` script — rerun STEP 0.3 → STEP 1 to
+  regenerate it instead
 - ALWAYS classify every failure/skip
 - ALWAYS load the governed `TC-*` plan (STEP 0.1) and emit the STEP 1.9
   coverage table before considering any test phase complete
