@@ -50,7 +50,11 @@ backend repo root unless said otherwise.
   skill-compliance read + STEP 1.3 verification still happen, and the run STILL
   HALTS on any of — a sub error, a validation failure, a skill-compliance report
   that's silent or non-compliant, or a spec gap that STEP 2 cannot resolve from
-  the module's own governance artifacts. `--auto` removes the human pause
+  the module's own governance artifacts. Every one of those stops is now reached
+  through STEP 1.4 first: on an impasse the orchestrator runs the second-agent
+  debate, and halts only after that debate fails to resolve it — the debate is an
+  added attempt BEFORE the stop, never a replacement for it. `--auto` removes the
+  human pause
   between clean phases; it removes no check and no stop. Without `--auto`, the
   per-phase gate applies (recommended for a module's first run or after any spec
   or skill change).
@@ -291,6 +295,62 @@ Do this yourself, read-only, in this session:
   `SendMessage`) to fix it in place — keep every code change attributable to a
   dispatched session, never patch it yourself.
 
+### 1.4 — Impasse: second-agent debate before any escalation
+
+**Trigger** — any one of:
+- a dispatched agent reports it is blocked, or cannot complete its sub cleanly;
+- STEP 1.3 verification reveals a failure the same-agent follow-up could not fix;
+- STEP 2's mechanical gap resolution reaches step 5 (ABSENT — unresolved from
+  `db-script.md`, the SRS, cross-module artifacts, or existing source).
+
+**An impasse is never escalated to the user on one agent's word.** Before any
+escalation, put a SECOND agent on it and let the two converge. This is the same
+philosophy as STEP 4's coverage debate and STEP 5's fixing agent: a second,
+independently-reasoning agent grounded in the analysis files, not a human
+interrupt, is the first response to a stall.
+
+1. **Dispatch a SECOND agent** (`Agent` tool, read-heavy — it analyses, it does
+   not write code) briefed with ALL of this module's analysis files:
+   - the PRD, and the SRS (`RULE-ID`s / `AC-*`) under `P1`;
+   - `db-script.md` under `P2`;
+   - the execution plan, this sub's own spec file, the phase's
+     `[PHASE]-HEADER.md`, and `packages/backend-execution/_SECTIONS.md`;
+   - the exact skill files this sub triggers, from `.claude/skills/` (the list
+     built in 1.1);
+   - PLUS the first agent's FULL account of what it attempted, what it observed,
+     and precisely where it stalled.
+
+   Its job: independently reason the impasse against those artifacts and propose
+   one concrete, grounded resolution — traceable to a real artifact line, not an
+   opinion. It reads only `.claude/skills/` and this module's own artifacts under
+   `{MBASE}`; it needs nothing else.
+
+2. **Let the two converge.** The orchestrator relays between them — a follow-up
+   to the first agent by `agentId` via `SendMessage` carrying the reviewer's
+   proposal, or a dispatch of the reviewer with the first agent's report as its
+   input — until they agree on ONE concrete solution traceable to a real
+   artifact. **Bounded, never open-ended**: if an exchange produces no new
+   artifact-grounded evidence, the debate has not converged — stop it and move
+   to step 5 rather than looping.
+
+3. **Same invention ban as everywhere else.** The debate's job is to FIND the
+   grounded answer, never to fabricate one. No agreed "solution" may invent a
+   contract, column, route, endpoint, error code, or business rule. If the
+   artifacts genuinely do not contain it, that is an ABSENT case — step 5 — not
+   something the two agents may settle between themselves.
+
+4. **Apply the agreed solution ONLY via a dispatched agent session** — the
+   orchestrator still never edits code itself — then verify it per STEP 1.3
+   before continuing to the next sub.
+
+5. **Escalate to the USER only if** the debate could not converge AND the missing
+   piece is genuinely human-only: a business decision stated in no artifact, an
+   external credential/value, a real-world fact absent from every source. State
+   exactly what is needed and why it is unreachable from the artifacts, in Arabic
+   per the communication rule, and wait. In `--auto`, THIS is the HALT point —
+   the debate runs first; the halt applies only when the debate also cannot
+   ground the answer.
+
 ---
 
 ## STEP 2 — Spec-gap resolution (same repo only — never reaches into frontend)
@@ -317,9 +377,14 @@ gap in this order:
    entity/mapper/service may already implement the analogous field correctly;
    mirror it (record it as resolved via source).
 5. **Genuinely absent / contradictory** — if none of the above resolves it, it's
-   ABSENT: do NOT guess and do NOT invent a contract. Escalate to the USER with
-   the exact gap and what you checked, and leave the `api_doc_gaps` entry open
-   with `resolution` describing the state. In `--auto`, this is a HALT.
+   ABSENT: do NOT guess and do NOT invent a contract. **First run the STEP 1.4
+   second-agent debate on it** — a second agent, briefed with ALL of this
+   module's analysis files plus what steps 1–4 already checked, reasons the gap
+   independently; if the debate grounds an answer in a real artifact, apply it
+   via a dispatched agent session and record that as the resolution. Only if the
+   debate ALSO fails to ground it, escalate to the USER with the exact gap and
+   what you checked, and leave the `api_doc_gaps` entry open with `resolution`
+   describing the state. In `--auto`, that post-debate escalation is a HALT.
 
 Whatever the outcome, update the gap's `resolution` in `execution-state.json`
 from the placeholder to a factual note of what was found — keep the entry as a
@@ -455,10 +520,16 @@ Treat the test phase exactly like `CORE … ALIGN-BE`:
   user's explicit instruction — the ONLY exception is `--auto`, which
   auto-advances between CLEAN phases (still printing each assessment) and still
   HALTS on any sub error, validation failure, silent/non-compliant skill report,
-  or unresolved gap, and never skips the per-sub skill read or STEP 1.3
-  verification.
+  or unresolved gap — in each case after the STEP 1.4 second-agent debate fails
+  to resolve it, never before running that debate — and never skips the per-sub
+  skill read or STEP 1.3 verification.
 - NEVER dispatch more than one sub's agent at a time, even for LIGHT subs, even
   when they look independent.
+- NEVER escalate an execution-time impasse to the user before running the STEP
+  1.4 second-agent debate on it; and never let that debate run unbounded — it
+  converges on an artifact-grounded solution, or it ends and the impasse
+  escalates. The debate weakens no stop condition: it is an extra attempt before
+  the halt, and the halt still stands when it fails.
 - NEVER invent a route path, entity/field/column name, endpoint, error code, or
   permission code — trace every value to a real spec block, `db-script.md`, or
   SRS entry; raise a gap or an OQ instead of guessing.
