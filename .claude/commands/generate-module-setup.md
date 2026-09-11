@@ -1,15 +1,8 @@
 # Generate Backend Module Setup
 
 ```
-Lives at   : backend/.claude/commands/generate-module-setup.md (moved out of
-             backend/governance/.claude/commands/ on 2026-09-05 so this
-             auto-loads as a Claude Code slash command — see CLAUDE.md's
-             STRUCTURAL LAW ownership table)
-Invokes    : backend/governance/governance-tools/agent1_create_structure.py,
-             agent2_archive.py, agent3_splitter.py — these tools know
-             ONLY the backend. There is no track concept here; this
-             file and the tools it calls have no representation of
-             "frontend" anywhere.
+Lives at   : backend/.claude/commands/generate-module-setup.md, so it
+             auto-loads as a Claude Code slash command
 ```
 
 ## Your Task
@@ -25,13 +18,15 @@ back to the flat `.claude/commands/execute-backend.md` (no module name,
 collides with every other module's setup, and silently overwrites whatever
 module was generated last).
 
-`execute-backend-test.md` is this module's combined verify command — it
+`execute-backend-test.md` is this module's test-verification command — it
 drives TestSprite (this repo's sole adopted backend testing mechanism,
-wired in `.mcp.json` as the `TestSprite` MCP server; see
-`governance/testsprite/TESTSPRITE-GOVERNANCE.md` for the shared mechanism,
-file-ownership rules, and failure taxonomy every generated test command
-follows) AND `debate-review --local` code review, one run, one report —
-not regenerated per module.
+wired in `.mcp.json` as the `TestSprite` MCP server), producing one
+coverage report — not regenerated per module.
+The generated command is **fully self-contained**: it depends only on the
+wired `TestSprite` MCP server and this module's own artifacts under
+`governance/modules/[MODULE]/` — never on an external governance/mechanism
+doc. Every rule it needs (bootstrap conditions, module scoping, archiving,
+failure taxonomy) is written into the generated command itself, below.
 
 ---
 
@@ -43,13 +38,12 @@ $ARGUMENTS = MODULE
 
 If missing, ask for it — do not guess.
 
-**Module validation:** confirm `MODULE` exists in
-`governance-tools/config.py`'s module registry (backed by
-`modules-registry.json`). If it doesn't, stop with a plain "unknown
-module" message and ask whether to register it first via
-`agent1_create_structure.py --auto-register`. This is the only
-validation this command performs — there is no other precondition,
-because backend work has no upstream gate to wait on.
+**Module validation:** confirm a `governance/modules/[MODULE]/` folder
+(or its version-suffixed variant, resolved in Step 0.5) exists on disk.
+If it doesn't, stop with a plain "unknown module" message — do not guess
+or fabricate a structure. This is the only validation this command
+performs — there is no other precondition, because backend work has no
+upstream gate to wait on.
 
 ---
 
@@ -58,20 +52,23 @@ because backend work has no upstream gate to wait on.
 A module that received an incremental feature via IFA has a current version
 ≥ 2, and ALL its artifacts (packages, execution-state, api-docs, generated
 commands) live under a version-suffixed base — never over v1. Resolve the base
-BEFORE scanning, exactly the way the tools do (`config.get_module_version_path`):
+BEFORE scanning, directly from the filesystem:
 
 ```bash
-python3 -c "import sys; sys.path.insert(0,'governance/governance-tools'); \
-import config; print(config.get_module_version_path('$MODULE'))"
+ls -d governance/modules/$MODULE/v*/ 2>/dev/null | sort -t v -k2 -n | tail -1
 ```
 
-Rule (mirror it if you resolve by hand):
-- `current_version == 1` → base = `governance/modules/$MODULE/`        (no suffix)
-- `current_version == N` (N ≥ 2) → base = `governance/modules/$MODULE/v$N/`
+Rule:
+- No `vN` folder found → base = `governance/modules/$MODULE/`        (no suffix, v1)
+- Highest `vN` folder found → base = `governance/modules/$MODULE/v$N/`
 
 Call this resolved path `$MBASE`. Every `governance/modules/$MODULE/…` path in
 the steps below means `$MBASE/…`. In particular, for a vN module:
-- scan `$MBASE/packages/backend-execution` and `$MBASE/packages/backend-test`
+- scan `$MBASE/packages/backend-execution` and `$MBASE/backend-test`
+  (fallback `$MBASE/test_gen` — see Step 1's Test phase(s) section; NOT
+  `$MBASE/packages/backend-test`, which this command no longer reads —
+  that split output depended on governance-tools splitter tooling this
+  project no longer relies on)
 - write `execution-state.json` to `$MBASE/execution-state.json`
 - `api_docs_path` = `$MBASE/api-docs/`
 - write the generated commands to `.claude/commands/[MODULE]/v$N/` (so the v1
@@ -88,7 +85,8 @@ v1 command for a v2 delta.
 
 ```bash
 find $MBASE/packages/backend-execution -type f -name "*.md" | sort
-find $MBASE/packages/backend-test -type f -name "*.md" | sort
+ls $MBASE/backend-test/backend-test-plan-*.md 2>/dev/null
+ls $MBASE/test_gen/backend-test-plan-*.md 2>/dev/null
 ```
 
 From the scan results:
@@ -106,18 +104,45 @@ Expected phases, in strict order (only include ones actually present):
 CORE → DATA-DOM → SVC-API → DOC → INT-C → INT-R → SEC-BE → ALIGN-BE
 ```
 
-### Test phase (single phase — no MARK-level split)
+### Test phase(s) — scan generically, from the flat test-gen delivery — never assume a fixed shape
 
-`packages/backend-test/` is JUnit-only by construction. Treat it as
-ONE TEST-PHASE named `backend-test`:
-- SUBs = every `.md` file inside, excluding `index.md`, `.gitkeep`, and any
-  `*-HEADER.md` (the real subs are `RULE-SCENARIOS` / `API-SCENARIOS`, or a
-  single whole-phase file when the plan was below the TC>12 threshold)
-- `TEST-PLAN-BE-HEADER.md` (present only if the plan had a phase preamble)
-  is shared context — read once, not a sub. The splitter does NOT emit any
-  `MANDATORY-*.md` file: mandatory scenarios are TC blocks living inside the
-  SUB files themselves.
-- Gated by every backend phase that exists for this module
+The test-gen stage delivers ONE flat, per-module plan file directly under
+`$MBASE/` — `backend-test/backend-test-plan-<mod-lowercase>.md` (current
+folder name) or, for a module not yet on that name, `test_gen/backend-test-plan-<mod-lowercase>.md`
+(fallback — check both on the filesystem, never assume one without checking).
+This command does **not** read `packages/backend-test/` — that split-folder
+shape was produced by the governance-tools splitter (`agent3_splitter.py`),
+which this project no longer relies on; the flat file is the sole source of
+truth for test coverage now.
+
+There is no per-phase subfolder and no per-sub file — detect phases and subs
+from markers INSIDE that one file:
+
+- PHASES = every `<!-- PHASE:<id>:START -->` … `<!-- PHASE:<id>:END -->`
+  block found in the file (in practice, one: `TEST-PLAN-BE`) — its id is the
+  `<id>` in the marker, never invented or renamed.
+- For each PHASE block, SUBs = every `<!-- SUB:<id>:START -->` …
+  `<!-- SUB:<id>:END -->` block nested inside it (e.g. `RULE-SCENARIOS`,
+  `API-SCENARIOS`) — its id is the `<id>` in the marker.
+- Each TC belongs to whichever SUB block contains its own
+  `<!-- TC:TC-[MODULE]-<seq>:START -->` marker; this is also how STEP 0.1 of
+  the generated `execute-backend-test.md` will later load the REQUIRED
+  COVERAGE list.
+- A separate cross-module/integration phase (historically named `INT-XM`) is
+  detected the same way — as its own `<!-- PHASE:*:START -->` block — if the
+  file contains one. If the file instead states outright that no such phase
+  applies (e.g. "No `INT-XM` phase — SEC is ROOT"), there is none to add —
+  do not fabricate an empty placeholder entry for it.
+- Preserve marker order as found in the file for both phases and subs.
+- Each test phase is gated by every backend EXECUTION phase that exists for
+  this module (CORE … ALIGN-BE), unless the file's own header narrows it.
+- `header_file` in `execution-state.json` (Step 2) is the path to this one
+  flat file itself — there is no separate `*-HEADER.md` for a flat-file-sourced
+  test phase.
+- If neither `$MBASE/backend-test/` nor `$MBASE/test_gen/` yields a
+  `backend-test-plan-*.md` file, `test_phases` is an empty array — there is
+  nothing to record yet, and that is the correct, honest result (not a bug
+  to work around).
 
 ### Weight classification
 
@@ -152,16 +177,17 @@ Location: `$MBASE/execution-state.json`  (resolved in Step 0.5 — v1 = no suffi
       ]
     }
   ],
-  "test_phase": {
-    "id": "backend-test",
-    "status": "PENDING",
-    "gated_by_phases": ["CORE", "DATA-DOM", "SVC-API", "DOC", "INT-C", "INT-R", "SEC-BE", "ALIGN-BE"],
-    "header_file": "packages/backend-test/TEST-PLAN-BE-HEADER.md",
-    "subs": [
-      { "id": "RULE-SCENARIOS", "status": "PENDING" },
-      { "id": "API-SCENARIOS", "status": "PENDING" }
-    ]
-  },
+  "test_phases": [
+    {
+      "id": "[TEST_PHASE_NAME]",
+      "status": "PENDING",
+      "gated_by_phases": ["CORE", "DATA-DOM", "SVC-API", "DOC", "INT-C", "INT-R", "SEC-BE", "ALIGN-BE"],
+      "header_file": "[MBASE]/backend-test/backend-test-plan-<mod-lowercase>.md (or the test_gen/ fallback path actually used) — the flat file itself, since there is no separate *-HEADER.md",
+      "subs": [
+        { "id": "[SUB_NAME]", "status": "PENDING" }
+      ]
+    }
+  ],
   "blocked": [],
   "deferred_xm": [],
   "api_doc_gaps": []
@@ -169,9 +195,16 @@ Location: `$MBASE/execution-state.json`  (resolved in Step 0.5 — v1 = no suffi
 ```
 
 Rules:
-- List only phases actually found in Step 1
-- `gated_by_phases` lists only phases that exist for this module
-- `blocked`, `deferred_xm`, `api_doc_gaps` start empty
+- `test_phases` is an ARRAY — one object per real test-phase folder found in
+  Step 1's generic scan (mirrors the main `phases[]` array's shape). A module
+  with only a base test phase gets a one-element array; a module whose plan
+  spans cross-module dependencies gets the base phase plus its integration
+  phase(s) (e.g. `INT-XM`) as additional array elements.
+- List only phases/subs actually found in Step 1 — never a fixed name.
+- Each element's `gated_by_phases` lists only backend EXECUTION phases that
+  exist for this module; `header_file` is that phase's `*-HEADER.md` if the scan
+  found one, else `null`.
+- `blocked`, `deferred_xm`, `api_doc_gaps` start empty.
 
 ### `api_doc_gaps[]` entry format (populated during execution)
 ```json
@@ -240,8 +273,10 @@ Proceed? [waits for confirmation]
 1. Read `packages/backend-execution/[PHASE]/[SUB].md` completely
    (the SUB file is named by its phase-qualified label, e.g. `SVC-API-CRUD.md`)
 2. Identify all tasks
-3. Map each task to the skill routing table in `GOVERNANCE-RULES.md`
-4. Read required skills from `.claude/skills/` (`build-*` to generate, `gov-*` to validate)
+3. Match each task to the applicable skill(s) in `.claude/skills/`
+   (`build-*` to generate, `gov-*` to validate — skills self-declare what
+   they apply to; consult the ones whose scope matches the task)
+4. Read those skills from `.claude/skills/<skill>/SKILL.md` before writing
 5. Execute all tasks in order
 6. Run the phase's validation skill after the last task
 7. Mark sub COMPLETE in `execution-state.json`
@@ -292,21 +327,39 @@ never regenerates or re-executes another module's coverage.
 Execute TestSprite-based test scenarios for [MODULE] — only for what's
 actually complete.
 
-> Read `governance/testsprite/TESTSPRITE-GOVERNANCE.md` in full before
-> doing anything else — it is the single source of truth for how
-> TestSprite is used against this repo, and for where its output lives.
+> **Self-contained.** This command needs only the `TestSprite` MCP server
+> (wired in `.mcp.json`) and this module's own artifacts under
+> `governance/modules/[MODULE]/`. Every rule it relies on is written below —
+> it reads no external mechanism/governance doc, and never stops waiting on one.
 
 ## Usage
 /[MODULE]/execute-backend-test
 
 ---
 
-## STEP 0 — Gate Check + Assessment
+## STEP 0 — Plan Load, Gate Check + Assessment
 
-### 0.1 — Gate Check (MANDATORY)
-Read `execution-state.json` → `test_phase.gated_by_phases[]`. Confirm
-every listed phase has `status == COMPLETE`. Empty list → gate passes
-automatically.
+### 0.1 — Load the delivered test-gen plan (the REQUIRED COVERAGE)
+Before any TestSprite call, read every `TC-[MODULE]-<seq>` block out of this
+module's flat test-gen plan file — `governance/modules/[MODULE]/backend-test/backend-test-plan-<mod-lowercase>.md`
+(current location), falling back to `governance/modules/[MODULE]/test_gen/backend-test-plan-<mod-lowercase>.md`
+if the former doesn't exist. This command does not read `packages/backend-test/`
+— that split-folder shape depended on governance-tools splitter tooling this
+project no longer relies on; the flat file is the sole source of truth. Across
+every `<!-- PHASE:*:START -->` block the file contains (the base test phase
+and any integration phase such as `INT-XM`, each nested `<!-- SUB:*:START -->`
+block), extract per TC: its `TC-[MODULE]-<seq>` id, the `AC-*` / `XM-*` /
+`UXD-*` it traces (from its `traces=` marker attribute / `Derived from` line),
+and its one-line scenario. This list is the **REQUIRED COVERAGE** for this
+run — it is what the system's own analysis says must be tested, independent
+of whatever TestSprite later discovers from the code surface. If neither
+location yields a `backend-test-plan-*.md` file, or the file holds no `TC-*`
+block, STOP and report it — there is nothing governed to verify.
+
+### 0.2 — Gate Check (MANDATORY)
+Read `execution-state.json` → for each entry in `test_phases[]`, its
+`gated_by_phases[]`. Confirm every listed backend execution phase has
+`status == COMPLETE`. Empty list → that phase's gate passes automatically.
 
 If not all complete:
 ```
@@ -318,12 +371,12 @@ Waiting on : [PHASE: status], ...
 ```
 STOP. Do not call any TestSprite tool.
 
-### 0.2 — Confirm the app is reachable
-`http://localhost:7272/actuator/health` (start it via `mvn spring-boot:run`
-per `CLAUDE.md`'s "Running Locally" if it isn't running). Unreachable →
+### 0.3 — Confirm the app is reachable
+`http://localhost:7272/actuator/health` (start it with `mvn spring-boot:run`
+if it isn't running). Unreachable →
 classify `ENVIRONMENT_FAILURE`, stop, report — do not proceed.
 
-### 0.3–0.4 — Same assessment/confirmation pattern as execute-backend.md
+### 0.4 — Same assessment/confirmation pattern as execute-backend.md
 
 ---
 
@@ -334,21 +387,20 @@ Pick the branch by whether this module already has archived tests:
 ### Branch A — RERUN
 This module already has `.py` files under
 `governance/modules/[MODULE]/testsprite/tests/` and the API surface hasn't
-changed since. Follow `governance/testsprite/prompts/rerun-tests.md`'s
-mechanism exactly — no TestSprite MCP tool call at all: run each archived
-file directly (`python3 <path>`, never pytest — each file already calls
-its own `test_*()` at the bottom) and record pass/fail per file.
+changed since. No TestSprite MCP tool call at all: run each archived file
+directly (`python3 <path>`, never pytest — each file already calls its own
+`test_*()` at the bottom) and record pass/fail per file.
 
 ### Branch B — NEW
 No archived tests exist yet for this module, or the API surface changed
-since the last archive. Follow `governance/testsprite/prompts/start-tests.md`'s
-pipeline, calling the TestSprite MCP tools as the live `TestSprite` server
-actually exposes them (verify current tool names/params against the
-connected server before calling — do not assume the names below never
-drift across a TestSprite MCP version bump):
+since the last archive. Run the TestSprite pipeline via the wired `TestSprite`
+MCP server, calling its tools as the live server actually exposes them (verify
+current tool names/params against the connected server before calling — do not
+assume the names below never drift across a TestSprite MCP version bump):
 
-1. Housekeeping per TESTSPRITE-GOVERNANCE.md §4 — archive any leftover,
-   unarchived run sitting in `testsprite_tests/` before starting a new one.
+1. **Housekeeping** — if any leftover, unarchived run is sitting in the repo-root
+   `testsprite_tests/` working directory, archive it (Branch-B close-out below)
+   before starting a new one; never let two runs' output mix.
 2. `testsprite_bootstrap` — ONLY if `testsprite_tests/tmp/config.json`
    does not already exist (`type: backend`, `testScope: codebase`,
    `localPort: 7272`, `projectPath: <repo root>`).
@@ -357,18 +409,52 @@ drift across a TestSprite MCP version bump):
 5. `testsprite_generate_backend_test_plan` — (re)writes
    `testsprite_tests/testsprite_backend_test_plan.json`, spanning the
    WHOLE backend, not just this module.
-6. From that plan, select only the `TCnnn` entries whose endpoint matches
-   this module's prefix per TESTSPRITE-GOVERNANCE.md §3's table. Collect
-   their ids — this is the module scoping step.
+6. **Module scoping (self-contained).** From that plan, select only the `TCnnn`
+   entries whose endpoint path matches THIS module's own API path prefix(es).
+   Discover the prefix(es) directly from this module's own artifacts — the exact
+   `/api/v...` paths written in its `packages/backend-execution/SVC-API/` files
+   (and its `api-docs/` if present) — never from an external table. Collect the
+   matching ids; this is the module scoping step.
 7. `testsprite_generate_code_and_execute` with `testIds` = exactly that
    filtered id list (never the full-plan default, which would drag every
    other module's scenarios into this module's run) — `projectName` /
    `projectPath` as usual, `serverMode` matching how the app was actually
    started (`production` only if it was built+started that way).
-8. Close out per TESTSPRITE-GOVERNANCE.md §4 "After a run finishes":
-   `git mv` this module's `TCnnn_*.py` files into
-   `governance/modules/[MODULE]/testsprite/tests/`, and the
-   PRD/plan/report trio into `governance/testsprite/runs/<today>-backend/`.
+8. **Close out (self-contained archive).** `git mv` this module's `TCnnn_*.py`
+   files into `governance/modules/[MODULE]/testsprite/tests/`, and the run's
+   PRD/plan/report trio into `governance/modules/[MODULE]/testsprite/runs/<today>/`
+   (create the folders if absent — everything for a module lives under its own
+   `governance/modules/[MODULE]/testsprite/`). Leave the repo-root
+   `testsprite_tests/` working directory clean afterward.
+
+---
+
+## STEP 1.9 — Coverage cross-check (governed plan ↔ TestSprite) — MANDATORY
+
+This is the connective tissue between the delivered test-gen plan (STEP 0.1)
+and TestSprite's own output. Without it the two id spaces (`TC-[MODULE]-<seq>`
+vs TestSprite's `TCnnn`) stay permanently disconnected and TestSprite's
+code-surface discovery silently becomes the only coverage that counts.
+
+Map every REQUIRED-COVERAGE `TC-[MODULE]-<seq>` from STEP 0.1 to the TestSprite
+`TCnnn` file(s) that actually exercise it — matched by endpoint + scenario, not
+by number (the two numbering schemes are unrelated). Produce this table for the
+report:
+
+```
+GOVERNED PLAN ↔ TESTSPRITE COVERAGE — [MODULE]
+TC-[MODULE]-<seq>  │ traces (AC/XM/UXD) │ scenario        │ TestSprite TCnnn │ result
+───────────────────┼────────────────────┼─────────────────┼──────────────────┼────────
+TC-[MODULE]-001    │ AC-…               │ …               │ TC003            │ PASS
+TC-[MODULE]-0NN    │ XM-… / UXD-…       │ …               │ ✗ none           │ GAP
+```
+
+- A delivered `TC-*` with NO matching TestSprite test is a **coverage gap** —
+  list it prominently; it is never dropped silently.
+- Integration `TC-*` (those tracing `XM-*` or `UXD-*`, from an `INT-XM` phase
+  or the like) are checked here exactly like any other — a cross-module
+  dependency with no exercising test is a gap, same as an uncovered `AC-*`.
+- Record the coverage ratio: `<covered>/<total>` REQUIRED-COVERAGE TCs.
 
 ---
 
@@ -396,48 +482,27 @@ Every failed/skipped test gets exactly one code. Never invent a new one —
 if nothing fits, use `ENVIRONMENT_FAILURE` and explain why in the detail.
 
 Write `reports/TEST-REPORT-[MODULE]-backend-[YYYY-MM-DD].md` — a
-module-scoped digest, distinct from TestSprite's own raw report (which
-stays archived under `governance/testsprite/runs/` per TESTSPRITE-GOVERNANCE.md
-§2, untouched). This file stays open for STEP 3 to append to — do not
-treat it as closed once the test section is written.
+module-scoped digest, distinct from TestSprite's own raw report (which is
+archived under `governance/modules/[MODULE]/testsprite/runs/<today>/`,
+untouched). It MUST include the STEP 1.9 coverage table (governed plan ↔
+TestSprite) and the coverage ratio, ABOVE the failure taxonomy — a green
+taxonomy over an incomplete plan is not a pass. This report is complete once
+the test/coverage section above is written.
 
-Any `FAIL` → hand off to `AUTONOMOUS-FULLSTACK-FIXING-AGENT.md` — never fix
-here.
+Any `FAIL` or coverage GAP → report it here with its taxonomy code and STOP;
+this command never fixes source itself. Fixing is a separate, deliberate step
+the user runs afterward — do not auto-invoke any fixing agent from here.
 
----
-
-## STEP 3 — Code review (`debate-review --local`)
-
-Run `debate-review` against this module's accumulated working-tree diff —
-this is the same command invocation as testing, one run covers both jobs:
-```bash
-node "<debate-review skill dir>/scripts/review-pr.mjs" --local [--base <ref>]
-```
-Per the skill's own documentation, `--local` reviews local
-uncommitted/branch changes directly — no PR needs to exist yet. It
-internally coordinates two lanes (a main-reviewer pass, then a
-debate-reviewer pass that tries to knock the main pass's findings down or
-add its own, with the main reviewer making the final call) and returns one
-consolidated finding set — this command does not dispatch those two lanes
-itself, the skill owns that internally.
-
-Append the findings to the **same** report file from STEP 2, as a clearly
-separate section — never merged into the test taxonomy table above, since
-these are a different kind of finding:
-
-```markdown
-## Code Review (debate-review --local)
-P0: [n]  P1: [n]  P2: [n]
-
-| Severity | File | Summary |
-|---|---|---|
-| P0 | ... | ... |
-```
-
-`babysit-pr` is a separate, later follow-up — it only operates on a live
-PR, so it does not run here. Once this module's branch is actually pushed
-and a PR exists, run it there to close out review threads; until then,
-these findings need addressing manually.
+### 2.1 — Update `execution-state.json` `test_phases[]` (MANDATORY)
+For each entry in `test_phases[]`, set its status from the STEP 1.9 result:
+- `COMPLETE` only when EVERY `TC-*` under that phase (STEP 0.1) has a passing
+  TestSprite counterpart (STEP 1.9).
+- `PARTIAL` when some pass but at least one `TC-*` is a gap or a fail — attach
+  the gap/fail `TC-*` list to the entry.
+- `PENDING` if the phase never ran.
+Scope the edit to `test_phases[]` (and, if a real doc gap surfaced, one
+`api_doc_gaps[]` append in the canonical shape) — touch nothing else. The
+TestSprite run MUST leave `test_phases[]` reflecting exactly what it verified.
 
 ---
 
@@ -448,17 +513,16 @@ these findings need addressing manually.
   execution of the already-archived files only
 - NEVER call the bootstrap tool when `testsprite_tests/tmp/config.json`
   already exists
-- NEVER skip TESTSPRITE-GOVERNANCE.md §4's housekeeping/archiving steps
+- NEVER skip STEP 1's housekeeping/archiving steps
 - NEVER modify application source code — report, don't fix
-- NEVER hand-edit an archived `.py` test file except under
-  TESTSPRITE-GOVERNANCE.md §5's keep-in-sync exception
-- NEVER run `debate-review` before the STEP 1/STEP 2 test run finishes —
-  the report file's test section must exist before the review section is
-  appended
-- NEVER overwrite the STEP 2 test section when appending STEP 3's review
-  section — append, don't replace
+- NEVER hand-edit an archived `.py` test file, EXCEPT the one sanctioned case:
+  when backend code an archived test already covers changed (endpoint path,
+  request/response fields, status/error codes, auth), update that test's
+  payload/assertions to match rather than leave it silently broken
 - ALWAYS classify every failure/skip
-- ALWAYS update execution-state.json after every sub
+- ALWAYS load the governed `TC-*` plan (STEP 0.1) and emit the STEP 1.9
+  coverage table before considering any test phase complete
+- ALWAYS update `execution-state.json` `test_phases[]` status per STEP 2.1
 ```
 
 ---
@@ -475,7 +539,7 @@ execute-backend-test.md   ✓  .claude/commands/[MODULE]/
 
 Phases detected       : [count]
 Total subs detected   : [count]
-Test phase detected   : backend-test [✓ / not found]
+Test phases detected  : [list of test-phase folders found, e.g. base + INT-XM / "none"]
   gated by : [phases found]
 
 Weight map:
@@ -486,7 +550,7 @@ Heavy phases (require chunking): [list or "none"]
 To start execution:
   /[MODULE]/execute-backend [FIRST_PHASE]
 
-To verify (test + review) once implementation is COMPLETE:
+To verify (test) once implementation is COMPLETE:
   /[MODULE]/execute-backend-test
 ══════════════════════════════════════════════════════
 ```

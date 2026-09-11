@@ -23,17 +23,16 @@ backend repo root unless said otherwise.
   structure.
 
   **VERSION (IFA-aware) — resolve the base BEFORE anything else.** A module
-  that received an incremental feature (IFA) has `current_version` ≥ 2 and all
-  of the above live under a version-suffixed base. Resolve it the way the tools
-  do (`config.get_module_version_path`):
+  that received an incremental feature (IFA) has a current version ≥ 2 and all
+  of the above live under a version-suffixed base. Resolve it directly from
+  the filesystem:
 
   ```bash
-  python3 -c "import sys; sys.path.insert(0,'governance/governance-tools'); \
-  import config; print(config.get_module_version_path('{MODULE}'))"
+  ls -d governance/modules/{MODULE}/v*/ 2>/dev/null | sort -t v -k2 -n | tail -1
   ```
 
-  - `current_version == 1` → base `governance/modules/{MODULE}/`      (no suffix)
-  - `current_version == N` (N ≥ 2) → base `governance/modules/{MODULE}/v{N}/`
+  - No `vN` folder found → base `governance/modules/{MODULE}/`      (no suffix, v1)
+  - Highest `vN` folder found → base `governance/modules/{MODULE}/v{N}/`
 
   Call it `{MBASE}`. Every `governance/modules/{MODULE}/…` and bare
   `packages/…` / `execution-state.json` path below resolves under `{MBASE}`,
@@ -130,27 +129,18 @@ and never touches the module's source files directly.** Its only jobs are:
    rules still apply — this command overrides only the *session-granularity and
    phase-gating* behavior above, not which files never get touched or how errors
    route).
-4. **Skill & governance orientation — mandatory, once per run, before the first
-   phase assessment.** Read, in full:
-   - **The backend skill routing index** — `governance/GOVERNANCE-RULES.md` (its
-     "Task → Skill Routing" and "Execution Order" tables). The backend skills
-     themselves live at the repo root: `.claude/skills/<skill>/SKILL.md`, split
-     into `build-*` (generate code) and `gov-*` (validate it). Do not assume
-     "matching real code precedent" covers this — precedent tells you what the
-     codebase currently does, not whether that pattern is the one the skills
-     prescribe (precedent can itself be non-compliant; only reading the skill
-     catches it).
-   - **The repo-wide execution protocol / housekeeping rules** — the repo-root
-     `CLAUDE.md` (file placement, comment style, the Legacy Module Path rules).
-   - **The binding architecture reference.** On the backend there is NO
-     standalone architecture doc and no `governance/.github/` tree — the
-     architecture rules live INSIDE the skills (see `GOVERNANCE-RULES.md` →
-     "Context Reference"): Domain-Layer ownership in `build-create-entity` +
-     `gov-enforce-backend-contract` (LAYER 0); the API contract / response
-     envelope / `Status`→HTTP mapping / error-code format in
-     `gov-enforce-backend-contract` + `gov-enforce-error-handling`. Treat those
-     skill sections as the binding reference; a skill outranks codebase
-     precedent, never the reverse.
+4. **Skill orientation — mandatory, once per run, before the first phase
+   assessment.** The backend skills at `.claude/skills/<skill>/SKILL.md` are the
+   single binding source of rules — split into `build-*` (generate code) and
+   `gov-*` (validate it). Read the ones whose declared scope covers this module's
+   work, in full. Do not assume "matching real code precedent" covers this —
+   precedent tells you what the codebase currently does, not whether that pattern
+   is what the skills prescribe (precedent can itself be non-compliant; only
+   reading the skill catches it). The architecture rules live INSIDE the skills:
+   Domain-Layer ownership in `build-create-entity` + `gov-enforce-backend-contract`;
+   the API contract / response envelope / `Status`→HTTP mapping / error-code
+   format in `gov-enforce-backend-contract` + `gov-enforce-error-handling`. A
+   skill outranks codebase precedent, never the reverse.
    This is a one-time read for the run — STEP 1.1 still requires identifying,
    per sub, exactly which skill files that sub's work triggers.
 5. Print the phase assessment (format above) and wait for confirmation before
@@ -357,27 +347,101 @@ When the last sub in a phase completes and every gap is resolved:
 
 ---
 
-## Module implementation complete — informational banner (no auto-execution)
+## STEP 4 — Test phase (a real gated phase, entered in the same run)
 
-Trigger: STEP 3 just closed `ALIGN-BE` — the LAST backend phase — and every
-gap opened during it is resolved (never escalated-and-still-open). This
-orchestrator's job ends here — it is implementation-dispatch only. It does
-**not** itself run api-doc regeneration, TestSprite testing, or code review;
-those are separate commands the user runs deliberately, when ready. Print
-this banner and stop:
+Trigger: STEP 3 just closed `ALIGN-BE` — the LAST backend EXECUTION phase — and
+every gap opened during it is resolved (never escalated-and-still-open).
 
-```
-══════════════════════════════════════════════════════
-MODULE IMPLEMENTATION COMPLETE — [MODULE]
-══════════════════════════════════════════════════════
-All phases COMPLETE, all gaps resolved.
+> **The test phase is a gated phase.** It is entered behind the explicit human
+> "Proceed?" gate, then runs test → coverage debate → fix as one continued
+> flow (steps 3–5), halting only on failure or on human-only input it cannot
+> reach. Code review (`debate-review`) and anything after it stay SEPARATE,
+> manually-run steps — named at the end, never dispatched from here.
 
-Next steps (run separately, when ready):
-  Refresh API docs : python3 generate.py --module [MODULE] --function update
-                      (governance/governance-tools/api-doc-generator/)
-  Verify           : /[MODULE]/execute-backend-test
-══════════════════════════════════════════════════════
-```
+Treat the test phase exactly like `CORE … ALIGN-BE`:
+
+1. **Read the test phase(s).** From `execution-state.json` read `test_phases[]`
+   — one entry per real test-phase folder under `packages/backend-test/` (a base
+   test phase and, when the plan has cross-module dependencies, an `INT-XM`
+   phase). Read whatever the array holds; assume no fixed shape.
+
+2. **Print the SAME phase-assessment block** used for every execution phase, and
+   wait for explicit confirmation (respect `--auto` identically: print but do
+   not wait; still halt on any failure):
+   ```
+   ══════════════════════════════════════════════════════
+   PHASE ASSESSMENT — [MODULE] / TEST
+   ══════════════════════════════════════════════════════
+   Test phases  : [list each test phase + its pending subs]
+   Gated by     : all backend execution phases (CORE … ALIGN-BE) — COMPLETE
+   Plan         : run /[MODULE]/execute-backend-test → debate coverage (2nd agent)
+                  → fix agreed fail/blocked → close
+   ══════════════════════════════════════════════════════
+   Proceed?
+   ```
+
+3. **On confirmation, dispatch `/[MODULE]/execute-backend-test`** as this run's
+   next phase, using the SAME one-dispatch / wait-for-report / verify discipline
+   as a sub (STEP 1.2 dispatch, STEP 1.3 verification). That command reads the
+   delivered `TC-[MODULE]-<seq>` plan from `packages/backend-test/` BEFORE
+   calling TestSprite, runs TestSprite scoped to this module, and emits the
+   governed-plan ↔ TestSprite coverage table (`TC-[MODULE]-<seq>` → `TCnnn` or
+   "✗ no matching test"). Read that report and that table.
+
+4. **Coverage decision — adopt a second agent to debate it.** Do not accept the
+   run's verdict as final on its own. Dispatch a SECOND agent (read-only,
+   separate from the one that produced the report) whose only job is to review
+   this module's ANALYSIS files against the coverage table and challenge the
+   verdict:
+   - It reads the analysis sources — the PRD, the SRS (`AC-*`), the execution
+     plan, and the delivered test plan under `packages/backend-test/` (including
+     any `INT-XM` phase and the `XM-*`/`UXD-*` those integration `TC-*` trace).
+   - For every claimed GAP it asks: is this genuinely uncovered, or already
+     exercised by another `TCnnn` under a different `TC-*`? For every claimed
+     PASS it asks: does the `AC-*`/`XM-*`/`UXD-*` behind that `TC-*` actually
+     get verified, or only touched superficially?
+   - The two agents exchange until they converge on ONE agreed set of real
+     failures / real coverage gaps / blocked items. Only that agreed set is
+     written to the report as the verdict — a disputed "gap" that the debate
+     resolves as already-covered is struck; a "pass" the debate finds hollow
+     becomes a gap. This is the correct-decision step, not a rubber stamp.
+
+5. **After tests: continue with a fixing agent on the agreed fail/blocked set.**
+   If the agreed verdict (step 4) is clean, skip to step 6. Otherwise do NOT
+   just halt — hand the report's agreed FAIL + BLOCKED + GAP items to a fixing
+   agent that continues the work:
+   - It fixes application code for real failures and fills real coverage gaps,
+     following the binding skills in `.claude/skills/` (a skill outranks
+     codebase precedent), then re-runs the affected tests via
+     `/[MODULE]/execute-backend-test` and re-checks coverage until the agreed
+     set is closed.
+   - It derives everything it can from what it can reach — the analysis files,
+     the code, the skills, `execution-state.json`. It works autonomously on all
+     of that without pausing.
+   - **It stops and asks the human ONLY for information it genuinely cannot
+     reach** — a business decision not stated in any analysis file, an external
+     credential/value, a real-world fact absent from every artifact. It never
+     stops to ask for anything derivable from the sources above. When it does
+     stop, it reports in Arabic per the communication rule, states exactly what
+     human input it needs and why it is unreachable, and waits.
+   - Any item that cannot be closed without that human input is left BLOCKED
+     with the reason recorded; the run halts there rather than presenting the
+     module as done.
+
+6. **Only when the agreed set is fully closed** (every `TC-*` covered and
+   passing, `test_phases[]` set to COMPLETE), print the closing banner naming
+   the remaining SEPARATE, manually-run steps — do NOT dispatch them:
+   ```
+   ══════════════════════════════════════════════════════
+   MODULE COMPLETE — [MODULE]
+   ══════════════════════════════════════════════════════
+   Implementation : all phases COMPLETE (CORE → ALIGN-BE)
+   Tests          : all governed TC-* covered & passing (coverage table in report)
+
+   Next steps (run separately, when ready — NOT auto-run from here):
+     Code review : debate-review --local
+   ══════════════════════════════════════════════════════
+   ```
 
 ---
 
