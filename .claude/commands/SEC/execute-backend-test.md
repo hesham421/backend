@@ -115,7 +115,7 @@ assume the names below never drift across a TestSprite MCP version bump):
    started (`production` only if it was built+started that way).
 8. **Close out (self-contained archive).** `git mv` this module's `TCnnn_*.py`
    files into `governance/modules/SEC/testsprite/tests/`, and the run's
-   PRD/plan/report trio into `governance/modules/SEC/testsprite/runs/<today>/`
+   PRD/plan/report trio into `governance/testsprite/runs/<YYYY-MM-DD>-backend/`
    (create the folders if absent — everything for a module lives under its own
    `governance/modules/SEC/testsprite/`). Leave the repo-root
    `testsprite_tests/` working directory clean afterward.
@@ -182,7 +182,7 @@ if nothing fits, use `ENVIRONMENT_FAILURE` and explain why in the detail.
 
 Write `reports/TEST-REPORT-SEC-backend-[YYYY-MM-DD].md` — a
 module-scoped digest, distinct from TestSprite's own raw report (which is
-archived under `governance/modules/SEC/testsprite/runs/<today>/`,
+archived under `governance/testsprite/runs/<YYYY-MM-DD>-backend/`,
 untouched). It MUST include the STEP 1.9 coverage table (governed plan ↔
 TestSprite) and the coverage ratio, ABOVE the failure taxonomy — a green
 taxonomy over an incomplete plan is not a pass. This report is complete once

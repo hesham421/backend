@@ -67,8 +67,8 @@ def test_post_api_v1_sec_auth_password_reset_complete_with_valid_token():
             "password": initial_password
         }
         create_resp = requests.post(create_user_url, json=create_user_payload, headers=headers, timeout=TIMEOUT)
-        assert create_resp.status_code == 200, f"User creation failed: {create_resp.text}"
-        user_id = create_resp.json()["data"]["id"]
+        assert create_resp.status_code == 201, f"User creation failed: {create_resp.text}"
+        user_id = create_resp.json()["data"]["userPk"]
 
         # Step 5: Request a password reset token for the user email (public endpoint)
         password_reset_request_url = f"{BASE_URL}/api/v1/sec/auth/password-reset/request"

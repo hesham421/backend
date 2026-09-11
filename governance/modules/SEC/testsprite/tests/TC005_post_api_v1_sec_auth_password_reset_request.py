@@ -38,7 +38,7 @@ def test_post_api_v1_sec_auth_password_reset_request():
     # Create user
     user_payload = create_unique_user()
     create_user_resp = requests.post(USERS_URL, json=user_payload, headers=headers_auth, timeout=30)
-    assert create_user_resp.status_code == 200, f"User creation failed with status {create_user_resp.status_code}"
+    assert create_user_resp.status_code == 201, f"User creation failed with status {create_user_resp.status_code}"
     create_user_json = create_user_resp.json()
     assert create_user_json.get("success") is True, "User creation response success != True"
     created_user_email = create_user_json["data"]["email"]
