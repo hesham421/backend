@@ -142,22 +142,28 @@ in this repo needs lives inside `backend/governance/`.
 
 ## Legacy Module Path
 
-Modules on this path: **ORG, NOTIFICATION, FILESVC** (backend-complete,
+Modules on this path: **CU, NOTIF, FILE** (backend-complete,
 built under the pre-split model — `P0`/`P1`/`P2`/`P3`/`P3_5`/`P4` combined,
 `packages/execution/` combined, rather than the current
 `P0`/`P0_5`/`P1`/`P2`/`P2_5`/`P3_1`/`P3_5_BE` split and
-`packages/backend-execution/`). **MASTERDATA** is also on this path — it
-has only `api-docs/`, missing every formal stage artifact, and is now
-registered in `modules-registry.json`. **SECURITY is explicitly NOT on
+`packages/backend-execution/`). These three were once called ORG,
+NOTIFICATION and FILESVC; the packages are `com.erp.cu`, `com.erp.notif`
+and `com.erp.file` today — search for the current names, the old ones
+resolve to nothing. **SEC** (formerly SECURITY) **is explicitly NOT on
 this path** and Legacy Path logic must never be applied to it — see
 criterion 3 below.
+
+The migration history under `src/main/resources/db/migration/` contains
+create-then-drop pairs for modules that no longer exist; those files are
+immutable applied records, not a description of live schema, so encountering
+one is never a reason to resurrect anything.
 
 A module qualifies for the Legacy Path if ALL of the following hold:
 1. It has real, working backend code already implemented.
 2. Its `governance/modules/<MOD>/` folder predates the current governance
    model — combined `P3`/`P3_5`/`P4` naming, OR missing formal
    `P0_5`/`P2_5`/`P3_1` artifacts entirely.
-3. It is not SECURITY.
+3. It is not SEC (formerly SECURITY).
 
 A Legacy Path module:
 - Keeps its existing `governance/modules/<MOD>/` structure **untouched** —

@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 /**
  * API-NOTIF-006 lookup option (LOV-NOTIF-001 NOTIF_CHANNEL / LOV-NOTIF-002 NOTIF_STATUS). Slim,
  * code-driven read model — the NOTIF LOVs are runtime-loaded codes with no lookup table, so there is
- * no id or audit surface. Mirrors the MDM lean-projection consumption pattern for dropdowns.
+ * no id or audit surface — a lean projection suited to dropdowns.
  */
 @Data
 @Builder

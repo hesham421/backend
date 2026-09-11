@@ -57,7 +57,17 @@ it, not this skill.
   runs entirely outside the governed pipeline
 - MUST NOT perform a hard delete unless the module's own api-docs document one
 - MUST NOT write to the database outside the opt-in, transaction-scoped, run-created-ids-only
-  path described in `api-verify-config.md` §4
+  path described in `api-verify-config.md` §4. "Write to the database" here means a *direct*
+  write — a SQL statement the script issues itself. State changes made by calling the platform's
+  own documented endpoints are not that: they are the thing being verified, and they are governed
+  by stages F and I instead
+- MUST NOT embed a literal credential in a generated script — credentials are run arguments or
+  clearly-marked placeholders (`api-verify-config.md` §4), never typed into an artifact that
+  gets committed
+- MUST NOT mutate a pre-existing security record (role, grant, user) outside the single
+  bounded exception in §3-I — and never at all against a non-Dev/Test target
+- MUST NOT report a run as clean while records it created survive: every surviving id is
+  listed in the report (§3-F), never summarised as "cleaned up"
 
 ## Output
 
@@ -92,6 +102,21 @@ it) or a convention that changed (fix `api-verify-config.md`, not this run).
 
 ## 3. Processing pipeline
 
+**A0 — Preconditions (before any suite runs).** Every payload value that references a row the
+run does not itself create — a foreign/registry code, an owner-module code, a lookup key, a
+parent id taken from an example rather than threaded — is *verified to exist and be active*
+first, through a documented read endpoint. A missing one is reported once, up front, as a
+precondition failure naming the exact value and the document that supplied it, and its
+dependent suites are marked blocked-on-precondition. Never let it surface instead as a wall of
+downstream assertion failures: an example value in a governed document is a claim about the
+environment, and a claim that is false is a finding about the document or the seed data, not
+about the endpoint under test.
+
+A0 runs **after** stage I, not before it, whenever the run needs a grant at all: the read
+endpoints A0 checks through are themselves permission-gated, so a run that verifies
+preconditions before granting itself access reports a wall of 403s as "missing preconditions"
+and hides the real state of the data. Order is grants → preconditions → suites.
+
 **A — Inventory.** Parse every documented endpoint: id (`API-*` when the docs carry it), verb,
 path, entity (path segment), operation type (from verb + path suffix), request field table
 (name, type, required, constraints, example), response shape.
@@ -119,7 +144,16 @@ never pass/fail, listed apart in the report). No documented source value → ski
 **F — Teardown.** Every created id is tracked per entity; cleanup runs in `finally`, in reverse
 dependency order; a hard-delete endpoint is used only when the api-docs document one, otherwise
 the deactivate endpoint is called and the report states that records remain (deactivated) —
-never a silent "cleaned up".
+never a silent "cleaned up". That statement is a **list, not a sentence**: a `Surviving records`
+section naming every id/natural key left behind and why (no documented hard delete, or a failed
+cleanup call), so a human can purge them. Rows the run adds to a *registry or reference table
+another module's rules read* (a module registry, a status/type catalogue) are called out
+separately as **permanent residue**, with suggested cleanup SQL per stage H — such a row keeps
+influencing other modules' behaviour long after the run ends, which an ordinary deactivated
+fixture does not. Where that table exposes *any* documented way to retire a row (deactivate,
+archive, soft-delete), teardown uses it rather than leaving the row active: an abandoned active
+registry entry is not inert test data, it is a value another module's rule may now match on.
+Codes written into such a table carry the run's own namespace so residue is always attributable.
 
 **G — Problems report.** `<mod>_problems_report.md` lists only failures, bucketed: *likely real
 bug* (a documented rejection did not happen, or an unexplained status), *test assumption
@@ -133,6 +167,34 @@ this run created (tracked ids only) is allowed for teardown; any other data fix 
 (default off = print only), in a transaction, with separate credentials — see
 `api-verify-config.md` §4.
 
+**I — Permission preconditions (the one sanctioned exception to §6's "records it did not
+create").** A module's endpoints are permission-gated, and the run's own account may legitimately
+lack those permissions — a module registers its screens/actions without granting them to anyone,
+by design. The run may therefore grant itself the module's documented permissions through the
+platform's own documented grant endpoints, under **all** of these, or not at all:
+
+- **Dev/Test target only** — verified against `api-verify-config.md` §4.1 before the first grant
+  call; a target that is not demonstrably Dev/Test aborts the run rather than escalating.
+- **Only what the documented endpoints under test require** — never a broader role, never a
+  permission outside `<MOD>`'s own set.
+- **Journal before granting, not after.** Append the intended grant to the on-disk journal named
+  in `api-verify-config.md` §4.2 *before* the call that creates it. `finally` does not survive
+  `SIGKILL`, a container stop, or a lost machine — the journal is what makes an interrupted run
+  auditable instead of an invisible standing privilege.
+- **Revoke only what this run newly created**, in `finally`; a grant that already existed is
+  left untouched and reported as pre-existing. Treat a duplicate-grant rejection as "already
+  present", never as a failure.
+- **Disclose in the report either way** — what was granted, what was revoked, and anything the
+  revoke failed to remove, named explicitly as standing privilege needing manual removal.
+- **Assume you are not alone.** "Already granted" may mean a concurrent run granted it seconds
+  ago and is about to revoke it underneath you. Before treating a pre-existing grant as usable,
+  check the journal (§4.2) for an unmatched `GRANT` from another `RUN_ID`; if one is there, stop
+  and say so rather than racing — two runs sharing one role will fail each other in ways that
+  read like authorization bugs in the module under test.
+
+Anything beyond this — creating a role, elevating a human user, touching a grant the run did not
+make — is out of scope and stays out.
+
 ## 4. Script structure
 
 ```
@@ -143,14 +205,20 @@ client      : thin HTTP wrapper (get/post/put/patch/delete) that unwraps the res
 results     : TestResult / TestSuite records · run() for asserted calls · run_observation() for
               stage-E observations (separate bucket, never in totals)
 helpers     : extract_token · extract_id · first id of a page (per the paging envelope)
+grants()    : stage I, only if the run needs permissions it lacks — assert a Dev/Test target
+              first, then journal-append → grant, recording which grants this run newly
+              created (skipped entirely when unneeded)
+preflight() : stage A0 — assert every externally-owned referenced value exists and is active;
+              a miss blocks its dependent suites with a precondition failure, never a cascade
 per entity  : test_<entity>(parent_ids…) → create → get-by-id (ok) → get-by-id (missing id →
               not found) → update → [stage C negatives] → [stage E observations] → deactivate →
               activate ; appends created ids
-cleanup()   : stage F
-report      : Markdown (+ optional HTML) with pass/fail suites, an "observations" section, and
-              the problems buckets → <mod>_problems_report.md
-main()      : suites in stage-B order inside try/finally; exit non-zero on any asserted
-              failure (observations never affect the exit code)
+cleanup()   : stage F, then stage I's revoke of self-created grants (journal-append after each)
+report      : Markdown (+ optional HTML) with pass/fail suites, an "observations" section, the
+              problems buckets, a "Surviving records" list and a "Privileges" line →
+              <mod>_problems_report.md ; never persists an auth response or a token
+main()      : grants() → preflight() → suites in stage-B order, all inside try/finally; exit
+              non-zero on any asserted failure (observations never affect the exit code)
 ```
 
 Every test function carries a traceability comment: `Covers: API-… ; Negative: RULE-… / <code> / TC-…`.
@@ -174,13 +242,22 @@ docs; FK ids threaded, never literal.
 [ ] runtime error codes in the format api-verify-config.md states; page fields as documented
 [ ] no invented credentials, business codes, or lookup values; traceability comment on every
     function
+[ ] every externally-owned value a payload references (registry/owner/lookup code, example-
+    sourced parent id) is precondition-checked by preflight() before the suites that need it
+[ ] the report writer emits a Surviving records list from the tracked-id set, with permanent
+    registry/reference residue in its own section — not a hardcoded "cleaned up" string
+[ ] if the script grants anything: preflight asserts a Dev/Test target, the journal append
+    precedes every grant call, revoke is in finally and guarded on newly-created-by-this-run,
+    and the report writer emits the Privileges line unconditionally
+[ ] no literal credential anywhere in the script — argument or marked placeholder only
+[ ] no auth response, token, or Authorization header value reaches the report or the journal
 ```
 
 ## 6. Boundaries
 
 | Consumes (read-only) | Produces | Never |
 |---|---|---|
-| api-docs, the test-execution-manifest (when present), run arguments, `api-verify-config.md` | `test_<mod>_apis.py`, `<mod>_problems_report.md` under `governance/modules/<MOD>/test-api/` | a governance ID of any kind, a change to any line artifact, a gate verdict, a data fix against records it did not create |
+| api-docs, the test-execution-manifest (when present), run arguments, `api-verify-config.md` | `test_<mod>_apis.py`, `<mod>_problems_report.md` under `governance/modules/<MOD>/test-api/`, the stage-I grant journal | a governance ID of any kind, a change to any line artifact, a gate verdict, a data fix against records it did not create — **one exception, and only one**: the bounded, journalled, self-revoked permission grant of stage I |
 
 ## Related Skills
 

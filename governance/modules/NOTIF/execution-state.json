@@ -98,7 +98,7 @@
       "sub": "SVC-API",
       "endpoint": "POST /api/v1/notifications/logs/search, POST /api/v1/notifications/templates/search, POST /api/v1/notifications/channels/search",
       "detail": "Plan/SRS specified GET-with-query for log query (API-NOTIF-002) and list/search of templates/channels. Implemented as POST /search with a request body.",
-      "resolution": "Binding build-create-controller A.6.6 forbids GET-search; the shared search contract is POST-body-only. Same resolution MDM applied for API-MDM-002/007. Skill outranks plan.",
+      "resolution": "Binding build-create-controller A.6.6 forbids GET-search; the shared search contract is POST-body-only. Skill outranks plan.",
       "recorded_at": "2026-09-05"
     },
     {

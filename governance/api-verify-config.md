@@ -25,10 +25,20 @@ never hard-code a module list in the skill.
 `governance/modules/<MOD>/test-api/`:
 - `test_<mod>_apis.py` (or the extension matching whatever language the run targets — see §3)
 - `<mod>_problems_report.md`
+- `<mod>_grant_journal.md` — only when a run needed a permission grant (§4.2); append-only, and
+  the one file here that is **not** regenerate-freely scratch: it is the audit trail of privilege
+  an interrupted run may have left standing
 - an HTML run report may also be dropped here (see the SEC precedent: `test-api/sec_problems_report.md` + `sec_api_test_report.html`)
 
 `<mod>` is the module code lower-cased. This directory is scratch/output — regenerate
-freely, never hand-edit a generated script.
+freely, never hand-edit a generated script. The grant journal is the single exception: it is
+appended to, never regenerated, because its value is precisely the history a regeneration
+would erase.
+
+> `modules/<MOD>/manifest.json` also declares a stage folder `stages["api-verify"] =
+> ".../api_verify"`. `test-api/` is used here instead because that is where this repo's real
+> artifacts already live (`modules/SEC/test-api/`). The frontend repo has no such precedent, so
+> its twin config writes to `api_verify/` — expect that difference between the two repos.
 
 ## 3. Stack conventions
 
@@ -54,3 +64,37 @@ freely, never hand-edit a generated script.
 - Database access: opt-in only, off by default; when enabled, writes are scoped to ids this
   run created, run in a transaction, under separate credentials from the app's own
 - Never targets anything but Dev/Test — this generates a **Dev/Test-only** script
+
+### 4.1 Dev/Test verification (required before any permission grant)
+
+A target counts as Dev/Test only when its host is `localhost`/`127.0.0.1`, **or** the run was
+given an explicit `--allow-nonlocal` argument naming the environment. Anything else aborts
+before the skill's stage I runs — a verification run may not escalate privileges on an
+environment it cannot prove is disposable.
+
+### 4.2 Permission-grant journal (SKILL.md §3-I)
+
+`governance/modules/<MOD>/test-api/<mod>_grant_journal.md` — append-only, one line per intended
+grant, written **before** the grant call and again after its revoke:
+
+```
+<ISO timestamp> | RUN_ID=<id> | GRANT   | role=<code> | target=<module|screen|action> | value=<code>
+<ISO timestamp> | RUN_ID=<id> | REVOKE  | role=<code> | target=<module|screen|action> | value=<code>
+```
+
+A `GRANT` line with no matching `REVOKE` is standing privilege from an interrupted run — the
+file exists precisely so that state is discoverable rather than invisible. Append only: never
+regenerate it, never rewrite an existing line, and never delete lines to tidy it — an unmatched
+`GRANT` is the one record that a privilege may still be standing, and erasing it destroys the
+only evidence. Add a `REVOKE` line to close one out; leave the history in place.
+
+### 4.3 Preconditions (SKILL.md §3-A0)
+
+Externally-owned values a payload references — an owner-module code, a registry code, a lookup
+key, an example-sourced parent id — are verified present and active before the suites that need
+them. This project has already been bitten by the alternative: a governed test plan named an
+owner module (`FIN`) that was never registered in `SEC_MODULE_REG`, and the resulting 409 turned
+into eleven cascading test failures that read like application defects for three runs before the
+real cause was found. The registry tables worth checking first are the ones other modules' rules
+read — `SEC_MODULE_REG` above all, since MDL's `RULE-MDL-001` validates every lookup type's owner
+against it.

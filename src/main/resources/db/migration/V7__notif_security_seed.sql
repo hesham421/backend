@@ -17,7 +17,7 @@
 --
 -- Role-code derivation note: the SRS names the role as "مدير الإشعارات / Notification Administrator"
 --   and uses the role short-code NOTIF_ADMIN throughout the B4/Permissions-Summary tables. It is
---   created here with that code (mirrors the short-uppercase SYS_ADMIN / MDM_ADMIN pattern).
+--   created here with that code (mirrors the short-uppercase SYS_ADMIN pattern).
 -- Pre-existing dependency: SYS_ADMIN ('مدير النظام' / 'System Administrator') was already seeded by
 --   V3 (SEC seed). It is NOT re-inserted here — it is referenced by natural key (ROLE_CODE = 'SYS_ADMIN').
 --
@@ -27,8 +27,8 @@
 --   rows exist unused and harmless.
 --
 -- Nav-parent note: SRS lists "parent: الإشعارات (Notifications)" for all 3 pages. That is a
---   frontend-navigation concern; PARENT_PAGE_FK is left NULL here (mirrors MDM V5 — no invented
---   parent nav page is seeded).
+--   frontend-navigation concern; PARENT_PAGE_FK is left NULL here — a parent nav page would have to
+--   be invented (no such SEC_PAGE row exists), and nothing invented is seeded.
 --
 -- Dispatch note: dispatch (API-NOTIF-001) is a service/event endpoint behind the Security filter,
 --   NOT tied to a management screen (SEC-BE.md / RULE-NOTIF-005). SEC_PERMISSION.PAGE_FK is NOT NULL,

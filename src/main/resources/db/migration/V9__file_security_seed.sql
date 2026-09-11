@@ -14,7 +14,7 @@
 --   value == name) so runtime hasAuthority(...) in each FILE service's @PreAuthorize resolves.
 --
 -- Role-code derivation: the SRS names the role "مدير الملفات / File Administrator"; created here with
---   the short-uppercase code FILE_ADMIN (mirrors the SYS_ADMIN / NOTIF_ADMIN / MDM_ADMIN pattern).
+--   the short-uppercase code FILE_ADMIN (mirrors the SYS_ADMIN / NOTIF_ADMIN pattern).
 -- Pre-existing dependency: SYS_ADMIN ('مدير النظام' / 'System Administrator') was already seeded by
 --   V3 (SEC seed). It is NOT re-inserted here — it is referenced by natural key (ROLE_CODE = 'SYS_ADMIN').
 --
@@ -25,8 +25,8 @@
 --   own security context, which bypasses this endpoint. The gate is therefore correct and granted.
 --
 -- Nav-parent note: SEC-BE.md lists "parent: File Service" for both pages. That is a
---   frontend-navigation concern; PARENT_PAGE_FK is left NULL here (mirrors NOTIF V7 / MDM V5 —
---   no invented parent nav page is seeded).
+--   frontend-navigation concern; PARENT_PAGE_FK is left NULL here (mirrors NOTIF V7 — a parent nav
+--   page would have to be invented, and no invented parent nav page is seeded).
 
 -- 1. SEC_MODULE — module FILE (Tier-1 grantable unit)
 INSERT INTO SEC_MODULE (ID, MODULE_CODE, NAME_AR, NAME_EN, IS_ACTIVE_FL, CREATED_BY, CREATED_AT)

@@ -15,7 +15,7 @@
 --   2026-09-06 in response to the TestSprite TC009 finding.
 --
 -- PERMISSION_CODE convention: CU intentionally deviates from the CORE-9 PERM_<PAGE_CODE>_<TYPE> naming
---   used by FILE/NOTIF/MDM. The four codes below EXACTLY equal the string VALUES of the CU constants in
+--   used by FILE/NOTIF. The four codes below EXACTLY equal the string VALUES of the CU constants in
 --   com.erp.security.permission.PermissionConstants (CONFIG_VIEW/CREATE/UPDATE/DEACTIVATE, value==name)
 --   so runtime hasAuthority(...) in ConfigurationService's @PreAuthorize resolves. Do NOT rename them.
 --

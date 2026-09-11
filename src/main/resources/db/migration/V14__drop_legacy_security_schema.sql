@@ -1,7 +1,7 @@
 -- ============================================================
 -- V14 — Drop legacy SECURITY (SEC) module schema
 -- The SEC module's Java code (JWT filter, PermissionConstants, controllers/services) was removed for
--- a ground-up rebuild. V2/V3 (and the SEC-registry seed rows added by V5/V7/V9/V10/V13) are never
+-- a ground-up rebuild. V2/V3 (and the SEC-registry seed rows added by V7/V9/V10/V13) are never
 -- edited per this repo's Flyway policy — this migration forward-drops the tables/sequences they
 -- created instead. The new SEC module's own migration will (re)create whatever schema it needs.
 -- ============================================================

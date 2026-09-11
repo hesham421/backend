@@ -79,18 +79,21 @@ each generated `TCnnn_*.py` to a module by the endpoint(s) it calls. The
 authority for which module owns what is `governance/modules-registry.json`
 plus that module's own `P0` business-policies and module-registry docs:
 
-> **Rebuilt 2026-09-05** against the current codebase (`modules-registry.json`:
-> `SEC`, `CU`, `FILE`, `MDM`, `NOTIF`) after the previous table went stale
-> following an earlier reset of `src/main/java/`. Re-derive this table again
-> any time a module is added/renamed or a controller's base path changes —
-> don't assume it stays accurate across a major restructuring.
+> **Rebuilt 2026-09-05**, amended 2026-09-12 after MDL shipped and was registered.
+> The route prefixes below are the ones the controllers actually declare — verified
+> against `@RequestMapping` and the live `/v3/api-docs/<group>` documents, not assumed
+> from the module code (they differ: CU serves `/api/v1/common`, SEC serves
+> `/api/v1/sec`). Note the registry itself is not a complete module list — `SEC` is
+> fully built and live but still has no `modules-registry.json` entry. Re-derive this
+> table any time a module is added/renamed or a controller's base path changes; don't
+> assume it stays accurate across a major restructuring.
 
 | Endpoint prefix / subject | Module |
 |---|---|
-| `/api/v1/security/*` (auth, me, users, roles, permissions, pages, modules, lookups) | `SEC` |
+| `/api/v1/sec/*` (auth, users, roles, sessions, registry, menu, audit-log, dashboard, signup-requests) | `SEC` |
 | `/api/v1/common/configurations*` | `CU` |
 | `/api/v1/files*` (documents, categories, lookups) | `FILE` |
-| `/api/v1/mdm*` (lookups, lookup consumption) | `MDM` |
+| `/api/v1/mdl*` (lookup types, lookup values, lookup consumption) | `MDL` |
 | `/api/v1/notifications*` (dispatch, channels, templates, logs, lookups) | `NOTIF` |
 
 If a generated test genuinely spans two modules (rare — most TestSprite

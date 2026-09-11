@@ -54,8 +54,10 @@ in-process `DispatchCommand` record (`src/main/java/com/erp/notif/crossmodule/Di
 | `referenceType` | String (max 100) | no | Source entity reference type. |
 | `variables` | Map\<String,String\> | no | Template placeholder substitution values. |
 
-Known `channelHint` codes seeded in `MDM_LOOKUP_VALUE` under `NOTIF_CHANNEL`
-(`src/main/resources/db/migration/V4__mdm_schema_and_seed.sql:106-110`): `EMAIL`, `SMS`,
+Known `channelHint` codes live in `MDL_LOOKUP_VALUE` under lookup type key `NOTIF_CHANNEL`
+(owner module `NOTIF`), seeded by
+`src/main/resources/db/migration/V20__notif_file_lookup_data_migration.sql` and read at runtime
+through `com.erp.mdl.crossmodule.MdlLookupApi`: `EMAIL`, `SMS`,
 `WHATSAPP`, `PUSH`, `INTERNAL`. **Only `EMAIL` has an actual enabled channel config row**
 (`src/main/resources/db/migration/V11__notif_email_channel_seed.sql:6-7`) — requesting any
 other channel currently resolves to `CHANNEL_DISABLED` (no channel config found), per

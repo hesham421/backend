@@ -4,7 +4,7 @@
 -- Target: POSTGRESQL_16 | 13 tables, 13 sequences | 104 DBF-IDs | 0 XM (SEC is ROOT)
 -- Replaces the legacy SEC schema dropped by V14 (V2/V3 are never edited — forward-fix only).
 -- Schema only — no seed data (SEC-BE phase owns the SEC self-registration seed).
--- Flyway wraps this migration in its own transaction (no explicit COMMIT — matches V1..V15).
+-- Flyway wraps this migration in its own transaction (no explicit COMMIT — matches every earlier migration).
 --
 -- DEVIATION from db-script §3 BLOCK 1/2/3 (deliberate, decided at DATA-DOM-MASTER):
 --   the db-script declares every PK as `GENERATED ALWAYS AS IDENTITY` with "BLOCK 1 — none".
@@ -17,7 +17,7 @@
 -- ============================================================
 
 -- ============================================================
--- BLOCK 1: SEQUENCES (one per table; SEQ_<TABLE>, matching V1/V2/V4/V6/V8 style)
+-- BLOCK 1: SEQUENCES (one per table; SEQ_<TABLE>, matching V1/V2/V6/V8 style)
 -- ============================================================
 CREATE SEQUENCE SEQ_SEC_USER              START WITH 1 INCREMENT BY 1 CACHE 1 NO CYCLE;
 CREATE SEQUENCE SEQ_SEC_ROLE              START WITH 1 INCREMENT BY 1 CACHE 1 NO CYCLE;
