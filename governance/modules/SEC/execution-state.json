@@ -1,33 +1,33 @@
 {
   "module": "SEC",
   "generated_at": "2026-09-11",
-  "current_phase": "CORE",
-  "current_sub": "CORE",
+  "current_phase": "DOC",
+  "current_sub": "DOC",
   "api_docs_path": "governance/modules/SEC/api-docs/",
   "phases": [
     {
       "id": "CORE",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "CORE", "status": "PENDING" }
+        { "id": "CORE", "status": "COMPLETE" }
       ]
     },
     {
       "id": "DATA-DOM",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "DATA-DOM-LOOKUP", "status": "PENDING" },
-        { "id": "DATA-DOM-MASTER", "status": "PENDING" },
-        { "id": "DATA-DOM-TRANSACTIONAL", "status": "PENDING" }
+        { "id": "DATA-DOM-LOOKUP", "status": "COMPLETE" },
+        { "id": "DATA-DOM-MASTER", "status": "COMPLETE" },
+        { "id": "DATA-DOM-TRANSACTIONAL", "status": "COMPLETE" }
       ]
     },
     {
       "id": "SVC-API",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "SVC-API-CRUD", "status": "PENDING" },
-        { "id": "SVC-API-INT", "status": "PENDING" },
-        { "id": "SVC-API-SEARCH", "status": "PENDING" }
+        { "id": "SVC-API-CRUD", "status": "COMPLETE" },
+        { "id": "SVC-API-INT", "status": "COMPLETE" },
+        { "id": "SVC-API-SEARCH", "status": "COMPLETE" }
       ]
     },
     {
@@ -53,9 +53,9 @@
     },
     {
       "id": "SEC-BE",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "subs": [
-        { "id": "SEC-BE", "status": "PENDING" }
+        { "id": "SEC-BE", "status": "COMPLETE" }
       ]
     },
     {
@@ -80,5 +80,60 @@
   ],
   "blocked": [],
   "deferred_xm": [],
-  "api_doc_gaps": []
+  "api_doc_gaps": [
+    {
+      "type": "NAMING_MISMATCH",
+      "phase": "CORE",
+      "sub": "CORE",
+      "endpoint": "SEC error-code format (envelope `code`)",
+      "detail": "CORE.md declares the runtime code format as `SEC-<3-digit-sequence>` (e.g. SEC-001), but no §Error Catalog row uses that shape — every row is `SEC-<HTTP>-<SCENARIO>` (e.g. SEC-409-USER-DUP), and test_gen/backend-test-plan-sec.md asserts on those literal strings.",
+      "resolution": "Resolved from the §Error Catalog + backend-test-plan-sec.md: the catalog's literal code strings are authoritative and are the constant values in SecErrorCodes; CORE.md's `SEC-<3-digit>` prose is a stale generalisation, not a competing contract.",
+      "recorded_at": "2026-09-11"
+    },
+    {
+      "type": "NAMING_MISMATCH",
+      "phase": "DATA-DOM",
+      "sub": "DATA-DOM-TRANSACTIONAL",
+      "endpoint": "ENT-SEC-007 RoleModuleGrant.grantedAt (DBF-SEC-064)",
+      "detail": "DATA-DOM-TRANSACTIONAL.md's ENT-SEC-007 FIELDS table names the column `grant_at`; db-script-sec.md names it `granted_at` in all three places (§1 registry, §3 CREATE TABLE, COMMENT ON), matching the sibling grant tables.",
+      "resolution": "Resolved from db-script-sec.md as schema ground truth: the column is `granted_at`; the execution plan's `grant_at` is a typo. Entity and V16 migration both use `granted_at`.",
+      "recorded_at": "2026-09-11"
+    },
+    {
+      "type": "ABSENT",
+      "phase": "DATA-DOM",
+      "sub": "DATA-DOM-TRANSACTIONAL",
+      "endpoint": "RULE-SEC-005 / QR-SEC-031 — where a \"module-declared conflicting pair\" is declared",
+      "detail": "RULE-SEC-005 and QR-SEC-031 both hinge on two actions being declared a conflicting pair by their owning module, but no SEC v1 artifact says where that declaration lives: there is no ENT, no DBF, no table and no API for it (db-script-sec.md §1 has 104 DBF across 13 tables, none of them a conflict register; srs-sec.md A3 lists no such entity). QR-SEC-031 is therefore implementable only as \"does this user already hold action X\", with X supplied from outside SEC.",
+      "resolution": "ABSENT, resolved without inventing a contract (orchestrate-module STEP 2 step 5, after the STEP 1.4 second-agent debate). Findings: (a) SEC v1 declares no conflicting-pair source anywhere — srs-sec.md A3 entities, A6 lookups, A7 defaults/state machines, A8 cross-module, Part B screens B3/B5, §7.1 permissions, db-script-sec.md's 104 DBF across 13 tables, and API-SEC-020's action-registration request contract were all checked and are empty; (b) REQ-SEC-020 is `Pattern : optional` — \"Where a consumer module declares two of its actions as conflicting\" — an EARS precondition SEC v1 never establishes; (c) the platform's only real conflicting pair is FIN-owned and FIN-enforced, not SEC-enforced: governance/modules/FIN/P3_1/backend-execution-plan-fin.md:1061-1066 states PERM_FIN_PERIODS_CLOSE_APPROVE and PERM_FIN_JOURNAL_ENTRIES_CREATE are separated \"by platform convention (an administrative guideline enforced by role design, not a database constraint — SEC's RBAC model grants permissions per role, and FIN's service layer additionally checks at hard-close/year-end-close time that no single user holds both, per role union)\", and :383-386 adds that this check \"runs in FIN's own service layer by reading the two roles' user sets through SEC's role/grant read APIs'. Corroborated: RULE-FIN-015 (srs-fin.md:1012) is scoped to ENT-FIN-008 with trigger \"on evaluate (period-close-approval action)\", and FIN carries its own error code FIN-403-SOD-VIOLATION (403) for it — no FIN-owned P1/P2/P3_1 artifact ever routes through SEC-409-SOD-CONFLICT. Consequence for SVC-API: API-SEC-008 / API-SEC-017 are implemented as their Orchestration lines read, with the RULE-SEC-005 step driven by a conflicting-counterpart set that is EMPTY in SEC v1 (a private service-side resolver returning empty), so the DATA-DOM guards and both QR-SEC-031 methods keep a real caller and A.2.9 holds at ALIGN-BE. No table, column, route, error code or rule is invented. Remaining human-only question (a P1/P2 amendment, not an execution decision): whether SEC v1 should own a conflicting-pair register at all, rather than leaving REQ-SEC-020's precondition permanently unestablished.",
+      "recorded_at": "2026-09-11"
+    },
+    {
+      "type": "MISSING_IN_DOCS",
+      "phase": "SVC-API",
+      "sub": "SVC-API-CRUD",
+      "endpoint": "[PATCH] /api/v1/sec/signup-requests/{id} — created User.passwordHash (DBF-SEC-004)",
+      "detail": "DBF-SEC-004 password_hash is NOT NULL (db-script-sec.md §1 registry row / §3 CREATE TABLE SEC_USER), but no artifact says what credential an approved sign-up account receives. API-SEC-011's Orchestration line reads \"on APPROVE: create User (QR-SEC-006-style, statusCode=ACTIVE) + update SignupRequest (statusCode=APPROVED, reviewedBy/At) (QR-SEC-011)\" and names no password, hash or token; srs-sec.md REQ-SEC-004 (\"the system shall create an active user account from it\") and AC-SEC-004 (\"the system creates a User with status ACTIVE from its email/name, and marks the SignupRequest APPROVED\") specify only email and name; REQ-SEC-005 is the symmetric negative path and creates nothing. The sign-up request body itself (API-SEC-002: {email, fullNameAr, fullNameEn}) carries no password, and ENT-SEC-013's FIELDS table (DBF-SEC-097..104) has no credential column, so there is nothing to carry forward at approval time.",
+      "resolution": "Implementation choice filling a spec silence, grounded rather than invented: the account is created with passwordEncoder.encode(UUID.randomUUID().toString()) — an unusable secret that is never logged, transmitted or returned, so the account exists and is ACTIVE but cannot be authenticated against until a real credential is set. The artifact-grounded path for the owner to obtain one is the existing API-SEC-003 (request password reset) → API-SEC-004 (complete password reset) pair, governed by RULE-SEC-006 and already specified in SVC-API-INT.md; no new endpoint, column, error code or rule was created, and no cross-module call was added (SEC is ROOT, zero XM). Note that no SEC artifact states the approved user is notified or that a reset token is issued automatically on approval — see the SVC-API-CRUD report finding — so as specified the account is reachable only after someone informs its owner out of band. Whether SEC v1 should define an approval-time credential or notification step is a P1/P2 amendment for a human, not an execution decision.",
+      "recorded_at": "2026-09-11"
+    },
+    {
+      "type": "MISSING_IN_DOCS",
+      "phase": "SVC-API",
+      "sub": "SVC-API-INT",
+      "endpoint": "[POST] /api/v1/sec/auth/password-reset/request — REQ-SEC-029 NOTIF dispatch from a pre-authentication caller",
+      "detail": "API-SEC-003 is public / pre-authentication (Security line: \"screen SEC_PWD_RESET · public — no permission required\"), but the only sanctioned consuming surface, com.erp.notif.crossmodule.NotificationDispatchApi, delegates to NOTIF's DispatchService.dispatch, whose declared contract is @PreAuthorize(\"isAuthenticated()\") (NotificationDispatchApiImpl javadoc: \"Authorization is enforced on the delegate (@PreAuthorize isAuthenticated(), SEC-BE)\"; the annotation itself is currently present on DispatchService.dispatch while the per-method SEC gates elsewhere in notif sit behind \"// TODO: SEC-PENDING\" comments). Once SEC-BE activates that gate for every call path, an anonymous password-reset request will be denied at the dispatch call. build-create-service's \"Internal trusted-caller calls\" section describes the sanctioned fix — a synthetic authentication carrying a dedicated internal authority, installed by the project's internal-caller utility — but NO such utility exists in this repository, and no SEC or NOTIF artifact names an authority, a bridge or an exemption for a pre-authentication caller. Adjacent fact at the same call site: NOTIF's dispatch is @Transactional with default REQUIRED propagation, so it JOINS SEC's READ_WRITE transaction; a failure raised inside that advice (e.g. an unknown template code) marks the shared transaction rollback-only, which a consuming-side try/catch cannot undo. An AccessDeniedException from @PreAuthorize is raised before the transaction advice and is therefore genuinely survivable; a failure inside doDispatch is not.",
+      "resolution": "RESOLVED at SEC-BE, by the sanctioned internal-caller pattern and nothing else. com.erp.sec.security.InternalCallerContext.call(..) installs a synthetic UsernamePasswordAuthenticationToken (principal \"internal\") carrying exactly one authority, INTERNAL_TRUSTED_CALLER, for the duration of the call and restores the previous SecurityContext in a finally block; PasswordResetService.dispatchResetNotification wraps only the notificationDispatchApi.dispatch(..) call site in it, inside the pre-existing catch-and-log, so REQ-SEC-006 still answers its generic 200 when Notifications is disabled. NOTIF was not touched: DispatchService.dispatch keeps its own @PreAuthorize(\"isAuthenticated()\"), which the synthetic principal satisfies, and the call still goes through NotificationDispatchApi + DispatchCommand only. The authority cannot be obtained externally: JwtAuthenticationFilter is the single authentication entry point and it explicitly strips INTERNAL_TRUSTED_CALLER from every authority set it builds, and no other mechanism in the chain (no formLogin, no httpBasic, no anonymous authorities) grants an authority at all. Placement: com.erp.sec.security rather than com.erp.common.util — SEC is its only consumer today, a SEC-local class works, and com.erp.common.** is shared platform foundation that this phase was scoped not to change. Promote it to common only when a second module needs it, as an explicit decision. Verified end to end on a throwaway database (never erp_db): an anonymous POST /api/v1/sec/auth/password-reset/request answered 200 with the generic confirmation AND the dispatch actually reached NOTIF — one NOTIF_LOG row was written with created_by='internal'. Deferred, with reason: build-create-service also prescribes a build-time ArchUnit guard that no @RestController/@Controller reaches the gated method; it was NOT written because governance/GOVERNANCE-RULES.md forbids creating any file under src/test/java/ outside an explicit request or the gated execute-backend-test phase (this repo currently has no src/test tree at all). Add it when that phase runs. STILL OPEN, and the reason this gap is narrowed rather than closed: the transaction half. DispatchService.dispatch is @Transactional with default REQUIRED propagation and therefore joins SEC's transaction — verified in the source, SEC cannot override that from the consuming side. Before this change the AccessDeniedException was raised by the method-security interceptor, which is ordered OUTSIDE the transaction advice, so it never touched the transaction and the consuming-side catch genuinely worked. Now that the gate passes, execution reaches doDispatch, and any failure raised INSIDE it (an unknown template code, a constraint violation) marks the shared transaction rollback-only; the existing catch swallows the exception but cannot clear that flag, so API-SEC-003 would answer 500 (UnexpectedRollbackException at commit) instead of REQ-SEC-006's generic 200, and the SEC_PWD_RESET_TOKEN + audit rows would be lost with it. The observed run did not hit this: NOTIF caught its own recipient-resolution failure internally and recorded the log row as FAILED rather than throwing. The only escapes are NOTIF-side (a REQUIRES_NEW entry point on NotificationDispatchApi — NOTIF already has DispatchService.dispatchSystem with exactly that propagation, but it is an internal @Service that build-create-service forbids SEC from calling) or an AFTER_COMMIT event bridge. Both are NOTIF-owned contract changes, out of scope for SEC-BE and for this phase's \"do not touch CU/NOTIF/FILE code\" boundary — a human decision on NOTIF's cross-module surface.",
+      "recorded_at": "2026-09-11"
+    },
+    {
+      "type": "MISSING_IN_DOCS",
+      "phase": "SVC-API",
+      "sub": "SVC-API-SEARCH",
+      "endpoint": "[GET] /api/v1/sec/dashboard — three undefined figures in API-SEC-022's Response line",
+      "detail": "API-SEC-022's Response line names three quantities no SEC artifact defines. (a) recentActivity is \"the last N AuditLogEntry\" and N is never fixed — not in REQ-SEC-022/AC-SEC-022, not in SCR-REQ-SEC-007 B1-B5, not in prd-sec.md's dashboard story, not in db-script-sec.md. (b) rolesPermissionsSummary.privilegedRoleCount: \"privileged\" is defined nowhere in SEC v1 — srs-sec.md A3 ENT-SEC-002 has no privilege flag, A5 has no rule about it, and §7.1 / db-script-sec.md's 104 DBF carry no such column; the only adjacent statement is prd-sec.md:85's story text (\"spot risk and over-privileged accounts at a glance\"). (c) onboardingFunnel.stalledCount: no artifact says at what age a PENDING SignupRequest becomes stalled — SRS A7's SIGNUP_STATUS machine has no timeout, and the one DEFAULT-with-duration in the module (the 30-minute reset-token window) is scoped to ENT-SEC-012 only. backend-test-plan-sec.md's TC-SEC-022/TC-SEC-023 assert liveness and widget omission respectively and never assert any of the three values, so no test pins them either.",
+      "resolution": "Implemented with three named private static final constants in DashboardService, each carrying a comment saying the spec left the value open, and none of them promoted to a configuration property (no artifact authorizes one): RECENT_ACTIVITY_LIMIT = 10 entries, STALLED_SIGNUP_AGE = 7 days, and privilegedRoleCount read as RULE-SEC-007's own distinction — a role holding at least one action grant whose actionCode is not the VIEW gateway (QR-SEC-022 query RoleActionGrantRepository.countPrivilegedRoles, with the gateway code passed in as a parameter exactly as QR-SEC-030 already does). No table, column, route, error code, rule or config key was invented, and all three are confined to one class so a human decision can change them in one place. Remaining human-only question (a P1/P2 amendment, not an execution decision): whether SEC v1 should state N, a stalled-age threshold, and a definition of \"privileged\" for the dashboard, or drop the three figures from API-SEC-022's contract.",
+      "recorded_at": "2026-09-11"
+    }
+  ]
 }

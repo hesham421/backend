@@ -11,8 +11,9 @@
 - **repository**: Spring Data JPA repositories, one per entity/table; every non-trivial query is a named method backed by a `QR-SEC-*` spec (§Query Reference Catalog); no business logic.
 
 **Error signalling**: `LocalizedException → {code, messageAr, messageEn}`. Runtime `code` format:
-`SEC-<3-digit-sequence>` (module-scoped, stated once here so `api-verify` can assert on it — e.g.
-`SEC-001` for the first catalog row). Every catalog row (§Error Catalog) is registered as a
+`SEC-<HTTP-status>-<SCENARIO>` (module-scoped, stated once here so `api-verify` can assert on it —
+e.g. `SEC-409-USER-DUP`; the `-<SCENARIO>` segment is omitted only for the generic infrastructure
+row `SEC-500`). Every catalog row (§Error Catalog) is registered as a
 static enum/constant the controller-advice layer maps to the envelope; `messageAr`/`messageEn`
 are copied character-perfect from the SRS RULE message or from this plan where PLATFORM-STD.
 

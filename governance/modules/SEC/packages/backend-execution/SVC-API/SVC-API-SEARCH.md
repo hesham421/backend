@@ -6,9 +6,9 @@
 
 <!-- API:API-SEC-005:START traces=REQ-SEC-009,DBF-SEC-002,DBF-SEC-003,DBF-SEC-005,DBF-SEC-006,DBF-SEC-007 -->
 ### API-SEC-005 — search users
-Endpoint     : GET /api/v1/sec/users   verb: GET
+Endpoint     : POST /api/v1/sec/users/search   verb: POST
 Layers       : controller → `UserController.search` ; service → `UserService.search`
-Request      : query params `username`(LIKE), `email`(LIKE), `fullName`(LIKE, matches fullNameAr or fullNameEn), `statusCode`(EXACT), `page`, `size`, `sort`
+Request      : body `UserSearchRequest` (BaseSearchContractRequest) — `filters[]` of (field, operator, value) over `username`, `email`, `statusCode`, plus `fullName` (LIKE, matches fullNameAr or fullNameEn), and `page`, `size`, `sortField`, `sortDirection`
 Response     : 200 · `Page<UserResponse>` (userPk, username, email, fullNameAr, fullNameEn, statusCode, lastLoginAt) · envelope `ApiResponse<Page<UserResponse>>`
 Validations  : none (read-only)
 Errors       : none beyond platform-standard (§Error Catalog SEC-500)
@@ -20,9 +20,9 @@ Localization : fullNameAr/fullNameEn both returned
 
 <!-- API:API-SEC-012:START traces=REQ-SEC-012,DBF-SEC-015,DBF-SEC-016,DBF-SEC-017,DBF-SEC-020 -->
 ### API-SEC-012 — search roles
-Endpoint     : GET /api/v1/sec/roles
+Endpoint     : POST /api/v1/sec/roles/search
 Layers       : controller → `RoleController.search` ; service → `RoleService.search`
-Request      : query params `code`(LIKE), `name`(LIKE, nameAr or nameEn), `isActiveFl`(EXACT), `page`, `size`, `sort`
+Request      : body `RoleSearchRequest` (BaseSearchContractRequest) — `filters[]` of (field, operator, value) over `code`, `isActiveFl`, plus `name` (LIKE, nameAr or nameEn), and `page`, `size`, `sortField`, `sortDirection`
 Response     : 200 · `Page<RoleResponse>` (rolePk, code, nameAr, nameEn, descriptionAr, descriptionEn, isActiveFl) · `ApiResponse<Page<RoleResponse>>`
 Validations  : none
 Errors       : SEC-500 only
@@ -34,9 +34,9 @@ Localization : nameAr/nameEn/descriptionAr/descriptionEn returned
 
 <!-- API:API-SEC-021:START traces=REQ-SEC-016,DBF-SEC-031,DBF-SEC-040,DBF-SEC-050 -->
 ### API-SEC-021 — search registry
-Endpoint     : GET /api/v1/sec/registry
+Endpoint     : POST /api/v1/sec/registry/search
 Layers       : controller → `RegistryController.search` ; service → `RegistryService.search`
-Request      : query params `moduleCode`(EXACT), `pageCode`(LIKE), `page`, `size`, `sort`
+Request      : body `RegistrySearchRequest` (BaseSearchContractRequest) — `filters[]` of (field, operator, value) over `code` (the module code), plus `pageCode` (LIKE, on the child screen), and `page`, `size`, `sortField`, `sortDirection`
 Response     : 200 · `Page<RegistryRowResponse>` (a module row with its nested active screens and, per screen, its active actions) · `ApiResponse<Page<RegistryRowResponse>>`
 Validations  : none
 Errors       : SEC-500 only
@@ -62,9 +62,9 @@ Localization : recentActivity entries carry detailsAr/detailsEn
 
 <!-- API:API-SEC-023:START traces=REQ-SEC-025,DBF-SEC-084,DBF-SEC-085,DBF-SEC-086 -->
 ### API-SEC-023 — search audit log
-Endpoint     : GET /api/v1/sec/audit-log
+Endpoint     : POST /api/v1/sec/audit-log/search
 Layers       : controller → `AuditLogController.search` ; service → `AuditLogService.search`
-Request      : query params `eventTypeCode`(EXACT), `actorUserId`(EXACT), `occurredFrom`/`occurredTo`(DATE_RANGE), `page`, `size`, `sort`
+Request      : body `AuditLogEntrySearchRequest` (BaseSearchContractRequest) — `filters[]` of (field, operator, value) over `eventTypeCode` and `occurredAt` (any range operator), plus `actorUserId` (EXACT), and `page`, `size`, `sortField`, `sortDirection`
 Response     : 200 · `Page<AuditLogEntryResponse>` (all fields, unmodified) · `ApiResponse<Page<AuditLogEntryResponse>>`
 Validations  : none
 Errors       : SEC-500 only
@@ -76,9 +76,9 @@ Localization : detailsAr/detailsEn returned
 
 <!-- API:API-SEC-025:START traces=REQ-SEC-027,DBF-SEC-076,DBF-SEC-079,DBF-SEC-081 -->
 ### API-SEC-025 — list active sessions
-Endpoint     : GET /api/v1/sec/sessions
+Endpoint     : POST /api/v1/sec/sessions/search
 Layers       : controller → `SessionController.search` ; service → `SessionService.search`
-Request      : query params `userId`(EXACT), `ipAddress`(LIKE), `page`, `size`, `sort`
+Request      : body `ActiveSessionSearchRequest` (BaseSearchContractRequest) — `filters[]` of (field, operator, value) over `ipAddress`, plus `userId` (EXACT), and `page`, `size`, `sortField`, `sortDirection`
 Response     : 200 · `Page<ActiveSessionResponse>` (activeSessionPk, userId, username, startedAt, lastActivityAt, ipAddress) — `tokenRef` never returned · `ApiResponse<Page<ActiveSessionResponse>>`
 Validations  : filter `terminatedAt IS NULL` always applied server-side (REQ-SEC-027: "every session that has not been terminated") — not a client-supplied filter
 Errors       : SEC-500 only

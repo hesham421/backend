@@ -34,7 +34,7 @@ over from another module.
 | `<Entity>` | PascalCase entity name | — |
 | `<ENTITY_CLASS>` | `<CLASS_PREFIX><Entity>` — the actual Java class name | — |
 | `<ENTITY_TABLE>` | `<MODULE_TABLE_PREFIX>_<ENTITY_UPPER>` | UPPER_SNAKE_CASE |
-| `<ENTITY_SEQ>` | Sequence name from the DB script | UPPER_SNAKE_CASE |
+| `<ENTITY_SEQ>` | Sequence name from the DB script. If the DB script declares `GENERATED ALWAYS AS IDENTITY` or "BLOCK 1 — SEQUENCES / none", it names no sequence — use `SEQ_<ENTITY_TABLE>` and create it in the module's Flyway migration (see step 2) | UPPER_SNAKE_CASE |
 | `<ENTITY_PK_COLUMN>` | PK column name **as defined in the DB script** — entity-specific, never generic `ID` | UPPER_SNAKE_CASE |
 | `<Parent>` / `<PARENT_FK_COLUMN>` | *(optional)* parent entity and its FK column, if this is a child | — |
 | `<base.package>` | Project base package | e.g. the value of `groupId` in `pom.xml` |
@@ -78,7 +78,7 @@ over from another module.
 @Entity
 @Table(name = "<ENTITY_TABLE>",
     uniqueConstraints = {
-        @UniqueConstraint(name = "UK_<ENTITY_TABLE>_<DESC>", columnNames = {"<COLUMN>"})
+        @UniqueConstraint(name = "UQ_<ENTITY_TABLE>_<DESC>", columnNames = {"<COLUMN>"})
     },
     indexes = {
         @Index(name = "IDX_<ENTITY_TABLE>_<COLUMN>", columnList = "<COLUMN>")
@@ -97,6 +97,14 @@ public class <ENTITY_CLASS> extends AuditableEntity {
 private Long id;
 ```
 
+> **When the DB script says `GENERATED ALWAYS AS IDENTITY`, this skill still wins.** Some
+> generated `db-script-*.md` files declare identity columns and a "BLOCK 1 — SEQUENCES / none"
+> block. Ignore that: the entity still uses `GenerationType.SEQUENCE` with
+> `@SequenceGenerator(..., sequenceName = "SEQ_<ENTITY_TABLE>", allocationSize = 1)`, and the
+> module's own Flyway migration creates those sequences instead of identity columns. This is
+> settled — see `governance/GOVERNANCE-RULES.md` → "Convention Precedence — db-script vs
+> skills". Do not re-derive or re-argue it per module.
+
 ### 3. Business fields
 ```java
 @NotBlank(message = "{validation.required}")
@@ -109,12 +117,21 @@ private String <fieldName>;
 ```java
 @Column(name = "<ACTIVE_COLUMN>", nullable = false)
 @Builder.Default
-@Convert(converter = BooleanNumberConverter.class) // BooleanCharYNConverter for CHAR(1) columns
+@Convert(converter = BooleanNumberConverter.class) // numeric column. CHAR(1) -> BooleanCharYNConverter; native BOOLEAN -> omit @Convert entirely
 private Boolean isActive = Boolean.TRUE;
 ```
 
-> Pick the converter from the DB script's actual column type — numeric vs `CHAR(1)`. Do not
-> default to one without checking.
+> Pick the mapping from the DB script's actual column type. Do not default to one without
+> checking:
+>
+> | DB column type | Mapping |
+> |----------------|---------|
+> | native `BOOLEAN` | plain `Boolean` field — **no `@Convert` at all** |
+> | numeric (`SMALLINT` / `NUMBER`) | `@Convert(converter = BooleanNumberConverter.class)` |
+> | `CHAR(1)` | `@Convert(converter = BooleanCharYNConverter.class)` |
+>
+> A converter on an already-boolean column is a defect, not compliance. See
+> `governance/GOVERNANCE-RULES.md` → "Convention Precedence — db-script vs skills".
 
 ### 5. FK relationship (child entity only)
 ```java
@@ -174,7 +191,7 @@ Consume the project's shared persistence layer — do NOT reinvent any of it:
 | # | Requirement | Shared class | Package |
 |---|-------------|--------------|---------|
 | SH.1 | Extend `AuditableEntity` for audit fields | `AuditableEntity` | `<base.package>.common.domain` |
-| SH.2 | Map boolean columns through the project's converter | `BooleanNumberConverter` / `BooleanCharYNConverter` | `<base.package>.common.converter` |
+| SH.2 | Map **numeric / `CHAR(1)`** boolean columns through the project's converter — never write your own (a native `BOOLEAN` column needs none) | `BooleanNumberConverter` / `BooleanCharYNConverter` | `<base.package>.common.converter` |
 | SH.3 | Audit fields are auto-populated — never set them manually | `AuditEntityListener` | `<base.package>.common.audit` |
 | SH.4 | Use `@SuperBuilder`, never `@Builder` | — | Lombok |
 
@@ -294,17 +311,17 @@ public final class <Entity>Domain {
 |---------|------|------|
 | A.1.1 | Extends `AuditableEntity` — except a declared session-artifact exemption (see SH.1) | YES |
 | A.1.2 | PK `@Column` name comes from the DB script — never generic `ID` or `ID_PK` | YES |
-| A.1.3 | PK uses `GenerationType.SEQUENCE` with an explicit `@SequenceGenerator` | YES |
+| A.1.3 | PK uses `GenerationType.SEQUENCE` with an explicit `@SequenceGenerator` — **even when the DB script declares `GENERATED ALWAYS AS IDENTITY`**; use `sequenceName = "SEQ_<TABLE>"` and create it in the module's migration | YES |
 | A.1.4 | `allocationSize = 1` on `@SequenceGenerator` | YES |
 | A.1.5 | FK columns end with the project's FK suffix, consistently | YES |
-| A.1.6 | Booleans mapped through the project's converter, matching the DB column type | YES |
+| A.1.6 | Boolean mapping matches the DB column type: native `BOOLEAN` → plain `Boolean`, **no converter**; numeric → `BooleanNumberConverter`; `CHAR(1)` → `BooleanCharYNConverter` | YES |
 | A.1.7 | Boolean default via `@Builder.Default` | YES |
 | A.1.8 | Every `@ManyToOne` uses `fetch = FetchType.LAZY` | YES |
 | A.1.9 | `@OneToMany` uses `cascade = ALL, orphanRemoval = false, fetch = LAZY` | YES |
 | A.1.10 | Uses `@SuperBuilder`, not `@Builder` | YES |
 | A.1.11 | Table name is UPPER_SNAKE_CASE with the module prefix | YES |
 | A.1.12 | `@UniqueConstraint` and `@Index` declared inside `@Table` | YES |
-| A.1.13 | Unique constraints named `UK_<TABLE>_<DESC>` | YES |
+| A.1.13 | Unique constraints named `UQ_<TABLE>_<DESC>` | YES |
 | A.1.14 | Indexes named `IDX_<TABLE>_<COLUMN>` | YES |
 | A.1.15 | FK constraints named `FK_<TABLE>_<REF>` via `@ForeignKey(name)` | YES |
 | A.1.16 | Computed counts use `@Formula`, never collection `.size()` | YES |
@@ -312,12 +329,14 @@ public final class <Entity>Domain {
 | A.1.18 | Entity has `activate()` and `deactivate()` helpers | YES |
 | A.1.19 | No helper methods iterating or filtering lazy `@OneToMany` collections — use repository count queries | YES |
 
+> Constraint and index names (A.1.12–A.1.15) are taken **verbatim from the module's db-script** — they are physical database objects and must match the migration exactly.
+
 ---
 
 ## Violations (MUST NOT)
 
 - ❌ `@Builder` instead of `@SuperBuilder`
-- ❌ `GenerationType.IDENTITY` or `GenerationType.AUTO`
+- ❌ `GenerationType.IDENTITY` or `GenerationType.AUTO` — including when the DB script declares an identity column; the entity uses `SEQUENCE` and the migration creates `SEQ_<TABLE>`
 - ❌ `allocationSize` other than 1
 - ❌ A generic or invented PK column name instead of the DB script's
 - ❌ FK columns not following the project's FK suffix convention

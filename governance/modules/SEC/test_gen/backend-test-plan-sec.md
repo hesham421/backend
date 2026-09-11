@@ -322,11 +322,11 @@ Test data    : any login
 <!-- TC:TC-SEC-025:START traces=AC-SEC-025,REQ-SEC-025,API-SEC-023 -->
 ### TC-SEC-025 — search and filter the audit log without altering it
 Derived from : AC-SEC-025 (REQ-SEC-025)
-Exercises    : API-SEC-023 GET /api/v1/sec/audit-log
+Exercises    : API-SEC-023 POST /api/v1/sec/audit-log/search
 Rule / code  : — (happy path)
 Scenario     : HAPPY · data class VALID · language ALL
 Preconditions: audit entries across several event types and dates
-Steps        : 1. GET filtered by eventTypeCode and date range
+Steps        : 1. POST /search filtered by eventTypeCode and date range
 Expected     : 200; exactly the matching entries, byte-identical to their stored values
 Test data    : filter eventTypeCode=LOGIN_FAILED
 <!-- TC:TC-SEC-025:END -->
@@ -346,11 +346,11 @@ Test data    : same filter as TC-SEC-025
 <!-- TC:TC-SEC-027:START traces=AC-SEC-027,REQ-SEC-027,API-SEC-025 -->
 ### TC-SEC-027 — list only non-terminated sessions
 Derived from : AC-SEC-027 (REQ-SEC-027)
-Exercises    : API-SEC-025 GET /api/v1/sec/sessions
+Exercises    : API-SEC-025 POST /api/v1/sec/sessions/search
 Rule / code  : — (happy path)
 Scenario     : HAPPY · data class VALID · language ALL
 Preconditions: several sessions, some terminated and some not
-Steps        : 1. GET active sessions
+Steps        : 1. POST /search for active sessions
 Expected     : 200; only non-terminated sessions listed, each with user + last-activity time
 Test data    : 2 active + 1 terminated session
 <!-- TC:TC-SEC-027:END -->

@@ -415,7 +415,7 @@ returned as codes; the frontend resolves the display label).
 
 ## Error Catalog — SEC v1
 
-Envelope: `LocalizedException → {code, messageAr, messageEn}`. Runtime code format: `SEC-<3-digit>` (Phase 1 CORE).
+Envelope: `LocalizedException → {code, messageAr, messageEn}`. Runtime code format: `SEC-<HTTP-status>-<SCENARIO>` (Phase 1 CORE).
 
 | code | RULE / PLATFORM-STD | API | HTTP | trigger | message-AR | message-EN |
 |---|---|---|---|---|---|---|
@@ -469,7 +469,7 @@ QRC (§5)          ✓ every API with a DB operation has ≥1 QR (API-SEC-001..0
 API (R3)          ✓ every RULE in a Validations line has a catalog row; platform errors carry RULE=PLATFORM-STD + ADR-SEC-002; create/update requests exclude PK/audit/system fields (DTO MEMBERSHIP, Phase 2; Request lines, Phase 3); business code: not applicable (none exists)
 CROSS-MODULE      ✓ 0 XM from db-script, 0 placed, 0 mismatched; inbound stub uses XM-INBOUND-STUB-1 notation, not TODO
 SECURITY (R7)     ✓ every secured API declares its PERM_* (Phase 3 Security lines, cross-checked against Phase 7 table); every secured screen has a Phase 7 seed row; no permission outside SRS §7.1/Access summary — profile.review.extra_checks ERP-4 (every mutation endpoint declares its PERM_*): checked — every POST/PUT/PATCH/DELETE API above states one
-CORE (R1)         ✓ layers declared, domain placement declared (entity methods for single-entity, service for multi-row), error signalling declared (code format `SEC-<3-digit>`), type mapping declared (postgresql16 → Java table)
+CORE (R1)         ✓ layers declared, domain placement declared (entity methods for single-entity, service for multi-row), error signalling declared (code format `SEC-<HTTP-status>-<SCENARIO>`), type mapping declared (postgresql16 → Java table)
 DECISIONS         ✓ ADR-SEC-001 (carried from P2, lookup centralization deferral) and ADR-SEC-002 (this stage, PLATFORM-STD catalog umbrella) both ACCEPTED, non-breaking; no BLOCKED ADR
 RESULT            PASSED ✓ — 0 findings
 ```

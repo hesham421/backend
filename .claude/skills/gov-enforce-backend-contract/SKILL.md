@@ -70,17 +70,24 @@ This check is **unconditional** — it applies to every entity whose rules answe
 [ ] A.1.1  — Extends AuditableEntity. Exception: a declared session-artifact exemption
              (own lifecycle fields) — verify the exemption is intentional before flagging
 [ ] A.1.2  — PK @Column name matches the DB script — not a generic "ID" or invented name
-[ ] A.1.3  — PK uses GenerationType.SEQUENCE with @SequenceGenerator
+[ ] A.1.3  — PK uses GenerationType.SEQUENCE with @SequenceGenerator, even when the module's
+             db-script declares GENERATED ALWAYS AS IDENTITY (or "BLOCK 1 — SEQUENCES / none"):
+             the skill wins, sequenceName = "SEQ_<TABLE>", and the module's Flyway migration
+             creates the sequence. Settled — see GOVERNANCE-RULES.md "Convention Precedence"
 [ ] A.1.4  — allocationSize = 1
 [ ] A.1.5  — FK columns follow the project's FK suffix convention consistently
-[ ] A.1.6  — Booleans use the project's converter matching the DB column type
+[ ] A.1.6  — Boolean mapping matches the DB column type: a native BOOLEAN column takes NO
+             @Convert at all; numeric (SMALLINT/NUMBER) uses BooleanNumberConverter; CHAR(1)
+             uses BooleanCharYNConverter. A converter on a native BOOLEAN column is itself the
+             violation — do not flag its absence there
 [ ] A.1.7  — Boolean default declared via @Builder.Default
 [ ] A.1.8  — Every @ManyToOne uses fetch = FetchType.LAZY
 [ ] A.1.9  — @OneToMany uses cascade = ALL, orphanRemoval = false, fetch = LAZY
 [ ] A.1.10 — Uses @SuperBuilder, not @Builder
 [ ] A.1.11 — Table name is UPPER_SNAKE_CASE with the module prefix
 [ ] A.1.12 — @UniqueConstraint and @Index declared inside @Table
-[ ] A.1.13 — Unique constraints named UK_<TABLE>_<DESC>
+[ ] A.1.13 — Unique constraints named UQ_<TABLE>_<DESC> — taken verbatim from the module's
+             db-script, since they are physical DB objects that must match the migration
 [ ] A.1.14 — Indexes named IDX_<TABLE>_<COLUMN>
 [ ] A.1.15 — FK constraints named FK_<TABLE>_<REF>
 [ ] A.1.16 — Computed counts use @Formula, not collection.size()
@@ -202,7 +209,7 @@ These patterns trigger IMMEDIATE rejection — no exceptions:
 | A raw `RuntimeException` thrown for a business error | Must use `LocalizedException` |
 | A service method without `@PreAuthorize` | Authorization gap |
 | A service returning a raw DTO or entity instead of `ServiceResult` | Envelope contract broken |
-| `GenerationType.IDENTITY` or `AUTO` | Must use `SEQUENCE` |
+| `GenerationType.IDENTITY` or `AUTO` | Must use `SEQUENCE` — still a trigger when the db-script declares an identity column; the migration creates `SEQ_<TABLE>` |
 | `@Builder` on an entity instead of `@SuperBuilder` | Breaks `AuditableEntity` inheritance |
 | A repository injected outside its module | Cross-module violation |
 | Direct import/injection of another module's `@Service`, `Repository`, `@Entity`, or any class outside its cross-module package | Cross-module violation |
@@ -211,7 +218,7 @@ These patterns trigger IMMEDIATE rejection — no exceptions:
 | A controller injecting a repository | Layer violation |
 | `@ResponseStatus(CREATED)` on POST | Derived from `Status.CREATED` |
 | An entity not extending `AuditableEntity` without a declared exemption | Missing audit trail |
-| A boolean column mapped without the project's converter | Storage convention breach |
+| A **numeric** or **`CHAR(1)`** boolean column mapped without the project's converter | Storage convention breach. Does NOT apply to a native `BOOLEAN` column — that one correctly takes no converter |
 | A mapper applying case normalization | `@PrePersist` owns it |
 | The active flag set directly in a service | Must use `activate()`/`deactivate()` |
 | A business-rule `if` inlined in a service method | Must delegate to `<Entity>Domain` (A.5.18) |
@@ -241,7 +248,7 @@ Fix: [Exact correction]
 | # | Check | Expected | Violation |
 |---|-------|----------|-----------|
 | CU.1 | Entity extends `AuditableEntity` | `extends AuditableEntity` | A custom audit base class |
-| CU.2 | Boolean columns use the project's converter | `@Convert(converter = ...)` | A custom boolean converter |
+| CU.2 | Non-native boolean columns use the project's converter (native `BOOLEAN` takes none) | `@Convert(converter = ...)` on numeric / `CHAR(1)` only | A custom boolean converter, or a converter on a native `BOOLEAN` column |
 | CU.3 | Service returns `ServiceResult<T>` | Every non-delete method | A custom result wrapper |
 | CU.4 | Errors use `LocalizedException` | `throw new LocalizedException(...)` | Raw exceptions |
 | CU.5 | Search uses the shared builders | `SpecBuilder` + `PageableBuilder` | Manual construction |

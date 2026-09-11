@@ -15,6 +15,7 @@ public enum Status {
     PAYLOAD_TOO_LARGE(HttpStatus.CONTENT_TOO_LARGE),
     UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED),
+    FORBIDDEN(HttpStatus.FORBIDDEN),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR);
 
     private final HttpStatus httpStatus;

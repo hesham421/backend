@@ -167,14 +167,14 @@ Open ADRs: 1 — decisions/SEC/ (ADR-SEC-001, non-breaking, carried from P2)
 | API-SEC-002 | submit sign-up | POST | /api/v1/sec/auth/signup | REQ-SEC-003 · DBF-SEC-098,DBF-SEC-099,DBF-SEC-100,DBF-SEC-101,DBF-SEC-102 |
 | API-SEC-003 | request password reset | POST | /api/v1/sec/auth/password-reset/request | REQ-SEC-006,REQ-SEC-029 · DBF-SEC-092,DBF-SEC-093,DBF-SEC-094,DBF-SEC-095 |
 | API-SEC-004 | complete password reset | POST | /api/v1/sec/auth/password-reset/complete | REQ-SEC-007,REQ-SEC-008 · DBF-SEC-093,DBF-SEC-095,DBF-SEC-096,DBF-SEC-004 |
-| API-SEC-005 | search users | GET | /api/v1/sec/users | REQ-SEC-009 · DBF-SEC-002,DBF-SEC-003,DBF-SEC-005,DBF-SEC-006,DBF-SEC-007 |
+| API-SEC-005 | search users | POST | /api/v1/sec/users/search | REQ-SEC-009 · DBF-SEC-002,DBF-SEC-003,DBF-SEC-005,DBF-SEC-006,DBF-SEC-007 |
 | API-SEC-006 | create user | POST | /api/v1/sec/users | REQ-SEC-009 · DBF-SEC-002,DBF-SEC-003,DBF-SEC-005,DBF-SEC-006,DBF-SEC-007 |
 | API-SEC-007 | update user | PUT | /api/v1/sec/users/{id} | REQ-SEC-009 · DBF-SEC-003,DBF-SEC-005,DBF-SEC-006 |
 | API-SEC-008 | assign roles to user | PUT | /api/v1/sec/users/{id}/roles | REQ-SEC-010 · DBF-SEC-026,DBF-SEC-027,DBF-SEC-028,DBF-SEC-029 |
 | API-SEC-009 | deactivate user | DELETE | /api/v1/sec/users/{id} | REQ-SEC-011 · DBF-SEC-007,DBF-SEC-009,DBF-SEC-081,DBF-SEC-082 |
 | API-SEC-010 | reactivate user | PATCH | /api/v1/sec/users/{id} | REQ-SEC-031 · DBF-SEC-007,DBF-SEC-009 |
 | API-SEC-011 | approve/reject signup | PATCH | /api/v1/sec/signup-requests/{id} | REQ-SEC-004,REQ-SEC-005 · DBF-SEC-102,DBF-SEC-103,DBF-SEC-104,DBF-SEC-001 |
-| API-SEC-012 | search roles | GET | /api/v1/sec/roles | REQ-SEC-012 · DBF-SEC-015,DBF-SEC-016,DBF-SEC-017,DBF-SEC-020 |
+| API-SEC-012 | search roles | POST | /api/v1/sec/roles/search | REQ-SEC-012 · DBF-SEC-015,DBF-SEC-016,DBF-SEC-017,DBF-SEC-020 |
 | API-SEC-013 | create role | POST | /api/v1/sec/roles | REQ-SEC-012 · DBF-SEC-015,DBF-SEC-016,DBF-SEC-017,DBF-SEC-018,DBF-SEC-019 |
 | API-SEC-014 | grant module to role | POST | /api/v1/sec/roles/{id}/modules | REQ-SEC-012 · DBF-SEC-061,DBF-SEC-062,DBF-SEC-063,DBF-SEC-064 |
 | API-SEC-015 | revoke module grant | DELETE | /api/v1/sec/roles/{id}/modules/{moduleId} | REQ-SEC-015 · DBF-SEC-061,DBF-SEC-062,DBF-SEC-066,DBF-SEC-071 |
@@ -183,11 +183,11 @@ Open ADRs: 1 — decisions/SEC/ (ADR-SEC-001, non-breaking, carried from P2)
 | API-SEC-018 | register module | POST | /api/v1/sec/registry/modules | REQ-SEC-016 · DBF-SEC-031,DBF-SEC-032,DBF-SEC-033 |
 | API-SEC-019 | register screen | POST | /api/v1/sec/registry/screens | REQ-SEC-017,REQ-SEC-018 · DBF-SEC-040,DBF-SEC-041,DBF-SEC-042,DBF-SEC-043 |
 | API-SEC-020 | register action | POST | /api/v1/sec/registry/actions | REQ-SEC-019 · DBF-SEC-050,DBF-SEC-051,DBF-SEC-052,DBF-SEC-053,DBF-SEC-054 |
-| API-SEC-021 | search registry | GET | /api/v1/sec/registry | REQ-SEC-016 · DBF-SEC-031,DBF-SEC-040,DBF-SEC-050 |
+| API-SEC-021 | search registry | POST | /api/v1/sec/registry/search | REQ-SEC-016 · DBF-SEC-031,DBF-SEC-040,DBF-SEC-050 |
 | API-SEC-022 | dashboard summary | GET | /api/v1/sec/dashboard | REQ-SEC-022,REQ-SEC-023 · DBF-SEC-007,DBF-SEC-076,DBF-SEC-081,DBF-SEC-084,DBF-SEC-086 |
-| API-SEC-023 | search audit log | GET | /api/v1/sec/audit-log | REQ-SEC-025 · DBF-SEC-084,DBF-SEC-085,DBF-SEC-086 |
+| API-SEC-023 | search audit log | POST | /api/v1/sec/audit-log/search | REQ-SEC-025 · DBF-SEC-084,DBF-SEC-085,DBF-SEC-086 |
 | API-SEC-024 | export audit log | GET | /api/v1/sec/audit-log/export | REQ-SEC-026 · DBF-SEC-084,DBF-SEC-085,DBF-SEC-086,DBF-SEC-087,DBF-SEC-088,DBF-SEC-089 |
-| API-SEC-025 | list active sessions | GET | /api/v1/sec/sessions | REQ-SEC-027 · DBF-SEC-076,DBF-SEC-079,DBF-SEC-081 |
+| API-SEC-025 | list active sessions | POST | /api/v1/sec/sessions/search | REQ-SEC-027 · DBF-SEC-076,DBF-SEC-079,DBF-SEC-081 |
 | API-SEC-026 | terminate session | DELETE | /api/v1/sec/sessions/{id} | REQ-SEC-028 · DBF-SEC-081,DBF-SEC-082 |
 | API-SEC-027 | effective menu | GET | /api/v1/sec/menu | REQ-SEC-021,REQ-SEC-032,REQ-SEC-033 · DBF-SEC-031,DBF-SEC-040,DBF-SEC-061,DBF-SEC-066 |
 
@@ -407,8 +407,9 @@ returned as codes; the frontend resolves the display label).
 - **repository**: Spring Data JPA repositories, one per entity/table; every non-trivial query is a named method backed by a `QR-SEC-*` spec (§Query Reference Catalog); no business logic.
 
 **Error signalling**: `LocalizedException → {code, messageAr, messageEn}`. Runtime `code` format:
-`SEC-<3-digit-sequence>` (module-scoped, stated once here so `api-verify` can assert on it — e.g.
-`SEC-001` for the first catalog row). Every catalog row (§Error Catalog) is registered as a
+`SEC-<HTTP-status>-<SCENARIO>` (module-scoped, stated once here so `api-verify` can assert on it —
+e.g. `SEC-409-USER-DUP`; the `-<SCENARIO>` segment is omitted only for the generic infrastructure
+row `SEC-500`). Every catalog row (§Error Catalog) is registered as a
 static enum/constant the controller-advice layer maps to the envelope; `messageAr`/`messageEn`
 are copied character-perfect from the SRS RULE message or from this plan where PLATFORM-STD.
 
@@ -618,7 +619,7 @@ FIELDS:
 | DBF-SEC-061 | roleId | role_id | Long | NOT NULL | No | FK_ROLE_MODULE_GRANT_ROLE, UQ_SEC_ROLE_MODULE_GRANT_ROLE_MODULE |
 | DBF-SEC-062 | moduleId | module_id | Long | NOT NULL | No | FK_ROLE_MODULE_GRANT_MODULE, UQ_SEC_ROLE_MODULE_GRANT_ROLE_MODULE |
 | DBF-SEC-063 | grantedBy | granted_by | String | NOT NULL | Yes | — |
-| DBF-SEC-064 | grantedAt | grant_at | Instant | NOT NULL | Yes | — |
+| DBF-SEC-064 | grantedAt | granted_at | Instant | NOT NULL | Yes | — |
 DOMAIN RULES: **RULE-SEC-003** — Scope ENT-SEC-007 · Trigger: on delete (module grant) · Statement: "The system shall delete every screen grant and action grant that module covered for that role when its module grant is revoked." · Message ar: "سيتم سحب كل منح الشاشات والإجراءات ضمن هذه الوحدة لهذا الدور" / en: "Every screen and action grant under this module for this role will be revoked" · DB enforcement: application layer (service, transactional) · owner layer: service.
 CROSS-MODULE: none.
 REPOSITORY OPS → QR-SEC-014 (SAVE), QR-SEC-015 (DELETE), QR-SEC-032 (FIND_ALL, cascade targets).
@@ -649,7 +650,7 @@ FIELDS:
 | DBF-SEC-074 | grantedAt | granted_at | Instant | NOT NULL | Yes | — |
 DOMAIN RULES:
 **RULE-SEC-002** — Scope ENT-SEC-009 · Trigger: on create (action grant) · Statement: "The system shall prevent an action grant for a role that does not hold the action's screen grant." · Message ar: "لا يمكن منح إجراء دون منح الشاشة أولًا" / en: "Cannot grant an action without first granting its screen" · DB enforcement: application layer (service, via QR-SEC-029) · owner layer: service.
-**RULE-SEC-005** — Scope ENT-SEC-003, ENT-SEC-009 · Trigger: on create (role assignment or action grant) · Statement: "The system shall prevent assigning a user, by any combination of roles, both actions of a module-declared conflicting pair." · Message ar: "هذا المستخدم يملك إجراءً متعارضًا بالفعل" / en: "This user already holds a conflicting action" · DB enforcement: application layer (service, via QR-SEC-031, checked across all of a user's roles) · owner layer: service.
+**RULE-SEC-005** — Scope ENT-SEC-003, ENT-SEC-009 · Trigger: on create (role assignment or action grant) · Statement: "The system shall prevent assigning a user, by any combination of roles, both actions of a module-declared conflicting pair." · Message ar: "هذا المستخدم يملك إجراءً متعارضًا بالفعل" / en: "This user already holds a conflicting action" · DB enforcement: application layer (service, via QR-SEC-031, checked across all of a user's roles) · owner layer: service. · **DEFERRED (SEC v1)**: nothing in SEC v1 declares a conflicting pair — there is no ENT, DBF, table, API field or screen element for such a declaration — so REQ-SEC-020's `optional` precondition is never established and this guard, though implemented, is inert (the conflicting-counterpart set is empty in v1). The platform's only real conflicting pair is FIN-owned and FIN-enforced: governance/modules/FIN/P3_1/backend-execution-plan-fin.md:1061-1066 (RULE-FIN-015, error `FIN-403-SOD-VIOLATION`). Whether SEC v1 should own a conflicting-pair register at all is an open P1/P2 decision, not an execution one.
 **RULE-SEC-007** — Scope ENT-SEC-009 · Trigger: on evaluate (any action check) and on create (action grant, informational) · Statement: "The system shall require a role to hold the VIEW action grant on a screen before any other action grant on that screen takes effect for it." · Message ar: "يلزم منح إجراء العرض (VIEW) أولًا على هذه الشاشة" / en: "The VIEW action must be granted on this screen first" · DB enforcement: application layer (service, via QR-SEC-030 at grant time + the CORE interceptor at request time) · owner layer: service.
 CROSS-MODULE: none.
 REPOSITORY OPS → QR-SEC-017 (SAVE), QR-SEC-029 (EXISTS), QR-SEC-030 (EXISTS), QR-SEC-031 (EXISTS).
@@ -709,9 +710,9 @@ API count = 27 ≥ 8 → split by threshold, grouped CRUD / SEARCH / INT.
 
 <!-- API:API-SEC-005:START traces=REQ-SEC-009,DBF-SEC-002,DBF-SEC-003,DBF-SEC-005,DBF-SEC-006,DBF-SEC-007 -->
 ### API-SEC-005 — search users
-Endpoint     : GET /api/v1/sec/users   verb: GET
+Endpoint     : POST /api/v1/sec/users/search   verb: POST
 Layers       : controller → `UserController.search` ; service → `UserService.search`
-Request      : query params `username`(LIKE), `email`(LIKE), `fullName`(LIKE, matches fullNameAr or fullNameEn), `statusCode`(EXACT), `page`, `size`, `sort`
+Request      : body `UserSearchRequest` (BaseSearchContractRequest) — `filters[]` of (field, operator, value) over `username`, `email`, `statusCode`, plus `fullName` (LIKE, matches fullNameAr or fullNameEn), and `page`, `size`, `sortField`, `sortDirection`
 Response     : 200 · `Page<UserResponse>` (userPk, username, email, fullNameAr, fullNameEn, statusCode, lastLoginAt) · envelope `ApiResponse<Page<UserResponse>>`
 Validations  : none (read-only)
 Errors       : none beyond platform-standard (§Error Catalog SEC-500)
@@ -723,9 +724,9 @@ Localization : fullNameAr/fullNameEn both returned
 
 <!-- API:API-SEC-012:START traces=REQ-SEC-012,DBF-SEC-015,DBF-SEC-016,DBF-SEC-017,DBF-SEC-020 -->
 ### API-SEC-012 — search roles
-Endpoint     : GET /api/v1/sec/roles
+Endpoint     : POST /api/v1/sec/roles/search
 Layers       : controller → `RoleController.search` ; service → `RoleService.search`
-Request      : query params `code`(LIKE), `name`(LIKE, nameAr or nameEn), `isActiveFl`(EXACT), `page`, `size`, `sort`
+Request      : body `RoleSearchRequest` (BaseSearchContractRequest) — `filters[]` of (field, operator, value) over `code`, `isActiveFl`, plus `name` (LIKE, nameAr or nameEn), and `page`, `size`, `sortField`, `sortDirection`
 Response     : 200 · `Page<RoleResponse>` (rolePk, code, nameAr, nameEn, descriptionAr, descriptionEn, isActiveFl) · `ApiResponse<Page<RoleResponse>>`
 Validations  : none
 Errors       : SEC-500 only
@@ -737,9 +738,9 @@ Localization : nameAr/nameEn/descriptionAr/descriptionEn returned
 
 <!-- API:API-SEC-021:START traces=REQ-SEC-016,DBF-SEC-031,DBF-SEC-040,DBF-SEC-050 -->
 ### API-SEC-021 — search registry
-Endpoint     : GET /api/v1/sec/registry
+Endpoint     : POST /api/v1/sec/registry/search
 Layers       : controller → `RegistryController.search` ; service → `RegistryService.search`
-Request      : query params `moduleCode`(EXACT), `pageCode`(LIKE), `page`, `size`, `sort`
+Request      : body `RegistrySearchRequest` (BaseSearchContractRequest) — `filters[]` of (field, operator, value) over `code` (the module code), plus `pageCode` (LIKE, on the child screen), and `page`, `size`, `sortField`, `sortDirection`
 Response     : 200 · `Page<RegistryRowResponse>` (a module row with its nested active screens and, per screen, its active actions) · `ApiResponse<Page<RegistryRowResponse>>`
 Validations  : none
 Errors       : SEC-500 only
@@ -765,9 +766,9 @@ Localization : recentActivity entries carry detailsAr/detailsEn
 
 <!-- API:API-SEC-023:START traces=REQ-SEC-025,DBF-SEC-084,DBF-SEC-085,DBF-SEC-086 -->
 ### API-SEC-023 — search audit log
-Endpoint     : GET /api/v1/sec/audit-log
+Endpoint     : POST /api/v1/sec/audit-log/search
 Layers       : controller → `AuditLogController.search` ; service → `AuditLogService.search`
-Request      : query params `eventTypeCode`(EXACT), `actorUserId`(EXACT), `occurredFrom`/`occurredTo`(DATE_RANGE), `page`, `size`, `sort`
+Request      : body `AuditLogEntrySearchRequest` (BaseSearchContractRequest) — `filters[]` of (field, operator, value) over `eventTypeCode` and `occurredAt` (any range operator), plus `actorUserId` (EXACT), and `page`, `size`, `sortField`, `sortDirection`
 Response     : 200 · `Page<AuditLogEntryResponse>` (all fields, unmodified) · `ApiResponse<Page<AuditLogEntryResponse>>`
 Validations  : none
 Errors       : SEC-500 only
@@ -779,9 +780,9 @@ Localization : detailsAr/detailsEn returned
 
 <!-- API:API-SEC-025:START traces=REQ-SEC-027,DBF-SEC-076,DBF-SEC-079,DBF-SEC-081 -->
 ### API-SEC-025 — list active sessions
-Endpoint     : GET /api/v1/sec/sessions
+Endpoint     : POST /api/v1/sec/sessions/search
 Layers       : controller → `SessionController.search` ; service → `SessionService.search`
-Request      : query params `userId`(EXACT), `ipAddress`(LIKE), `page`, `size`, `sort`
+Request      : body `ActiveSessionSearchRequest` (BaseSearchContractRequest) — `filters[]` of (field, operator, value) over `ipAddress`, plus `userId` (EXACT), and `page`, `size`, `sortField`, `sortDirection`
 Response     : 200 · `Page<ActiveSessionResponse>` (activeSessionPk, userId, username, startedAt, lastActivityAt, ipAddress) — `tokenRef` never returned · `ApiResponse<Page<ActiveSessionResponse>>`
 Validations  : filter `terminatedAt IS NULL` always applied server-side (REQ-SEC-027: "every session that has not been terminated") — not a client-supplied filter
 Errors       : SEC-500 only
@@ -1107,14 +1108,14 @@ real `api-docs-sec.md` published after implementation, never to this table):
 | API-SEC-002 | /auth/signup | POST | SignupRequestDto | SignupRequestResponse | v1 |
 | API-SEC-003 | /auth/password-reset/request | POST | ResetRequestDto | ConfirmationResponse | v1 |
 | API-SEC-004 | /auth/password-reset/complete | POST | ResetCompleteDto | ConfirmationResponse | v1 |
-| API-SEC-005 | /users | GET | (query params) | Page\<UserResponse\> | v1 |
+| API-SEC-005 | /users/search | POST | UserSearchRequest | Page\<UserResponse\> | v1 |
 | API-SEC-006 | /users | POST | UserCreateRequest | UserResponse | v1 |
 | API-SEC-007 | /users/{id} | PUT | UserUpdateRequest | UserResponse | v1 |
 | API-SEC-008 | /users/{id}/roles | PUT | RoleAssignmentRequest | UserResponse | v1 |
 | API-SEC-009 | /users/{id} | DELETE | — | DeactivateConfirmation | v1 |
 | API-SEC-010 | /users/{id} | PATCH | — | ReactivateConfirmation | v1 |
 | API-SEC-011 | /signup-requests/{id} | PATCH | SignupDecisionRequest | UserResponse \| SignupRequestResponse | v1 |
-| API-SEC-012 | /roles | GET | (query params) | Page\<RoleResponse\> | v1 |
+| API-SEC-012 | /roles/search | POST | RoleSearchRequest | Page\<RoleResponse\> | v1 |
 | API-SEC-013 | /roles | POST | RoleCreateRequest | RoleResponse | v1 |
 | API-SEC-014 | /roles/{id}/modules | POST | ModuleGrantRequest | RoleModuleGrantResponse | v1 |
 | API-SEC-015 | /roles/{id}/modules/{moduleId} | DELETE | — | RevokeConfirmation | v1 |
@@ -1123,11 +1124,11 @@ real `api-docs-sec.md` published after implementation, never to this table):
 | API-SEC-018 | /registry/modules | POST | ModuleRegisterRequest | ModuleRegistryResponse | v1 |
 | API-SEC-019 | /registry/screens | POST | ScreenRegisterRequest | ScreenRegistryResponse | v1 |
 | API-SEC-020 | /registry/actions | POST | ActionRegisterRequest | ActionRegistryResponse | v1 |
-| API-SEC-021 | /registry | GET | (query params) | Page\<RegistryRowResponse\> | v1 |
+| API-SEC-021 | /registry/search | POST | RegistrySearchRequest | Page\<RegistryRowResponse\> | v1 |
 | API-SEC-022 | /dashboard | GET | — | DashboardResponse | v1 |
-| API-SEC-023 | /audit-log | GET | (query params) | Page\<AuditLogEntryResponse\> | v1 |
+| API-SEC-023 | /audit-log/search | POST | AuditLogEntrySearchRequest | Page\<AuditLogEntryResponse\> | v1 |
 | API-SEC-024 | /audit-log/export | GET | (query params) | text/csv | v1 |
-| API-SEC-025 | /sessions | GET | (query params) | Page\<ActiveSessionResponse\> | v1 |
+| API-SEC-025 | /sessions/search | POST | ActiveSessionSearchRequest | Page\<ActiveSessionResponse\> | v1 |
 | API-SEC-026 | /sessions/{id} | DELETE | — | TerminateConfirmation | v1 |
 | API-SEC-027 | /menu | GET | — | List\<ModuleMenuResponse\> | v1 |
 (paths relative to `/api/v1/sec`)
@@ -1210,7 +1211,7 @@ engine §6.1 R8 ("written as the phase content of the alignment-role phase").
 
 ## Error Catalog — SEC v1
 
-Envelope: `LocalizedException → {code, messageAr, messageEn}`. Runtime code format: `SEC-<3-digit>` (Phase 1 CORE).
+Envelope: `LocalizedException → {code, messageAr, messageEn}`. Runtime code format: `SEC-<HTTP-status>-<SCENARIO>` (Phase 1 CORE).
 
 | code | RULE / PLATFORM-STD | API | HTTP | trigger | message-AR | message-EN |
 |---|---|---|---|---|---|---|
@@ -1264,7 +1265,7 @@ QRC (§5)          ✓ every API with a DB operation has ≥1 QR (API-SEC-001..0
 API (R3)          ✓ every RULE in a Validations line has a catalog row; platform errors carry RULE=PLATFORM-STD + ADR-SEC-002; create/update requests exclude PK/audit/system fields (DTO MEMBERSHIP, Phase 2; Request lines, Phase 3); business code: not applicable (none exists)
 CROSS-MODULE      ✓ 0 XM from db-script, 0 placed, 0 mismatched; inbound stub uses XM-INBOUND-STUB-1 notation, not TODO
 SECURITY (R7)     ✓ every secured API declares its PERM_* (Phase 3 Security lines, cross-checked against Phase 7 table); every secured screen has a Phase 7 seed row; no permission outside SRS §7.1/Access summary — profile.review.extra_checks ERP-4 (every mutation endpoint declares its PERM_*): checked — every POST/PUT/PATCH/DELETE API above states one
-CORE (R1)         ✓ layers declared, domain placement declared (entity methods for single-entity, service for multi-row), error signalling declared (code format `SEC-<3-digit>`), type mapping declared (postgresql16 → Java table)
+CORE (R1)         ✓ layers declared, domain placement declared (entity methods for single-entity, service for multi-row), error signalling declared (code format `SEC-<HTTP-status>-<SCENARIO>`), type mapping declared (postgresql16 → Java table)
 DECISIONS         ✓ ADR-SEC-001 (carried from P2, lookup centralization deferral) and ADR-SEC-002 (this stage, PLATFORM-STD catalog umbrella) both ACCEPTED, non-breaking; no BLOCKED ADR
 RESULT            PASSED ✓ — 0 findings
 ```

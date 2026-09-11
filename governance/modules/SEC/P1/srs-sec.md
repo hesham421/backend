@@ -514,6 +514,7 @@ Entities   : ENT-SEC-001, ENT-SEC-003, ENT-SEC-006, ENT-SEC-009
 Rationale  : RULE-SEC-005; SoD moved to the shared RBAC layer per general-accounting-system-plan-en.md §8.2/§10.3
 Source     : security-module-plan-en.md §4.4
 Priority   : MEDIUM
+Note       : DEFERRED in SEC v1 — nothing in SEC v1 declares a conflicting pair, so this `optional` pattern's precondition is never established: there is no ENT, DBF, table, API field or screen element for such a declaration. The guards (RULE-SEC-005, QR-SEC-031) are implemented and inert — the conflicting-counterpart set is empty in v1. The platform's only real conflicting pair is FIN-owned and FIN-enforced: governance/modules/FIN/P3_1/backend-execution-plan-fin.md:1061-1066 (RULE-FIN-015, error `FIN-403-SOD-VIOLATION`). Whether SEC v1 should own a conflicting-pair register at all is an open P1/P2 decision, not an execution one.
 #### AC-SEC-020 — [REQ-SEC-020]
 Given two actions declared conflicting by their owning module, and a user who already holds one of them (via any role)
 When an administrator attempts to assign a role that would give that same user the other conflicting action
@@ -716,6 +717,7 @@ Statement  : The system shall prevent assigning a user, by any combination of ro
 Message    : ar: "هذا المستخدم يملك إجراءً متعارضًا بالفعل" · en: "This user already holds a conflicting action"
 Traces     : REQ-SEC-020
 Source     : security-module-plan-en.md §4.4; general-accounting-system-plan-en.md §8.2
+Note       : DEFERRED in SEC v1 — nothing in SEC v1 declares a conflicting pair, so this `optional` pattern's precondition is never established: there is no ENT, DBF, table, API field or screen element for such a declaration. The guards (RULE-SEC-005, QR-SEC-031) are implemented and inert — the conflicting-counterpart set is empty in v1. The platform's only real conflicting pair is FIN-owned and FIN-enforced: governance/modules/FIN/P3_1/backend-execution-plan-fin.md:1061-1066 (RULE-FIN-015, error `FIN-403-SOD-VIOLATION`). Whether SEC v1 should own a conflicting-pair register at all is an open P1/P2 decision, not an execution one.
 
 ### RULE-SEC-006 — رفض رمز إعادة تعيين منتهٍ أو مُستخدَم / Reject expired or used reset token
 Scope      : ENT-SEC-012
@@ -898,7 +900,7 @@ Page code: SEC_USERS. Actions: VIEW (list/search), CREATE, UPDATE (incl. activat
 ### B5 — API expectations
 | Operation | Verb | Path | Inputs | Outputs | RULEs | Traces (REQ) |
 |---|---|---|---|---|---|---|
-| search users | GET | /api/v1/sec/users | filters, paging | Page\<User\> | — | REQ-SEC-009 |
+| search users | POST | /api/v1/sec/users/search | filters, paging | Page\<User\> | — | REQ-SEC-009 |
 | create user | POST | /api/v1/sec/users | user fields | User | — | REQ-SEC-009 |
 | update user | PUT | /api/v1/sec/users/{id} | user fields | User | — | REQ-SEC-009 |
 | assign roles | PUT | /api/v1/sec/users/{id}/roles | role ids | User with roles | — | REQ-SEC-010 |
@@ -925,7 +927,7 @@ Page code: SEC_ROLES. Actions: VIEW, CREATE, UPDATE, DELETE (deactivate role), p
 ### B5 — API expectations
 | Operation | Verb | Path | Inputs | Outputs | RULEs | Traces (REQ) |
 |---|---|---|---|---|---|---|
-| search roles | GET | /api/v1/sec/roles | filters, paging | Page\<Role\> | — | REQ-SEC-012 |
+| search roles | POST | /api/v1/sec/roles/search | filters, paging | Page\<Role\> | — | REQ-SEC-012 |
 | create role | POST | /api/v1/sec/roles | role fields | Role | — | REQ-SEC-012 |
 | grant module | POST | /api/v1/sec/roles/{id}/modules | moduleId | RoleModuleGrant | — | REQ-SEC-012 |
 | revoke module | DELETE | /api/v1/sec/roles/{id}/modules/{moduleId} | — | confirmation | RULE-SEC-003 | REQ-SEC-015 |
@@ -954,7 +956,7 @@ Page code: SEC_MODULE_REGISTRY. Actions: VIEW, UPDATE (deactivate only).
 | register module | POST | /api/v1/sec/registry/modules | code, nameAr, nameEn | ModuleRegistry | — | REQ-SEC-016 |
 | register screen | POST | /api/v1/sec/registry/screens | moduleCode, pageCode, nameAr, nameEn | ScreenRegistry | RULE-SEC-004 | REQ-SEC-017, REQ-SEC-018 |
 | register action | POST | /api/v1/sec/registry/actions | pageCode, actionCode, nameAr, nameEn | ActionRegistry | — | REQ-SEC-019 |
-| search registry | GET | /api/v1/sec/registry | filters, paging | Page\<registry rows\> | — | REQ-SEC-016 |
+| search registry | POST | /api/v1/sec/registry/search | filters, paging | Page\<registry rows\> | — | REQ-SEC-016 |
 
 ## SCR-REQ-SEC-007 — لوحة تحكم الأمان / Admin dashboard
 ### B1 — Definition
@@ -996,7 +998,7 @@ Page code: SEC_AUDIT_LOG. Action: VIEW (search + export share the same permissio
 ### B5 — API expectations
 | Operation | Verb | Path | Inputs | Outputs | RULEs | Traces (REQ) |
 |---|---|---|---|---|---|---|
-| search audit log | GET | /api/v1/sec/audit-log | filters, paging | Page\<AuditLogEntry\> | — | REQ-SEC-025 |
+| search audit log | POST | /api/v1/sec/audit-log/search | filters, paging | Page\<AuditLogEntry\> | — | REQ-SEC-025 |
 | export audit log | GET | /api/v1/sec/audit-log/export | filters | CSV file | — | REQ-SEC-026 |
 
 ## SCR-REQ-SEC-009 — إدارة الجلسات النشطة / Active sessions management
@@ -1018,7 +1020,7 @@ Page code: SEC_SESSIONS. Actions: VIEW, DELETE (terminate, RULE-SEC-007 gateway 
 ### B5 — API expectations
 | Operation | Verb | Path | Inputs | Outputs | RULEs | Traces (REQ) |
 |---|---|---|---|---|---|---|
-| list active sessions | GET | /api/v1/sec/sessions | filters, paging | Page\<ActiveSession\> | — | REQ-SEC-027 |
+| list active sessions | POST | /api/v1/sec/sessions/search | filters, paging | Page\<ActiveSession\> | — | REQ-SEC-027 |
 | terminate session | DELETE | /api/v1/sec/sessions/{id} | id | confirmation | — | REQ-SEC-028 |
 
 ## SCR-REQ-SEC-010 — القائمة الديناميكية ثنائية المستوى / Dynamic two-tier menu
