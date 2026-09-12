@@ -5,8 +5,6 @@ import com.erp.common.domain.status.Status;
 import com.erp.common.exception.LocalizedException;
 import com.erp.common.search.DefaultFieldValueConverter;
 import com.erp.common.search.PageableBuilder;
-import com.erp.common.search.SearchFilter;
-import com.erp.common.search.SearchOperator;
 import com.erp.common.search.SearchRequest;
 import com.erp.common.search.SetAllowedFields;
 import com.erp.common.search.SpecBuilder;
@@ -14,6 +12,7 @@ import com.erp.mdl.domain.LookupValueDomain;
 import com.erp.mdl.dto.LookupValueCreateRequest;
 import com.erp.mdl.dto.LookupValueReorderRequest;
 import com.erp.mdl.dto.LookupValueResponse;
+import com.erp.mdl.dto.LookupValueSearchRequest;
 import com.erp.mdl.dto.LookupValueUpdateRequest;
 import com.erp.mdl.entity.LookupType;
 import com.erp.mdl.entity.LookupValue;
@@ -153,41 +152,42 @@ public class LookupValueService {
     }
 
     /**
-     * API-MDL-005 — search values of one type (SVC-API-SEARCH.md). {@code code} is LIKE;
-     * default sort is {@code sortOrder} when the caller supplies none. Validates the parent type
-     * exists first ({@code MDL-404-TYPE} if not).
+     * API-MDL-005 — search values of one type (SVC-API-SEARCH.md). {@code code} flows through the
+     * generic {@code filters[]} list on {@link LookupValueSearchRequest} (client-chosen operator,
+     * e.g. LIKE); default sort is {@code sortOrder} when the caller supplies none. Validates the
+     * parent type exists first ({@code MDL-404-TYPE} if not).
      *
-     * <p>A.5.16/A.5.17 — a non-null {@code lookupTypeId} is required, and the parent scope is an
-     * explicit {@code Specification} join rather than a generic filter: {@link SpecBuilder}'s
-     * flat {@code root.get(field)} cannot express the nested {@code lookupType.lookupTypePk}
-     * path, so that predicate is written directly here and ANDed with the generic
-     * code-filter specification built from the shared plumbing.
+     * <p>A.5.16/A.5.17 — a non-null {@code lookupTypeId} is required (read via
+     * {@link LookupValueSearchRequest#getLookupTypeId()}, carried in the body's filters, never a
+     * path variable), and the parent scope is an explicit {@code Specification} join rather than a
+     * generic filter: {@link SpecBuilder}'s flat {@code root.get(field)} cannot express the nested
+     * {@code lookupType.lookupTypePk} path, so that predicate is written directly here and ANDed
+     * with the generic code-filter specification built from the shared plumbing.
      *
-     * <p>Same GET-instead-of-POST/search design as {@link LookupTypeService#search} — the
-     * controller passes plain scalar arguments; this method builds the internal
-     * {@link SearchRequest} itself.
+     * <p>The earlier GET + scalar-argument deviation (same reasoning as
+     * {@link LookupTypeService#search}) was reversed to {@code POST /search}, mirroring FIN's
+     * {@code DimensionValueService#search} child-search shape.
      */
     @Transactional(readOnly = true)
     @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants).PERM_MDL_LOOKUPS_VIEW)")
-    public ServiceResult<Page<LookupValueResponse>> search(Long lookupTypeId, String code,
-                                                             int page, int size, String sort) {
+    public ServiceResult<Page<LookupValueResponse>> search(LookupValueSearchRequest searchRequest) {
+        Long lookupTypeId = searchRequest.getLookupTypeId();
         log.debug("Searching LookupValue for LookupType ID: {}", lookupTypeId);
 
-        if (!lookupTypeRepository.existsById(lookupTypeId)) {
+        if (lookupTypeId == null || !lookupTypeRepository.existsById(lookupTypeId)) {
             throw new LocalizedException(Status.NOT_FOUND, MdlErrorCodes.MDL_404_TYPE, lookupTypeId);
         }
 
-        List<SearchFilter> filters = new ArrayList<>();
-        if (code != null && !code.isBlank()) {
-            filters.add(SearchFilter.builder().field("code").operator(SearchOperator.LIKE).value(code).build());
+        SearchRequest commonRequest = searchRequest.toCommonSearchRequest();
+        if (commonRequest.getSortField() == null || commonRequest.getSortField().isBlank()) {
+            commonRequest = SearchRequest.builder()
+                .filters(commonRequest.getFilters())
+                .sortField(DEFAULT_SORT_FIELD)
+                .sortDirection(commonRequest.getSortDirection())
+                .page(commonRequest.getPage())
+                .size(commonRequest.getSize())
+                .build();
         }
-
-        SearchRequest commonRequest = SearchRequest.builder()
-            .filters(filters)
-            .sortField(sort != null && !sort.isBlank() ? sort : DEFAULT_SORT_FIELD)
-            .page(page)
-            .size(size)
-            .build();
 
         SetAllowedFields allowedFields = new SetAllowedFields(ALLOWED_SORT_FIELDS);
 

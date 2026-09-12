@@ -60,18 +60,27 @@ public class GlobalExceptionHandler {
                 .build())
             .toList();
         ApiError error = ApiError.builder()
-            .code("VALIDATION_ERROR")
-            .message("Validation failed")
+            .code(CommonErrorCodes.VALIDATION_ERROR)
+            .message(resolveMessage(CommonErrorCodes.VALIDATION_ERROR, null))
             .fieldErrors(fieldErrors)
             .build();
         return ResponseEntity.badRequest().body(ApiResponse.failure(error));
     }
 
+    /**
+     * Deliberately NOT routed through {@code resolveMessage}: this handler emits the SAME wire code
+     * as {@link #handleValidation} ({@code VALIDATION_ERROR}) but a DIFFERENT message, and one
+     * bundle key cannot carry two texts. The key {@code VALIDATION_ERROR} is registered with the
+     * generic "Validation failed" text that {@link #handleValidation} needs; localizing this
+     * sentence too would require either overwriting that text or giving this response its own wire
+     * code — a contract change, not a localization change. Left hardcoded and recorded as the
+     * remaining half of the PLATFORM I18N finding.
+     */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiResponse<Void>> handleMalformedRequestBody(HttpMessageNotReadableException ex) {
         log.warn("Malformed request body: {}", ex.getMessage());
         ApiError error = ApiError.builder()
-            .code("VALIDATION_ERROR")
+            .code(CommonErrorCodes.VALIDATION_ERROR)
             .message("The request body is malformed or does not match the expected structure")
             .build();
         return ResponseEntity.badRequest().body(ApiResponse.failure(error));
@@ -81,8 +90,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrity(DataIntegrityViolationException ex) {
         log.error("Data integrity violation", ex);
         ApiError error = ApiError.builder()
-            .code("DATA_INTEGRITY_VIOLATION")
-            .message("The request could not be completed because it violates a data constraint")
+            .code(CommonErrorCodes.DATA_INTEGRITY_VIOLATION)
+            .message(resolveMessage(CommonErrorCodes.DATA_INTEGRITY_VIOLATION, null))
             .build();
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.failure(error));
     }
@@ -100,8 +109,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleUnexpected(Exception ex) {
         log.error("Unexpected error", ex);
         ApiError error = ApiError.builder()
-            .code("INTERNAL_ERROR")
-            .message("An unexpected error occurred")
+            .code(CommonErrorCodes.INTERNAL_ERROR)
+            .message(resolveMessage(CommonErrorCodes.INTERNAL_ERROR, null))
             .build();
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ApiResponse.failure(error));
     }

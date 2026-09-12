@@ -4,8 +4,8 @@ Module : FIN   Version : v1   Dialect : postgresql16   Schema prefix : none
 Identifier transformation : SRS logical field name (camelCase) → physical column
   name (snake_case). Applied to every identifier; no other spelling exists.
 Date : 2026-09-10
-Counts : 14 tables · 147 DBF · 2 XM (XM-FIN-001 SOFT-READ → MDL; XM-FIN-002 READ → SEC,
-  registered at ALIGN-BE)
+Counts : 14 tables · 147 DBF · 1 XM (XM-FIN-001 SOFT-READ → MDL). XM-FIN-002 (READ → SEC)
+  was registered at ALIGN-BE and RETIRED on 2026-09-12 — see §2
 ══════════════════════════════════════════════════════════════════
 
 ## 1. DB FIELD TRACEABILITY MATRIX — FIN v1
@@ -208,20 +208,37 @@ deviation is recorded here and in the backend execution plan's extraction block.
 | XM id | Type | This table | Column / access | Target table | Target module | Traces (REQ) | Status |
 |---|---|---|---|---|---|---|---|
 | XM-FIN-001 | SOFT-READ | FIN_ACCOUNT, FIN_JOURNAL_ENTRY, FIN_JOURNAL_LINE, FIN_FISCAL_YEAR, FIN_FISCAL_PERIOD, FIN_EVENT_TYPE_RULE, FIN_RULE_LINE, FIN_RECURRING_TEMPLATE, FIN_ALLOCATION_TARGET | application-level validation of every lookup-backed code column (account_type_code, nature_code, direction_code, journal_type_code, status_code, event_type_code, account_derivation_type_code, amount_source_type_code, distribution_type_code, schedule_type_code, frequency_code) against `MDL_LOOKUP_VALUE` | MDL_LOOKUP_VALUE | MDL | REQ-FIN-001, REQ-FIN-007, REQ-FIN-008, REQ-FIN-010, REQ-FIN-014, REQ-FIN-018, REQ-FIN-022, REQ-FIN-025, REQ-FIN-031 | ACTIVE (target MDL v1 gated, pass-1 APPROVE) |
-| XM-FIN-002 | READ | (no table — service-to-service) | `FinSeparationOfDutiesService` injects `com.erp.sec.crossmodule.SecUserDirectoryApi` and calls `findUserIdsHoldingPermission` for `PERM_FIN_PERIODS_CLOSE_APPROVE` and `PERM_FIN_JOURNAL_ENTRIES_CREATE`, to resolve the RULE-FIN-015 separation-of-duties fact behind API-FIN-026 / API-FIN-027; in-process Spring injection, never HTTP; fallback if the read fails = `FIN-403-SOD-VIOLATION` (the close is refused, never approved on an unverified fact) | SEC's user/role/permission grant tables (via the crossmodule interface only) | SEC | REQ-FIN-037, REQ-FIN-038 | ACTIVE |
+| ~~XM-FIN-002~~ | READ | (no table — service-to-service) | HISTORICAL, kept so the decision can be reconstructed. `FinSeparationOfDutiesService` injected `com.erp.sec.crossmodule.SecUserDirectoryApi` and called `findUserIdsHoldingPermission` for `PERM_FIN_PERIODS_CLOSE_APPROVE` and `PERM_FIN_JOURNAL_ENTRIES_CREATE`, to resolve a global user-set-disjointness fact behind API-FIN-026 / API-FIN-027; in-process Spring injection, never HTTP. That service was DELETED on 2026-09-12 together with `FiscalPeriodDomain.assertCanHardClose(...)` — see the note below | SEC's user/role/permission grant tables (via the crossmodule interface only) | SEC | REQ-FIN-037, REQ-FIN-038 | RETIRED 2026-09-12 — nothing consumes it |
 
-XM-FIN-002 binds no FIN column and creates no physical FK — it is registered here because it is
-a named FIN service consuming a named SEC `crossmodule` interface whose result feeds a FIN
-business rule. It was assigned at ALIGN-BE, after the SEC-BE phase introduced the read; the P2
-pass legitimately saw only one XM.
+XM-FIN-002 bound no FIN column and created no physical FK. It was assigned at ALIGN-BE, after
+the SEC-BE phase introduced the read (the P2 pass legitimately saw only one XM), on the grounds
+that it was a named FIN service consuming a named SEC `crossmodule` interface whose result fed a
+FIN business rule.
+
+**RETIRED 2026-09-12 — do not resurrect it.** The rule it fed was an over-implementation:
+`FinSeparationOfDutiesService` reported whether the user sets holding
+`PERM_FIN_PERIODS_CLOSE_APPROVE` and `PERM_FIN_JOURNAL_ENTRIES_CREATE` were disjoint, and
+`FiscalPeriodDomain.assertCanHardClose` refused the close whenever ANY single user in the system
+held both — for EVERY caller, including a perfectly clean approver. RULE-FIN-015 does not ask for
+that. Read at `governance/modules/FIN/P1/srs-fin.md:1026-1033`, it requires only that the
+close-approval action be gated by a permission DISTINCT from the journal-entry-creation
+permission, "enforced through the Security module", and its `Data source` line reads
+"DEFERRED — ... has no FIN-side field to read". REQ-FIN-038 (`srs-fin.md:781-788`) and
+AC-FIN-038 (`:789-792`) say the same. By recorded human decision both classes were deleted;
+RULE-FIN-015 stands and is enforced by the delivered
+`@PreAuthorize(PERM_FIN_PERIODS_CLOSE_APPROVE)` gate on `FiscalPeriodService.hardClose` and
+`FiscalYearService.yearEndClose`. That service was FIN's ONLY consumer of
+`com.erp.sec.crossmodule`, so **FIN now has no cross-module dependency on SEC at all**; the only
+remaining `com.erp.sec` mentions under `src/main/java/com/erp/fin/` are `@PreAuthorize` SpEL
+string literals naming `PermissionConstants`, plus two javadoc references. The id XM-FIN-002 is
+retired, not reused.
 
 See `erp/decisions/FIN/ADR-FIN-001.md` for why FIN's *identity/authorization* dependency on SEC,
 and its own self-registration into SEC, are still NOT an XM row (they follow the exact precedent
 SEC's and MDL's own P2/P3.1 already set: platform-standard integration narrated in the backend
 execution plan, not a `SHARED ENTITIES CONSUMED` → `XM` row — no physical cross-module FK exists
-anywhere in this pipeline). ADR-FIN-001 is unchanged and still correct as written: XM-FIN-002 is
-not the ambient authorization of the caller, which is what that ADR excludes, but FIN reading
-SEC's data *about other users* as an input to RULE-FIN-015.
+anywhere in this pipeline). ADR-FIN-001 is unchanged and, with XM-FIN-002 retired, it once again
+covers the whole of FIN's relationship with SEC.
 
 ### 2.1 SOFT-READ handling
 ```
@@ -733,7 +750,7 @@ COMMIT;
 
 | DEFAULT / ADR | What | Source | Override / status |
 |---|---|---|---|
-| ADR-FIN-001 | Only one formal XM row (XM-FIN-001, SOFT-READ → MDL) is assigned at THIS stage; FIN's identity/authorization dependency on SEC and its own self-registration into SEC follow the exact precedent SEC's and MDL's own P2/P3.1 already set — platform-standard integration narrated in the backend plan, not an `XM` row, since no physical cross-module FK exists anywhere in this pipeline | erp/decisions/FIN/ADR-FIN-001.md | ACCEPTED (non-breaking). Still correct as written; it does NOT cover XM-FIN-002, added at ALIGN-BE for FIN's read of SEC's user directory — see §2 |
+| ADR-FIN-001 | Only one formal XM row (XM-FIN-001, SOFT-READ → MDL) is assigned at THIS stage; FIN's identity/authorization dependency on SEC and its own self-registration into SEC follow the exact precedent SEC's and MDL's own P2/P3.1 already set — platform-standard integration narrated in the backend plan, not an `XM` row, since no physical cross-module FK exists anywhere in this pipeline | erp/decisions/FIN/ADR-FIN-001.md | ACCEPTED (non-breaking). Still correct as written. It did NOT cover XM-FIN-002, added at ALIGN-BE for FIN's read of SEC's user directory; that row was RETIRED on 2026-09-12 when `FinSeparationOfDutiesService` was deleted, so the ADR again covers the whole of FIN↔SEC — see §2 |
 | DEFAULT | All 13 FIN-owned lookup-backed columns are plain VARCHAR, validated against MDL at the application layer (XM-FIN-001), never CHECK-constrained locally — unlike SEC's ADR-SEC-001, which applied only because MDL did not exist yet at SEC's build time | this stage, MDL v1 already gated | non-breaking |
 | DEFAULT | `amount` columns use `NUMERIC(18,4)` | [KB:erp-domain-standards §6] | non-breaking |
 

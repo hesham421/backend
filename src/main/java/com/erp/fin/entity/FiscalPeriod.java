@@ -30,11 +30,13 @@ import lombok.experimental.SuperBuilder;
  * ENT-FIN-008 — FiscalPeriod (FIN_FISCAL_PERIOD). Source: db-script-fin.md §1 DBF-FIN-075..088 /
  * §3 BLOCK 3, DATA-DOM-MASTER.md ENT-FIN-008.
  *
- * <p>RULE-FIN-014 (a Hard Closed period is never reopened) and RULE-FIN-015 (the close-approval
- * permission is held by a role distinct from the entry-creation permission) are decided by
+ * <p>RULE-FIN-014 (a Hard Closed period is never reopened) is decided by
  * {@link com.erp.fin.domain.FiscalPeriodDomain}; the transition helpers below are plain state
- * mutation, exactly as CORE.md prescribes ({@code FiscalPeriodDomain.assertCanHardClose(...)}
- * then {@code FiscalPeriod.hardClose()}). RULE-FIN-008 (period must be Open at post time) is
+ * mutation, exactly as CORE.md prescribes ({@code FiscalPeriodDomain.assertCanReopen()} then
+ * {@code FiscalPeriod.hardClose()}). RULE-FIN-015 (the close-approval permission is distinct
+ * from the entry-creation permission) is not decided here or in the Domain class at all — it is
+ * the {@code @PreAuthorize(PERM_FIN_PERIODS_CLOSE_APPROVE)} gate on the two close endpoints, per
+ * the SRS. RULE-FIN-008 (period must be Open at post time) is
  * NOT here: CORE.md assigns it to {@code JournalEntryDomain}, owned by the
  * DATA-DOM-TRANSACTIONAL sub — duplicating it would breach A.0.7.
  *
@@ -152,8 +154,10 @@ public class FiscalPeriod extends AuditableEntity {
 
     /**
      * REQ-FIN-034 (hard-close, approval-gated). Plain state mutation —
-     * {@code FiscalPeriodDomain.assertCanHardClose(...)} decides first (RULE-FIN-015); the
-     * approver principal and timestamp are supplied by the service, which owns the SEC read.
+     * {@code FiscalPeriodDomain.assertCanReopen()} decides first (RULE-FIN-014) and the
+     * {@code @PreAuthorize(PERM_FIN_PERIODS_CLOSE_APPROVE)} gate on the calling service method
+     * is RULE-FIN-015's whole enforcement; the approver principal and timestamp are supplied by
+     * the service.
      */
     public void hardClose(String approverPrincipal, Instant closedAtInstant) {
         this.statusCode = STATUS_HARD_CLOSE;

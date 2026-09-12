@@ -97,7 +97,7 @@ Shared, module-independent mapping every business error code's `Status` resolves
 |---|---|---|---|
 | PUT | `/api/v1/mdl/lookup-values/{id}` | Update lookup value | [update](endpoints/lookup-value-management.md#put-apiv1mdllookup-valuesid) |
 | DELETE | `/api/v1/mdl/lookup-values/{id}` | Deactivate lookup value | [deactivate](endpoints/lookup-value-management.md#delete-apiv1mdllookup-valuesid) |
-| GET | `/api/v1/mdl/lookup-types/{id}/values` | Search lookup values of a type | [search_1](endpoints/lookup-value-management.md#get-apiv1mdllookup-typesidvalues) |
+| POST | `/api/v1/mdl/lookup-types/values/search` | Search lookup values of a type | [search_1](endpoints/lookup-value-management.md#post-apiv1mdllookup-typesvaluessearch) |
 | POST | `/api/v1/mdl/lookup-types/{id}/values` | Create lookup value | [create_1](endpoints/lookup-value-management.md#post-apiv1mdllookup-typesidvalues) |
 | PATCH | `/api/v1/mdl/lookup-types/{id}/values/reorder` | Reorder lookup values | [reorder](endpoints/lookup-value-management.md#patch-apiv1mdllookup-typesidvaluesreorder) |
 
@@ -107,9 +107,9 @@ Shared, module-independent mapping every business error code's `Status` resolves
 |---|---|---|---|
 | PUT | `/api/v1/mdl/lookup-types/{id}` | Update lookup type | [update_1](endpoints/lookup-type-management.md#put-apiv1mdllookup-typesid) |
 | DELETE | `/api/v1/mdl/lookup-types/{id}` | Deactivate lookup type | [deactivate_1](endpoints/lookup-type-management.md#delete-apiv1mdllookup-typesid) |
-| GET | `/api/v1/mdl/lookup-types` | Search lookup types | [search](endpoints/lookup-type-management.md#get-apiv1mdllookup-types) |
+| POST | `/api/v1/mdl/lookup-types/search` | Search lookup types | [search](endpoints/lookup-type-management.md#post-apiv1mdllookup-typessearch) |
 | POST | `/api/v1/mdl/lookup-types` | Create lookup type | [create](endpoints/lookup-type-management.md#post-apiv1mdllookup-types) |
-| GET | `/api/v1/mdl/lookup-types/by-owner` | Browse lookup type registry by owner | [browseByOwner](endpoints/lookup-type-management.md#get-apiv1mdllookup-typesby-owner) |
+| POST | `/api/v1/mdl/lookup-types/by-owner/search` | Browse lookup type registry by owner | [browseByOwner](endpoints/lookup-type-management.md#post-apiv1mdllookup-typesby-ownersearch) |
 
 ### Lookup Consumer API
 

@@ -11,16 +11,16 @@ import java.time.temporal.ChronoUnit;
 import java.util.Locale;
 
 /**
- * Domain companion for ENT-FIN-008 (FiscalPeriod), carrying the two SRS rules CORE.md assigns to
- * it:
+ * Domain companion for ENT-FIN-008 (FiscalPeriod), carrying the SRS rule CORE.md assigns to it:
  *
  * <ul>
  *   <li><b>RULE-FIN-014</b> — a Hard Closed (or Year-End Closed) period is never reopened
  *       ({@code FIN-409-NOT-REOPENABLE}, QR-FIN-040, API-FIN-024/026).</li>
- *   <li><b>RULE-FIN-015</b> — the period-close-approval permission must be held by a role
- *       distinct from the journal-entry-creation permission ({@code FIN-403-SOD-VIOLATION},
- *       API-FIN-026/027).</li>
  * </ul>
+ *
+ * <p><b>RULE-FIN-015 is NOT a rule of this class</b> — it is enforced entirely by the
+ * distinct-permission {@code @PreAuthorize} gate on the two close endpoints, which is what the
+ * SRS asks for. See the block comment where its former guard method used to sit, below.
  *
  * <p><b>RULE-FIN-008 is deliberately absent.</b> DATA-DOM-MASTER.md lists the period-open-at-post
  * -time rule under ENT-FIN-008, but CORE.md assigns it to {@code JournalEntryDomain} (owned by
@@ -30,13 +30,9 @@ import java.util.Locale;
  * <p>Placement note: DATA-DOM-MASTER.md annotates both rules with "owner layer: service";
  * CORE.md's domain-class mandate and A.5.18 supersede that wording.
  *
- * <p><b>How RULE-FIN-015 stays inside the module boundary (A.0.6).</b> The rule's facts live in
- * SEC: which principal holds {@code PERM_FIN_PERIODS_CLOSE_APPROVE}, and whether that same
- * principal also holds {@code PERM_FIN_JOURNAL_ENTRIES_CREATE}. This class never imports, injects
- * or calls SEC — the service resolves both facts through SEC's role/grant read APIs (CORE.md
- * "Cross-cutting authorization", ADR-FIN-001) and passes them in as two plain {@code boolean}
- * arguments. The decision — "these two permissions must not meet in one principal" — is what
- * lives here.
+ * <p><b>A.0.6 holds trivially.</b> This class imports, injects and calls no other module, and
+ * since RULE-FIN-015's enforcement is the {@code @PreAuthorize} gate rather than a fact read
+ * from SEC, nothing in FIN needs to resolve a cross-module fact on its behalf either.
  */
 public final class FiscalPeriodDomain {
 
@@ -92,26 +88,34 @@ public final class FiscalPeriodDomain {
         }
     }
 
-    /**
-     * RULE-FIN-015 — API-FIN-026 (hard-close) and API-FIN-027 (year-end close). Decision only —
-     * the service calls {@code FiscalPeriod.hardClose(...)} after this returns.
+    /*
+     * ─────────────────────────────────────────────────────────────────────────────────────────
+     * RULE-FIN-015 — there is deliberately NO assertCanHardClose(...) method here.
+     * ─────────────────────────────────────────────────────────────────────────────────────────
+     * The rule, verbatim (srs-fin.md:1026-1030): "The system shall require the
+     * period-close-approval action to be gated by a permission distinct from the
+     * journal-entry-creation permission, enforced through the Security module." Its own
+     * `Data source` line reads "DEFERRED — the permission matrix is the Security module's
+     * declaration surface; FIN declares no permission entity in this version, so the separation
+     * is enforced there and has no FIN-side field to read". REQ-FIN-038 (srs-fin.md:781-788)
+     * says the same, and AC-FIN-038 (srs-fin.md:789-792) names the mechanism: "Then the system
+     * denies it (the CORE interceptor, per SEC's own mechanism)."
      *
-     * <p>Both arguments are resolved by the service from SEC and passed in as plain facts; this
-     * class holds no SEC reference (A.0.6).
+     * The rule is therefore satisfied — wholly — by the distinct-permission gate already on both
+     * entry points: FiscalPeriodService.hardClose and FiscalYearService.yearEndClose carry
+     * @PreAuthorize(...PERM_FIN_PERIODS_CLOSE_APPROVE), a permission distinct from
+     * PERM_FIN_JOURNAL_ENTRIES_CREATE. Nothing further is required of this class, and — per the
+     * Data source line above — there is no FIN-side fact for it to decide over.
      *
-     * @param approverHoldsCloseApprovePermission whether the acting principal holds the
-     *                                            close-approval permission
-     * @param approverHoldsEntryCreatePermission  whether that same principal also holds the
-     *                                            journal-entry-creation permission
-     * @throws LocalizedException {@code FIN-403-SOD-VIOLATION} when one principal holds both
+     * DO NOT RESTORE THE PREVIOUS IMPLEMENTATION. Until this was removed, an
+     * assertCanHardClose(boolean, boolean) here consumed two facts resolved by a now-deleted
+     * FinSeparationOfDutiesService, which read SEC's user directory and refused the close when
+     * ANY single user in the system held both permissions — global user-set disjointness. That
+     * is a stricter rule than the SRS states: it denied a perfectly clean approver because some
+     * unrelated account elsewhere held both codes, and no REQ, AC or RULE asks for it. Removal
+     * is a recorded human decision, not an oversight. Re-adding it would also re-create FIN's
+     * only dependency on com.erp.sec.crossmodule (XM-FIN-002), which this removal retired.
      */
-    public void assertCanHardClose(boolean approverHoldsCloseApprovePermission,
-                                   boolean approverHoldsEntryCreatePermission) {
-        if (!approverHoldsCloseApprovePermission || approverHoldsEntryCreatePermission) {
-            throw new LocalizedException(Status.FORBIDDEN,
-                FinErrorCodes.FIN_403_SOD_VIOLATION, periodNo);
-        }
-    }
 
     /**
      * API-FIN-025 (soft-close) — SRS A7's {@code OPEN --(REQ-FIN-033, soft-close)--> SOFT_CLOSE}

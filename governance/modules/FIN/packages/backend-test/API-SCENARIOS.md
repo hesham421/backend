@@ -602,7 +602,7 @@ Preconditions: one fiscal year with an OPEN period; docNo allocation is serializ
   PESSIMISTIC_WRITE lock on the owning FIN_FISCAL_YEAR row, held to commit
 Steps        : 1. issue N concurrent valid create requests against the same fiscal year (N ≥ 10)
 Expected     : all N succeed with 201 and N DISTINCT sequential docNos; no request answers an
-  unlocalized 409 DATA_INTEGRITY_VIOLATION from UQ_FIN_JOURNAL_ENTRY_YEAR_DOCNO, which stays an
+  opaque 409 DATA_INTEGRITY_VIOLATION from UQ_FIN_JOURNAL_ENTRY_YEAR_DOCNO, which stays an
   unreachable backstop
 Test data    : 10 identical balanced 2-line payloads fired in parallel
 <!-- TC:TC-FIN-088:END -->
@@ -668,9 +668,11 @@ Steps        : 1. POST a search sorted by "closedAt" — 2. POST a search sorted
 Expected     : 1 and 2. 400 FIN-400-INVALID-SORT, ar "حقل الترتيب غير معروف" / en "Unrecognized sort
   field"; no page returned — the whitelist check runs BEFORE the shared pageable builder, which
   would otherwise drop the field silently and return a differently ordered page with nothing saying
-  so — 3. 403 carrying the platform envelope {code: "ACCESS_DENIED"} — never a FIN code — with the
-  message localized per Accept-Language: ar "ليس لديك صلاحية لتنفيذ هذه العملية" / en "You do not
-  have permission to perform this operation"
+  so — 3. 403 carrying {code: "FIN-403-FORBIDDEN"} — FIN's own catalog code, never the platform
+  `ACCESS_DENIED`: FiscalPeriodService.search's @PreAuthorize on PERM_FIN_PERIODS_VIEW denies inside
+  com.erp.fin.service, so FinForbiddenAdvisor translates it — with the message localized per
+  Accept-Language: ar "لا تملك صلاحية المالية المطلوبة لهذه العملية" /
+  en "You do not hold the Finance permission required for this operation"
 Test data    : sort fields "closedAt" and "fiscalYearId"; a user with no FIN_PERIODS action grant
 <!-- TC:TC-FIN-095:END -->
 
@@ -728,7 +730,12 @@ Expected     : 1. 200 `DimensionValueResponse` with isActiveFl=false; the row is
   200, the value is still returned by the search with only its flag changed — 3. 404
   FIN-404-DIMVALUE, ar "قيمة البُعد غير موجودة" / en "Dimension value not found" — its own row,
   never the parent's FIN-404-DIMENSION, which would say the DIMENSION was missing when the VALUE
-  was — 4. 403 {code: "ACCESS_DENIED"}. There is deliberately no deactivate on the PARENT Dimension
+  was — 4. 403 {code: "FIN-403-FORBIDDEN"} — DimensionValueService.deactivate's @PreAuthorize on
+  PERM_FIN_DIMENSIONS_UPDATE denies inside com.erp.fin.service and FinForbiddenAdvisor translates
+  it, so the body carries FIN's own code, never the platform `ACCESS_DENIED`:
+  ar "لا تملك صلاحية المالية المطلوبة لهذه العملية" /
+  en "You do not hold the Finance permission required for this operation".
+  There is deliberately no deactivate on the PARENT Dimension
   and no `activate` counterpart; neither is a gap
 Test data    : dimension "REGION", value "NORTH"; dimensionValueId 999999
 <!-- TC:TC-FIN-098:END -->
@@ -784,10 +791,11 @@ Test data    : fiscalYearId 999999; fromPeriodId/toPeriodId 999999; one real yea
 ### TC-FIN-102 — a dormant fiscal year still closes, posting two EMPTY entries (reviewed and kept)
 Derived from : AC-FIN-036 (REQ-FIN-036) · Exercises: API-FIN-027 POST /api/v1/fin/fiscal-years/{id}/year-end-close
 Scenario     : STATE · data class EDGE · language ALL
-Preconditions: TC-FIN-056's full KNOWN-BLOCKED setup (a close-approver holding no entry-creation
-  permission, an account marked is_retained_earnings_fl, every period HARD_CLOSE, an adjacent
-  successor year) — but over a fiscal year with NO posted lines at all, so neither a result account
-  nor a balance-sheet account carries a non-zero net
+Preconditions: TC-FIN-056's full setup (a caller holding PERM_FIN_PERIODS_CLOSE_APPROVE — no
+  longer required to be free of the entry-creation permission, see TC-FIN-061 — an account marked
+  is_retained_earnings_fl, every period HARD_CLOSE, an adjacent successor year) — but over a fiscal
+  year with NO posted lines at all, so neither a result account nor a balance-sheet account carries
+  a non-zero net
 Steps        : 1. run year-end close on that dormant year — 2. read both returned entries
   (API-FIN-022) — 3. POST a manual entry with lines: [] (API-FIN-019)
 Expected     : 1. 201 `YearEndCloseResponse` carrying BOTH a CLOSING and an OPENING entry, each
@@ -800,4 +808,195 @@ Expected     : 1. 201 `YearEndCloseResponse` carrying BOTH a CLOSING and an OPEN
   through the internal year-end path and never from a caller
 Test data    : a fully hard-closed fiscal year with zero posted entries; an adjacent successor year
 <!-- TC:TC-FIN-102:END -->
+
+<!-- TC:TC-FIN-104:START traces=AC-FIN-022,REQ-FIN-022,API-FIN-036 -->
+### TC-FIN-104 — deactivate a recurring template, and reject an unknown template id
+Derived from : AC-FIN-022 (REQ-FIN-022) · Exercises: API-FIN-036 PUT /api/v1/fin/recurring-templates/{id}/deactivate
+Scenario     : HAPPY + VIOLATION + PERMISSION · data class VALID/INVALID/ATTACK · language ALL
+Preconditions: an active RecurringTemplate created through API-FIN-013 with THREE lines; a caller
+  holding PERM_FIN_RECURRING_TEMPLATES_UPDATE — pre-existing, seeded by V24__fin_security_seed.sql
+  as the FIN_RECURRING_TEMPLATES/UPDATE action and already the gate on API-FIN-014, so this
+  endpoint needed no migration and registers no new error code; and a second caller holding no
+  FIN_RECURRING_TEMPLATES action grant at all. The base path is /api/v1/fin/recurring-templates and
+  the verb is PUT, matching API-FIN-034/035
+Steps        : 1. PUT /{id}/deactivate with no body — 2. PUT /{id}/deactivate again on the same id —
+  3. PUT /{id}/deactivate on an id matching no FIN_RECURRING_TEMPLATE row — 4. PUT /{id}/deactivate
+  as the ungranted caller
+Expected     : 1. 200 `RecurringTemplateResponse` with isActiveFl=false AND lineCount=3, all three
+  entries present in `lines` — the service re-reads the template's children before mapping, so the
+  aggregate is never misreported as having none; the row is not deleted and is still returned by
+  API-FIN-012 — 2. 200 again, still isActiveFl=false: no rule guards the transition and the catalog
+  registers no code for re-deactivating, so the endpoint is idempotent — 3. 404 FIN-404-TEMPLATE,
+  ar "القالب المتكرر غير موجود" / en "Recurring template not found", never FIN-404-RULE — 4. 403
+  carrying {code: "FIN-403-FORBIDDEN"} — FIN's own catalog code, never the platform `ACCESS_DENIED`:
+  RecurringTemplateService.deactivate's @PreAuthorize denies inside com.erp.fin.service, so
+  FinForbiddenAdvisor translates it — with the message localized per Accept-Language:
+  ar "لا تملك صلاحية المالية المطلوبة لهذه العملية" /
+  en "You do not hold the Finance permission required for this operation".
+  No `activate` counterpart exists on this or any FIN entity, so step 1 is NOT reversible through
+  the API — ENT-FIN-011's own activate() helper still has zero callers
+Test data    : a MONTHLY RECURRING template with 3 lines; templateId 999999; a user with no
+  FIN_RECURRING_TEMPLATES action grant
+<!-- TC:TC-FIN-104:END -->
+
+<!-- TC:TC-FIN-105:START traces=AC-FIN-025,REQ-FIN-025,API-FIN-037 -->
+### TC-FIN-105 — deactivate an allocation rule, and reject an unknown rule id
+Derived from : AC-FIN-025 (REQ-FIN-025) · Exercises: API-FIN-037 PUT /api/v1/fin/allocation-rules/{id}/deactivate
+Scenario     : HAPPY + VIOLATION + PERMISSION · data class VALID/INVALID/ATTACK · language ALL
+Preconditions: an active AllocationRule created through API-FIN-016 with THREE targets (two
+  PERCENTAGE plus one remainder); a caller holding PERM_FIN_ALLOCATION_RULES_UPDATE — pre-existing,
+  seeded by V24__fin_security_seed.sql as the FIN_ALLOCATION_RULES/UPDATE action and already the
+  gate on API-FIN-017, so this endpoint needed no migration and registers no new error code; and a
+  second caller holding no FIN_ALLOCATION_RULES action grant at all
+Steps        : 1. PUT /{id}/deactivate with no body — 2. PUT /{id}/deactivate again on the same id —
+  3. PUT /{id}/deactivate on an id matching no FIN_ALLOCATION_RULE row — 4. PUT /{id}/deactivate as
+  the ungranted caller
+Expected     : 1. 200 `AllocationRuleResponse` with isActiveFl=false AND targetCount=3, all three
+  entries present in `targets` — the service re-reads the rule's children before mapping, the same
+  point API-FIN-036 makes for lineCount; the row is not deleted and is still returned by
+  API-FIN-015 — 2. 200 again, still isActiveFl=false: idempotent for the same reason as
+  API-FIN-036, and RULE-FIN-003 is NOT consulted here, so a rule whose remainder-target set would
+  fail at run time can still be retired — 3. 404 FIN-404-ALLOCATION-RULE, ar "قاعدة التوزيع غير موجودة" /
+  en "Allocation rule not found" — 4. 403 carrying {code: "FIN-403-FORBIDDEN"}, localized per
+  Accept-Language exactly as in TC-FIN-104; AllocationRuleService.deactivate's @PreAuthorize denies
+  inside com.erp.fin.service and FinForbiddenAdvisor translates it.
+  No `activate` counterpart exists, so step 1 is NOT reversible through the API
+Test data    : an allocation rule with 3 targets; allocationRuleId 999999; a user with no
+  FIN_ALLOCATION_RULES action grant
+<!-- TC:TC-FIN-105:END -->
+
+<!-- TC:TC-FIN-106:START traces=AC-FIN-023,REQ-FIN-023,API-FIN-036,API-FIN-014 -->
+### TC-FIN-106 — a deactivated recurring template is REFUSED at run time (FIN-409-NOT-ACTIVE)
+Derived from : AC-FIN-023 (REQ-FIN-023) · Exercises: API-FIN-036 PUT /api/v1/fin/recurring-templates/{id}/deactivate then API-FIN-014 POST /api/v1/fin/recurring-templates/{id}/run
+Rule / code  : RECORDED HUMAN DECISION, not a RULE-FIN-* → FIN-409-NOT-ACTIVE (Status.CONFLICT → 409)
+Scenario     : STATE · data class EDGE · language ALL
+Preconditions: TC-FIN-104's template, whose nextRunDate falls inside a period that exists and is
+  OPEN and whose lines reference postable accounts, so the run has no unrelated reason to fail — the
+  409 must be provably the active-flag gate and nothing else. ONE caller performs both calls:
+  API-FIN-036 and API-FIN-014 are both gated on PERM_FIN_RECURRING_TEMPLATES_UPDATE, so whoever may
+  retire a template may still attempt to run it
+Steps        : 1. PUT /{id}/deactivate — 2. POST /{id}/run on that same, now inactive template —
+  3. re-read the template (API-FIN-012) and search the period's journal entries (API-FIN-018)
+Expected     : 1. 200, isActiveFl=false — 2. 409 {code: "FIN-409-NOT-ACTIVE"},
+  ar "هذا التعريف غير نشط ولا يمكن تشغيله" /
+  en "This definition is deactivated and cannot be run"; NO journal entry is posted and nextRunDate
+  is NOT advanced. RecurringTemplateService.run locks the row (repository.lockForRun), then calls
+  RecurringTemplateDomain.from(template).assertCanRun() BEFORE the period is resolved, before any
+  line is built and before JournalPostingService.buildValidateAndPost — so the refusal precedes
+  RULE-FIN-006/007/008/009 and the answer is 409 FIN-409-NOT-ACTIVE, never FIN-409-PERIOD-NOT-OPEN
+  or FIN-409-UNBALANCED. The gate applies to any internal or scheduled trigger too, since both enter
+  through the same run(Long) — 3. the template is still isActiveFl=false and still carries its
+  ORIGINAL nextRunDate, and the period gained no RECURRING entry.
+  REVISED 2026-09-12 — FLIPPED. Until this revision this scenario asserted the opposite ("201, NOT
+  an error … a deactivated template still runs and still posts") and was labelled a KNOWN OPEN ITEM
+  awaiting a human decision. That decision has been taken and delivered: RecurringTemplateDomain
+  .assertCanRun() and the FIN-409-NOT-ACTIVE catalog row both now exist in source. State plainly
+  what the decision is NOT — no RULE-FIN-* states this gate (RULE-FIN-001..017 were each read and
+  none constrains running a retired template) and AC-FIN-023 is still written "Given an active
+  recurring template", stating no outcome for an inactive one. This is a recorded human decision,
+  not a requirement that was always there, and no scenario may imply otherwise
+Test data    : the deactivated MONTHLY RECURRING template from TC-FIN-104; an OPEN period covering
+  its nextRunDate
+<!-- TC:TC-FIN-106:END -->
+
+<!-- TC:TC-FIN-107:START traces=AC-FIN-026,REQ-FIN-026,API-FIN-037,API-FIN-017 -->
+### TC-FIN-107 — a deactivated allocation rule is REFUSED at run time (FIN-409-NOT-ACTIVE)
+Derived from : AC-FIN-026 (REQ-FIN-026) · Exercises: API-FIN-037 PUT /api/v1/fin/allocation-rules/{id}/deactivate then API-FIN-017 POST /api/v1/fin/allocation-rules/{id}/run
+Rule / code  : RECORDED HUMAN DECISION, not a RULE-FIN-* → FIN-409-NOT-ACTIVE (Status.CONFLICT → 409)
+Scenario     : STATE · data class EDGE · language ALL
+Preconditions: TC-FIN-105's rule, with a non-zero source-account balance and a valid remainder-target
+  set, and today's date inside a period that exists and is OPEN — API-FIN-017 posts at
+  LocalDate.now(), not at a caller-supplied date. ONE caller performs both calls: API-FIN-037 and
+  API-FIN-017 are both gated on PERM_FIN_ALLOCATION_RULES_UPDATE
+Steps        : 1. PUT /{id}/deactivate — 2. POST /{id}/run on that same, now inactive rule —
+  3. re-read the rule (API-FIN-015) and search the period's journal entries (API-FIN-018)
+Expected     : 1. 200, isActiveFl=false — 2. 409 {code: "FIN-409-NOT-ACTIVE"}, the same bundle row
+  as TC-FIN-106: ar "هذا التعريف غير نشط ولا يمكن تشغيله" /
+  en "This definition is deactivated and cannot be run"; NO ALLOCATION entry is posted and the
+  source account's balance is untouched. AllocationRuleService.run locks the row
+  (repository.lockForRun), builds the domain and calls assertCanRun() BEFORE the target set is
+  loaded and before assertRemainderTargetSetValid evaluates RULE-FIN-003 — so a retired rule is
+  refused for being retired and never for its remainder-target set: the answer is
+  409 FIN-409-NOT-ACTIVE, never FIN-409-REMAINDER-COUNT or FIN-422-REMAINDER-NOT-POSITIVE — 3. the
+  rule is still isActiveFl=false and the period gained no ALLOCATION entry.
+  REVISED 2026-09-12 — FLIPPED, together with TC-FIN-106. It previously asserted "201, NOT an error
+  … AllocationRuleDomain.isActive() remains uncalled anywhere in the module" and was labelled a
+  KNOWN OPEN ITEM. assertCanRun() now reads exactly that `active` fact, so the flag finally has a
+  reader on the run path. As with TC-FIN-106, no RULE-FIN-* states this gate — RULE-FIN-003, the
+  rule AllocationRuleDomain otherwise owns, governs the remainder-target SET and says nothing about
+  the active flag — so it rests on a recorded human decision, not on a requirement that was always
+  there
+Test data    : the deactivated 3-target rule from TC-FIN-105; a source account with a non-zero
+  POSTED balance; an OPEN period covering today
+<!-- TC:TC-FIN-107:END -->
+
+<!-- TC:TC-FIN-108:START traces=AC-FIN-022,REQ-FIN-022,API-FIN-012,API-FIN-015,API-FIN-036,API-FIN-037 -->
+### TC-FIN-108 — the isActiveFl search filter finally discriminates on both screens
+Derived from : AC-FIN-022 (REQ-FIN-022) · Exercises: API-FIN-012 POST /api/v1/fin/recurring-templates/search · API-FIN-015 POST /api/v1/fin/allocation-rules/search
+Scenario     : HAPPY · data class VALID · language ALL
+Preconditions: two recurring templates and two allocation rules, exactly one of each deactivated
+  through API-FIN-036 / API-FIN-037; callers holding PERM_FIN_RECURRING_TEMPLATES_VIEW and
+  PERM_FIN_ALLOCATION_RULES_VIEW. `isActiveFl` is on both services' allowed field sets, so it is
+  both filterable and sortable. It travels in the body's `filters` list as the plan's EXACT
+  comparison — operator EQUALS — and its `value` must be a JSON boolean, because the shared
+  converter passes the raw value straight through to cb.equal against a Boolean attribute
+Steps        : 1. POST recurring-templates/search {filters: [isActiveFl EQUALS false]} — 2. POST
+  the same with true — 3. POST allocation-rules/search {filters: [isActiveFl EQUALS false]} —
+  4. POST the same with true — 5. POST recurring-templates/search with NO isActiveFl filter
+Expected     : 1. 200 returning ONLY the deactivated template, with its real lineCount — 2. 200
+  returning ONLY the still-active one — 3 and 4. the same split over allocation rules, each row
+  carrying its real targetCount — 5. 200 returning BOTH.
+  This is the one behaviour the two new endpoints genuinely CHANGE. Before API-FIN-036 and
+  API-FIN-037 existed, FIN_RECURRING_TEMPLATE.IS_ACTIVE_FL and FIN_ALLOCATION_RULE.IS_ACTIVE_FL
+  were NOT NULL, defaulted TRUE and had no writer reachable from the API, so an isActiveFl=false
+  search could only ever return an empty page and an isActiveFl=true search was indistinguishable
+  from no filter at all — the filter was advertised on both screens but could not discriminate.
+  Steps 1 and 3 are therefore the assertions that would have failed before this delivery
+Test data    : 2 templates and 2 allocation rules, one of each deactivated; filter values JSON
+  `false` and `true`
+<!-- TC:TC-FIN-108:END -->
+
+<!-- TC:TC-FIN-109:START traces=AC-FIN-010,REQ-FIN-010,API-FIN-020,API-FIN-011 -->
+### TC-FIN-109 — a PERCENTAGE rule line whose amountSourceValue is not a number fails loudly
+Derived from : AC-FIN-010 (REQ-FIN-010) · Exercises: API-FIN-020 POST /api/v1/fin/journal-entries/from-event
+  (the only caller of the throw site); staged through API-FIN-011 POST /api/v1/fin/event-rules/{id}/lines
+Rule / code  : RULE-FIN-010 (build half) → FIN-422-INVALID-PERCENTAGE-VALUE
+  (Status.BUSINESS_RULE_VIOLATION → HTTP 422). A malformed-stored-configuration guard, NOT a rule
+  violation: no RULE-FIN-* requires amountSourceValue to parse, and the code's own javadoc calls it
+  a "code review fix"
+Scenario     : VIOLATION · data class INVALID · language ALL
+Preconditions: an ACTIVE EventTypeRule holding one line created through API-FIN-011 with
+  amountSourceTypeCode=PERCENTAGE and amountSourceValue="abc" — a value that is NOT a well-formed
+  decimal. This is storable through the API: RuleLineService.create validates the four CODE fields
+  against MDL (ACCOUNT_DERIVATION_TYPE, AMOUNT_SOURCE_TYPE, DEBIT_CREDIT, DISTRIBUTION_TYPE) and
+  runs RULE-FIN-003's remainder-set guard, but amountSourceValue itself carries NO format
+  constraint — RuleLineCreateRequest declares it as a bare String with only an @Schema annotation,
+  no @Pattern, @Digits or @NotNull — so the bad value persists and only surfaces at build time.
+  The line must NOT be marked isRemainderFl: buildLines sets remainder lines aside BEFORE calling
+  sourcedAmount, so a remainder-marked line never reaches the parse (and PERCENTAGE + remainder is
+  already rejected by TC-FIN-052 anyway). Also required: no prior entry for this eventReference,
+  and a docDate inside an OPEN period, so nothing earlier in the path can account for the failure
+Steps        : 1. POST /from-event with a triggering event of that type, a fresh eventReference and
+  a non-zero baseAmount — 2. re-read by eventReference (API-FIN-018) — 3. repeat step 1 with the
+  same line's amountSourceValue corrected to "60" through a fresh rule/line fixture
+Expected     : 1. 422 {code: "FIN-422-INVALID-PERCENTAGE-VALUE"},
+  ar "قيمة مصدر المبلغ لهذا السطر ليست نسبة مئوية صالحة" /
+  en "This rule line's amount source value is not a valid percentage number"; NOTHING is posted —
+  the whole build runs in ONE transaction and the throw happens while the lines are still being
+  assembled, before JournalPostingService.buildValidateAndPost is entered. The validation ORDER is
+  part of this assertion: EventEntryService.build runs the RULE-FIN-004 duplicate check →
+  FIN-404-NO-ACTIVE-RULE → EventTypeRuleDomain.assertRemainderLineSetValid (RULE-FIN-003) →
+  resolvePeriodContaining → buildLines, and only then posts. So the answer is 422
+  FIN-422-INVALID-PERCENTAGE-VALUE and never the posting pipeline's aggregated
+  FIN-409-UNBALANCED / FIN-409-NOT-POSTABLE-ACCOUNT / FIN-409-PERIOD-NOT-OPEN, and never the
+  sibling FIN-422-REMAINDER-MARKER, which the same method raises on its FIRST branch for a
+  REMAINDER-sourced line (TC-FIN-052) — 2. no entry exists for that eventReference, so the event
+  can be resubmitted once the rule is fixed; the 422 consumed no docNo — 3. 201, the percentage
+  line computes normally, proving the refusal was the unparseable value and nothing else.
+  ADDED 2026-09-12 to close a real coverage gap: FIN-422-INVALID-PERCENTAGE-VALUE was a registered
+  constant with a live throw site and both bundle rows, and NO scenario exercised it. It is not a
+  code this revision's work introduced
+Test data    : an active rule with one non-remainder PERCENTAGE line, amountSourceValue "abc";
+  baseAmount 1000.00; a fresh eventReference; then the same fixture with "60"
+<!-- TC:TC-FIN-109:END -->
 <!-- SUB:API-SCENARIOS:END -->

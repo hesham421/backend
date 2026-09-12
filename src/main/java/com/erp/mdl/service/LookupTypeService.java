@@ -4,15 +4,16 @@ import com.erp.common.domain.status.ServiceResult;
 import com.erp.common.domain.status.Status;
 import com.erp.common.exception.LocalizedException;
 import com.erp.common.search.BooleanFieldValueConverter;
+import com.erp.common.search.FieldValueConverter;
 import com.erp.common.search.PageableBuilder;
-import com.erp.common.search.SearchFilter;
-import com.erp.common.search.SearchOperator;
 import com.erp.common.search.SearchRequest;
 import com.erp.common.search.SetAllowedFields;
 import com.erp.common.search.SpecBuilder;
 import com.erp.mdl.domain.LookupTypeDomain;
+import com.erp.mdl.dto.LookupTypeByOwnerSearchRequest;
 import com.erp.mdl.dto.LookupTypeCreateRequest;
 import com.erp.mdl.dto.LookupTypeResponse;
+import com.erp.mdl.dto.LookupTypeSearchRequest;
 import com.erp.mdl.dto.LookupTypeUpdateRequest;
 import com.erp.mdl.dto.OwnerGroupResponse;
 import com.erp.mdl.entity.LookupType;
@@ -20,7 +21,6 @@ import com.erp.mdl.exception.MdlErrorCodes;
 import com.erp.mdl.mapper.LookupTypeMapper;
 import com.erp.mdl.repository.LookupTypeRepository;
 import com.erp.sec.crossmodule.SecModuleRegistryApi;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -58,6 +58,10 @@ public class LookupTypeService {
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
         "lookupTypePk", "key", "ownerModuleCode", "nameAr", "nameEn", "isActiveFl", "createdAt"
     );
+
+    /** {@code isActiveFl} arrives from a JSON body, which may carry it as a string. */
+    private static final FieldValueConverter FILTER_VALUE_CONVERTER =
+        new BooleanFieldValueConverter(Set.of("isActiveFl"));
 
     private final LookupTypeRepository repository;
     private final LookupTypeMapper mapper;
@@ -129,44 +133,24 @@ public class LookupTypeService {
     }
 
     /**
-     * API-MDL-001 — search lookup types (SVC-API-SEARCH.md). {@code key} is LIKE, {@code
-     * ownerModuleCode}/{@code isActiveFl} are EXACT. Design note (SVC-API-SEARCH.md point 7):
-     * this endpoint is exposed as {@code GET} + query params, not the generic {@code POST
-     * /search} + body — the controller passes plain scalar arguments here rather than a
-     * {@code SearchRequest}-shaped body DTO; this method builds the internal
-     * {@link SearchRequest}/{@link SearchFilter} list itself before handing off to the shared
-     * {@link SpecBuilder}/{@link PageableBuilder}, so the shared search plumbing is still reused
-     * exactly as any {@code POST /search} method would use it.
+     * API-MDL-001 — search lookup types (SVC-API-SEARCH.md). {@code key}, {@code
+     * ownerModuleCode} and {@code isActiveFl} all flow through the generic {@code filters[]} list
+     * on {@link LookupTypeSearchRequest} — the client now names the field and operator itself
+     * (e.g. {@code key LIKE}) — reaching {@link SpecBuilder} untouched, the same shape as any
+     * other module's {@code POST /search}. The earlier GET + scalar-argument deviation
+     * (SVC-API-SEARCH.md point 7) was reversed alongside SEC's own GET-to-POST reversal
+     * (governance/project-artifacts/sec-implementation-notes.md §8).
      */
     @Transactional(readOnly = true)
     @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants).PERM_MDL_LOOKUPS_VIEW)")
-    public ServiceResult<Page<LookupTypeResponse>> search(String key, String ownerModuleCode,
-                                                            Boolean isActiveFl, int page, int size, String sort) {
+    public ServiceResult<Page<LookupTypeResponse>> search(LookupTypeSearchRequest searchRequest) {
         log.debug("Searching LookupType");
 
-        List<SearchFilter> filters = new ArrayList<>();
-        if (key != null && !key.isBlank()) {
-            filters.add(SearchFilter.builder().field("key").operator(SearchOperator.LIKE).value(key).build());
-        }
-        if (ownerModuleCode != null && !ownerModuleCode.isBlank()) {
-            filters.add(SearchFilter.builder()
-                .field("ownerModuleCode").operator(SearchOperator.EQUALS).value(ownerModuleCode).build());
-        }
-        if (isActiveFl != null) {
-            filters.add(SearchFilter.builder()
-                .field("isActiveFl").operator(SearchOperator.EQUALS).value(isActiveFl).build());
-        }
-
-        SearchRequest commonRequest = SearchRequest.builder()
-            .filters(filters)
-            .sortField(sort)
-            .page(page)
-            .size(size)
-            .build();
+        SearchRequest commonRequest = searchRequest.toCommonSearchRequest();
 
         SetAllowedFields allowedFields = new SetAllowedFields(ALLOWED_SORT_FIELDS);
-        Specification<LookupType> spec = SpecBuilder.build(
-            commonRequest, allowedFields, new BooleanFieldValueConverter(Set.of("isActiveFl")));
+        Specification<LookupType> spec =
+            SpecBuilder.build(commonRequest, allowedFields, FILTER_VALUE_CONVERTER);
         Pageable pageable = PageableBuilder.from(commonRequest, ALLOWED_SORT_FIELDS);
 
         Page<LookupType> resultPage = repository.findAll(spec, pageable);
@@ -176,32 +160,27 @@ public class LookupTypeService {
 
     /**
      * API-MDL-010 — browse the registry grouped by owner (SVC-API-SEARCH.md, QR-MDL-010).
-     * Active types only, optionally filtered by {@code ownerModuleCode}(EXACT)/{@code key}(LIKE),
-     * then grouped by {@code ownerModuleCode} in the service layer (a plain
-     * {@code Collectors.groupingBy} over a single-table load — no SQL {@code GROUP BY}, per
-     * DATA-DOM.md's own "grouped in the service layer" wording). Not paginated — the spec's
-     * Response line is a flat {@code List<OwnerGroupResponse>}, not a {@code Page<T>}.
+     * Active types only — that predicate is ANDed in here unconditionally, never a
+     * client-supplied filter (same pattern as SEC's {@code ActiveSessionService}'s unconditional
+     * {@code terminatedAt IS NULL}) — optionally further filtered by the client's own
+     * {@code ownerModuleCode}/{@code key} generic filters, then grouped by
+     * {@code ownerModuleCode} in the service layer (a plain {@code Collectors.groupingBy} over a
+     * single-table load — no SQL {@code GROUP BY}, per DATA-DOM.md's own "grouped in the service
+     * layer" wording). Not paginated — the spec's Response line is a flat
+     * {@code List<OwnerGroupResponse>}, not a {@code Page<T>}, so {@code page}/{@code size}/
+     * {@code sortField} on {@link LookupTypeByOwnerSearchRequest} are inherited but unused.
      */
     @Transactional(readOnly = true)
     @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants).PERM_MDL_TYPE_REGISTRY_VIEW)")
-    public ServiceResult<List<OwnerGroupResponse>> browseByOwner(String ownerModuleCode, String key) {
+    public ServiceResult<List<OwnerGroupResponse>> browseByOwner(LookupTypeByOwnerSearchRequest searchRequest) {
         log.debug("Browsing LookupType registry by owner");
 
-        List<SearchFilter> filters = new ArrayList<>();
-        filters.add(SearchFilter.builder()
-            .field("isActiveFl").operator(SearchOperator.EQUALS).value(Boolean.TRUE).build());
-        if (ownerModuleCode != null && !ownerModuleCode.isBlank()) {
-            filters.add(SearchFilter.builder()
-                .field("ownerModuleCode").operator(SearchOperator.EQUALS).value(ownerModuleCode).build());
-        }
-        if (key != null && !key.isBlank()) {
-            filters.add(SearchFilter.builder().field("key").operator(SearchOperator.LIKE).value(key).build());
-        }
+        SearchRequest commonRequest = searchRequest.toCommonSearchRequest();
+        SetAllowedFields allowedFields = new SetAllowedFields(Set.of("ownerModuleCode", "key"));
 
-        SearchRequest commonRequest = SearchRequest.builder().filters(filters).build();
-        SetAllowedFields allowedFields = new SetAllowedFields(Set.of("isActiveFl", "ownerModuleCode", "key"));
-        Specification<LookupType> spec = SpecBuilder.build(
-            commonRequest, allowedFields, new BooleanFieldValueConverter(Set.of("isActiveFl")));
+        Specification<LookupType> activeOnly = (root, query, cb) -> cb.isTrue(root.get("isActiveFl"));
+        Specification<LookupType> spec = activeOnly.and(
+            SpecBuilder.build(commonRequest, allowedFields, FILTER_VALUE_CONVERTER));
 
         List<LookupType> types = repository.findAll(spec);
 

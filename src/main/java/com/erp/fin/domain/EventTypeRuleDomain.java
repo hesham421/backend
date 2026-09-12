@@ -243,7 +243,9 @@ public final class EventTypeRuleDomain {
      * </ul>
      *
      * @return the line's amount
-     * @throws LocalizedException {@code FIN-422-REMAINDER-MARKER} for a REMAINDER-sourced line
+     * @throws LocalizedException {@code FIN-422-REMAINDER-MARKER} for a REMAINDER-sourced line, or
+     *     {@code FIN-422-INVALID-PERCENTAGE-VALUE} (code review fix) when {@code amountSourceValue}
+     *     is not a well-formed decimal for a PERCENTAGE-sourced line
      */
     public static BigDecimal sourcedAmount(String amountSourceTypeCode,
                                            String amountSourceValue,
@@ -254,8 +256,17 @@ public final class EventTypeRuleDomain {
                 FinErrorCodes.FIN_422_REMAINDER_MARKER, amountSourceTypeCode);
         }
         if (AMOUNT_SOURCE_TYPE_PERCENTAGE.equalsIgnoreCase(amountSourceTypeCode)) {
-            BigDecimal percentage = amountSourceValue == null
-                ? BigDecimal.ZERO : new BigDecimal(amountSourceValue);
+            BigDecimal percentage;
+            if (amountSourceValue == null) {
+                percentage = BigDecimal.ZERO;
+            } else {
+                try {
+                    percentage = new BigDecimal(amountSourceValue);
+                } catch (NumberFormatException ex) {
+                    throw new LocalizedException(Status.BUSINESS_RULE_VIOLATION,
+                        FinErrorCodes.FIN_422_INVALID_PERCENTAGE_VALUE, amountSourceValue);
+                }
+            }
             BigDecimal base = baseAmount == null ? BigDecimal.ZERO : baseAmount;
             return base.multiply(percentage)
                 .divide(ONE_HUNDRED, AMOUNT_SCALE, RoundingMode.HALF_UP);

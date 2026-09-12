@@ -102,11 +102,11 @@ Test data    : type "NOT_A_REAL_KEY"
   <!-- TC:TC-MDL-005:START traces=AC-MDL-005,REQ-MDL-005,API-MDL-005 -->
   ### TC-MDL-005 — select a type and list its values
   Derived from : AC-MDL-005 (REQ-MDL-005)
-  Exercises    : API-MDL-005 GET /api/v1/mdl/lookup-types/{id}/values
+  Exercises    : API-MDL-005 POST /api/v1/mdl/lookup-types/values/search
   Rule / code  : — (happy path)
   Scenario     : HAPPY · data class VALID · language ALL
   Preconditions: a type with 3 values
-  Steps        : 1. GET the type's values
+  Steps        : 1. POST /search filtered by the type's lookupTypeId
   Expected     : 200; exactly those 3 values, ordered by sortOrder
   Test data    : type with 3 values
   <!-- TC:TC-MDL-005:END -->
@@ -162,11 +162,11 @@ Test data    : 3 values under one type
 <!-- TC:TC-MDL-013:START traces=AC-MDL-013,REQ-MDL-013,API-MDL-010 -->
 ### TC-MDL-013 — browse the type registry grouped by owner
 Derived from : AC-MDL-013 (REQ-MDL-013)
-Exercises    : API-MDL-010 GET /api/v1/mdl/lookup-types/by-owner
+Exercises    : API-MDL-010 POST /api/v1/mdl/lookup-types/by-owner/search
 Rule / code  : — (happy path)
 Scenario     : HAPPY · data class VALID · language ALL
 Preconditions: types owned by SEC and by MDL
-Steps        : 1. GET the registry
+Steps        : 1. POST /search for the registry
 Expected     : 200; types grouped under their respective owner-module headings
 Test data    : existing SEC-owned and MDL-owned types
 <!-- TC:TC-MDL-013:END -->

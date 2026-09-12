@@ -15,7 +15,6 @@ import com.erp.fin.entity.FiscalPeriod;
 import com.erp.fin.exception.FinErrorCodes;
 import com.erp.fin.mapper.FiscalPeriodMapper;
 import com.erp.fin.repository.FiscalPeriodRepository;
-import com.erp.fin.service.FinSeparationOfDutiesService.SeparationOfDutiesFacts;
 import java.time.Instant;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
@@ -67,7 +66,6 @@ public class FiscalPeriodService {
 
     private final FiscalPeriodRepository repository;
     private final FiscalPeriodMapper mapper;
-    private final FinSeparationOfDutiesService separationOfDuties;
 
     /**
      * API-FIN-024 — load (QR-FIN-039) → check RULE-FIN-014 (QR-FIN-040) → transition → return.
@@ -114,23 +112,27 @@ public class FiscalPeriodService {
     }
 
     /**
-     * API-FIN-026 — load (QR-FIN-039) → check RULE-FIN-014 (QR-FIN-040) → check RULE-FIN-015 (the
-     * SEC role-union read) → transition, recording {@code closedBy}/{@code closedAt} as the
-     * approving principal and moment (REQ-FIN-037, DBF-FIN-083/084) → return.
-     *
-     * <p>Fail-fast, in the spec's own order: RULE-FIN-014 first, then RULE-FIN-015. The two are
-     * independent denials with different HTTP semantics (409 versus 403) and the aggregating
-     * envelope carries one {@code Status}, so combining them would have to mis-state one of them.
+     * API-FIN-026 — load (QR-FIN-039) → check RULE-FIN-014 (QR-FIN-040) → transition, recording
+     * {@code closedBy}/{@code closedAt} as the approving principal and moment (REQ-FIN-037,
+     * DBF-FIN-083/084) → return.
      *
      * <p><b>RULE-FIN-014 reuses {@code assertCanReopen()} deliberately:</b> SVC-API-INT.md directs
      * API-FIN-026 to raise {@code FIN-409-NOT-REOPENABLE} ("reused message context") when the
      * period is already Hard Closed, and that method is the rule's single implementation. Adding a
      * second guard with the same condition and the same code would duplicate the rule.
      *
-     * <p><b>RULE-FIN-015</b> facts come from {@link FinSeparationOfDutiesService} — the only class
-     * in FIN holding a SEC reference — and are handed to
-     * {@code FiscalPeriodDomain.assertCanHardClose(...)} as two plain booleans, so the domain
-     * class stays free of SEC (A.0.6).
+     * <p><b>RULE-FIN-015 is enforced by the {@code @PreAuthorize} below and by nothing else in
+     * this method.</b> The rule (srs-fin.md:1026-1030) requires the close-approval action to be
+     * "gated by a permission distinct from the journal-entry-creation permission, enforced
+     * through the Security module", and its own {@code Data source} line records that FIN has no
+     * field to read for it; AC-FIN-038 (srs-fin.md:789-792) names the CORE interceptor as the
+     * mechanism. {@code PERM_FIN_PERIODS_CLOSE_APPROVE} is distinct from
+     * {@code PERM_FIN_JOURNAL_ENTRIES_CREATE}, so the gate below IS the enforcement. <b>Do not
+     * add a SoD check back into this body.</b> A previous implementation resolved facts from
+     * SEC's user directory here and refused the close whenever ANY user in the system held both
+     * permissions — a global user-set disjointness the SRS never asks for, which denied clean
+     * approvers. It was removed by an explicit human decision, together with
+     * {@code FinSeparationOfDutiesService} and FIN's XM-FIN-002 dependency on SEC.
      */
     @Transactional
     @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants)"
@@ -139,12 +141,7 @@ public class FiscalPeriodService {
         log.info("Hard-closing FiscalPeriod ID: {}", id);
 
         FiscalPeriod period = findOrThrow(id);
-        FiscalPeriodDomain domain = FiscalPeriodDomain.from(period);
-        domain.assertCanReopen();
-
-        SeparationOfDutiesFacts facts = separationOfDuties.resolveFacts();
-        domain.assertCanHardClose(facts.closeApprovePermissionHeld(),
-            facts.entryCreatePermissionShared());
+        FiscalPeriodDomain.from(period).assertCanReopen();
 
         period.hardClose(SecurityContextHelper.getCurrentUsername(), Instant.now());
 

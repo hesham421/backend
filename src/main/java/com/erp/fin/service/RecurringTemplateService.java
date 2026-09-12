@@ -9,6 +9,7 @@ import com.erp.common.search.SearchRequest;
 import com.erp.common.search.SetAllowedFields;
 import com.erp.common.search.SpecBuilder;
 import com.erp.fin.domain.JournalEntryDomain;
+import com.erp.fin.domain.RecurringTemplateDomain;
 import com.erp.fin.dto.JournalEntryResponse;
 import com.erp.fin.dto.JournalLineResponse;
 import com.erp.fin.dto.RecurringTemplateCreateRequest;
@@ -175,16 +176,22 @@ public class RecurringTemplateService {
      * four post-time rules are reported together by the shared pipeline. The not-found
      * preconditions (template, target period) stay fail-fast.
      *
-     * <p><b>Rules delegated, none inlined</b> (A.5.18): RULE-FIN-006/007/008/009 → the shared
-     * pipeline's own delegations; the {@code nextRunDate} step → {@code RecurringTemplateMapper}'s
-     * pure calendar derivation. The one conditional in this method — whether the template is
+     * <p><b>Rules delegated, none inlined</b> (A.5.18): the active gate →
+     * {@code RecurringTemplateDomain.assertCanRun()}, run first, before the period is resolved and
+     * before any line is read, so a deactivated template is refused with
+     * {@code FIN-409-NOT-ACTIVE} and nothing is built or posted; RULE-FIN-006/007/008/009 → the
+     * shared pipeline's own delegations; the {@code nextRunDate} step →
+     * {@code RecurringTemplateMapper}'s pure calendar derivation. The one conditional in this method — whether the template is
      * REVERSING — selects which of the two flows the spec defines is being executed; it evaluates
      * no rule, raises no catalog error, and permits nothing that would otherwise be denied.
      *
      * <p><b>Scheduler parity.</b> SVC-API-INT.md notes the endpoint is the same whether a user or
      * an internal scheduler triggers it. Any such scheduler must call this method through the
      * project's own security context propagation, since {@code @PreAuthorize} fires regardless of
-     * call path.
+     * call path — and it inherits the active gate for the same reason: this method is the module's
+     * single run path, and no scheduled or internal caller exists that bypasses it (there is no
+     * {@code @Scheduled} anywhere in {@code src/main/java}; {@code RecurringTemplateController} is
+     * the only caller of this service today).
      */
     @Transactional
     @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants)"
@@ -192,9 +199,11 @@ public class RecurringTemplateService {
     public ServiceResult<JournalEntryResponse> run(Long id) {
         log.info("Running RecurringTemplate ID: {}", id);
 
-        RecurringTemplate template = repository.findById(id)
+        RecurringTemplate template = repository.lockForRun(id)
             .orElseThrow(() -> new LocalizedException(
                 Status.NOT_FOUND, FinErrorCodes.FIN_404_TEMPLATE, id));
+
+        RecurringTemplateDomain.from(template).assertCanRun();
 
         LocalDate runDate = template.getNextRunDate();
         FiscalPeriod period = postingService.resolvePeriodContaining(runDate);
@@ -316,6 +325,67 @@ public class RecurringTemplateService {
         return dimensionValueRepository.findById(dimensionValueId)
             .orElseThrow(() -> new LocalizedException(
                 Status.CONFLICT, FinErrorCodes.FIN_409_INVALID_DIMENSION, dimensionValueId));
+    }
+
+    /**
+     * API-FIN-036 — soft deactivation only: retire a recurring/reversing template so it stops
+     * being run. No SRS rule answers "may this template be deactivated?" — RULE-FIN-001..017 were
+     * each read and none constrains retiring a template (the closest, RULE-FIN-005, is about an
+     * event having no ACTIVE {@code EventTypeRule}, a different entity) — so there is nothing to
+     * delegate before the mutation. That is the same shape as {@code AccountService.deactivate}
+     * (API-FIN-004), {@code EventTypeRuleService.deactivate} (API-FIN-034) and
+     * {@code DimensionValueService.deactivate} (API-FIN-035). ENT-FIN-011 does now have a Domain
+     * companion ({@code RecurringTemplateDomain}), but it owns the run-time gate only — it holds
+     * no rule about entering the deactivated state. The flag moves through the entity's own
+     * {@code deactivate()} helper, never a direct assignment.
+     *
+     * <p>Why this endpoint exists: srs-fin.md SCR-REQ-FIN-004 §B4 records the absence of a
+     * template deactivate as an OPEN DEFECT rather than a scope decision — {@code IS_ACTIVE_FL} is
+     * NOT NULL, {@code activate()}/{@code deactivate()} shipped with zero callers, B2 advertises an
+     * {@code isActiveFl(EXACT)} search filter over a column nothing could set to FALSE, and
+     * AC-FIN-023 is written "Given an active recurring template", presupposing a state nothing
+     * could produce. A template created with a wrong account or amount could be neither retired nor
+     * corrected, so every subsequent API-FIN-014 run posted a wrong entry recoverable only by
+     * reversing each one individually.
+     *
+     * <p><b>This deactivate now gates the run</b>, by RECORDED HUMAN DECISION — it was not one
+     * when API-FIN-036 shipped. {@link #run(Long)} calls
+     * {@code RecurringTemplateDomain.assertCanRun()} on the row it loads, so a deactivated
+     * template is refused with {@code FIN-409-NOT-ACTIVE} (HTTP 409) and posts nothing. No
+     * RULE-FIN-* states this gate — RULE-FIN-001..017 were each read and none constrains running
+     * a retired template, and AC-FIN-023 states an outcome only for the active case — so it rests
+     * on that decision, not on a rule that was always there. Deactivation therefore remains
+     * unguarded on the way IN (nothing to delegate before the mutation, the same shape as
+     * {@code AccountService.deactivate}) while being enforced on the way OUT, at run time.
+     * The flag also still drives API-FIN-012's advertised {@code isActiveFl} filter.
+     *
+     * <p>The response carries the template's lines because {@code RecurringTemplateResponse}
+     * derives its {@code lineCount} from the list it is handed; passing an empty list would
+     * misreport the aggregate as having none. Loading them is orchestration (load → map), not a
+     * rule.
+     */
+    @Transactional
+    @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants)"
+        + ".PERM_FIN_RECURRING_TEMPLATES_UPDATE)")
+    public ServiceResult<RecurringTemplateResponse> deactivate(Long id) {
+        log.info("Deactivating RecurringTemplate ID: {}", id);
+
+        RecurringTemplate entity = repository.findById(id)
+            .orElseThrow(() -> new LocalizedException(
+                Status.NOT_FOUND, FinErrorCodes.FIN_404_TEMPLATE, id));
+
+        entity.deactivate();
+
+        RecurringTemplate saved = repository.save(entity);
+        log.info("Deactivated RecurringTemplate ID: {}", saved.getRecurringTemplatePk());
+
+        List<RecurringTemplateLineResponse> lineResponses =
+            lineRepository.findByRecurringTemplatePk(saved.getRecurringTemplatePk()).stream()
+                .map(lineMapper::toResponse)
+                .toList();
+
+        return ServiceResult.success(
+            mapper.toResponse(saved, lineResponses), Status.UPDATED);
     }
 
     /**

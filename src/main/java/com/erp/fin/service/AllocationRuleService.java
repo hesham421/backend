@@ -152,7 +152,11 @@ public class AllocationRuleService {
      * pipeline (REQ-FIN-015 / AC-FIN-015). The not-found preconditions (the rule itself, the target
      * period) stay fail-fast.
      *
-     * <p><b>Rules delegated, none inlined</b> (A.5.18): RULE-FIN-003 (the remainder guarantee
+     * <p><b>Rules delegated, none inlined</b> (A.5.18): the active gate →
+     * {@code AllocationRuleDomain.assertCanRun()}, run first — before the target set is loaded,
+     * before the source balance is computed and before the period is resolved — so a deactivated
+     * rule is refused with {@code FIN-409-NOT-ACTIVE} and nothing is built or posted;
+     * RULE-FIN-003 (the remainder guarantee
      * RULE-FIN-010 depends on) → {@code AllocationRuleDomain.assertRemainderTargetSetValid(...)};
      * each target's share and the remainder difference → {@code AllocationRuleDomain.targetAmount}
      * and {@code EventTypeRuleDomain.remainderAmount}, RULE-FIN-010's single implementation; the
@@ -170,13 +174,16 @@ public class AllocationRuleService {
     public ServiceResult<JournalEntryResponse> run(Long id) {
         log.info("Running AllocationRule ID: {}", id);
 
-        AllocationRule rule = repository.findById(id)
+        AllocationRule rule = repository.lockForRun(id)
             .orElseThrow(() -> new LocalizedException(
                 Status.NOT_FOUND, FinErrorCodes.FIN_404_ALLOCATION_RULE, id));
 
+        AllocationRuleDomain domain = AllocationRuleDomain.from(rule);
+        domain.assertCanRun();
+
         List<AllocationTarget> targets =
             targetRepository.findByAllocationRulePk(rule.getAllocationRulePk());
-        AllocationRuleDomain.from(rule).assertRemainderTargetSetValid(targets);
+        domain.assertRemainderTargetSetValid(targets);
 
         Account sourceAccount = rule.getSourceAccount();
         BigDecimal sourceBalance = balanceOf(sourceAccount.getAccountPk());
@@ -194,6 +201,66 @@ public class AllocationRuleService {
 
         return ServiceResult.success(
             journalEntryMapper.toResponse(posted, lineResponses), Status.CREATED);
+    }
+
+    /**
+     * API-FIN-037 — soft deactivation only: retire an allocation rule so it stops being run. No
+     * SRS rule answers "may this rule be deactivated?" — RULE-FIN-001..017 were each read and none
+     * constrains retiring an allocation rule. In particular RULE-FIN-003, the one rule this
+     * entity's {@link AllocationRuleDomain} owns, governs the remainder-target SET at create and
+     * run time; it says nothing about the rule's active flag, and no rule makes a rule referenced
+     * by anything in flight undeactivatable (a run is a single transaction — there is no
+     * long-running allocation to be caught mid-flight). So there is nothing to delegate before the
+     * mutation: the same shape as {@code AccountService.deactivate} (API-FIN-004),
+     * {@code EventTypeRuleService.deactivate} (API-FIN-034) and
+     * {@code DimensionValueService.deactivate} (API-FIN-035). The flag moves through ENT-FIN-013's
+     * own {@code deactivate()} helper, never a direct assignment.
+     *
+     * <p>Why this endpoint exists: srs-fin.md SCR-REQ-FIN-005 §B4 records the absence of a rule
+     * deactivate as an OPEN DEFECT rather than a scope decision — {@code IS_ACTIVE_FL} is NOT NULL,
+     * {@code activate()}/{@code deactivate()} shipped with zero callers,
+     * {@link AllocationRuleDomain#isActive()} was dead code, and B2 advertises an
+     * {@code isActiveFl(EXACT)} search filter over a column nothing could set to FALSE. A rule
+     * created with the wrong source account or target split could be neither retired nor corrected,
+     * so every subsequent API-FIN-017 run posted a wrong distribution.
+     *
+     * <p><b>This deactivate now gates the run</b>, by RECORDED HUMAN DECISION — it was not one
+     * when API-FIN-037 shipped. {@link #run(Long)} calls
+     * {@link AllocationRuleDomain#assertCanRun()} on the row it loads, so a deactivated rule is
+     * refused with {@code FIN-409-NOT-ACTIVE} (HTTP 409) and posts nothing; that guard reads the
+     * same {@code active} fact {@link AllocationRuleDomain#isActive()} exposes, which until now
+     * had no callers. No RULE-FIN-* states this gate — RULE-FIN-001..017 were each read and none
+     * constrains running a retired rule — so it rests on that decision, not on a rule that was
+     * always there. Deactivation therefore stays unguarded on the way IN while being enforced on
+     * the way OUT, at run time. The flag also still drives API-FIN-015's advertised
+     * {@code isActiveFl} filter.
+     *
+     * <p>The response carries the rule's targets because {@code AllocationRuleResponse} derives its
+     * {@code targetCount} from the list it is handed; passing an empty list would misreport the
+     * aggregate as having none. Loading them is orchestration (load → map), not a rule.
+     */
+    @Transactional
+    @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants)"
+        + ".PERM_FIN_ALLOCATION_RULES_UPDATE)")
+    public ServiceResult<AllocationRuleResponse> deactivate(Long id) {
+        log.info("Deactivating AllocationRule ID: {}", id);
+
+        AllocationRule entity = repository.findById(id)
+            .orElseThrow(() -> new LocalizedException(
+                Status.NOT_FOUND, FinErrorCodes.FIN_404_ALLOCATION_RULE, id));
+
+        entity.deactivate();
+
+        AllocationRule saved = repository.save(entity);
+        log.info("Deactivated AllocationRule ID: {}", saved.getAllocationRulePk());
+
+        List<AllocationTargetResponse> targetResponses =
+            targetRepository.findByAllocationRulePk(saved.getAllocationRulePk()).stream()
+                .map(targetMapper::toResponse)
+                .toList();
+
+        return ServiceResult.success(
+            mapper.toResponse(saved, targetResponses), Status.UPDATED);
     }
 
     /**

@@ -497,7 +497,10 @@ def test_lookup_type(client: APIClient) -> dict:
 
     # Covers: API-MDL-001 — search lookup types (general CRUD checklist, no dedicated TC number)
     def _search():
-        r = client.get("/api/v1/mdl/lookup-types", params={"key": key_main, "page": 0, "size": 20})
+        r = client.post("/api/v1/mdl/lookup-types/search", {
+            "page": 0, "size": 20,
+            "filters": [{"field": "key", "operator": "LIKE", "value": key_main}],
+        })
         ok = r.status_code == 200
         content = extract_list(r, "content")
         found = ok and isinstance(content, list) and any(row.get("key") == key_main for row in content)
@@ -509,7 +512,7 @@ def test_lookup_type(client: APIClient) -> dict:
     # self-registered) and SEC (key_sec_owned, the dedicated fixture above) — no filter is
     # passed so the endpoint returns every active owner group, and both must be present.
     def _browse_by_owner():
-        r = client.get("/api/v1/mdl/lookup-types/by-owner")
+        r = client.post("/api/v1/mdl/lookup-types/by-owner/search", {})
         ok = r.status_code == 200
         groups = r.json().get("data") if ok else None
         mdl_group = None
@@ -635,7 +638,10 @@ def test_lookup_value(client: APIClient, type_ctx: dict) -> dict:
                 created.append(vid)
         if len(created) != 3:
             return False, f"only created {len(created)}/3 fixture values", ""
-        r = client.get(f"/api/v1/mdl/lookup-types/{search_id}/values", params={"page": 0, "size": 20})
+        r = client.post("/api/v1/mdl/lookup-types/values/search", {
+            "page": 0, "size": 20,
+            "filters": [{"field": "lookupTypeId", "operator": "EQUALS", "value": search_id}],
+        })
         ok = r.status_code == 200
         content = extract_list(r, "content")
         ok = ok and isinstance(content, list) and len(content) == 3

@@ -69,16 +69,16 @@ Open ADRs: 0
 **API REGISTRY**
 | API | Operation | Verb | Path | Traces (REQ, DBF) |
 |---|---|---|---|---|
-| API-MDL-001 | search types | GET | /api/v1/mdl/lookup-types | REQ-MDL-001 · DBF-MDL-002,003,004,005,006 |
+| API-MDL-001 | search types | POST | /api/v1/mdl/lookup-types/search | REQ-MDL-001 · DBF-MDL-002,003,004,005,006 |
 | API-MDL-002 | create type | POST | /api/v1/mdl/lookup-types | REQ-MDL-001,REQ-MDL-002 · DBF-MDL-002,003,004,005 |
 | API-MDL-003 | update type | PUT | /api/v1/mdl/lookup-types/{id} | REQ-MDL-003 · DBF-MDL-004,005 |
 | API-MDL-004 | deactivate type | DELETE | /api/v1/mdl/lookup-types/{id} | REQ-MDL-004 · DBF-MDL-006 |
-| API-MDL-005 | search values | GET | /api/v1/mdl/lookup-types/{id}/values | REQ-MDL-005 · DBF-MDL-012,013,014,015,016,017 |
+| API-MDL-005 | search values | POST | /api/v1/mdl/lookup-types/values/search | REQ-MDL-005 · DBF-MDL-012,013,014,015,016,017 |
 | API-MDL-006 | create value | POST | /api/v1/mdl/lookup-types/{id}/values | REQ-MDL-006,REQ-MDL-007 · DBF-MDL-012,013,014,015,016 |
 | API-MDL-007 | update value | PUT | /api/v1/mdl/lookup-values/{id} | REQ-MDL-008 · DBF-MDL-014,015,016 |
 | API-MDL-008 | deactivate value | DELETE | /api/v1/mdl/lookup-values/{id} | REQ-MDL-009 · DBF-MDL-017 |
 | API-MDL-009 | reorder values | PATCH | /api/v1/mdl/lookup-types/{id}/values/reorder | REQ-MDL-010 · DBF-MDL-016 |
-| API-MDL-010 | browse registry by owner | GET | /api/v1/mdl/lookup-types/by-owner | REQ-MDL-013 · DBF-MDL-003,002,004,005 |
+| API-MDL-010 | browse registry by owner | POST | /api/v1/mdl/lookup-types/by-owner/search | REQ-MDL-013 · DBF-MDL-003,002,004,005 |
 | API-MDL-011 | read values by key (consumer API) | GET | /api/v1/mdl/lookups | REQ-MDL-011,REQ-MDL-012 · DBF-MDL-002,013,014,015,016,006,017 |
 
 **RULE REGISTRY**
@@ -285,9 +285,9 @@ place; omitting an unneeded SUB is the correct reading, not a violation).
 
 <!-- API:API-MDL-001:START traces=REQ-MDL-001,DBF-MDL-002,DBF-MDL-003,DBF-MDL-004,DBF-MDL-005,DBF-MDL-006 -->
 ### API-MDL-001 — search lookup types
-Endpoint     : GET /api/v1/mdl/lookup-types
+Endpoint     : POST /api/v1/mdl/lookup-types/search
 Layers       : controller → `LookupTypeController.search` ; service → `LookupTypeService.search`
-Request      : query params `key`(LIKE), `ownerModuleCode`(EXACT), `isActiveFl`(EXACT), `page`, `size`, `sort`
+Request      : body `LookupTypeSearchRequest` (BaseSearchContractRequest) — `filters[]` of (field, operator, value) over `key`, `ownerModuleCode`, `isActiveFl`, and `page`, `size`, `sortField`, `sortDirection`
 Response     : 200 · `Page<LookupTypeResponse>` · `ApiResponse<Page<LookupTypeResponse>>`
 Validations  : none (read-only)
 Errors       : `MDL-500` only
@@ -299,12 +299,12 @@ Localization : nameAr/nameEn returned
 
 <!-- API:API-MDL-005:START traces=REQ-MDL-005,DBF-MDL-012,DBF-MDL-013,DBF-MDL-014,DBF-MDL-015,DBF-MDL-016,DBF-MDL-017 -->
 ### API-MDL-005 — search values of a type
-Endpoint     : GET /api/v1/mdl/lookup-types/{id}/values
+Endpoint     : POST /api/v1/mdl/lookup-types/values/search
 Layers       : controller → `LookupValueController.search` ; service → `LookupValueService.search`
-Request      : path `id` (lookupTypeId); query params `code`(LIKE), `page`, `size`, `sort` (default sort = sortOrder)
+Request      : body `LookupValueSearchRequest` (BaseSearchContractRequest) — the CHILD variant: the parent `lookupTypeId` travels inside `filters[]` (never a path variable), plus `filters[]` of (field, operator, value) over `code`, and `page`, `size`, `sortField`, `sortDirection` (default sort = sortOrder)
 Response     : 200 · `Page<LookupValueResponse>` · `ApiResponse<Page<LookupValueResponse>>`
 Validations  : none
-Errors       : `MDL-404-TYPE` (404, unknown id)
+Errors       : `MDL-404-TYPE` (404, unknown or missing lookupTypeId)
 Orchestration: load (QR-MDL-005) → map → return
 Repository   : QR-MDL-005 · join NONE · transaction READ_ONLY
 Security     : screen MDL_LOOKUPS · permission `PERM_MDL_LOOKUPS_VIEW`
@@ -313,9 +313,9 @@ Localization : nameAr/nameEn returned
 
 <!-- API:API-MDL-010:START traces=REQ-MDL-013,DBF-MDL-003,DBF-MDL-002,DBF-MDL-004,DBF-MDL-005 -->
 ### API-MDL-010 — browse registry by owner
-Endpoint     : GET /api/v1/mdl/lookup-types/by-owner
+Endpoint     : POST /api/v1/mdl/lookup-types/by-owner/search
 Layers       : controller → `LookupTypeController.browseByOwner` ; service → `LookupTypeService.browseByOwner`
-Request      : query params `ownerModuleCode`(EXACT), `key`(LIKE)
+Request      : body `LookupTypeByOwnerSearchRequest` (BaseSearchContractRequest) — `filters[]` of (field, operator, value) over `ownerModuleCode`, `key`; `isActiveFl` is NOT a client-supplied filter — the service applies "active types only" unconditionally; `page`/`size`/`sortField` are inherited but unused (response is not paginated)
 Response     : 200 · `List<OwnerGroupResponse>` (ownerModuleCode → nested active LookupType list) · `ApiResponse<List<OwnerGroupResponse>>`
 Validations  : none
 Errors       : `MDL-500` only

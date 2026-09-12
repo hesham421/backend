@@ -42,11 +42,16 @@ Localization: n/a (no free-text description supplied by an event)
 Endpoint: POST /api/v1/fin/recurring-templates/{id}/run · Layers: `RecurringTemplateController.run`→`RecurringTemplateService.run`
 Request: path `id` (or invoked by an internal scheduler with no path — the endpoint is the
 same either way) · Response: 201 · `JournalEntryResponse`
-Validations: same RULE-FIN-006/007/008/009 checks as API-FIN-019 (the template's own lines
-were already balance-checked at API-FIN-013 create time, but re-validated here since
-accounts/periods may have changed since)
-Errors: same as API-FIN-019, plus `FIN-404-TEMPLATE` (unknown recurring template id)
-Orchestration: load template (QR-FIN-019) → build entry from its lines (journalTypeCode=
+Validations: the template must still be ACTIVE — `RecurringTemplateDomain.assertCanRun()`
+(the NEW Domain companion for ENT-FIN-011) runs FIRST, immediately after the row is loaded and
+before the period is resolved, and refuses a deactivated template with `FIN-409-NOT-ACTIVE`;
+**no RULE-FIN-* states this gate — it rests on a recorded human decision of 2026-09-12, not on
+stated requirement.** Then the same RULE-FIN-006/007/008/009 checks as API-FIN-019 (the
+template's own lines were already balance-checked at API-FIN-013 create time, but re-validated
+here since accounts/periods may have changed since)
+Errors: same as API-FIN-019, plus `FIN-404-TEMPLATE` (unknown recurring template id) and
+`FIN-409-NOT-ACTIVE` (the template exists but is deactivated)
+Orchestration: load template (QR-FIN-019) → assert it is active → build entry from its lines (journalTypeCode=
 RECURRING) → validate + post (QR-FIN-029..033) → advance nextRunDate per frequencyCode →
 if scheduleTypeCode=REVERSING: also build and post the linked reversal in the next period
 (REQ-FIN-024, reusing RULE-FIN-011/012 via QR-FIN-034/036) → return
@@ -60,11 +65,15 @@ a template is modeled as an update-class custom action) · Localization: n/a
 ### API-FIN-017 — run allocation rule
 Endpoint: POST /api/v1/fin/allocation-rules/{id}/run · Layers: `AllocationRuleController.run`→`AllocationRuleService.run`
 Request: path `id` · Response: 201 · `JournalEntryResponse`
-Validations: RULE-FIN-003 (single remainder marker over the stored targets, QR-FIN-016) and
-RULE-FIN-010 (per-side remainder guarantee, QR-FIN-028, reused) then RULE-FIN-006/007/008/009
-Errors: same family as API-FIN-019, plus `FIN-404-ALLOCATION-RULE`,
+Validations: the rule must still be ACTIVE — `AllocationRuleDomain.assertCanRun()` runs FIRST,
+immediately after the row is loaded and before the target set is even fetched, and refuses a
+deactivated rule with `FIN-409-NOT-ACTIVE`; **no RULE-FIN-* states this gate — it rests on a
+recorded human decision of 2026-09-12, not on stated requirement.** Then RULE-FIN-003 (single
+remainder marker over the stored targets, QR-FIN-016) and RULE-FIN-010 (per-side remainder
+guarantee, QR-FIN-028, reused) then RULE-FIN-006/007/008/009
+Errors: same family as API-FIN-019, plus `FIN-404-ALLOCATION-RULE`, `FIN-409-NOT-ACTIVE`,
 `FIN-409-REMAINDER-COUNT`, `FIN-422-REMAINDER-MARKER`, `FIN-422-REMAINDER-NOT-POSITIVE`
-Orchestration: load rule + targets + current source-account balance (QR-FIN-022) →
+Orchestration: load rule → assert it is active → load targets + current source-account balance (QR-FIN-022) →
 distribute per target's distributionTypeCode, the target marked `isRemainderFl`
 (DBF-FIN-141, the single marker — not `distributionTypeCode`) absorbing the rounding
 difference between the source line's side and the targets' own side (QR-FIN-028) → build
@@ -147,29 +156,39 @@ Endpoint: PATCH /api/v1/fin/fiscal-periods/{id}/hard-close · Layers: `FiscalPer
 Request: path `id` · Response: 200 · `FiscalPeriodResponse`
 Validations: RULE-FIN-014 (not already Hard Closed, QR-FIN-040); RULE-FIN-015 (full text:
 DATA-DOM §ENT-FIN-008) — caller must hold `PERM_FIN_PERIODS_CLOSE_APPROVE`, a permission
-distinct from `PERM_FIN_JOURNAL_ENTRIES_CREATE` (checked by the CORE interceptor plus the
-service-layer distinctness read, Phase 1 CORE)
-Errors: `FIN-409-NOT-REOPENABLE`(reused message context), `FIN-403-SOD-VIOLATION`, `FIN-404-PERIOD`
-Orchestration: load → check RULE-FIN-014 (QR-FIN-040) → check RULE-FIN-015 (SEC role read)
+distinct from `PERM_FIN_JOURNAL_ENTRIES_CREATE`. **That gate is the WHOLE of the rule**: the
+`@PreAuthorize` on `FiscalPeriodService.hardClose`, enforced by SEC's own mechanism, exactly as
+RULE-FIN-015 states it and AC-FIN-038 describes it. There is NO service-layer SoD read — the
+one that existed was deleted on 2026-09-12 as an over-implementation (it refused the close for
+every caller whenever any single user held both codes); see the Error Catalog's struck
+`FIN-403-SOD-VIOLATION` row and retired XM-FIN-002
+Errors: `FIN-409-NOT-REOPENABLE`(reused message context), `FIN-404-PERIOD`
+Orchestration: load → check RULE-FIN-014 (QR-FIN-040)
 → transition, set closedBy/closedAt to the approving principal (QR-FIN-039) → return
 Repository: QR-FIN-039, QR-FIN-040 · join NONE · READ_WRITE
-Security: screen FIN_PERIODS · `PERM_FIN_PERIODS_CLOSE_APPROVE` (custom, SoD-gated) · Localization: n/a
+Security: screen FIN_PERIODS · `PERM_FIN_PERIODS_CLOSE_APPROVE` (custom — the distinct permission RULE-FIN-015 requires; since V30 it is also granted to SYS_ADMIN) · Localization: n/a
 <!-- API:API-FIN-026:END -->
 
 <!-- API:API-FIN-027:START traces=REQ-FIN-036,DBF-FIN-069,DBF-FIN-034 -->
 ### API-FIN-027 — run year-end close
 Endpoint: POST /api/v1/fin/fiscal-years/{id}/year-end-close · Layers: `FiscalYearController.yearEndClose`→`FiscalYearService.yearEndClose`
 Request: path `id` · Response: 201 · `{closingEntry: JournalEntryResponse, openingEntry: JournalEntryResponse}`
-Validations, IN THIS ORDER (the order is part of the contract — a test asserting 403 or 409
-on this endpoint must not be defeated by a missing successor year or Retained Earnings
-account): (1) RULE-FIN-015, the SoD read, 403; (2) the fiscal year's own statusCode must
+Validations, IN THIS ORDER (the order is part of the contract — a test asserting 409 on this
+endpoint must not be defeated by a missing successor year or Retained Earnings
+account): (1) the fiscal year's own statusCode must
 still be OPEN — a re-run against an already-CLOSED year is rejected with
 `FIN-409-INVALID-TRANSITION`, a stated rule on ENT-FIN-007's state machine rather than the
 incidental `FIN-409-PERIODS-NOT-CLOSED` the first run's own YEAR_END_CLOSE transitions would
-otherwise raise; (3) every period of the year must be HARD_CLOSE (§10.4 precondition), 409.
-Only then are the successor year and the Retained Earnings account resolved
-Errors: `FIN-403-SOD-VIOLATION`, `FIN-409-INVALID-TRANSITION` (year already closed), `FIN-409-PERIODS-NOT-CLOSED`, `FIN-404-YEAR` (unknown year id, or no adjacent successor year), `FIN-404-ACCOUNT` (no account marked as Retained Earnings)
-Orchestration: read the SoD facts → verify the year is still OPEN → verify all periods Hard
+otherwise raise; (2) every period of the year must be HARD_CLOSE (§10.4 precondition), 409.
+Only then are the successor year and the Retained Earnings account resolved.
+RULE-FIN-015 is no longer a numbered step here: it is enforced entirely by this endpoint's
+`@PreAuthorize(PERM_FIN_PERIODS_CLOSE_APPROVE)` gate, which rejects before the method body
+runs. The step that used to come first — a service-layer SoD read answering 403 — was deleted
+on 2026-09-12 as an over-implementation; see the Error Catalog's struck `FIN-403-SOD-VIOLATION`
+row. **A test written against the old contract and asserting 403 from inside this method will
+now fail, and should be retargeted at the `@PreAuthorize` gate.**
+Errors: `FIN-409-INVALID-TRANSITION` (year already closed), `FIN-409-PERIODS-NOT-CLOSED`, `FIN-404-YEAR` (unknown year id, or no adjacent successor year), `FIN-404-ACCOUNT` (no account marked as Retained Earnings)
+Orchestration: verify the year is still OPEN → verify all periods Hard
 Closed → resolve the successor year and the Retained Earnings account → compute closing
 balances (QR-FIN-041) →
 build + post a closing entry into the year's LAST period (result accounts → Retained

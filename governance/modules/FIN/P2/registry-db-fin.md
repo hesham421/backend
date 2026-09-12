@@ -46,7 +46,7 @@ XM index
 | XM id | Type | From | To | Status |
 |---|---|---|---|---|
 | XM-FIN-001 | SOFT-READ | FIN | MDL | ACTIVE |
-| XM-FIN-002 | READ | FIN | SEC | ACTIVE |
+| ~~XM-FIN-002~~ | READ | FIN | SEC | RETIRED 2026-09-12 (see db-script-fin.md §2) |
 
 Lookups
 | Key | Seeded values count | Owner |
@@ -67,7 +67,8 @@ Lookups
 All seeded via MDL's API at onboarding time (BLOCK 8 note), not local INSERTs.
 
 Sequences
-Last DBF: DBF-FIN-147 · Last XM: XM-FIN-002
+Last DBF: DBF-FIN-147 · Last XM: XM-FIN-002 (retired 2026-09-12; the id is burned, not
+reused — the live XM set is XM-FIN-001 alone)
 
 Decisions
 ADR-FIN-001 (ACCEPTED, non-breaking) — see erp/decisions/FIN/ADR-FIN-001.md
@@ -75,10 +76,13 @@ ADR-FIN-001 (ACCEPTED, non-breaking) — see erp/decisions/FIN/ADR-FIN-001.md
 Event
 "P2 completed: FIN v1 — 14 tables, 147 DBF, 1 XM"
 (XM-FIN-002 was assigned later, at ALIGN-BE, once SEC-BE introduced FIN's read of SEC's user
-directory — the P2 event line records what P2 itself saw and is left as written.)
+directory, and RETIRED on 2026-09-12 when the service making that read was deleted. The P2
+event line records what P2 itself saw, is left as written, and happens to describe the live
+state again.)
 
 Cascade
 No registry XM row anywhere in the platform currently targets FIN with status DEFERRED
 (FIN is the last module of this batch) — nothing to resolve. XM-FIN-001 resolves
-immediately to ACTIVE since MDL v1 is already gated.
+immediately to ACTIVE since MDL v1 is already gated. XM-FIN-002's retirement cascades
+nowhere: no other module ever consumed it, and FIN's outbound set is now XM-FIN-001 alone.
 ══════════════════════════════════════════════════════════════════

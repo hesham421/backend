@@ -169,6 +169,32 @@ public final class AllocationRuleDomain {
         return distributionValue == null ? BigDecimal.ZERO : distributionValue;
     }
 
+    /**
+     * API-FIN-017 (run an allocation rule) — the rule must still be active. A rule is retired
+     * through API-FIN-037 precisely so that it stops distributing a balance; running one anyway
+     * posts an ALLOCATION entry that RULE-FIN-016 then locks, recoverable only by reversing it.
+     * Decision only — the service distributes and posts after this returns.
+     *
+     * <p><b>RECORDED HUMAN DECISION, not an SRS rule.</b> RULE-FIN-001..017 were each read and
+     * none of them states that a deactivated allocation rule may not be run — RULE-FIN-003, the
+     * rule this class otherwise owns, governs the remainder-target SET and says nothing about the
+     * active flag. Before this change API-FIN-037 set {@code IS_ACTIVE_FL} and {@code run}
+     * ignored it, so a retired rule still posted; {@link #isActive()} had no callers at all. The
+     * gate closes that defect by decision, not by a rule that was always there.
+     *
+     * <p>The guard runs BEFORE the target set is loaded and before RULE-FIN-003 is evaluated: a
+     * retired rule is refused for being retired, never for a remainder-target set that is only
+     * examined on rules that may actually run.
+     *
+     * @throws LocalizedException {@code FIN-409-NOT-ACTIVE} when the rule is deactivated
+     */
+    public void assertCanRun() {
+        if (!active) {
+            throw new LocalizedException(Status.CONFLICT,
+                FinErrorCodes.FIN_409_NOT_ACTIVE, allocationRulePk);
+        }
+    }
+
     public Long getAllocationRulePk() {
         return allocationRulePk;
     }

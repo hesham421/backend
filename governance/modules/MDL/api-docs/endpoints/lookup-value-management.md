@@ -5,7 +5,7 @@
 
 - [PUT /api/v1/mdl/lookup-values/{id}](#put-apiv1mdllookup-valuesid)
 - [DELETE /api/v1/mdl/lookup-values/{id}](#delete-apiv1mdllookup-valuesid)
-- [GET /api/v1/mdl/lookup-types/{id}/values](#get-apiv1mdllookup-typesidvalues)
+- [POST /api/v1/mdl/lookup-types/values/search](#post-apiv1mdllookup-typesvaluessearch)
 - [POST /api/v1/mdl/lookup-types/{id}/values](#post-apiv1mdllookup-typesidvalues)
 - [PATCH /api/v1/mdl/lookup-types/{id}/values/reorder](#patch-apiv1mdllookup-typesidvaluesreorder)
 
@@ -154,7 +154,7 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 |---|---|---|
 | 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
 
-## GET /api/v1/mdl/lookup-types/{id}/values
+## POST /api/v1/mdl/lookup-types/values/search
 
 **Search lookup values of a type**
 
@@ -168,20 +168,35 @@ Not determined from the OpenAPI document.
 
 **Required permission(s)**: PERM_MDL_LOOKUPS_VIEW (found on service:LookupValueService)
 
-### Path Parameters
+### Request Body
 
-| Name | Type | Required | Description |
-|---|---|---|---|
-| id | integer | Yes |  |
+Schema: `LookupValueSearchRequest` (application/json)
 
-### Query Parameters
+| Field | Type | Required | Constraints | Description | Example |
+|---|---|---|---|---|---|
+| filters | array<SearchFilter> | No |  | Filter criteria - معايير التصفية (the parent `lookupTypeId` travels here too, e.g. `{"field":"lookupTypeId","operator":"EQUALS","value":1}` — never a path variable) |  |
+| filters[].field | string | No |  |  |  |
+| filters[].operator | string | No | enum: EQUALS, NOT_EQUALS, LIKE, GREATER_THAN, GREATER_THAN_OR_EQUAL, LESS_THAN, LESS_THAN_OR_EQUAL, IN |  |  |
+| filters[].value | object | No |  |  |  |
+| sortField | string | No |  | Sort field - حقل الترتيب (defaults to `sortOrder` server-side when omitted) |  |
+| sortDirection | string | No | enum: ASC, DESC | Sort direction - اتجاه الترتيب |  |
+| page | integer (int32) | No |  | Page number, zero-based - رقم الصفحة | 0 |
+| size | integer (int32) | No |  | Page size - حجم الصفحة | 20 |
 
-| Name | Type | Required | Description |
-|---|---|---|---|
-| code | string | No |  |
-| page | integer | No |  |
-| size | integer | No |  |
-| sort | string | No |  |
+**Request Example**
+
+_(partial — only fields with a documented example are shown)_
+
+```json
+{
+  "page": 0,
+  "size": 20,
+  "filters": [
+    {"field": "lookupTypeId", "operator": "EQUALS", "value": 1},
+    {"field": "code", "operator": "LIKE", "value": "PEND"}
+  ]
+}
+```
 
 ### Response `200` — OK
 
@@ -224,6 +239,7 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 | HTTP Status | Code | Why |
 |---|---|---|
 | 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
+| 400 BAD_REQUEST | VALIDATION_ERROR | Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status. |
 
 ## POST /api/v1/mdl/lookup-types/{id}/values
 

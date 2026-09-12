@@ -1031,6 +1031,17 @@ Data source: DEFERRED — the permission matrix is the Security module's declara
 Message    : ar: "صلاحية اعتماد الإغلاق منفصلة عن صلاحية إنشاء القيود" · en: "The close-approval permission is separate from the entry-creation permission"
 Traces     : REQ-FIN-038
 Source     : general-accounting-system-plan-en.md §2.2, §8.2, §10.3
+Enforcement note (2026-09-12, does not change the Statement above): satisfied in full by the
+             `@PreAuthorize(PERM_FIN_PERIODS_CLOSE_APPROVE)` gate on `FiscalPeriodService.hardClose`
+             (API-FIN-026) and `FiscalYearService.yearEndClose` (API-FIN-027) — a permission code
+             distinct from `PERM_FIN_JOURNAL_ENTRIES_CREATE`, enforced by SEC, exactly as the
+             Statement and AC-FIN-038 describe. A STRICTER check once existed in FIN code and was
+             removed by recorded human decision: `FinSeparationOfDutiesService` +
+             `FiscalPeriodDomain.assertCanHardClose(...)` refused the close for EVERY caller
+             whenever ANY single user in the system held both permissions — global user-set
+             disjointness, which this rule does not ask for and which the `Data source` line above
+             explicitly rules out by stating there is no FIN-side fact to read. `FIN-403-SOD-VIOLATION`
+             is struck as unreachable; do not re-derive the removed behaviour from this rule.
 
 ### RULE-FIN-016 — قفل القيد بعد الترحيل / Lock an entry after posting
 Scope      : ENT-FIN-004, ENT-FIN-005
@@ -1125,7 +1136,8 @@ All other statuses in this module (isActiveFl flags) are binary — not applicab
 ### B1 — Definition
 Purpose      : إدارة شجرة الحسابات الهرمية.
 Entities     : ENT-FIN-001
-Operations   : search, create, read, update, deactivate
+Operations   : search, create, update, deactivate. No by-id read — deliberate v1 exclusion, see
+               the note under B5
 Users        : مسؤول مالي
 Navigation   : FIN → Setup → Chart of accounts
 Content shape: true hierarchy (parent/child)
@@ -1146,6 +1158,17 @@ endpoint and no `PERM_FIN_ACCOUNTS_DELETE`; deactivate is `PUT /{id}/deactivate`
 | create account | POST | /api/v1/fin/accounts | account fields | Account | RULE-FIN-001 | REQ-FIN-001, REQ-FIN-002 |
 | update account | PUT | /api/v1/fin/accounts/{id} | account fields | Account | RULE-FIN-001 | REQ-FIN-002 |
 | deactivate account | PUT | /api/v1/fin/accounts/{id}/deactivate | id | Account | — | REQ-FIN-003 |
+
+**No by-id read, and why.** `AccountController` publishes exactly these four endpoints — create,
+update, deactivate and search (`AccountController.java:45, 52, 60, 66`) — and no `GET /{id}`. The
+`read` this section's B1 Operations line used to name was never in B5 either, so the B1 line was
+its only claim; it is narrowed here rather than deleted so the decision stays legible. A by-id read
+is a deliberate v1 exclusion, not a pending endpoint: no REQ or AC asks for one (REQ-FIN-001/002/003
+and AC-FIN-001…003 cover create, the leaf-flag rejection and deactivate), this is a Composite
+"Search + Entry = ONE screen" requirement whose Entry form is populated from the search-result row,
+and API-FIN-001 already returns the complete `Account` record, not a trimmed projection. Contrast
+SCR-REQ-FIN-006, where a by-id read WAS built (API-FIN-022) because REQ-FIN-016/REQ-FIN-027 need
+the entry's lines, which its search result does not carry.
 
 ## SCR-REQ-FIN-002 — تعريف الأبعاد وقيمها / Dimension definition & values
 ### B1 — Definition
@@ -1255,7 +1278,13 @@ flag to soft-delete against, and FIN publishes no `DELETE` endpoint on any scree
 ### B1 — Definition
 Purpose      : إدارة القوالب المتكررة والعكسية.
 Entities     : ENT-FIN-011, ENT-FIN-012
-Operations   : search, create, read, update, deactivate (template); create, read, update, delete (line)
+Operations   : search, create (template with its lines in one request), run, deactivate —
+               API-FIN-012/013/014/036, which is everything `RecurringTemplateController`
+               publishes. **`deactivate` (template) is DELIVERED as API-FIN-036 and, since
+               2026-09-12, it DOES stop the template from running — that defect is CLOSED, see
+               B4.** **`update` (template) is still NOT built and is now the ONLY open half of
+               the original gap — also B4.** No by-id read and no line-level read/update/delete:
+               deliberate v1 exclusions, also B4
 Users        : محاسب
 Navigation   : FIN → Setup → Recurring/reversing templates
 Content shape: header + repeating lines
@@ -1267,20 +1296,82 @@ Filters: nameAr/nameEn(LIKE), scheduleTypeCode(EXACT), isActiveFl(EXACT).
 Template fields: nameAr, nameEn, scheduleTypeCode, frequencyCode, startDate, endDate (ENT-FIN-011).
 Line fields: accountId, amount, directionCode, dimensionValueId (ENT-FIN-012).
 ### B4 — Access
-Page code: FIN_RECURRING_TEMPLATES. Actions: VIEW, CREATE, UPDATE (covers "run" — API-FIN-014).
-No DELETE endpoint and no `PERM_FIN_RECURRING_TEMPLATES_DELETE`.
+Page code: FIN_RECURRING_TEMPLATES. Actions: VIEW, CREATE, UPDATE (covers BOTH "run" —
+API-FIN-014 — and "deactivate" — API-FIN-036; one permission, `PERM_FIN_RECURRING_TEMPLATES_UPDATE`,
+already seeded by V24 and already granted by V25's blanket Tier-3 grant, so API-FIN-036 needed no
+new constant, no new error code and no migration). No DELETE endpoint and no
+`PERM_FIN_RECURRING_TEMPLATES_DELETE`.
+
+**As built.** `RecurringTemplateController` publishes exactly four endpoints, each at its mapping
+annotation: `POST` create (API-FIN-013, `RecurringTemplateController.java:51`), `POST /{id}/run`
+(API-FIN-014, `:62`), `PUT /{id}/deactivate` (API-FIN-036, `:68`) and `POST /search` (API-FIN-012,
+`:76`). The B1 Operations line originally promised `read, update, deactivate` on the template and
+`create, read, update, delete` on the line; `deactivate` has since been built, but `read` and
+`update` on the template and everything but `create` on the line have not.
+
+**Deliberate v1 exclusions.** *By-id read*: API-FIN-012's search already returns the FULL aggregate
+— `RecurringTemplateService.search` batch-loads each page's lines and maps them into
+`RecurringTemplateResponse.lines` (`RecurringTemplateService.java:405-411`) — so a `GET /{id}`
+would return nothing the search does not, and no REQ or AC asks for one. *Line delete*: FIN
+publishes no `DELETE` endpoint on any screen and V24 seeds no `PERM_FIN_*_DELETE` row, the same
+already-taken decision recorded at SCR-REQ-FIN-003 §B4. *No `activate` counterpart to API-FIN-036*:
+FIN ships none for any entity, following the delivered `AccountService.deactivate` precedent.
+
+**`deactivate` (template) — DELIVERED as API-FIN-036.** The half of the defect this section used
+to report — that no endpoint could ever set `IS_ACTIVE_FL` to FALSE — is closed.
+`RecurringTemplateService.deactivate` loads the template, calls the entity's own `deactivate()`
+helper (`RecurringTemplate.java:99`, which until now had zero callers), persists, then re-reads the
+template's lines and hands them to the mapper before returning — the re-read is required because
+`RecurringTemplateResponse.lineCount` is derived from the list the mapper is given, so an empty
+list would misreport the aggregate as having no lines. Unknown id answers the pre-existing
+`FIN-404-TEMPLATE`. It is gated on the pre-existing `PERM_FIN_RECURRING_TEMPLATES_UPDATE`, the same
+permission API-FIN-014's run uses. No migration, no new constant, no new error code.
+
+**DEFECT CLOSED 2026-09-12 — deactivate now stops the run.** This paragraph used to report an OPEN
+DEFECT: `RecurringTemplateService.run` (API-FIN-014) did not read `isActiveFl`, so a deactivated
+template still ran and still posted, and setting the flag changed no behaviour whatever. It is now
+closed. `RecurringTemplateDomain.assertCanRun()` — a NEW Domain companion for ENT-FIN-011, created
+for this — is called by `RecurringTemplateService.run` immediately after the template is loaded and
+before the run date, period or lines are resolved, and refuses a deactivated template with a new
+`FIN-409-NOT-ACTIVE` (HTTP 409; ar "هذا التعريف غير نشط ولا يمكن تشغيله", en "This definition is
+deactivated and cannot be run"). `FIN-404-TEMPLATE` was deliberately NOT reused, because the
+template does exist. AC-FIN-023, written "Given an **active** recurring template", is now fully
+satisfied: the inactive state is reachable AND behaves differently. The flag's other observable
+effect is unchanged — B2's advertised `isActiveFl(EXACT)` filter discriminates
+(`RecurringTemplateService`'s sort/filter whitelist honours it).
+
+**READ THIS BEFORE CITING THE GATE AS A REQUIREMENT.** No RULE-FIN-* states it. It was closed on a
+**recorded human decision**, because closing it required inventing an "exists but is inactive"
+error code, its HTTP status, its ar+en messages and its Error Catalog row — none of which any REQ,
+AC or RULE asks for. A later session must not cite `FIN-409-NOT-ACTIVE` as pre-existing spec, and
+must not infer from it that other unstated gates may be added the same way without a fresh
+decision.
+
+**OPEN DEFECT — `update` (template) is still missing.** This is now the ONLY open half of the
+original gap: with deactivate but no update, a template created with a wrong account or amount
+cannot be corrected — it can only be retired. Since 2026-09-12 retiring it does at least stop it
+(above), so the wrong entries stop arriving; entries already posted before the retirement remain
+recoverable only by reversing them one by one. It was not built because a correct update must decide the fate of the template's existing child
+lines (replace wholesale? merge? reject if any line changed?), which is a design question no REQ,
+AC or RULE answers. It is recorded here as a known gap, not as a reasoned exclusion.
 ### B5 — API expectations
 | Operation | Verb | Path | Inputs | Outputs | RULEs | Traces (REQ) |
 |---|---|---|---|---|---|---|
 | search templates | POST | /api/v1/fin/recurring-templates/search | filters, paging (request body) | Page\<RecurringTemplate\> | — | REQ-FIN-022 |
 | create template | POST | /api/v1/fin/recurring-templates | template + lines | RecurringTemplate | RULE-FIN-006 (reused, balance check applied at run time not save time) | REQ-FIN-022 |
 | run template (system/scheduled) | POST | /api/v1/fin/recurring-templates/{id}/run | — | JournalEntry | RULE-FIN-006, RULE-FIN-007, RULE-FIN-008, RULE-FIN-009, RULE-FIN-011 | REQ-FIN-023, REQ-FIN-024 |
+| deactivate template (API-FIN-036) | PUT | /api/v1/fin/recurring-templates/{id}/deactivate | path `id`, no body | RecurringTemplate (isActiveFl=false, lines included) | — (none beyond existence; since 2026-09-12 it DOES gate the run — a subsequent API-FIN-014 answers `FIN-409-NOT-ACTIVE`, by decision not by RULE — see B4) | REQ-FIN-022 |
 
 ## SCR-REQ-FIN-005 — قواعد التوزيع / Allocation rules
 ### B1 — Definition
 Purpose      : إدارة قواعد توزيع رصيد حساب مصدر على أهدافه.
 Entities     : ENT-FIN-013, ENT-FIN-014
-Operations   : search, create, read, update, deactivate (rule); create, read, update, delete (target); run
+Operations   : search, create (rule with its targets in one request), run, deactivate —
+               API-FIN-015/016/017/037, which is everything `AllocationRuleController` publishes.
+               **`deactivate` (rule) is DELIVERED as API-FIN-037 and, since 2026-09-12, it DOES
+               stop the rule from running — that defect is CLOSED, see B4.** **`update` (rule) is
+               still NOT built and is now the ONLY open half of the original gap — also B4.** No
+               by-id read and no target-level read/update/delete: deliberate v1 exclusions, also B4
 Users        : محاسب
 Navigation   : FIN → Setup → Allocation rules
 Content shape: header + repeating lines
@@ -1293,14 +1384,68 @@ Rule fields: nameAr, nameEn, sourceAccountId (ENT-FIN-013). Target fields: targe
 dimensionValueId, distributionTypeCode, distributionValue, isRemainderFl (ENT-FIN-014;
 RULE-FIN-003 applies).
 ### B4 — Access
-Page code: FIN_ALLOCATION_RULES. Actions: VIEW, CREATE, UPDATE (covers "run" — API-FIN-017).
-No DELETE endpoint and no `PERM_FIN_ALLOCATION_RULES_DELETE`.
+Page code: FIN_ALLOCATION_RULES. Actions: VIEW, CREATE, UPDATE (covers BOTH "run" — API-FIN-017 —
+and "deactivate" — API-FIN-037; one permission, `PERM_FIN_ALLOCATION_RULES_UPDATE`, already seeded
+by V24 and already granted by V25's blanket Tier-3 grant, so API-FIN-037 needed no new constant, no
+new error code and no migration). No DELETE endpoint and no `PERM_FIN_ALLOCATION_RULES_DELETE`.
+
+**As built.** `AllocationRuleController` publishes exactly four endpoints, each at its mapping
+annotation: `POST` create (API-FIN-016, `AllocationRuleController.java:52`), `POST /{id}/run`
+(API-FIN-017, `:63`), `PUT /{id}/deactivate` (API-FIN-037, `:69`) and `POST /search` (API-FIN-015,
+`:76`). The B1 Operations line originally promised `read, update, deactivate` on the rule and
+`create, read, update, delete` on the target; `deactivate` has since been built, but `read` and
+`update` on the rule and everything but `create` on the target have not.
+
+**Deliberate v1 exclusions.** *By-id read*: API-FIN-015's search returns the FULL aggregate,
+targets included (`AllocationRuleResponse.targets`), so a `GET /{id}` would add nothing and no REQ
+or AC asks for one — the same reasoning as SCR-REQ-FIN-004 §B4. *Target delete*: FIN publishes no
+`DELETE` endpoint on any screen and V24 seeds no `PERM_FIN_*_DELETE` row. *No `activate`
+counterpart to API-FIN-037*: FIN ships none for any entity, following the delivered
+`AccountService.deactivate` precedent.
+
+**`deactivate` (rule) — DELIVERED as API-FIN-037.** The half of the defect this section used to
+report — that no endpoint could ever set `IS_ACTIVE_FL` to FALSE — is closed.
+`AllocationRuleService.deactivate` loads the rule, calls the entity's own `deactivate()` helper
+(`AllocationRule.java:91`, which until now had zero callers), persists, then re-reads the rule's
+targets and hands them to the mapper before returning — the re-read is required because
+`AllocationRuleResponse.targetCount` is derived from the list the mapper is given, so an empty list
+would misreport the aggregate as having no targets. Unknown id answers the pre-existing
+`FIN-404-ALLOCATION-RULE`. It is gated on the pre-existing `PERM_FIN_ALLOCATION_RULES_UPDATE`, the
+same permission API-FIN-017's run uses. No migration, no new constant, no new error code. Nothing
+is delegated to `AllocationRuleDomain` before the mutation: RULE-FIN-003, the one rule that Domain
+owns, governs the remainder-target SET at create and run time and says nothing about the active
+flag.
+
+**DEFECT CLOSED 2026-09-12 — deactivate now stops the run.** This paragraph used to report an OPEN
+DEFECT: `AllocationRuleService.run` (API-FIN-017) did not read `isActiveFl`, so a deactivated
+allocation rule still ran and still posted, and the Domain accessor built for the flag was dead
+code. It is now closed. `AllocationRuleDomain.assertCanRun()` is called by
+`AllocationRuleService.run` immediately after the rule is loaded and before its targets are even
+fetched, and refuses a deactivated rule with a new `FIN-409-NOT-ACTIVE` (HTTP 409; ar "هذا التعريف
+غير نشط ولا يمكن تشغيله", en "This definition is deactivated and cannot be run").
+`FIN-404-ALLOCATION-RULE` was deliberately NOT reused, because the rule does exist. B2's advertised
+`isActiveFl(EXACT)` filter still discriminates as before.
+
+**READ THIS BEFORE CITING THE GATE AS A REQUIREMENT.** No RULE-FIN-* states it — RULE-FIN-003, the
+one rule `AllocationRuleDomain` owns, governs the remainder-target set and says nothing about the
+active flag. The gate was added on a **recorded human decision**, since closing the gap required
+inventing an error code, status and messages no REQ, AC or RULE asks for. Do not cite
+`FIN-409-NOT-ACTIVE` as pre-existing spec. It closed on the same decision as SCR-REQ-FIN-004's.
+
+**OPEN DEFECT — `update` (rule) is still missing.** This is now the ONLY open half of the original
+gap: with deactivate but no update, a rule created with the wrong source account or target split
+cannot be corrected — it can only be retired. Since 2026-09-12 retiring it does at least stop it
+(above), so the wrong distributions stop arriving. It was not built because a correct update must decide the fate
+of the rule's existing targets, and therefore of RULE-FIN-003's remainder-target set (replace
+wholesale? merge? re-validate the remainder marker across the new set?), which is a design question
+no REQ, AC or RULE answers. It is recorded here as a known gap, not as a reasoned exclusion.
 ### B5 — API expectations
 | Operation | Verb | Path | Inputs | Outputs | RULEs | Traces (REQ) |
 |---|---|---|---|---|---|---|
 | search allocation rules | POST | /api/v1/fin/allocation-rules/search | filters, paging (request body) | Page\<AllocationRule\> | — | REQ-FIN-025 |
 | create allocation rule | POST | /api/v1/fin/allocation-rules | rule + targets | AllocationRule | RULE-FIN-003 | REQ-FIN-025 |
 | run allocation rule | POST | /api/v1/fin/allocation-rules/{id}/run | — | JournalEntry | RULE-FIN-006..011 | REQ-FIN-026 |
+| deactivate allocation rule (API-FIN-037) | PUT | /api/v1/fin/allocation-rules/{id}/deactivate | path `id`, no body | AllocationRule (isActiveFl=false, targets included) | — (none beyond existence; since 2026-09-12 it DOES gate the run — a subsequent API-FIN-017 answers `FIN-409-NOT-ACTIVE`, by decision not by RULE — see B4) | REQ-FIN-025 |
 
 ## SCR-REQ-FIN-006 — قيود اليومية / Journal entries (view + manual entry + reverse)
 ### B1 — Definition
@@ -1336,7 +1481,9 @@ as an update-class action per §7.1 custom-action convention — `PERM_FIN_JOURN
 ### B1 — Definition
 Purpose      : إدارة السنوات والفترات المالية، اعتماد الإغلاق، وتشغيل إقفال نهاية السنة.
 Entities     : ENT-FIN-007, ENT-FIN-008
-Operations   : create (year), search, read; open, soft-close, hard-close (period); run year-end close
+Operations   : create (year); search — PERIODS only (API-FIN-033); open, soft-close, hard-close
+               (period); run year-end close. There is NO fiscal-YEAR search and no by-id read of
+               either a year or a period — see the note under B5
 Users        : مسؤول مالي (إدارة) / مراقب مالي (اعتماد الإغلاق — دور منفصل، POL-FIN-016)
 Navigation   : FIN → Control → Fiscal periods & years
 Content shape: header + repeating lines (year + its periods)
@@ -1382,6 +1529,25 @@ Why it was built: `JournalEntryCreateRequest` requires both `fiscalYearId` and `
 (API-FIN-019, RULE-FIN-017), and API-FIN-029/030/031 require a period or year id of their own, yet
 no API returned a fiscal period except the API-FIN-023 create response. A client that had not
 created the year in the same session therefore could not post an entry or run a report at all.
+
+**What API-FIN-033 is NOT, and what B1 no longer claims.** The B1 Operations line used to read
+`create (year), search, read`. Measured against the controllers: `FiscalYearController` publishes
+exactly two endpoints, `POST` create (API-FIN-023, `FiscalYearController.java:39`) and
+`POST /{id}/year-end-close` (API-FIN-027, `:47`); `FiscalPeriodController` publishes the three
+PATCH transitions plus `POST /search` (`FiscalPeriodController.java:49, 55, 61, 68`). So the
+`search` B1 named is API-FIN-033 over fiscal PERIODS — **there is no fiscal-year search**, and
+API-FIN-033 must not be read as one — and the `read` B1 named exists for neither resource: no
+`GET /{id}` is published on a year or on a period.
+
+*By-id read* is a deliberate v1 exclusion: API-FIN-023 returns the year together with its generated
+periods, and API-FIN-033 returns the full `FiscalPeriodResponse` row, so neither a year nor a
+period has a field a by-id read would newly expose. *Fiscal-year search* is recorded as a KNOWN GAP
+rather than a reasoned exclusion — no REQ or AC asks for one (REQ-FIN-031 asks only that creating a
+year generate its periods), and it is not blocking, because `FiscalPeriodResponse` carries
+`fiscalYearId` (`FiscalPeriodResponse.java:31`), so an unfiltered API-FIN-033 call discovers year
+ids indirectly. It is a gap and not a defect for that reason alone: the discovery path is awkward
+(read a year id off any period row) but it exists, and nothing in the ledger can be corrupted by
+its absence.
 
 ## SCR-REQ-FIN-008 — دفتر الحساب / Account ledger
 ### B1 — Definition
@@ -1552,10 +1718,10 @@ documented above as a plain DEFAULT.
 | FIN_ACCOUNTS | Chart of accounts | role-granted | role-granted | role-granted (incl. deactivate) | — | — |
 | FIN_DIMENSIONS | Dimensions | role-granted | role-granted | role-granted (dimension-VALUE deactivate only — API-FIN-035; `PERM_FIN_DIMENSIONS_UPDATE`, registered and granted by V28) | — | — |
 | FIN_RULES | Engine rules | role-granted | role-granted | role-granted (add line — API-FIN-011; and deactivate rule — API-FIN-034; one permission, `PERM_FIN_RULES_UPDATE`) | — | — |
-| FIN_RECURRING_TEMPLATES | Recurring/reversing templates | role-granted | role-granted | role-granted (run) | — | — |
-| FIN_ALLOCATION_RULES | Allocation rules | role-granted | role-granted | role-granted (run) | — | — |
+| FIN_RECURRING_TEMPLATES | Recurring/reversing templates | role-granted | role-granted | role-granted (run — API-FIN-014; and deactivate template — API-FIN-036; one permission, `PERM_FIN_RECURRING_TEMPLATES_UPDATE`) | — | — |
+| FIN_ALLOCATION_RULES | Allocation rules | role-granted | role-granted | role-granted (run — API-FIN-017; and deactivate rule — API-FIN-037; one permission, `PERM_FIN_ALLOCATION_RULES_UPDATE`) | — | — |
 | FIN_JOURNAL_ENTRIES | Journal entries | role-granted | role-granted (incl. Post) | — | — | Reverse (`PERM_FIN_JOURNAL_ENTRIES_REVERSE`) |
-| FIN_PERIODS | Fiscal periods & years | role-granted (gateway, and now also the read endpoint API-FIN-033) | role-granted (year) | role-granted (open/soft-close) | — | Close-approve (`PERM_FIN_PERIODS_CLOSE_APPROVE` — RULE-FIN-015, held by `FIN_CLOSE_APPROVER`, the dedicated role migration V27 mints, which by construction holds no `PERM_FIN_JOURNAL_ENTRIES_CREATE` and is assigned to no user until an administrator picks a non-creator) |
+| FIN_PERIODS | Fiscal periods & years | role-granted (gateway, and now also the read endpoint API-FIN-033) | role-granted (year) | role-granted (open/soft-close) | — | Close-approve (`PERM_FIN_PERIODS_CLOSE_APPROVE` — the distinct permission RULE-FIN-015 requires. Since V30 it is granted to `SYS_ADMIN`, so the bootstrap `admin` can close; V27's dedicated `FIN_CLOSE_APPROVER` role remains valid as a least-privilege alternative but is no longer required — see the SoD note below) |
 | FIN_ACCOUNT_LEDGER | Account ledger | role-granted | — | — | — | — |
 | FIN_TRIAL_BALANCE | Trial balance | role-granted | — | — | — | — |
 | FIN_BALANCE_SHEET | Balance sheet | role-granted | — | — | — | — |
@@ -1571,10 +1737,45 @@ and V24 seeds no `PERM_FIN_*_DELETE` row (nor does V28, which adds only
 `PERM_FIN_DIMENSIONS_UPDATE`). The DELETE ✓ marks above were pre-implementation and were corrected
 at ALIGN-BE.
 
-**Deactivate endpoints, as built**: three — API-FIN-004 (account), API-FIN-034 (event-type rule)
-and API-FIN-035 (dimension value). None has an `activate` counterpart, following the delivered
-`AccountService.deactivate` precedent. Deliberately NOT built, and not pending: a deactivate on the
-parent `Dimension` (no REQ/AC/RULE requires it and `Dimension.isActiveFl` drives no behaviour) and
-a rule-line delete (ENT-FIN-010 has no active-flag column and FIN publishes no `DELETE` endpoint on
-any screen) — see SCR-REQ-FIN-002 §B4 and SCR-REQ-FIN-003 §B4.
+**Deactivate endpoints, as built**: five — API-FIN-004 (account), API-FIN-034 (event-type rule),
+API-FIN-035 (dimension value), API-FIN-036 (recurring/reversing template) and API-FIN-037
+(allocation rule). None has an `activate` counterpart, following the delivered
+`AccountService.deactivate` precedent. Each is `PUT /{id}/deactivate` gated by its screen's UPDATE
+permission; API-FIN-036 and API-FIN-037 reuse `PERM_FIN_RECURRING_TEMPLATES_UPDATE` and
+`PERM_FIN_ALLOCATION_RULES_UPDATE`, both already seeded by V24 and already granted by V25's blanket
+Tier-3 grant, so neither needed a new permission, a new error code or a migration. Deliberately NOT
+built, and not pending: a deactivate on the parent `Dimension` (no REQ/AC/RULE requires it and
+`Dimension.isActiveFl` drives no behaviour) and a rule-line delete (ENT-FIN-010 has no active-flag
+column and FIN publishes no `DELETE` endpoint on any screen) — see SCR-REQ-FIN-002 §B4 and
+SCR-REQ-FIN-003 §B4.
+
+**DEFECT CLOSED 2026-09-12 — on those two screens, deactivating now DOES stop the run.** This
+supersedes the entry that used to stand here reporting the run as ungated. `RecurringTemplateDomain
+.assertCanRun()` (a new Domain companion) and `AllocationRuleDomain.assertCanRun()` are each called
+first thing in their service's `run`, so a deactivated template or allocation rule is refused with
+`FIN-409-NOT-ACTIVE` (409) and posts nothing. The UPDATE cells above cover run AND deactivate for
+these two screens, and "deactivate" there now means a real gate, not only a record-keeping state.
+**The gate is a recorded human decision, not stated requirement: no RULE-FIN-* asks for it**, and
+closing the gap required inventing an error code, status and ar+en messages that no REQ, AC or RULE
+provides — do not read `FIN-409-NOT-ACTIVE` back out of these tables as pre-existing spec. See
+SCR-REQ-FIN-004 §B4 and SCR-REQ-FIN-005 §B4.
+
+**SoD on FIN_PERIODS — what was removed, and what still holds (2026-09-12).** RULE-FIN-015 stands
+and is enforced by the `PERM_FIN_PERIODS_CLOSE_APPROVE` gate alone, which is exactly what the rule
+asks for. A stricter, unrequested check — FIN service code that refused the close for every caller
+whenever any single user in the system held both that permission and
+`PERM_FIN_JOURNAL_ENTRIES_CREATE` — was deleted by recorded human decision, together with the SEC
+user-directory read behind it; `FIN-403-SOD-VIOLATION` is struck as unreachable. Migration V30 then
+granted `PERM_FIN_PERIODS_CLOSE_APPROVE` to `SYS_ADMIN`, which V25 had deliberately withheld, so
+the bootstrap `admin` can now close. Note that V27's header, being applied and immutable, still
+describes the removed mechanism as live in both its numbered "OPERATIONAL PRECONDITIONS" — both are
+now false; see the SEC-BE phase document for the correction in full.
+
+**OPEN DEFECT — `update` is still missing on the same two screens.** This is now the only open half
+of the original gap: a template or allocation rule created with wrong content can be retired — and,
+since 2026-09-12, retiring it does stop it running — but it still cannot be corrected. Neither update was built because a
+correct one must decide the fate of the aggregate's children — a template's existing lines, a
+rule's existing targets and hence RULE-FIN-003's remainder-target set — which is a design question
+no REQ, AC or RULE answers. Recorded as a known gap, not a reasoned exclusion. See SCR-REQ-FIN-004
+§B4 and SCR-REQ-FIN-005 §B4.
 ══════════════════════════════════════════════════════════════════

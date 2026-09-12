@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -27,6 +28,7 @@ public class RecurringTemplateLineCreateRequest {
     private Long accountId;
 
     @NotNull(message = "{validation.required}")
+    @Positive(message = "{validation.min}")
     @Schema(description = "Line amount, always positive - المبلغ", example = "1500.0000")
     private BigDecimal amount;
 

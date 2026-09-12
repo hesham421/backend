@@ -27,7 +27,6 @@ import com.erp.fin.repository.AccountRepository;
 import com.erp.fin.repository.FiscalPeriodRepository;
 import com.erp.fin.repository.FiscalYearRepository;
 import com.erp.fin.repository.JournalLineRepository;
-import com.erp.fin.service.FinSeparationOfDutiesService.SeparationOfDutiesFacts;
 import com.erp.fin.service.JournalPostingService.PostingRequest;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -50,7 +49,8 @@ import org.springframework.transaction.annotation.Transactional;
  * {@code statusCode} — and {@link FiscalYearDomain} holds it (added by ALIGN-BE; see that class
  * for why DATA-DOM-MASTER.md's "DOMAIN RULES: none scoped alone" no longer covers the entity).
  * Every other decision the two APIs below take belongs to an existing Domain class —
- * {@link FiscalPeriodDomain} for the close preconditions and the separation of duties,
+ * {@link FiscalPeriodDomain} for the close preconditions (RULE-FIN-015 is not among them — it
+ * is the distinct-permission {@code @PreAuthorize} gate, see {@link #yearEndClose(Long)}),
  * {@link JournalEntryDomain} and {@link AccountDomain} for the closing/opening derivations — and
  * none is inlined here (A.5.18). {@code FIN-409-YEAR-DUP} is the one exception, and is not a
  * business rule: it is a PLATFORM-STD duplicate-key guard of exactly the shape
@@ -74,7 +74,6 @@ public class FiscalYearService {
     private final FiscalPeriodMapper periodMapper;
     private final JournalEntryMapper journalEntryMapper;
     private final JournalPostingService postingService;
-    private final FinSeparationOfDutiesService separationOfDuties;
 
     /**
      * API-FIN-023 — validate code uniqueness → persist the year (statusCode=OPEN by its entity
@@ -136,16 +135,26 @@ public class FiscalYearService {
      * rather than opening its own, so CORE.md's "ONE transaction per entry" still holds for each
      * entry individually and the run is all-or-nothing on top of that.
      *
-     * <p><b>Fail-fast, per period, and IN THAT ORDER (ALIGN-BE).</b> Both preconditions are
-     * fail-fast: RULE-FIN-015 (the SoD read, 403) and the §10.4 all-periods-Hard-Closed
-     * precondition (409) are independent denials with different HTTP semantics, and neither leaves
-     * anything further to validate. The body now runs them in exactly that order — SoD, then the
-     * year's own rerun guard, then the period states — <i>before</i> the successor-year and
-     * Retained-Earnings lookups. Previously those two lookups ran first, so a deployment missing
-     * either answered {@code FIN-404-YEAR} / {@code FIN-404-ACCOUNT} where this javadoc and the
-     * plan promise 403 or 409, which would have made every test assertion on this endpoint wrong
-     * whichever way it was written. The two generated entries' own post-time rules are aggregated
-     * by the shared pipeline as everywhere else.
+     * <p><b>Fail-fast, per period, and IN THAT ORDER (ALIGN-BE).</b> The §10.4
+     * all-periods-Hard-Closed precondition (409) is fail-fast and leaves nothing further to
+     * validate. The body runs the year's own rerun guard, then the period states, <i>before</i>
+     * the successor-year and Retained-Earnings lookups. Previously those two lookups ran first,
+     * so a deployment missing either answered {@code FIN-404-YEAR} / {@code FIN-404-ACCOUNT}
+     * where this javadoc and the plan promise 409, which would have made every test assertion on
+     * this endpoint wrong whichever way it was written. The two generated entries' own post-time
+     * rules are aggregated by the shared pipeline as everywhere else.
+     *
+     * <p><b>RULE-FIN-015 is enforced by the {@code @PreAuthorize} below and by nothing else in
+     * this method.</b> The rule (srs-fin.md:1026-1030) requires only that the close-approval
+     * action be gated by a permission distinct from the journal-entry-creation permission,
+     * "enforced through the Security module", and its {@code Data source} line records that FIN
+     * has no field to read for it. {@code PERM_FIN_PERIODS_CLOSE_APPROVE} is that distinct
+     * permission, so the gate IS the enforcement. <b>Do not add a SoD check back into this
+     * body.</b> A previous implementation resolved facts from SEC's user directory and looped
+     * over the periods refusing the close whenever ANY user in the system held both permissions
+     * — a global user-set disjointness the SRS never asks for. It was removed by an explicit
+     * human decision, together with {@code FinSeparationOfDutiesService} and FIN's XM-FIN-002
+     * dependency on SEC.
      *
      * <p><b>Rerun guard (ALIGN-BE).</b> {@code FiscalYearDomain.assertCanYearEndClose()} rejects a
      * second run on an already-CLOSED year with {@code FIN-409-INVALID-TRANSITION}, and sits
@@ -167,13 +176,8 @@ public class FiscalYearService {
 
         FiscalYear fiscalYear = findOrThrow(id);
 
-        SeparationOfDutiesFacts facts = separationOfDuties.resolveFacts();
         List<FiscalPeriod> periods =
             fiscalPeriodRepository.findByFiscalYearId(fiscalYear.getFiscalYearPk());
-        for (FiscalPeriod period : periods) {
-            FiscalPeriodDomain.from(period).assertCanHardClose(
-                facts.closeApprovePermissionHeld(), facts.entryCreatePermissionShared());
-        }
         FiscalYearDomain.from(fiscalYear).assertCanYearEndClose();
         for (FiscalPeriod period : periods) {
             FiscalPeriodDomain.from(period).assertHardClosedForYearEnd();

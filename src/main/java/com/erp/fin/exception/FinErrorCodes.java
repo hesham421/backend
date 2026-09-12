@@ -341,6 +341,22 @@ public final class FinErrorCodes {
     public static final String FIN_422_REMAINDER_NOT_POSITIVE = "FIN-422-REMAINDER-NOT-POSITIVE";
 
     /**
+     * Code review fix (correctness) — a rule line (ENT-FIN-010) with
+     * {@code amountSourceTypeCode = PERCENTAGE} whose {@code amountSourceValue} (DBF-FIN-104, free
+     * text) is not a well-formed decimal. Nothing upstream (the DTO, the create-time validation)
+     * constrains this column's format when the type is PERCENTAGE, so a bad value persisted once at
+     * rule-creation time previously surfaced as an unlocalized {@code NumberFormatException} —
+     * caught nowhere and falling through to a generic 500 — on every subsequent event-driven build
+     * for that event type. Thrown by {@code EventTypeRuleDomain.sourcedAmount(...)}.
+     *
+     * <p>422 rather than 400: the rule itself, not the current request, carries the invalid value —
+     * the same "invariant violation inside the stored rule definition" reasoning as
+     * {@link #FIN_422_REMAINDER_MARKER}.
+     * API: API-FIN-020. HTTP 422 ({@code Status.BUSINESS_RULE_VIOLATION}).
+     */
+    public static final String FIN_422_INVALID_PERCENTAGE_VALUE = "FIN-422-INVALID-PERCENTAGE-VALUE";
+
+    /**
      * RULE-FIN-017 — the submitted {@code periodId} belongs to a different fiscal year than the
      * submitted {@code fiscalYearId} (DBF-FIN-076 makes the period's year a stored fact). Thrown
      * by {@code JournalEntryDomain.assertHeaderCoherent(...)}.
@@ -361,4 +377,66 @@ public final class FinErrorCodes {
      * API: API-FIN-019. HTTP 400 ({@code Status.VALIDATION_ERROR}).
      */
     public static final String FIN_400_DOCDATE_OUTSIDE_PERIOD = "FIN-400-DOCDATE-OUTSIDE-PERIOD";
+
+    // ─────────────────────────────────────────────────────────────────────────────────────────
+    // ERROR ENVELOPE closure — the one catalog row that had never reached the wire. Registered
+    // here so FIN's 403 carries a FIN code like every other FIN error, instead of the platform
+    // ACCESS_DENIED envelope. Thrown only by {@code com.erp.fin.security.FinForbiddenAdvisor}.
+    // ─────────────────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * PLATFORM-STD — the caller holds no grant for the module/screen/action this endpoint
+     * requires, so the {@code @PreAuthorize} guard on the FIN service denied the call. Raised by
+     * {@code FinForbiddenAdvisor}, which catches Spring Security's {@code AccessDeniedException}
+     * on any {@code com.erp.fin.service} method and re-raises it as this code — never thrown by
+     * hand in a service. Distinct from {@link #FIN_403_SOD_VIOLATION}, which is a business rule
+     * (RULE-FIN-015) about two permissions overlapping, not a missing grant.
+     *
+     * <p>A denial raised by the Spring Security filter chain, before any FIN service is entered,
+     * is NOT this code — it is written by {@code SecSecurityErrorHandler} as
+     * {@code SEC-403-FORBIDDEN} and never reaches {@code GlobalExceptionHandler}.
+     * API: every secured API. HTTP 403 ({@code Status.FORBIDDEN}).
+     */
+    public static final String FIN_403_FORBIDDEN = "FIN-403-FORBIDDEN";
+
+    // ─────────────────────────────────────────────────────────────────────────────────────────
+    // DEACTIVATE RUN GATE — the one code the run-gate decision adds. Recorded human decision,
+    // NOT an SRS rule: RULE-FIN-001..017 were each read and none of them states that a
+    // deactivated definition may not be run (the closest, RULE-FIN-005, is about an event having
+    // no ACTIVE EventTypeRule — a different entity and a different trigger). Before this row,
+    // API-FIN-036/037 set IS_ACTIVE_FL to false and both run paths ignored it, so a retired
+    // template or allocation rule still posted.
+    // ─────────────────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * RECORDED HUMAN DECISION (no RULE-FIN-* states it) — the definition row the caller asked to
+     * run exists but is deactivated ({@code IS_ACTIVE_FL = false}), so the run is refused and no
+     * journal entry is built or posted. Thrown by
+     * {@code RecurringTemplateDomain.assertCanRun()} and
+     * {@code AllocationRuleDomain.assertCanRun()}.
+     *
+     * <p><b>Not a 404.</b> {@link #FIN_404_TEMPLATE} and {@link #FIN_404_ALLOCATION_RULE} mean
+     * "no such row"; the row here exists and is readable through API-FIN-012 / API-FIN-015, so
+     * raising either would tell the client something untrue.
+     *
+     * <p><b>One row, not one per entity.</b> The catalog assigns a distinct 404 per entity
+     * (FIN-404-ACCOUNT, FIN-404-DIMENSION, FIN-404-TEMPLATE, …) and a distinct duplicate code per
+     * unique constraint, because in both cases WHICH entity is the entire information content.
+     * Its "the row is in the wrong state" rows behave the opposite way: they are semantic, not
+     * entity-scoped, and are reused verbatim the moment the identical semantic reappears on a
+     * second entity — {@link #FIN_409_INVALID_TRANSITION} is shared by the period soft-close and
+     * the fiscal-year year-end close, and {@link #FIN_409_REMAINDER_COUNT} /
+     * {@link #FIN_422_REMAINDER_MARKER} are each shared by ENT-FIN-010 rule lines and
+     * ENT-FIN-014 allocation targets. "The definition you named is deactivated" is one semantic
+     * on two entities, and the caller already knows which one from the path it called.
+     *
+     * <p><b>409 rather than 422.</b> Every FIN refusal whose cause is the target row's own state
+     * is {@code Status.CONFLICT} — {@link #FIN_409_NOT_POSTED}, {@link #FIN_409_NOT_REOPENABLE},
+     * {@link #FIN_409_PERIOD_NOT_OPEN}, {@link #FIN_409_INVALID_TRANSITION}. FIN reserves 422 for
+     * an invariant violated INSIDE a stored rule definition's own data
+     * ({@link #FIN_422_REMAINDER_MARKER}, {@link #FIN_422_INVALID_PERCENTAGE_VALUE}). This is the
+     * former.
+     * APIs: API-FIN-014, API-FIN-017. HTTP 409 ({@code Status.CONFLICT}).
+     */
+    public static final String FIN_409_NOT_ACTIVE = "FIN-409-NOT-ACTIVE";
 }

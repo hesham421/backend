@@ -195,11 +195,23 @@ Test data    : a hard-closed period
 <!-- TC:TC-FIN-038:START traces=AC-FIN-038,REQ-FIN-038,API-FIN-026 -->
 ### TC-FIN-038 — close-approval permission distinct from entry-creation permission (SoD)
 Derived from : AC-FIN-038 (REQ-FIN-038) · Exercises: API-FIN-026 PATCH /api/v1/fin/fiscal-periods/{id}/hard-close
-Rule / code  : RULE-FIN-015 → FIN-403-SOD-VIOLATION
+Rule / code  : RULE-FIN-015 → the distinct-permission @PreAuthorize gate → FIN-403-FORBIDDEN
 Scenario     : PERMISSION · data class ATTACK · language ALL
 Preconditions: a role holding only `PERM_FIN_JOURNAL_ENTRIES_CREATE` (no close-approve permission)
 Steps        : 1. that role's user attempts hard-close
-Expected     : 403 FIN-403-SOD-VIOLATION (or 403 FIN-403-FORBIDDEN if the permission itself is entirely absent — both paths tested)
+Expected     : 403 {code: "FIN-403-FORBIDDEN"}, ar "لا تملك صلاحية المالية المطلوبة لهذه العملية" /
+  en "You do not hold the Finance permission required for this operation"; the period is unchanged.
+  This is AC-FIN-038 verbatim ("Given a role holding only the entry-creation permission / When that
+  role's user attempts the period-close-approval action / Then the system denies it") and the denial
+  comes from the ONLY enforcement that exists: FiscalPeriodService.hardClose's
+  @PreAuthorize(PERM_FIN_PERIODS_CLOSE_APPROVE) — a permission distinct from
+  PERM_FIN_JOURNAL_ENTRIES_CREATE — whose AccessDeniedException is raised inside com.erp.fin.service
+  and re-raised by FinForbiddenAdvisor as LocalizedException(FORBIDDEN, FIN_403_FORBIDDEN).
+  REVISED 2026-09-12: this Expected previously named FIN-403-SOD-VIOLATION as the primary outcome,
+  with FIN-403-FORBIDDEN allowed only as a parenthetical second path. FinSeparationOfDutiesService
+  and FiscalPeriodDomain.assertCanHardClose(boolean, boolean) were both deleted by a recorded human
+  decision, so FIN-403-SOD-VIOLATION has NO throw site left anywhere in com.erp.fin and can never be
+  the answer. AC-FIN-038 itself is untouched and still holds — only the code that answers it moved
 Test data    : role with entry-creation only
 <!-- TC:TC-FIN-038:END -->
 
@@ -299,7 +311,7 @@ Preconditions: an active rule whose non-remainder lines on the remainder's own s
 Steps        : 1. submit the triggering event with baseAmount = 1000.00
 Expected     : 422 FIN-422-REMAINDER-NOT-POSITIVE, ar "سطر الباقي يُحسب كفرق ويجب أن يكون موجبًا؛ السطور الأخرى تستهلك المبلغ بالكامل" /
   en "The remainder line is computed as a difference and must be positive; the other lines
-  already consume the full amount" — never an unlocalized DATA_INTEGRITY_VIOLATION from
+  already consume the full amount" — never the generic DATA_INTEGRITY_VIOLATION from
   CHK_FIN_JOURNAL_LINE_AMOUNT_POSITIVE; nothing posted
 Test data    : baseAmount 1000.00; CREDIT/PERCENTAGE 100% + CREDIT/REMAINDER
 <!-- TC:TC-FIN-055:END -->
@@ -310,10 +322,14 @@ Derived from : AC-FIN-036 (REQ-FIN-036) · Exercises: API-FIN-027 POST /api/v1/f
 Rule / code  : RULE-FIN-008 (year-end carve-out) → (success path); RULE-FIN-006/007/009 still
   apply to both generated entries in full
 Scenario     : STATE · data class EDGE · language ALL
-Preconditions: KNOWN-BLOCKED ENDPOINT — see TC-FIN-059's precondition block; all of it must hold:
-  a user holding FIN_CLOSE_APPROVER and no role carrying PERM_FIN_JOURNAL_ENTRIES_CREATE, an
-  account with is_retained_earnings_fl = TRUE (set as data — no endpoint sets it), every period
-  of the year HARD_CLOSE, and an adjacent successor year whose startDate = this year's endDate + 1
+Preconditions: a caller holding PERM_FIN_PERIODS_CLOSE_APPROVE — post-V30 the bootstrap `admin`
+  qualifies (see TC-FIN-059), and the caller may also hold PERM_FIN_JOURNAL_ENTRIES_CREATE, which is
+  no longer disqualifying (see TC-FIN-061); an account with is_retained_earnings_fl = TRUE (set as
+  data — no endpoint sets it), every period of the year HARD_CLOSE, and an adjacent successor year
+  whose startDate = this year's endDate + 1. REVISED 2026-09-12: this block previously read
+  "KNOWN-BLOCKED ENDPOINT … a user holding FIN_CLOSE_APPROVER and no role carrying
+  PERM_FIN_JOURNAL_ENTRIES_CREATE" — the endpoint is no longer blocked and the exclusion is no
+  longer required
 Steps        : 1. run year-end close as that approver
 Expected     : 201; the CLOSING entry posts into the year's LAST period even though that period is
   HARD_CLOSE, and the OPENING entry posts into the successor year's first period — neither is
@@ -350,74 +366,114 @@ Test data    : parent "1000" isLeafFl=true; child "1001"
 <!-- TC:TC-FIN-058:END -->
 
 <!-- TC:TC-FIN-059:START traces=AC-FIN-034,REQ-FIN-034,REQ-FIN-038,API-FIN-026 -->
-### TC-FIN-059 — hard-close succeeds for a close-approver who creates no entries (RULE-FIN-015 satisfied)
+### TC-FIN-059 — hard-close succeeds for any holder of the close-approval permission (RULE-FIN-015 satisfied)
 Derived from : AC-FIN-034 (REQ-FIN-034, REQ-FIN-038) · Exercises: API-FIN-026 PATCH /api/v1/fin/fiscal-periods/{id}/hard-close
-Rule / code  : RULE-FIN-015 → (success path); XM-FIN-002 supplies the two user sets
+Rule / code  : RULE-FIN-015 → (success path); the distinct-permission @PreAuthorize gate is the whole enforcement
 Scenario     : PERMISSION · data class VALID · language ALL
-Preconditions: KNOWN-BLOCKED ENDPOINT — this cannot succeed on a fresh deployment and the setup is
-  part of the scenario. V27 mints the role FIN_CLOSE_APPROVER (module FIN, screen FIN_PERIODS,
-  exactly PERM_FIN_PERIODS_VIEW + PERM_FIN_PERIODS_CLOSE_APPROVE) but assigns it to NO user, and
-  the bootstrap `admin` holds SYS_ADMIN, which V25 granted PERM_FIN_JOURNAL_ENTRIES_CREATE. The
-  test must therefore create a second SEC user whose ROLE UNION carries FIN_CLOSE_APPROVER and no
-  role granting PERM_FIN_JOURNAL_ENTRIES_CREATE, and assign it through SEC's own role
-  administration. Also required: a SOFT_CLOSE period whose entries were created by `admin`
-Steps        : 1. hard-close the period as that second user
-Expected     : 200, statusCode=HARD_CLOSE, closedBy = that user and closedAt set; with the setup
-  omitted the same call answers 403 FIN-403-SOD-VIOLATION (TC-FIN-060), which is the fresh-deployment
-  behaviour, not a defect
-Test data    : user "fin_closer" holding only FIN_CLOSE_APPROVER; a soft-closed period
+Preconditions: a SOFT_CLOSE period, and a caller holding PERM_FIN_PERIODS_CLOSE_APPROVE. On a fresh
+  database that is now satisfied out of the box: V30__fin_sys_admin_close_approve_grant.sql grants
+  that action to SYS_ADMIN — reversing V25's deliberate exclusion — and the bootstrap `admin` holds
+  SYS_ADMIN, so `admin` can run this directly. The V27 role FIN_CLOSE_APPROVER (module FIN, screen
+  FIN_PERIODS, exactly PERM_FIN_PERIODS_VIEW + PERM_FIN_PERIODS_CLOSE_APPROVE) still exists and a
+  user assigned it passes identically — run the scenario as EITHER principal, the outcome is the
+  same. Nothing on this path reads who else holds PERM_FIN_JOURNAL_ENTRIES_CREATE, so the caller may
+  hold it too (that is TC-FIN-061)
+Steps        : 1. hard-close the period
+Expected     : 200, statusCode=HARD_CLOSE, closedBy = the calling principal
+  (SecurityContextHelper.getCurrentUsername()) and closedAt set; the period is thereafter not
+  reopenable (FiscalPeriodDomain.assertCanReopen). Never 403.
+  REVISED 2026-09-12: this scenario previously opened "KNOWN-BLOCKED ENDPOINT — this cannot succeed
+  on a fresh deployment", required a SECOND SEC user whose role union excluded
+  PERM_FIN_JOURNAL_ENTRIES_CREATE, and pointed at TC-FIN-060 for a fresh-deployment
+  403 FIN-403-SOD-VIOLATION. All three premises are void: the global user-set disjointness check
+  (FinSeparationOfDutiesService + FiscalPeriodDomain.assertCanHardClose) was deleted by a recorded
+  human decision, V30 grants the permission to SYS_ADMIN, and the endpoint is no longer blocked on a
+  fresh deployment. TC-FIN-056, TC-FIN-084, TC-FIN-085, TC-FIN-086 and TC-FIN-102 all reference
+  "TC-FIN-059's setup" — it is now simply "a caller holding PERM_FIN_PERIODS_CLOSE_APPROVE"
+Test data    : the bootstrap `admin` (SYS_ADMIN, post-V30) or a user holding FIN_CLOSE_APPROVER; a soft-closed period
 <!-- TC:TC-FIN-059:END -->
 
-<!-- TC:TC-FIN-060:START traces=AC-FIN-038,REQ-FIN-038,API-FIN-026 -->
-### TC-FIN-060 — close fails when NOBODY holds close-approval (fresh deployment)
-Derived from : AC-FIN-038 (REQ-FIN-038) · Exercises: API-FIN-026 PATCH /api/v1/fin/fiscal-periods/{id}/hard-close
-Rule / code  : RULE-FIN-015 → FIN-403-SOD-VIOLATION
-Scenario     : PERMISSION · data class EDGE · language ALL
-Preconditions: the delivered state — FIN_CLOSE_APPROVER exists (V27) but is assigned to no user,
-  so the set of users holding PERM_FIN_PERIODS_CLOSE_APPROVE is empty
-Steps        : 1. a SOFT_CLOSE period is hard-closed by any authenticated principal
-Expected     : 403 FIN-403-SOD-VIOLATION, ar "صلاحية اعتماد الإغلاق منفصلة عن صلاحية إنشاء القيود" /
-  en "The close-approval permission is separate from the entry-creation permission"; the period
-  stays SOFT_CLOSE. An empty approver set fails the rule exactly as an overlapping one does —
-  documented in V27's header, not a defect
-Test data    : untouched V27 state, no SEC_USER_ROLE row for FIN_CLOSE_APPROVER
+<!-- TC:TC-FIN-060:START traces=AC-FIN-038,REQ-FIN-038,API-FIN-027 -->
+### TC-FIN-060 — the same AC-FIN-038 denial on year-end close, the second gated endpoint
+Derived from : AC-FIN-038 (REQ-FIN-038) · Exercises: API-FIN-027 POST /api/v1/fin/fiscal-years/{id}/year-end-close
+  (TC-FIN-038 is the identical assertion on API-FIN-026)
+Rule / code  : RULE-FIN-015 → the distinct-permission @PreAuthorize gate → FIN-403-FORBIDDEN
+Scenario     : PERMISSION · data class ATTACK · language ALL
+Preconditions: a role holding PERM_FIN_JOURNAL_ENTRIES_CREATE but NOT
+  PERM_FIN_PERIODS_CLOSE_APPROVE; an otherwise fully eligible fiscal year (every period HARD_CLOSE,
+  an account marked is_retained_earnings_fl, an adjacent successor year) so that nothing but the
+  permission can account for the refusal
+Steps        : 1. that role's user runs year-end close
+Expected     : 403 {code: "FIN-403-FORBIDDEN"}, ar "لا تملك صلاحية المالية المطلوبة لهذه العملية" /
+  en "You do not hold the Finance permission required for this operation"; nothing is posted, the
+  year stays OPEN and every period keeps its status. The denial is raised by
+  FiscalYearService.yearEndClose's @PreAuthorize(PERM_FIN_PERIODS_CLOSE_APPROVE) — the same distinct
+  permission FiscalPeriodService.hardClose carries — and reaches the wire as FIN's own catalog code
+  because FinForbiddenAdvisor intercepts AccessDeniedException raised inside com.erp.fin.service.
+  Because @PreAuthorize fires before the method body, the answer is 403 and never FIN-404-YEAR,
+  FIN-409-INVALID-TRANSITION, FIN-409-PERIODS-NOT-CLOSED or FIN-404-ACCOUNT.
+  REWRITTEN 2026-09-12. This id previously asserted "close fails when NOBODY holds close-approval",
+  expecting 403 FIN-403-SOD-VIOLATION from an EMPTY approver set. That scenario is now impossible
+  twice over: V30__fin_sys_admin_close_approve_grant.sql grants the permission to SYS_ADMIN so the
+  set is not empty, and the code that inspected user sets at all
+  (FinSeparationOfDutiesService + FiscalPeriodDomain.assertCanHardClose) was deleted by a recorded
+  human decision. The id is kept — never renumbered — and re-pointed at the one real, previously
+  UNCOVERED assertion in the same area: AC-FIN-038's denial on API-FIN-027, which no other TC made
+Test data    : a role with entry-creation only; a fully eligible fiscal year
 <!-- TC:TC-FIN-060:END -->
 
 <!-- TC:TC-FIN-061:START traces=AC-FIN-038,REQ-FIN-038,API-FIN-027 -->
-### TC-FIN-061 — close fails when ONE user holds both permissions across their role union
-Derived from : AC-FIN-038 (REQ-FIN-038) · Exercises: API-FIN-027 POST /api/v1/fin/fiscal-years/{id}/year-end-close
-  (same code and same guard on API-FIN-026)
-Rule / code  : RULE-FIN-015 → FIN-403-SOD-VIOLATION; the fact is read through XM-FIN-002
-Scenario     : PERMISSION · data class ATTACK · language ALL
-Preconditions: FIN_CLOSE_APPROVER assigned to the bootstrap `admin`, who already holds SYS_ADMIN
-  and therefore PERM_FIN_JOURNAL_ENTRIES_CREATE — the two user sets now intersect
+### TC-FIN-061 — a user holding BOTH permissions CAN close: RULE-FIN-015 is satisfied by the distinct permission, not by disjoint user sets
+Derived from : REQ-FIN-038, satisfied direction (AC-FIN-038's denial direction is TC-FIN-038 on
+  API-FIN-026 and TC-FIN-060 on API-FIN-027) · Exercises: API-FIN-027 POST /api/v1/fin/fiscal-years/{id}/year-end-close
+  (the same permission gates API-FIN-026)
+Rule / code  : RULE-FIN-015 → (success path). No separation-of-duties fact is read anywhere;
+  FIN-403-SOD-VIOLATION has no throw site
+Scenario     : PERMISSION · data class VALID · language ALL
+Preconditions: the bootstrap `admin`, who holds SYS_ADMIN and therefore BOTH
+  PERM_FIN_JOURNAL_ENTRIES_CREATE (granted by V25) and PERM_FIN_PERIODS_CLOSE_APPROVE (granted by
+  V30) — the two permissions' holders deliberately overlap in ONE user, which is the exact state
+  that used to be refused. Plus TC-FIN-056's year-end fixture: every period HARD_CLOSE, one account
+  marked is_retained_earnings_fl, an adjacent successor year
 Steps        : 1. run year-end close as `admin`
-Expected     : 403 FIN-403-SOD-VIOLATION, raised BEFORE the year's status, the all-periods check,
-  the successor year and the Retained Earnings lookup (the validation order is part of the
-  contract), so the answer is 403 and never FIN-404-YEAR or FIN-404-ACCOUNT; nothing posted and
-  the year stays OPEN
-Test data    : `admin` holding SYS_ADMIN + FIN_CLOSE_APPROVER
+Expected     : 201 `YearEndCloseResponse` carrying a CLOSING and an OPENING entry; the year becomes
+  CLOSED and every period YEAR_END_CLOSE. Assert EXPLICITLY that the response is not a 403 and
+  carries no FIN-403-SOD-VIOLATION. FiscalYearService.yearEndClose runs findOrThrow →
+  FiscalYearDomain.assertCanYearEndClose → FiscalPeriodDomain.assertHardClosedForYearEnd per period
+  → successor year → Retained Earnings account → post; there is no separation-of-duties step
+  anywhere in that sequence, and FiscalPeriodDomain carries an explicit "there is deliberately NO
+  assertCanHardClose(...) method here" comment in its place.
+  REVISED 2026-09-12 — EXACTLY INVERTED, and kept rather than retired because the inverted assertion
+  is the regression guard for the change. This scenario previously asserted
+  403 FIN-403-SOD-VIOLATION "raised BEFORE the year's status, the all-periods check, the successor
+  year and the Retained Earnings lookup". That check enforced GLOBAL user-set disjointness — if any
+  single user in the system held both codes, the close was refused for EVERY caller — which no REQ,
+  AC or RULE asks for: RULE-FIN-015's own Data source line records that FIN has no field to read for
+  it, and AC-FIN-038 names SEC's own mechanism. It was deleted by a recorded human decision and V30
+  then deliberately put both codes on SYS_ADMIN, so the old assertion would fail today
+Test data    : `admin` holding SYS_ADMIN (both permission codes, post-V30); a fully hard-closed year with an adjacent successor
 <!-- TC:TC-FIN-061:END -->
 
 <!-- TC:TC-FIN-062:START traces=AC-FIN-038,REQ-FIN-038,API-FIN-026 -->
 ### TC-FIN-062 — the gateway rule resolves the two-word action CLOSE_APPROVE
 Derived from : AC-FIN-038 (REQ-FIN-038) · Exercises: API-FIN-026 PATCH /api/v1/fin/fiscal-periods/{id}/hard-close
 Rule / code  : platform gateway convention (every non-VIEW permission needs a granted VIEW on the
-  SAME SCREEN) → 403 rendered as the platform `ACCESS_DENIED` envelope, the catalog's
-  FIN-403-FORBIDDEN row
+  SAME SCREEN) → the resulting @PreAuthorize denial inside com.erp.fin.service is re-raised by
+  FinForbiddenAdvisor as the catalog's FIN-403-FORBIDDEN row
 Scenario     : PERMISSION · data class ATTACK · language ALL
 Preconditions: a role granted PERM_FIN_PERIODS_CLOSE_APPROVE on screen FIN_PERIODS but WITHOUT the
   screen's PERM_FIN_PERIODS_VIEW gateway row; and, for the passing half, FIN_CLOSE_APPROVER, which
   holds both
 Steps        : 1. call hard-close as the gateway-less role's user — 2. call it as a FIN_CLOSE_APPROVER
   holder (TC-FIN-059's setup)
-Expected     : 1. the authority is stripped during resolution and the call answers 403 with the
-  platform body {code: "ACCESS_DENIED"} — assert that code, NOT a FIN code: FIN-403-FORBIDDEN is a
-  catalog row that never reaches the wire. The message is now resolved through the shared
-  MessageSource, so it IS localized per Accept-Language: ar "ليس لديك صلاحية لتنفيذ هذه العملية" /
-  en "You do not have permission to perform this operation". The English text is byte-identical to
-  what the handler returned before, so only an Arabic caller sees the change, and the wire `code`
-  is unchanged — 2. the authority survives and
+Expected     : 1. the authority is stripped during resolution and the call answers 403 with
+  {code: "FIN-403-FORBIDDEN"} — assert the FIN catalog code, NOT the platform `ACCESS_DENIED`:
+  FiscalPeriodService.hardClose's @PreAuthorize denial is an AccessDeniedException raised inside
+  com.erp.fin.service, which FinForbiddenAdvisor intercepts and re-raises as
+  LocalizedException(FORBIDDEN, FIN_403_FORBIDDEN) before GlobalExceptionHandler sees it. The
+  message resolves through the shared MessageSource, so it is localized per Accept-Language:
+  ar "لا تملك صلاحية المالية المطلوبة لهذه العملية" /
+  en "You do not hold the Finance permission required for this operation" — 2. the authority survives and
   the call reaches the RULE-FIN-015 check, proving the gateway is matched against the screen's own
   registry rows and not by splitting the code at its last underscore (which would demand a
   non-existent PERM_FIN_PERIODS_CLOSE_VIEW)

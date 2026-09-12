@@ -125,7 +125,13 @@
     "TC:TC-FIN-100",
     "TC:TC-FIN-101",
     "TC:TC-FIN-102",
-    "TC:TC-FIN-103"
+    "TC:TC-FIN-103",
+    "TC:TC-FIN-104",
+    "TC:TC-FIN-105",
+    "TC:TC-FIN-106",
+    "TC:TC-FIN-107",
+    "TC:TC-FIN-108",
+    "TC:TC-FIN-109"
   ],
   "verification": "erp/modules/FIN/packages/backend-test/verification.json",
   "verified": true

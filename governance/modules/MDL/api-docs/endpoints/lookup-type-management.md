@@ -5,9 +5,9 @@
 
 - [PUT /api/v1/mdl/lookup-types/{id}](#put-apiv1mdllookup-typesid)
 - [DELETE /api/v1/mdl/lookup-types/{id}](#delete-apiv1mdllookup-typesid)
-- [GET /api/v1/mdl/lookup-types](#get-apiv1mdllookup-types)
+- [POST /api/v1/mdl/lookup-types/search](#post-apiv1mdllookup-typessearch)
 - [POST /api/v1/mdl/lookup-types](#post-apiv1mdllookup-types)
-- [GET /api/v1/mdl/lookup-types/by-owner](#get-apiv1mdllookup-typesby-owner)
+- [POST /api/v1/mdl/lookup-types/by-owner/search](#post-apiv1mdllookup-typesby-ownersearch)
 
 ## PUT /api/v1/mdl/lookup-types/{id}
 
@@ -148,7 +148,7 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 |---|---|---|
 | 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
 
-## GET /api/v1/mdl/lookup-types
+## POST /api/v1/mdl/lookup-types/search
 
 **Search lookup types**
 
@@ -162,16 +162,32 @@ Not determined from the OpenAPI document.
 
 **Required permission(s)**: PERM_MDL_LOOKUPS_VIEW (found on service:LookupTypeService)
 
-### Query Parameters
+### Request Body
 
-| Name | Type | Required | Description |
-|---|---|---|---|
-| key | string | No |  |
-| ownerModuleCode | string | No |  |
-| isActiveFl | boolean | No |  |
-| page | integer | No |  |
-| size | integer | No |  |
-| sort | string | No |  |
+Schema: `LookupTypeSearchRequest` (application/json)
+
+| Field | Type | Required | Constraints | Description | Example |
+|---|---|---|---|---|---|
+| filters | array<SearchFilter> | No |  | Filter criteria - معايير التصفية |  |
+| filters[].field | string | No |  |  |  |
+| filters[].operator | string | No | enum: EQUALS, NOT_EQUALS, LIKE, GREATER_THAN, GREATER_THAN_OR_EQUAL, LESS_THAN, LESS_THAN_OR_EQUAL, IN |  |  |
+| filters[].value | object | No |  |  |  |
+| sortField | string | No |  | Sort field - حقل الترتيب |  |
+| sortDirection | string | No | enum: ASC, DESC | Sort direction - اتجاه الترتيب |  |
+| page | integer (int32) | No |  | Page number, zero-based - رقم الصفحة | 0 |
+| size | integer (int32) | No |  | Page size - حجم الصفحة | 20 |
+
+**Request Example**
+
+_(partial — only fields with a documented example are shown)_
+
+```json
+{
+  "page": 0,
+  "size": 20,
+  "filters": [{"field": "key", "operator": "LIKE", "value": "ORDER_STATUS"}]
+}
+```
 
 ### Response `200` — OK
 
@@ -212,6 +228,7 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 | HTTP Status | Code | Why |
 |---|---|---|
 | 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
+| 400 BAD_REQUEST | VALIDATION_ERROR | Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status. |
 
 ## POST /api/v1/mdl/lookup-types
 
@@ -290,7 +307,7 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 | 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
 | 400 BAD_REQUEST | VALIDATION_ERROR | Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status. |
 
-## GET /api/v1/mdl/lookup-types/by-owner
+## POST /api/v1/mdl/lookup-types/by-owner/search
 
 **Browse lookup type registry by owner**
 
@@ -304,12 +321,26 @@ Not determined from the OpenAPI document.
 
 **Required permission(s)**: PERM_MDL_TYPE_REGISTRY_VIEW (found on service:LookupTypeService)
 
-### Query Parameters
+### Request Body
 
-| Name | Type | Required | Description |
-|---|---|---|---|
-| ownerModuleCode | string | No |  |
-| key | string | No |  |
+Schema: `LookupTypeByOwnerSearchRequest` (application/json)
+
+| Field | Type | Required | Constraints | Description | Example |
+|---|---|---|---|---|---|
+| filters | array<SearchFilter> | No |  | Filter criteria - معايير التصفية (`isActiveFl` is not a valid client filter here — the service always restricts to active types) |  |
+| filters[].field | string | No |  |  |  |
+| filters[].operator | string | No | enum: EQUALS, NOT_EQUALS, LIKE, GREATER_THAN, GREATER_THAN_OR_EQUAL, LESS_THAN, LESS_THAN_OR_EQUAL, IN |  |  |
+| filters[].value | object | No |  |  |  |
+
+**Request Example**
+
+_(partial — only fields with a documented example are shown; `page`/`size`/`sortField` are inherited but unused — this response is not paginated)_
+
+```json
+{
+  "filters": [{"field": "ownerModuleCode", "operator": "EQUALS", "value": "SEC"}]
+}
+```
 
 ### Response `200` — OK
 
@@ -357,3 +388,4 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 | HTTP Status | Code | Why |
 |---|---|---|
 | 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
+| 400 BAD_REQUEST | VALIDATION_ERROR | Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status. |

@@ -129,89 +129,185 @@ MDL session owns:
 Do **not** resolve it by widening `AuditableEntity` back to 255 — that re-breaks the 16-table
 majority to accommodate 6 over-provisioned columns.
 
+### Re-verification
+
+Every figure in Part 1 was re-measured on 2026-09-12 by the final governance-state pass and none
+of it moved: the same 16 tables at `VARCHAR(100)` and 6 at `VARCHAR(255)` at the same migration
+line numbers, `AuditableEntity.java:26` and `:32` both still `length = 100`,
+`application.properties:21` still `ddl-auto=none`, and
+`grep -rl "extends AuditableEntity" src/main/java/com/erp/` still returning exactly 22 classes.
+No migration has been written for the split, and none is proposed here. Part 1 stands as written.
+
 ---
 
-## Part 2 — `GlobalExceptionHandler` localizes two codes out of five
+## Part 2 — `GlobalExceptionHandler` localizes five codes out of six
 
-All line references are `src/main/java/com/erp/common/web/GlobalExceptionHandler.java`, read
-at its state on 2026-09-12.
+All line references are `src/main/java/com/erp/common/web/GlobalExceptionHandler.java`, re-read
+at its state on 2026-09-12 **after** the localization work landed. An earlier revision of this
+section described the state before that work and said "two codes out of five"; it was accurate
+when written and is superseded here rather than left standing.
 
 ### Current state, handler by handler
 
 | Handler | Lines | Code on the wire | Message source | Bundle entry (en / ar) |
 |---|---|---|---|---|
-| `LocalizedException` | 32-46 | the exception's own `errorCode` | **`resolveMessage(...)` → `MessageSource`** | per-code, e.g. all 37 `FIN-*` keys |
-| `MethodArgumentNotValidException` | 54-68 | `"VALIDATION_ERROR"` (literal) | hardcoded `"Validation failed"` | **none / none** |
-| `HttpMessageNotReadableException` | 70-78 | `"VALIDATION_ERROR"` (literal) | hardcoded `"The request body is malformed or does not match the expected structure"` | **none / none** |
-| `DataIntegrityViolationException` | 80-88 | `"DATA_INTEGRITY_VIOLATION"` (literal) | hardcoded `"The request could not be completed because it violates a data constraint"` | **none / none** |
-| `AccessDeniedException` | 90-96 | `CommonErrorCodes.ACCESS_DENIED` | **`resolveMessage(...)` → `MessageSource`** | `messages.properties:16` / `messages_ar.properties:13` |
-| `Exception` (catch-all) | 99-105 | `"INTERNAL_ERROR"` (literal) | hardcoded `"An unexpected error occurred"` | **present in both, and unused** — `messages.properties:15` / `messages_ar.properties:12` |
+| `LocalizedException` | 32-52 | the exception's own `errorCode` | **`resolveMessage(...)` → `MessageSource`** | per-code, e.g. all 40 `FIN-*` keys |
+| `MethodArgumentNotValidException` | 54-68 | `CommonErrorCodes.VALIDATION_ERROR` | **`resolveMessage(...)` → `MessageSource`** | `messages.properties:17` / `messages_ar.properties:14` |
+| `HttpMessageNotReadableException` | 79-87 | `CommonErrorCodes.VALIDATION_ERROR` | **hardcoded** `"The request body is malformed or does not match the expected structure"` | — shares the `VALIDATION_ERROR` key, which carries the *other* message |
+| `DataIntegrityViolationException` | 89-97 | `CommonErrorCodes.DATA_INTEGRITY_VIOLATION` | **`resolveMessage(...)` → `MessageSource`** | `messages.properties:18` / `messages_ar.properties:15` |
+| `AccessDeniedException` | 99-106 | `CommonErrorCodes.ACCESS_DENIED` | **`resolveMessage(...)` → `MessageSource`** | `messages.properties:16` / `messages_ar.properties:13` |
+| `Exception` (catch-all) | 108-116 | `CommonErrorCodes.INTERNAL_ERROR` | **`resolveMessage(...)` → `MessageSource`** | `messages.properties:15` / `messages_ar.properties:12` |
 
-`resolveMessage(String, Object[])` is the private helper at `:109-115`: it reads
+`resolveMessage(String, Object[])` is the private helper at `:118-126`: it reads
 `LocaleContextHolder.getLocale()`, calls `messageSource.getMessage(...)`, and on
 `NoSuchMessageException` logs a warning and falls back to returning the code itself.
 
-The practical consequence: an Arabic-locale caller gets Arabic for any `LocalizedException`
-and, since 2026-09-12, for a 403 — but English for every 400 validation failure, every 409
-constraint violation and every 500.
+All four codes now exist as constants — `CommonErrorCodes.java:9` `VALIDATION_ERROR`, `:10`
+`INTERNAL_ERROR`, `:11` `ACCESS_DENIED`, `:12` `DATA_INTEGRITY_VIOLATION` — and every handler uses
+the constant rather than a string literal. The "cosmetic" note in the earlier revision is closed.
+
+The practical consequence: an Arabic-locale caller now gets Arabic for a `LocalizedException`, for
+a 403, for a 409 constraint violation, for a 500, and for a bean-validation 400 — and English for
+exactly one response, a malformed request body.
 
 ### What changed on 2026-09-12
 
-Only the `AccessDeniedException` handler. It previously read
-`.code("ACCESS_DENIED")` / `.message("You do not have permission to perform this operation")`
-and now reads `.code(CommonErrorCodes.ACCESS_DENIED)` /
-`.message(resolveMessage(CommonErrorCodes.ACCESS_DENIED, null))`. Supporting changes:
-`CommonErrorCodes.java:11` gained the `ACCESS_DENIED` constant, and the key was added to both
-bundles.
+Four handlers, in two waves.
 
-The English bundle text is **byte-identical** to the string it replaced, so no English-facing
-response moved; only Arabic callers see a difference. That was deliberate, and it is the
-property that made the change safe to land without asking anyone.
+- **`AccessDeniedException`** moved first, from `.code("ACCESS_DENIED")` /
+  `.message("You do not have permission to perform this operation")` to the constant plus
+  `resolveMessage(...)`. The English bundle text is **byte-identical** to the string it replaced,
+  so no English-facing response moved; only Arabic callers saw a difference. That property is what
+  made it safe to land without asking anyone.
+- **`MethodArgumentNotValidException`** and **`DataIntegrityViolationException`** followed. Neither
+  had a bundle entry in either language before; keys were minted in both
+  (`VALIDATION_ERROR` = "Validation failed", `DATA_INTEGRITY_VIOLATION` = "The request could not be
+  completed because it violates a data constraint"), each matching the string the handler had been
+  hardcoding, so again no English text moved.
+- **`Exception` (catch-all)** also followed, and **this one did move English text** — see below.
 
-The **wire code is unchanged**: FIN's 403 is still the platform `ACCESS_DENIED` envelope, and
-`FIN-403-FORBIDDEN` still reaches no caller — it exists in no `FinErrorCodes` constant and in
-neither bundle. Routing `AccessDeniedException` through `LocalizedException` as a module code
-would change every module's 403 body and remains an untaken platform decision, recorded as the
-`ERROR ENVELOPE` finding in FIN's ALIGN self-check.
+### The `INTERNAL_ERROR` wording conflict: decided, in favour of the bundle
 
-### The one decision a human owes: the `INTERNAL_ERROR` wording conflict
+The earlier revision left this open as the one item a human owed, because the handler hardcoded
+`An unexpected error occurred` while `messages.properties:15` said
+`An unexpected error occurred. Please try again later.` — two different English strings under one
+code, so routing it through `resolveMessage` could not be a no-op.
 
-This is the only item here that cannot be fixed mechanically.
+**It was decided as option (i): adopt the bundle text.** `handleUnexpected` now resolves through
+`MessageSource`, so a 500 body in English reads *"An unexpected error occurred. Please try again
+later."* where it previously read *"An unexpected error occurred."*
 
-- The handler hardcodes: `An unexpected error occurred`
-- `messages.properties:15` says: `An unexpected error occurred. Please try again later.`
-- `messages_ar.properties:12` says: `حدث خطأ غير متوقع. يرجى المحاولة لاحقاً.`
+Recorded plainly rather than glossed: **English 500 bodies changed.** That is a deliberate
+divergence from the byte-identical precedent the `ACCESS_DENIED` change set, and anyone comparing
+500 responses across that date should expect the difference rather than treat it as drift. The
+Arabic (`messages_ar.properties:12`) was already in place and is unchanged.
 
-Both bundles already carry the key; nothing resolves it. So `INTERNAL_ERROR` is *ready* to be
-localized the same way `ACCESS_DENIED` just was — except that the two English strings are not
-the same. Routing it through `resolveMessage` would silently change the 500 body for every
-existing English caller, which is precisely what the `ACCESS_DENIED` change avoided.
+### The one remaining residue: a malformed request body
 
-**Someone must choose which English wording is canonical** before the one-line change is made:
+`handleMalformedRequestBody` (`:79-87`) still hardcodes English. Its own javadoc at `:70-78` now
+states why, and the reason is structural rather than an omission:
 
-- (i) adopt the bundle text (`... Please try again later.`) — English 500 bodies change; or
-- (ii) edit the bundle down to `An unexpected error occurred` and adjust the Arabic to match —
-  English unchanged, Arabic gains localization with no English drift, mirroring exactly how
-  `ACCESS_DENIED` was handled.
+> it emits the SAME wire code as `handleValidation` (`VALIDATION_ERROR`) but a DIFFERENT message,
+> and one bundle key cannot carry two texts.
 
-Option (ii) is the consistent precedent, but it is a product-copy call, not an engineering one,
-so it is left open rather than assumed.
+The `VALIDATION_ERROR` key is registered with the generic `"Validation failed"` text that
+`handleValidation` needs. Localizing this second sentence would mean either overwriting that text
+or giving this response its own wire code.
 
-### The mechanical remainder
+**So closing it is a contract change, not a localization change.** The two options:
 
-`VALIDATION_ERROR` and `DATA_INTEGRITY_VIOLATION` have **no bundle entry in either language** —
-`grep '^VALIDATION_ERROR=' src/main/resources/i18n/messages*.properties` and the same for
-`DATA_INTEGRITY_VIOLATION` return nothing. Localizing them needs keys minted first, and
-`VALIDATION_ERROR` carries a second question: two different handlers (`:54-68` and `:70-78`)
-emit two different English messages under that one code, so a decision is needed on whether
-they share a key or get separated (e.g. a distinct `MALFORMED_REQUEST_BODY`).
+- (i) mint a distinct code — e.g. `MALFORMED_REQUEST_BODY` — with its own `en`/`ar` pair. Cleanest,
+  but any client branching on `VALIDATION_ERROR` for a 400 now sees a second code.
+- (ii) collapse the two responses onto one message, accepting that a malformed body and a failed
+  field validation read identically.
 
-Separately and cosmetically: `CommonErrorCodes` already declares `VALIDATION_ERROR` (`:9`) and
-`INTERNAL_ERROR` (`:10`), but these three handlers use string literals rather than the
-constants. Worth folding into whichever change lands.
+Until one is chosen, an Arabic caller receives English for a malformed request body, and only for
+that. This is the `PLATFORM I18N` residue in FIN's ALIGN self-check.
+
+### Part 2a — a FIN 403 no longer looks like a platform 403
+
+A change that post-dates the original note and belongs here because it changes the wire:
+`src/main/java/com/erp/fin/security/FinForbiddenAdvisor.java` is new.
+
+It is a `DefaultPointcutAdvisor` registered as an infrastructure-role `@Component` at
+`Ordered.HIGHEST_PRECEDENCE`. Its pointcut matches any target class whose name starts with
+`com.erp.fin.service.`; its interceptor catches `AccessDeniedException` out of
+`invocation.proceed()` and re-throws
+`new LocalizedException(Status.FORBIDDEN, FinErrorCodes.FIN_403_FORBIDDEN)`, which the
+`LocalizedException` handler above then renders through `MessageSource` like any other FIN code.
+
+So the statement in the earlier revision — that `FIN-403-FORBIDDEN` "reaches no caller — it exists
+in no `FinErrorCodes` constant and in neither bundle" — **is no longer true**. All three now exist:
+`FinErrorCodes.java:400`, `messages.properties:173`, `messages_ar.properties:170`. A denial on a FIN
+service answers `FIN-403-FORBIDDEN`, localized; a denial on any module without an advisor of its own
+still answers the platform `ACCESS_DENIED`.
+
+Those three line numbers are **not** the ones an earlier revision of this section carried
+(`:384` / `:172` / `:169`). Each shifted later on 2026-09-12 when two further FIN codes were
+registered — `FIN-409-NOT-ACTIVE` (`FinErrorCodes.java:441`, the run gate on a deactivated
+recurring template or allocation rule) and `FIN-422-INVALID-PERCENTAGE-VALUE`
+(`FinErrorCodes.java:357`) — taking FIN from 38 registered codes to 40, matched key-for-key in
+both bundles. They are restated here at the values read today; the old ones are recorded rather
+than silently overwritten, because carrying a line reference forward without re-opening the file
+is the specific failure this note exists to avoid.
+
+Three boundaries, named because the change is real but not unlimited:
+
+1. **Only service-layer denials.** A Spring Security *filter-chain* denial never reaches an AOP
+   proxy or `GlobalExceptionHandler` at all — it is written directly by `SecSecurityErrorHandler`,
+   which `SecurityConfig.java:59` wires as `.accessDeniedHandler(securityErrorHandler)` and which
+   answers `SEC-403-FORBIDDEN` (`SecSecurityErrorHandler.java:42`). That path is currently
+   unreachable for FIN: `SecurityConfig.java:56` authorizes with `.anyRequest().authenticated()`
+   and declares no FIN authority rule, so every FIN permission denial is in fact a `@PreAuthorize`
+   denial on a FIN service. Add one URL-level authority rule for a FIN path and that stops being
+   true.
+2. **`FIN-403-SOD-VIOLATION` is unaffected by the advisor** — but for a different reason than
+   an earlier revision of this section gave, and that reason is now the whole story. It used to
+   say the code "is thrown as a `LocalizedException` directly
+   (`FinSeparationOfDutiesService.java:109`, `FiscalPeriodDomain.java:112`), never as an
+   `AccessDeniedException`". **Neither throw site exists any more.** On 2026-09-12
+   `FinSeparationOfDutiesService` was deleted by a recorded human decision, taking
+   `FiscalPeriodDomain.assertCanHardClose(...)` with it: the service had enforced global
+   *user-set disjointness* — refusing the period close for every caller whenever any single user
+   in the system held both `PERM_FIN_PERIODS_CLOSE_APPROVE` and
+   `PERM_FIN_JOURNAL_ENTRIES_CREATE` — where RULE-FIN-015 asks only that the two *permissions* be
+   distinct, which the delivered `@PreAuthorize` already satisfies. Re-measured today:
+   `grep -rn 'FIN_403_SOD_VIOLATION' src/main/java/` returns exactly two hits, the constant at
+   `FinErrorCodes.java:78` and a `{@link}` javadoc reference at `:392` — **no `throw` anywhere**.
+   So the advisor still never sees the code, but only because nothing raises it: it is
+   unreachable, its Error Catalog row has been struck, and its constant plus both bundle entries
+   (`messages.properties:142`, `messages_ar.properties:139`) were deliberately left in place.
+   That mismatch is tracked as its own `api_doc_gaps` entry in FIN's `execution-state.json` and
+   as the `SOD DEAD CODE` line of FIN's ALIGN self-check. Nothing in this note authorises
+   restoring the check — `FiscalPeriodDomain.java:110-117` forbids it explicitly.
+3. **This is a per-module opt-in, not a platform change.** `com.erp.sec.security.SecForbiddenAdvisor`
+   is the precedent FIN copied; MDL, CU, NOTIF and FILE have no such advisor, so their 403s are
+   still `ACCESS_DENIED`. Whether every module should get one — or whether the shared handler should
+   do it centrally — is still an open platform question, just no longer a FIN-blocking one.
+
+### Re-verification
+
+Every figure in Parts 2 and 2a was re-measured on 2026-09-12 by the final governance-state pass,
+against a `GlobalExceptionHandler.java` of 127 lines. **The handler table is unmoved**: the six
+`@ExceptionHandler` methods still begin at `:32`, `:54`, `:79`, `:89`, `:99` and `:108`, and
+`resolveMessage` is still the private helper at `:118-126`. Five of the six still resolve through
+`MessageSource`; `handleMalformedRequestBody` still hardcodes its English sentence at `:84` while
+emitting `CommonErrorCodes.VALIDATION_ERROR` at `:83`, so the residue is unchanged and remains a
+contract question, not a localization one. The four platform keys are still at
+`messages.properties:15-18` and `messages_ar.properties:12-15`, and the four constants still at
+`CommonErrorCodes.java:9-12`.
+
+**What did move is entirely inside Part 2a, and only line references**: the two new FIN codes
+pushed `FIN-403-FORBIDDEN` down three lines in `FinErrorCodes.java` and one line in each bundle,
+and the `FIN-403-SOD-VIOLATION` throw sites named under boundary 2 ceased to exist. Both are
+corrected above rather than left standing. No handler was added, removed or re-routed; the
+`FinForbiddenAdvisor` mechanism described in Part 2a is byte-for-byte the one in the tree today
+(pointcut prefix at `:40`, the re-throw at `:54`, `Ordered.HIGHEST_PRECEDENCE` at `:57`).
 
 ### Scope note
 
-None of Part 2 is FIN-specific. It affects SEC, MDL, FIN, CU, NOTIF and FILE identically,
-because `GlobalExceptionHandler` is a single `@RestControllerAdvice` in `com.erp.common.web`.
-No module-level ALIGN session can close it.
+None of Part 2 is FIN-specific. `GlobalExceptionHandler` is a single `@RestControllerAdvice` in
+`com.erp.common.web`, so it affects SEC, MDL, FIN, CU, NOTIF and FILE identically, and no
+module-level ALIGN session can close the remaining residue. Part 2a is the exception that proves
+it: FIN could only change its *own* 403 by adding a module-local advisor, precisely because it
+could not change the shared handler.

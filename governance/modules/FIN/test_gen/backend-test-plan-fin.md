@@ -3,11 +3,29 @@
 Module : FIN   Version : v1   Profile : erp   Scope : project (modules FIN, MDL, SEC)
 Sources: srs-fin.md v1 · backend-execution-plan-fin.md v1 · registry-srs-fin.md v1 · registry-db-fin.md v1
 Framework: agnostic. REDUCED: no. Open ADRs: 0 new (ADR-FIN-001 unaffected).
-TC count: 101 (module scope) · 2 (integration — XM-FIN-001, FIN declares → MDL; XM-FIN-002, FIN declares → SEC)
+TC count: 109 ids — 107 (module scope, phase TEST-PLAN-BE) · 2 (phase INT-XM). 108 are IN FORCE;
+TC-FIN-091 is RETIRED (see below). TC-FIN-109 was ADDED 2026-09-12 (API-SCENARIOS) to close the
+FIN-422-INVALID-PERCENTAGE-VALUE coverage gap this revision found; it is the highest id. FIN declares exactly ONE XM: XM-FIN-001, FIN → MDL. XM-FIN-002
+(FIN → SEC) no longer exists.
 Extended after ALIGN-BE with TC-FIN-049..091, then with TC-FIN-092..103 for the API-FIN-033/034/035
-delivery, the report-404 change and RULE-FIN-009's previously uncovered wrong-dimension branch (no
-existing TC id, marker or trace was changed; TC-FIN-062's Expected was rewritten in place for the
-now-localized ACCESS_DENIED body).
+delivery, the report-404 change and RULE-FIN-009's previously uncovered wrong-dimension branch, then
+with TC-FIN-104..108 for the API-FIN-036/037 deactivate delivery.
+REVISED 2026-09-12 for two recorded human decisions already delivered in code. No id was renumbered
+and no TC was added or removed; every change is a rewrite in place:
+  (1) THE SEPARATION-OF-DUTIES CHECK WAS DELETED. FinSeparationOfDutiesService and
+      FiscalPeriodDomain.assertCanHardClose(boolean, boolean) are gone, and
+      V30__fin_sys_admin_close_approve_grant.sql grants PERM_FIN_PERIODS_CLOSE_APPROVE to SYS_ADMIN,
+      so the bootstrap `admin` can hard-close and year-end-close directly. FIN-403-SOD-VIOLATION now
+      has NO throw site. TC-FIN-038 re-pointed at FIN-403-FORBIDDEN; TC-FIN-059 lost its
+      KNOWN-BLOCKED premise; TC-FIN-060 rewritten as AC-FIN-038's denial on API-FIN-027 (previously
+      uncovered); TC-FIN-061 INVERTED into the success case; TC-FIN-091 RETIRED outright.
+  (2) THE RUN PATHS ARE NOW GATED ON THE ACTIVE FLAG. RecurringTemplateDomain.assertCanRun() and
+      AllocationRuleDomain.assertCanRun() answer FIN-409-NOT-ACTIVE (Status.CONFLICT → 409), so
+      TC-FIN-106 and TC-FIN-107 were FLIPPED from "still runs and still posts" to the refusal. No
+      RULE-FIN-* states that gate — it is a recorded human decision, not a requirement that was
+      always there, and the scenarios say so.
+(TC-FIN-062's Expected was rewritten in place earlier for the now-localized 403 body, then again once
+FinForbiddenAdvisor made that body carry FIN-403-FORBIDDEN instead of the platform ACCESS_DENIED.)
 ══════════════════════════════════════════════════════════════════
 
 <!-- PHASE:TEST-PLAN-BE:START traces=REQ-FIN-001,REQ-FIN-002,REQ-FIN-003,REQ-FIN-004,REQ-FIN-005,REQ-FIN-006,REQ-FIN-007,REQ-FIN-008,REQ-FIN-009,REQ-FIN-010,REQ-FIN-011,REQ-FIN-012,REQ-FIN-013,REQ-FIN-014,REQ-FIN-015,REQ-FIN-016,REQ-FIN-017,REQ-FIN-018,REQ-FIN-019,REQ-FIN-020,REQ-FIN-021,REQ-FIN-022,REQ-FIN-023,REQ-FIN-024,REQ-FIN-025,REQ-FIN-026,REQ-FIN-027,REQ-FIN-028,REQ-FIN-029,REQ-FIN-030,REQ-FIN-031,REQ-FIN-032,REQ-FIN-033,REQ-FIN-034,REQ-FIN-035,REQ-FIN-036,REQ-FIN-037,REQ-FIN-038,REQ-FIN-039,REQ-FIN-040,REQ-FIN-041,REQ-FIN-042,REQ-FIN-043,REQ-FIN-044,REQ-FIN-045,REQ-FIN-046 -->
@@ -207,11 +225,23 @@ Test data    : a hard-closed period
 <!-- TC:TC-FIN-038:START traces=AC-FIN-038,REQ-FIN-038,API-FIN-026 -->
 ### TC-FIN-038 — close-approval permission distinct from entry-creation permission (SoD)
 Derived from : AC-FIN-038 (REQ-FIN-038) · Exercises: API-FIN-026 PATCH /api/v1/fin/fiscal-periods/{id}/hard-close
-Rule / code  : RULE-FIN-015 → FIN-403-SOD-VIOLATION
+Rule / code  : RULE-FIN-015 → the distinct-permission @PreAuthorize gate → FIN-403-FORBIDDEN
 Scenario     : PERMISSION · data class ATTACK · language ALL
 Preconditions: a role holding only `PERM_FIN_JOURNAL_ENTRIES_CREATE` (no close-approve permission)
 Steps        : 1. that role's user attempts hard-close
-Expected     : 403 FIN-403-SOD-VIOLATION (or 403 FIN-403-FORBIDDEN if the permission itself is entirely absent — both paths tested)
+Expected     : 403 {code: "FIN-403-FORBIDDEN"}, ar "لا تملك صلاحية المالية المطلوبة لهذه العملية" /
+  en "You do not hold the Finance permission required for this operation"; the period is unchanged.
+  This is AC-FIN-038 verbatim ("Given a role holding only the entry-creation permission / When that
+  role's user attempts the period-close-approval action / Then the system denies it") and the denial
+  comes from the ONLY enforcement that exists: FiscalPeriodService.hardClose's
+  @PreAuthorize(PERM_FIN_PERIODS_CLOSE_APPROVE) — a permission distinct from
+  PERM_FIN_JOURNAL_ENTRIES_CREATE — whose AccessDeniedException is raised inside com.erp.fin.service
+  and re-raised by FinForbiddenAdvisor as LocalizedException(FORBIDDEN, FIN_403_FORBIDDEN).
+  REVISED 2026-09-12: this Expected previously named FIN-403-SOD-VIOLATION as the primary outcome,
+  with FIN-403-FORBIDDEN allowed only as a parenthetical second path. FinSeparationOfDutiesService
+  and FiscalPeriodDomain.assertCanHardClose(boolean, boolean) were both deleted by a recorded human
+  decision, so FIN-403-SOD-VIOLATION has NO throw site left anywhere in com.erp.fin and can never be
+  the answer. AC-FIN-038 itself is untouched and still holds — only the code that answers it moved
 Test data    : role with entry-creation only
 <!-- TC:TC-FIN-038:END -->
 
@@ -311,7 +341,7 @@ Preconditions: an active rule whose non-remainder lines on the remainder's own s
 Steps        : 1. submit the triggering event with baseAmount = 1000.00
 Expected     : 422 FIN-422-REMAINDER-NOT-POSITIVE, ar "سطر الباقي يُحسب كفرق ويجب أن يكون موجبًا؛ السطور الأخرى تستهلك المبلغ بالكامل" /
   en "The remainder line is computed as a difference and must be positive; the other lines
-  already consume the full amount" — never an unlocalized DATA_INTEGRITY_VIOLATION from
+  already consume the full amount" — never the generic DATA_INTEGRITY_VIOLATION from
   CHK_FIN_JOURNAL_LINE_AMOUNT_POSITIVE; nothing posted
 Test data    : baseAmount 1000.00; CREDIT/PERCENTAGE 100% + CREDIT/REMAINDER
 <!-- TC:TC-FIN-055:END -->
@@ -322,10 +352,14 @@ Derived from : AC-FIN-036 (REQ-FIN-036) · Exercises: API-FIN-027 POST /api/v1/f
 Rule / code  : RULE-FIN-008 (year-end carve-out) → (success path); RULE-FIN-006/007/009 still
   apply to both generated entries in full
 Scenario     : STATE · data class EDGE · language ALL
-Preconditions: KNOWN-BLOCKED ENDPOINT — see TC-FIN-059's precondition block; all of it must hold:
-  a user holding FIN_CLOSE_APPROVER and no role carrying PERM_FIN_JOURNAL_ENTRIES_CREATE, an
-  account with is_retained_earnings_fl = TRUE (set as data — no endpoint sets it), every period
-  of the year HARD_CLOSE, and an adjacent successor year whose startDate = this year's endDate + 1
+Preconditions: a caller holding PERM_FIN_PERIODS_CLOSE_APPROVE — post-V30 the bootstrap `admin`
+  qualifies (see TC-FIN-059), and the caller may also hold PERM_FIN_JOURNAL_ENTRIES_CREATE, which is
+  no longer disqualifying (see TC-FIN-061); an account with is_retained_earnings_fl = TRUE (set as
+  data — no endpoint sets it), every period of the year HARD_CLOSE, and an adjacent successor year
+  whose startDate = this year's endDate + 1. REVISED 2026-09-12: this block previously read
+  "KNOWN-BLOCKED ENDPOINT … a user holding FIN_CLOSE_APPROVER and no role carrying
+  PERM_FIN_JOURNAL_ENTRIES_CREATE" — the endpoint is no longer blocked and the exclusion is no
+  longer required
 Steps        : 1. run year-end close as that approver
 Expected     : 201; the CLOSING entry posts into the year's LAST period even though that period is
   HARD_CLOSE, and the OPENING entry posts into the successor year's first period — neither is
@@ -362,74 +396,114 @@ Test data    : parent "1000" isLeafFl=true; child "1001"
 <!-- TC:TC-FIN-058:END -->
 
 <!-- TC:TC-FIN-059:START traces=AC-FIN-034,REQ-FIN-034,REQ-FIN-038,API-FIN-026 -->
-### TC-FIN-059 — hard-close succeeds for a close-approver who creates no entries (RULE-FIN-015 satisfied)
+### TC-FIN-059 — hard-close succeeds for any holder of the close-approval permission (RULE-FIN-015 satisfied)
 Derived from : AC-FIN-034 (REQ-FIN-034, REQ-FIN-038) · Exercises: API-FIN-026 PATCH /api/v1/fin/fiscal-periods/{id}/hard-close
-Rule / code  : RULE-FIN-015 → (success path); XM-FIN-002 supplies the two user sets
+Rule / code  : RULE-FIN-015 → (success path); the distinct-permission @PreAuthorize gate is the whole enforcement
 Scenario     : PERMISSION · data class VALID · language ALL
-Preconditions: KNOWN-BLOCKED ENDPOINT — this cannot succeed on a fresh deployment and the setup is
-  part of the scenario. V27 mints the role FIN_CLOSE_APPROVER (module FIN, screen FIN_PERIODS,
-  exactly PERM_FIN_PERIODS_VIEW + PERM_FIN_PERIODS_CLOSE_APPROVE) but assigns it to NO user, and
-  the bootstrap `admin` holds SYS_ADMIN, which V25 granted PERM_FIN_JOURNAL_ENTRIES_CREATE. The
-  test must therefore create a second SEC user whose ROLE UNION carries FIN_CLOSE_APPROVER and no
-  role granting PERM_FIN_JOURNAL_ENTRIES_CREATE, and assign it through SEC's own role
-  administration. Also required: a SOFT_CLOSE period whose entries were created by `admin`
-Steps        : 1. hard-close the period as that second user
-Expected     : 200, statusCode=HARD_CLOSE, closedBy = that user and closedAt set; with the setup
-  omitted the same call answers 403 FIN-403-SOD-VIOLATION (TC-FIN-060), which is the fresh-deployment
-  behaviour, not a defect
-Test data    : user "fin_closer" holding only FIN_CLOSE_APPROVER; a soft-closed period
+Preconditions: a SOFT_CLOSE period, and a caller holding PERM_FIN_PERIODS_CLOSE_APPROVE. On a fresh
+  database that is now satisfied out of the box: V30__fin_sys_admin_close_approve_grant.sql grants
+  that action to SYS_ADMIN — reversing V25's deliberate exclusion — and the bootstrap `admin` holds
+  SYS_ADMIN, so `admin` can run this directly. The V27 role FIN_CLOSE_APPROVER (module FIN, screen
+  FIN_PERIODS, exactly PERM_FIN_PERIODS_VIEW + PERM_FIN_PERIODS_CLOSE_APPROVE) still exists and a
+  user assigned it passes identically — run the scenario as EITHER principal, the outcome is the
+  same. Nothing on this path reads who else holds PERM_FIN_JOURNAL_ENTRIES_CREATE, so the caller may
+  hold it too (that is TC-FIN-061)
+Steps        : 1. hard-close the period
+Expected     : 200, statusCode=HARD_CLOSE, closedBy = the calling principal
+  (SecurityContextHelper.getCurrentUsername()) and closedAt set; the period is thereafter not
+  reopenable (FiscalPeriodDomain.assertCanReopen). Never 403.
+  REVISED 2026-09-12: this scenario previously opened "KNOWN-BLOCKED ENDPOINT — this cannot succeed
+  on a fresh deployment", required a SECOND SEC user whose role union excluded
+  PERM_FIN_JOURNAL_ENTRIES_CREATE, and pointed at TC-FIN-060 for a fresh-deployment
+  403 FIN-403-SOD-VIOLATION. All three premises are void: the global user-set disjointness check
+  (FinSeparationOfDutiesService + FiscalPeriodDomain.assertCanHardClose) was deleted by a recorded
+  human decision, V30 grants the permission to SYS_ADMIN, and the endpoint is no longer blocked on a
+  fresh deployment. TC-FIN-056, TC-FIN-084, TC-FIN-085, TC-FIN-086 and TC-FIN-102 all reference
+  "TC-FIN-059's setup" — it is now simply "a caller holding PERM_FIN_PERIODS_CLOSE_APPROVE"
+Test data    : the bootstrap `admin` (SYS_ADMIN, post-V30) or a user holding FIN_CLOSE_APPROVER; a soft-closed period
 <!-- TC:TC-FIN-059:END -->
 
-<!-- TC:TC-FIN-060:START traces=AC-FIN-038,REQ-FIN-038,API-FIN-026 -->
-### TC-FIN-060 — close fails when NOBODY holds close-approval (fresh deployment)
-Derived from : AC-FIN-038 (REQ-FIN-038) · Exercises: API-FIN-026 PATCH /api/v1/fin/fiscal-periods/{id}/hard-close
-Rule / code  : RULE-FIN-015 → FIN-403-SOD-VIOLATION
-Scenario     : PERMISSION · data class EDGE · language ALL
-Preconditions: the delivered state — FIN_CLOSE_APPROVER exists (V27) but is assigned to no user,
-  so the set of users holding PERM_FIN_PERIODS_CLOSE_APPROVE is empty
-Steps        : 1. a SOFT_CLOSE period is hard-closed by any authenticated principal
-Expected     : 403 FIN-403-SOD-VIOLATION, ar "صلاحية اعتماد الإغلاق منفصلة عن صلاحية إنشاء القيود" /
-  en "The close-approval permission is separate from the entry-creation permission"; the period
-  stays SOFT_CLOSE. An empty approver set fails the rule exactly as an overlapping one does —
-  documented in V27's header, not a defect
-Test data    : untouched V27 state, no SEC_USER_ROLE row for FIN_CLOSE_APPROVER
+<!-- TC:TC-FIN-060:START traces=AC-FIN-038,REQ-FIN-038,API-FIN-027 -->
+### TC-FIN-060 — the same AC-FIN-038 denial on year-end close, the second gated endpoint
+Derived from : AC-FIN-038 (REQ-FIN-038) · Exercises: API-FIN-027 POST /api/v1/fin/fiscal-years/{id}/year-end-close
+  (TC-FIN-038 is the identical assertion on API-FIN-026)
+Rule / code  : RULE-FIN-015 → the distinct-permission @PreAuthorize gate → FIN-403-FORBIDDEN
+Scenario     : PERMISSION · data class ATTACK · language ALL
+Preconditions: a role holding PERM_FIN_JOURNAL_ENTRIES_CREATE but NOT
+  PERM_FIN_PERIODS_CLOSE_APPROVE; an otherwise fully eligible fiscal year (every period HARD_CLOSE,
+  an account marked is_retained_earnings_fl, an adjacent successor year) so that nothing but the
+  permission can account for the refusal
+Steps        : 1. that role's user runs year-end close
+Expected     : 403 {code: "FIN-403-FORBIDDEN"}, ar "لا تملك صلاحية المالية المطلوبة لهذه العملية" /
+  en "You do not hold the Finance permission required for this operation"; nothing is posted, the
+  year stays OPEN and every period keeps its status. The denial is raised by
+  FiscalYearService.yearEndClose's @PreAuthorize(PERM_FIN_PERIODS_CLOSE_APPROVE) — the same distinct
+  permission FiscalPeriodService.hardClose carries — and reaches the wire as FIN's own catalog code
+  because FinForbiddenAdvisor intercepts AccessDeniedException raised inside com.erp.fin.service.
+  Because @PreAuthorize fires before the method body, the answer is 403 and never FIN-404-YEAR,
+  FIN-409-INVALID-TRANSITION, FIN-409-PERIODS-NOT-CLOSED or FIN-404-ACCOUNT.
+  REWRITTEN 2026-09-12. This id previously asserted "close fails when NOBODY holds close-approval",
+  expecting 403 FIN-403-SOD-VIOLATION from an EMPTY approver set. That scenario is now impossible
+  twice over: V30__fin_sys_admin_close_approve_grant.sql grants the permission to SYS_ADMIN so the
+  set is not empty, and the code that inspected user sets at all
+  (FinSeparationOfDutiesService + FiscalPeriodDomain.assertCanHardClose) was deleted by a recorded
+  human decision. The id is kept — never renumbered — and re-pointed at the one real, previously
+  UNCOVERED assertion in the same area: AC-FIN-038's denial on API-FIN-027, which no other TC made
+Test data    : a role with entry-creation only; a fully eligible fiscal year
 <!-- TC:TC-FIN-060:END -->
 
 <!-- TC:TC-FIN-061:START traces=AC-FIN-038,REQ-FIN-038,API-FIN-027 -->
-### TC-FIN-061 — close fails when ONE user holds both permissions across their role union
-Derived from : AC-FIN-038 (REQ-FIN-038) · Exercises: API-FIN-027 POST /api/v1/fin/fiscal-years/{id}/year-end-close
-  (same code and same guard on API-FIN-026)
-Rule / code  : RULE-FIN-015 → FIN-403-SOD-VIOLATION; the fact is read through XM-FIN-002
-Scenario     : PERMISSION · data class ATTACK · language ALL
-Preconditions: FIN_CLOSE_APPROVER assigned to the bootstrap `admin`, who already holds SYS_ADMIN
-  and therefore PERM_FIN_JOURNAL_ENTRIES_CREATE — the two user sets now intersect
+### TC-FIN-061 — a user holding BOTH permissions CAN close: RULE-FIN-015 is satisfied by the distinct permission, not by disjoint user sets
+Derived from : REQ-FIN-038, satisfied direction (AC-FIN-038's denial direction is TC-FIN-038 on
+  API-FIN-026 and TC-FIN-060 on API-FIN-027) · Exercises: API-FIN-027 POST /api/v1/fin/fiscal-years/{id}/year-end-close
+  (the same permission gates API-FIN-026)
+Rule / code  : RULE-FIN-015 → (success path). No separation-of-duties fact is read anywhere;
+  FIN-403-SOD-VIOLATION has no throw site
+Scenario     : PERMISSION · data class VALID · language ALL
+Preconditions: the bootstrap `admin`, who holds SYS_ADMIN and therefore BOTH
+  PERM_FIN_JOURNAL_ENTRIES_CREATE (granted by V25) and PERM_FIN_PERIODS_CLOSE_APPROVE (granted by
+  V30) — the two permissions' holders deliberately overlap in ONE user, which is the exact state
+  that used to be refused. Plus TC-FIN-056's year-end fixture: every period HARD_CLOSE, one account
+  marked is_retained_earnings_fl, an adjacent successor year
 Steps        : 1. run year-end close as `admin`
-Expected     : 403 FIN-403-SOD-VIOLATION, raised BEFORE the year's status, the all-periods check,
-  the successor year and the Retained Earnings lookup (the validation order is part of the
-  contract), so the answer is 403 and never FIN-404-YEAR or FIN-404-ACCOUNT; nothing posted and
-  the year stays OPEN
-Test data    : `admin` holding SYS_ADMIN + FIN_CLOSE_APPROVER
+Expected     : 201 `YearEndCloseResponse` carrying a CLOSING and an OPENING entry; the year becomes
+  CLOSED and every period YEAR_END_CLOSE. Assert EXPLICITLY that the response is not a 403 and
+  carries no FIN-403-SOD-VIOLATION. FiscalYearService.yearEndClose runs findOrThrow →
+  FiscalYearDomain.assertCanYearEndClose → FiscalPeriodDomain.assertHardClosedForYearEnd per period
+  → successor year → Retained Earnings account → post; there is no separation-of-duties step
+  anywhere in that sequence, and FiscalPeriodDomain carries an explicit "there is deliberately NO
+  assertCanHardClose(...) method here" comment in its place.
+  REVISED 2026-09-12 — EXACTLY INVERTED, and kept rather than retired because the inverted assertion
+  is the regression guard for the change. This scenario previously asserted
+  403 FIN-403-SOD-VIOLATION "raised BEFORE the year's status, the all-periods check, the successor
+  year and the Retained Earnings lookup". That check enforced GLOBAL user-set disjointness — if any
+  single user in the system held both codes, the close was refused for EVERY caller — which no REQ,
+  AC or RULE asks for: RULE-FIN-015's own Data source line records that FIN has no field to read for
+  it, and AC-FIN-038 names SEC's own mechanism. It was deleted by a recorded human decision and V30
+  then deliberately put both codes on SYS_ADMIN, so the old assertion would fail today
+Test data    : `admin` holding SYS_ADMIN (both permission codes, post-V30); a fully hard-closed year with an adjacent successor
 <!-- TC:TC-FIN-061:END -->
 
 <!-- TC:TC-FIN-062:START traces=AC-FIN-038,REQ-FIN-038,API-FIN-026 -->
 ### TC-FIN-062 — the gateway rule resolves the two-word action CLOSE_APPROVE
 Derived from : AC-FIN-038 (REQ-FIN-038) · Exercises: API-FIN-026 PATCH /api/v1/fin/fiscal-periods/{id}/hard-close
 Rule / code  : platform gateway convention (every non-VIEW permission needs a granted VIEW on the
-  SAME SCREEN) → 403 rendered as the platform `ACCESS_DENIED` envelope, the catalog's
-  FIN-403-FORBIDDEN row
+  SAME SCREEN) → the resulting @PreAuthorize denial inside com.erp.fin.service is re-raised by
+  FinForbiddenAdvisor as the catalog's FIN-403-FORBIDDEN row
 Scenario     : PERMISSION · data class ATTACK · language ALL
 Preconditions: a role granted PERM_FIN_PERIODS_CLOSE_APPROVE on screen FIN_PERIODS but WITHOUT the
   screen's PERM_FIN_PERIODS_VIEW gateway row; and, for the passing half, FIN_CLOSE_APPROVER, which
   holds both
 Steps        : 1. call hard-close as the gateway-less role's user — 2. call it as a FIN_CLOSE_APPROVER
   holder (TC-FIN-059's setup)
-Expected     : 1. the authority is stripped during resolution and the call answers 403 with the
-  platform body {code: "ACCESS_DENIED"} — assert that code, NOT a FIN code: FIN-403-FORBIDDEN is a
-  catalog row that never reaches the wire. The message is now resolved through the shared
-  MessageSource, so it IS localized per Accept-Language: ar "ليس لديك صلاحية لتنفيذ هذه العملية" /
-  en "You do not have permission to perform this operation". The English text is byte-identical to
-  what the handler returned before, so only an Arabic caller sees the change, and the wire `code`
-  is unchanged — 2. the authority survives and
+Expected     : 1. the authority is stripped during resolution and the call answers 403 with
+  {code: "FIN-403-FORBIDDEN"} — assert the FIN catalog code, NOT the platform `ACCESS_DENIED`:
+  FiscalPeriodService.hardClose's @PreAuthorize denial is an AccessDeniedException raised inside
+  com.erp.fin.service, which FinForbiddenAdvisor intercepts and re-raises as
+  LocalizedException(FORBIDDEN, FIN_403_FORBIDDEN) before GlobalExceptionHandler sees it. The
+  message resolves through the shared MessageSource, so it is localized per Accept-Language:
+  ar "لا تملك صلاحية المالية المطلوبة لهذه العملية" /
+  en "You do not hold the Finance permission required for this operation" — 2. the authority survives and
   the call reaches the RULE-FIN-015 check, proving the gateway is matched against the screen's own
   registry rows and not by splitting the code at its last underscore (which would demand a
   non-existent PERM_FIN_PERIODS_CLOSE_VIEW)
@@ -1108,7 +1182,7 @@ Preconditions: one fiscal year with an OPEN period; docNo allocation is serializ
   PESSIMISTIC_WRITE lock on the owning FIN_FISCAL_YEAR row, held to commit
 Steps        : 1. issue N concurrent valid create requests against the same fiscal year (N ≥ 10)
 Expected     : all N succeed with 201 and N DISTINCT sequential docNos; no request answers an
-  unlocalized 409 DATA_INTEGRITY_VIOLATION from UQ_FIN_JOURNAL_ENTRY_YEAR_DOCNO, which stays an
+  opaque 409 DATA_INTEGRITY_VIOLATION from UQ_FIN_JOURNAL_ENTRY_YEAR_DOCNO, which stays an
   unreachable backstop
 Test data    : 10 identical balanced 2-line payloads fired in parallel
 <!-- TC:TC-FIN-088:END -->
@@ -1174,9 +1248,11 @@ Steps        : 1. POST a search sorted by "closedAt" — 2. POST a search sorted
 Expected     : 1 and 2. 400 FIN-400-INVALID-SORT, ar "حقل الترتيب غير معروف" / en "Unrecognized sort
   field"; no page returned — the whitelist check runs BEFORE the shared pageable builder, which
   would otherwise drop the field silently and return a differently ordered page with nothing saying
-  so — 3. 403 carrying the platform envelope {code: "ACCESS_DENIED"} — never a FIN code — with the
-  message localized per Accept-Language: ar "ليس لديك صلاحية لتنفيذ هذه العملية" / en "You do not
-  have permission to perform this operation"
+  so — 3. 403 carrying {code: "FIN-403-FORBIDDEN"} — FIN's own catalog code, never the platform
+  `ACCESS_DENIED`: FiscalPeriodService.search's @PreAuthorize on PERM_FIN_PERIODS_VIEW denies inside
+  com.erp.fin.service, so FinForbiddenAdvisor translates it — with the message localized per
+  Accept-Language: ar "لا تملك صلاحية المالية المطلوبة لهذه العملية" /
+  en "You do not hold the Finance permission required for this operation"
 Test data    : sort fields "closedAt" and "fiscalYearId"; a user with no FIN_PERIODS action grant
 <!-- TC:TC-FIN-095:END -->
 
@@ -1234,7 +1310,12 @@ Expected     : 1. 200 `DimensionValueResponse` with isActiveFl=false; the row is
   200, the value is still returned by the search with only its flag changed — 3. 404
   FIN-404-DIMVALUE, ar "قيمة البُعد غير موجودة" / en "Dimension value not found" — its own row,
   never the parent's FIN-404-DIMENSION, which would say the DIMENSION was missing when the VALUE
-  was — 4. 403 {code: "ACCESS_DENIED"}. There is deliberately no deactivate on the PARENT Dimension
+  was — 4. 403 {code: "FIN-403-FORBIDDEN"} — DimensionValueService.deactivate's @PreAuthorize on
+  PERM_FIN_DIMENSIONS_UPDATE denies inside com.erp.fin.service and FinForbiddenAdvisor translates
+  it, so the body carries FIN's own code, never the platform `ACCESS_DENIED`:
+  ar "لا تملك صلاحية المالية المطلوبة لهذه العملية" /
+  en "You do not hold the Finance permission required for this operation".
+  There is deliberately no deactivate on the PARENT Dimension
   and no `activate` counterpart; neither is a gap
 Test data    : dimension "REGION", value "NORTH"; dimensionValueId 999999
 <!-- TC:TC-FIN-098:END -->
@@ -1290,10 +1371,11 @@ Test data    : fiscalYearId 999999; fromPeriodId/toPeriodId 999999; one real yea
 ### TC-FIN-102 — a dormant fiscal year still closes, posting two EMPTY entries (reviewed and kept)
 Derived from : AC-FIN-036 (REQ-FIN-036) · Exercises: API-FIN-027 POST /api/v1/fin/fiscal-years/{id}/year-end-close
 Scenario     : STATE · data class EDGE · language ALL
-Preconditions: TC-FIN-056's full KNOWN-BLOCKED setup (a close-approver holding no entry-creation
-  permission, an account marked is_retained_earnings_fl, every period HARD_CLOSE, an adjacent
-  successor year) — but over a fiscal year with NO posted lines at all, so neither a result account
-  nor a balance-sheet account carries a non-zero net
+Preconditions: TC-FIN-056's full setup (a caller holding PERM_FIN_PERIODS_CLOSE_APPROVE — no
+  longer required to be free of the entry-creation permission, see TC-FIN-061 — an account marked
+  is_retained_earnings_fl, every period HARD_CLOSE, an adjacent successor year) — but over a fiscal
+  year with NO posted lines at all, so neither a result account nor a balance-sheet account carries
+  a non-zero net
 Steps        : 1. run year-end close on that dormant year — 2. read both returned entries
   (API-FIN-022) — 3. POST a manual entry with lines: [] (API-FIN-019)
 Expected     : 1. 201 `YearEndCloseResponse` carrying BOTH a CLOSING and an OPENING entry, each
@@ -1306,13 +1388,209 @@ Expected     : 1. 201 `YearEndCloseResponse` carrying BOTH a CLOSING and an OPEN
   through the internal year-end path and never from a caller
 Test data    : a fully hard-closed fiscal year with zero posted entries; an adjacent successor year
 <!-- TC:TC-FIN-102:END -->
+
+<!-- TC:TC-FIN-104:START traces=AC-FIN-022,REQ-FIN-022,API-FIN-036 -->
+### TC-FIN-104 — deactivate a recurring template, and reject an unknown template id
+Derived from : AC-FIN-022 (REQ-FIN-022) · Exercises: API-FIN-036 PUT /api/v1/fin/recurring-templates/{id}/deactivate
+Scenario     : HAPPY + VIOLATION + PERMISSION · data class VALID/INVALID/ATTACK · language ALL
+Preconditions: an active RecurringTemplate created through API-FIN-013 with THREE lines; a caller
+  holding PERM_FIN_RECURRING_TEMPLATES_UPDATE — pre-existing, seeded by V24__fin_security_seed.sql
+  as the FIN_RECURRING_TEMPLATES/UPDATE action and already the gate on API-FIN-014, so this
+  endpoint needed no migration and registers no new error code; and a second caller holding no
+  FIN_RECURRING_TEMPLATES action grant at all. The base path is /api/v1/fin/recurring-templates and
+  the verb is PUT, matching API-FIN-034/035
+Steps        : 1. PUT /{id}/deactivate with no body — 2. PUT /{id}/deactivate again on the same id —
+  3. PUT /{id}/deactivate on an id matching no FIN_RECURRING_TEMPLATE row — 4. PUT /{id}/deactivate
+  as the ungranted caller
+Expected     : 1. 200 `RecurringTemplateResponse` with isActiveFl=false AND lineCount=3, all three
+  entries present in `lines` — the service re-reads the template's children before mapping, so the
+  aggregate is never misreported as having none; the row is not deleted and is still returned by
+  API-FIN-012 — 2. 200 again, still isActiveFl=false: no rule guards the transition and the catalog
+  registers no code for re-deactivating, so the endpoint is idempotent — 3. 404 FIN-404-TEMPLATE,
+  ar "القالب المتكرر غير موجود" / en "Recurring template not found", never FIN-404-RULE — 4. 403
+  carrying {code: "FIN-403-FORBIDDEN"} — FIN's own catalog code, never the platform `ACCESS_DENIED`:
+  RecurringTemplateService.deactivate's @PreAuthorize denies inside com.erp.fin.service, so
+  FinForbiddenAdvisor translates it — with the message localized per Accept-Language:
+  ar "لا تملك صلاحية المالية المطلوبة لهذه العملية" /
+  en "You do not hold the Finance permission required for this operation".
+  No `activate` counterpart exists on this or any FIN entity, so step 1 is NOT reversible through
+  the API — ENT-FIN-011's own activate() helper still has zero callers
+Test data    : a MONTHLY RECURRING template with 3 lines; templateId 999999; a user with no
+  FIN_RECURRING_TEMPLATES action grant
+<!-- TC:TC-FIN-104:END -->
+
+<!-- TC:TC-FIN-105:START traces=AC-FIN-025,REQ-FIN-025,API-FIN-037 -->
+### TC-FIN-105 — deactivate an allocation rule, and reject an unknown rule id
+Derived from : AC-FIN-025 (REQ-FIN-025) · Exercises: API-FIN-037 PUT /api/v1/fin/allocation-rules/{id}/deactivate
+Scenario     : HAPPY + VIOLATION + PERMISSION · data class VALID/INVALID/ATTACK · language ALL
+Preconditions: an active AllocationRule created through API-FIN-016 with THREE targets (two
+  PERCENTAGE plus one remainder); a caller holding PERM_FIN_ALLOCATION_RULES_UPDATE — pre-existing,
+  seeded by V24__fin_security_seed.sql as the FIN_ALLOCATION_RULES/UPDATE action and already the
+  gate on API-FIN-017, so this endpoint needed no migration and registers no new error code; and a
+  second caller holding no FIN_ALLOCATION_RULES action grant at all
+Steps        : 1. PUT /{id}/deactivate with no body — 2. PUT /{id}/deactivate again on the same id —
+  3. PUT /{id}/deactivate on an id matching no FIN_ALLOCATION_RULE row — 4. PUT /{id}/deactivate as
+  the ungranted caller
+Expected     : 1. 200 `AllocationRuleResponse` with isActiveFl=false AND targetCount=3, all three
+  entries present in `targets` — the service re-reads the rule's children before mapping, the same
+  point API-FIN-036 makes for lineCount; the row is not deleted and is still returned by
+  API-FIN-015 — 2. 200 again, still isActiveFl=false: idempotent for the same reason as
+  API-FIN-036, and RULE-FIN-003 is NOT consulted here, so a rule whose remainder-target set would
+  fail at run time can still be retired — 3. 404 FIN-404-ALLOCATION-RULE, ar "قاعدة التوزيع غير موجودة" /
+  en "Allocation rule not found" — 4. 403 carrying {code: "FIN-403-FORBIDDEN"}, localized per
+  Accept-Language exactly as in TC-FIN-104; AllocationRuleService.deactivate's @PreAuthorize denies
+  inside com.erp.fin.service and FinForbiddenAdvisor translates it.
+  No `activate` counterpart exists, so step 1 is NOT reversible through the API
+Test data    : an allocation rule with 3 targets; allocationRuleId 999999; a user with no
+  FIN_ALLOCATION_RULES action grant
+<!-- TC:TC-FIN-105:END -->
+
+<!-- TC:TC-FIN-106:START traces=AC-FIN-023,REQ-FIN-023,API-FIN-036,API-FIN-014 -->
+### TC-FIN-106 — a deactivated recurring template is REFUSED at run time (FIN-409-NOT-ACTIVE)
+Derived from : AC-FIN-023 (REQ-FIN-023) · Exercises: API-FIN-036 PUT /api/v1/fin/recurring-templates/{id}/deactivate then API-FIN-014 POST /api/v1/fin/recurring-templates/{id}/run
+Rule / code  : RECORDED HUMAN DECISION, not a RULE-FIN-* → FIN-409-NOT-ACTIVE (Status.CONFLICT → 409)
+Scenario     : STATE · data class EDGE · language ALL
+Preconditions: TC-FIN-104's template, whose nextRunDate falls inside a period that exists and is
+  OPEN and whose lines reference postable accounts, so the run has no unrelated reason to fail — the
+  409 must be provably the active-flag gate and nothing else. ONE caller performs both calls:
+  API-FIN-036 and API-FIN-014 are both gated on PERM_FIN_RECURRING_TEMPLATES_UPDATE, so whoever may
+  retire a template may still attempt to run it
+Steps        : 1. PUT /{id}/deactivate — 2. POST /{id}/run on that same, now inactive template —
+  3. re-read the template (API-FIN-012) and search the period's journal entries (API-FIN-018)
+Expected     : 1. 200, isActiveFl=false — 2. 409 {code: "FIN-409-NOT-ACTIVE"},
+  ar "هذا التعريف غير نشط ولا يمكن تشغيله" /
+  en "This definition is deactivated and cannot be run"; NO journal entry is posted and nextRunDate
+  is NOT advanced. RecurringTemplateService.run locks the row (repository.lockForRun), then calls
+  RecurringTemplateDomain.from(template).assertCanRun() BEFORE the period is resolved, before any
+  line is built and before JournalPostingService.buildValidateAndPost — so the refusal precedes
+  RULE-FIN-006/007/008/009 and the answer is 409 FIN-409-NOT-ACTIVE, never FIN-409-PERIOD-NOT-OPEN
+  or FIN-409-UNBALANCED. The gate applies to any internal or scheduled trigger too, since both enter
+  through the same run(Long) — 3. the template is still isActiveFl=false and still carries its
+  ORIGINAL nextRunDate, and the period gained no RECURRING entry.
+  REVISED 2026-09-12 — FLIPPED. Until this revision this scenario asserted the opposite ("201, NOT
+  an error … a deactivated template still runs and still posts") and was labelled a KNOWN OPEN ITEM
+  awaiting a human decision. That decision has been taken and delivered: RecurringTemplateDomain
+  .assertCanRun() and the FIN-409-NOT-ACTIVE catalog row both now exist in source. State plainly
+  what the decision is NOT — no RULE-FIN-* states this gate (RULE-FIN-001..017 were each read and
+  none constrains running a retired template) and AC-FIN-023 is still written "Given an active
+  recurring template", stating no outcome for an inactive one. This is a recorded human decision,
+  not a requirement that was always there, and no scenario may imply otherwise
+Test data    : the deactivated MONTHLY RECURRING template from TC-FIN-104; an OPEN period covering
+  its nextRunDate
+<!-- TC:TC-FIN-106:END -->
+
+<!-- TC:TC-FIN-107:START traces=AC-FIN-026,REQ-FIN-026,API-FIN-037,API-FIN-017 -->
+### TC-FIN-107 — a deactivated allocation rule is REFUSED at run time (FIN-409-NOT-ACTIVE)
+Derived from : AC-FIN-026 (REQ-FIN-026) · Exercises: API-FIN-037 PUT /api/v1/fin/allocation-rules/{id}/deactivate then API-FIN-017 POST /api/v1/fin/allocation-rules/{id}/run
+Rule / code  : RECORDED HUMAN DECISION, not a RULE-FIN-* → FIN-409-NOT-ACTIVE (Status.CONFLICT → 409)
+Scenario     : STATE · data class EDGE · language ALL
+Preconditions: TC-FIN-105's rule, with a non-zero source-account balance and a valid remainder-target
+  set, and today's date inside a period that exists and is OPEN — API-FIN-017 posts at
+  LocalDate.now(), not at a caller-supplied date. ONE caller performs both calls: API-FIN-037 and
+  API-FIN-017 are both gated on PERM_FIN_ALLOCATION_RULES_UPDATE
+Steps        : 1. PUT /{id}/deactivate — 2. POST /{id}/run on that same, now inactive rule —
+  3. re-read the rule (API-FIN-015) and search the period's journal entries (API-FIN-018)
+Expected     : 1. 200, isActiveFl=false — 2. 409 {code: "FIN-409-NOT-ACTIVE"}, the same bundle row
+  as TC-FIN-106: ar "هذا التعريف غير نشط ولا يمكن تشغيله" /
+  en "This definition is deactivated and cannot be run"; NO ALLOCATION entry is posted and the
+  source account's balance is untouched. AllocationRuleService.run locks the row
+  (repository.lockForRun), builds the domain and calls assertCanRun() BEFORE the target set is
+  loaded and before assertRemainderTargetSetValid evaluates RULE-FIN-003 — so a retired rule is
+  refused for being retired and never for its remainder-target set: the answer is
+  409 FIN-409-NOT-ACTIVE, never FIN-409-REMAINDER-COUNT or FIN-422-REMAINDER-NOT-POSITIVE — 3. the
+  rule is still isActiveFl=false and the period gained no ALLOCATION entry.
+  REVISED 2026-09-12 — FLIPPED, together with TC-FIN-106. It previously asserted "201, NOT an error
+  … AllocationRuleDomain.isActive() remains uncalled anywhere in the module" and was labelled a
+  KNOWN OPEN ITEM. assertCanRun() now reads exactly that `active` fact, so the flag finally has a
+  reader on the run path. As with TC-FIN-106, no RULE-FIN-* states this gate — RULE-FIN-003, the
+  rule AllocationRuleDomain otherwise owns, governs the remainder-target SET and says nothing about
+  the active flag — so it rests on a recorded human decision, not on a requirement that was always
+  there
+Test data    : the deactivated 3-target rule from TC-FIN-105; a source account with a non-zero
+  POSTED balance; an OPEN period covering today
+<!-- TC:TC-FIN-107:END -->
+
+<!-- TC:TC-FIN-108:START traces=AC-FIN-022,REQ-FIN-022,API-FIN-012,API-FIN-015,API-FIN-036,API-FIN-037 -->
+### TC-FIN-108 — the isActiveFl search filter finally discriminates on both screens
+Derived from : AC-FIN-022 (REQ-FIN-022) · Exercises: API-FIN-012 POST /api/v1/fin/recurring-templates/search · API-FIN-015 POST /api/v1/fin/allocation-rules/search
+Scenario     : HAPPY · data class VALID · language ALL
+Preconditions: two recurring templates and two allocation rules, exactly one of each deactivated
+  through API-FIN-036 / API-FIN-037; callers holding PERM_FIN_RECURRING_TEMPLATES_VIEW and
+  PERM_FIN_ALLOCATION_RULES_VIEW. `isActiveFl` is on both services' allowed field sets, so it is
+  both filterable and sortable. It travels in the body's `filters` list as the plan's EXACT
+  comparison — operator EQUALS — and its `value` must be a JSON boolean, because the shared
+  converter passes the raw value straight through to cb.equal against a Boolean attribute
+Steps        : 1. POST recurring-templates/search {filters: [isActiveFl EQUALS false]} — 2. POST
+  the same with true — 3. POST allocation-rules/search {filters: [isActiveFl EQUALS false]} —
+  4. POST the same with true — 5. POST recurring-templates/search with NO isActiveFl filter
+Expected     : 1. 200 returning ONLY the deactivated template, with its real lineCount — 2. 200
+  returning ONLY the still-active one — 3 and 4. the same split over allocation rules, each row
+  carrying its real targetCount — 5. 200 returning BOTH.
+  This is the one behaviour the two new endpoints genuinely CHANGE. Before API-FIN-036 and
+  API-FIN-037 existed, FIN_RECURRING_TEMPLATE.IS_ACTIVE_FL and FIN_ALLOCATION_RULE.IS_ACTIVE_FL
+  were NOT NULL, defaulted TRUE and had no writer reachable from the API, so an isActiveFl=false
+  search could only ever return an empty page and an isActiveFl=true search was indistinguishable
+  from no filter at all — the filter was advertised on both screens but could not discriminate.
+  Steps 1 and 3 are therefore the assertions that would have failed before this delivery
+Test data    : 2 templates and 2 allocation rules, one of each deactivated; filter values JSON
+  `false` and `true`
+<!-- TC:TC-FIN-108:END -->
+
+<!-- TC:TC-FIN-109:START traces=AC-FIN-010,REQ-FIN-010,API-FIN-020,API-FIN-011 -->
+### TC-FIN-109 — a PERCENTAGE rule line whose amountSourceValue is not a number fails loudly
+Derived from : AC-FIN-010 (REQ-FIN-010) · Exercises: API-FIN-020 POST /api/v1/fin/journal-entries/from-event
+  (the only caller of the throw site); staged through API-FIN-011 POST /api/v1/fin/event-rules/{id}/lines
+Rule / code  : RULE-FIN-010 (build half) → FIN-422-INVALID-PERCENTAGE-VALUE
+  (Status.BUSINESS_RULE_VIOLATION → HTTP 422). A malformed-stored-configuration guard, NOT a rule
+  violation: no RULE-FIN-* requires amountSourceValue to parse, and the code's own javadoc calls it
+  a "code review fix"
+Scenario     : VIOLATION · data class INVALID · language ALL
+Preconditions: an ACTIVE EventTypeRule holding one line created through API-FIN-011 with
+  amountSourceTypeCode=PERCENTAGE and amountSourceValue="abc" — a value that is NOT a well-formed
+  decimal. This is storable through the API: RuleLineService.create validates the four CODE fields
+  against MDL (ACCOUNT_DERIVATION_TYPE, AMOUNT_SOURCE_TYPE, DEBIT_CREDIT, DISTRIBUTION_TYPE) and
+  runs RULE-FIN-003's remainder-set guard, but amountSourceValue itself carries NO format
+  constraint — RuleLineCreateRequest declares it as a bare String with only an @Schema annotation,
+  no @Pattern, @Digits or @NotNull — so the bad value persists and only surfaces at build time.
+  The line must NOT be marked isRemainderFl: buildLines sets remainder lines aside BEFORE calling
+  sourcedAmount, so a remainder-marked line never reaches the parse (and PERCENTAGE + remainder is
+  already rejected by TC-FIN-052 anyway). Also required: no prior entry for this eventReference,
+  and a docDate inside an OPEN period, so nothing earlier in the path can account for the failure
+Steps        : 1. POST /from-event with a triggering event of that type, a fresh eventReference and
+  a non-zero baseAmount — 2. re-read by eventReference (API-FIN-018) — 3. repeat step 1 with the
+  same line's amountSourceValue corrected to "60" through a fresh rule/line fixture
+Expected     : 1. 422 {code: "FIN-422-INVALID-PERCENTAGE-VALUE"},
+  ar "قيمة مصدر المبلغ لهذا السطر ليست نسبة مئوية صالحة" /
+  en "This rule line's amount source value is not a valid percentage number"; NOTHING is posted —
+  the whole build runs in ONE transaction and the throw happens while the lines are still being
+  assembled, before JournalPostingService.buildValidateAndPost is entered. The validation ORDER is
+  part of this assertion: EventEntryService.build runs the RULE-FIN-004 duplicate check →
+  FIN-404-NO-ACTIVE-RULE → EventTypeRuleDomain.assertRemainderLineSetValid (RULE-FIN-003) →
+  resolvePeriodContaining → buildLines, and only then posts. So the answer is 422
+  FIN-422-INVALID-PERCENTAGE-VALUE and never the posting pipeline's aggregated
+  FIN-409-UNBALANCED / FIN-409-NOT-POSTABLE-ACCOUNT / FIN-409-PERIOD-NOT-OPEN, and never the
+  sibling FIN-422-REMAINDER-MARKER, which the same method raises on its FIRST branch for a
+  REMAINDER-sourced line (TC-FIN-052) — 2. no entry exists for that eventReference, so the event
+  can be resubmitted once the rule is fixed; the 422 consumed no docNo — 3. 201, the percentage
+  line computes normally, proving the refusal was the unparseable value and nothing else.
+  ADDED 2026-09-12 to close a real coverage gap: FIN-422-INVALID-PERCENTAGE-VALUE was a registered
+  constant with a live throw site and both bundle rows, and NO scenario exercised it. It is not a
+  code this revision's work introduced
+Test data    : an active rule with one non-remainder PERCENTAGE line, amountSourceValue "abc";
+  baseAmount 1000.00; a fresh eventReference; then the same fixture with "60"
+<!-- TC:TC-FIN-109:END -->
 <!-- SUB:API-SCENARIOS:END -->
 <!-- PHASE:TEST-PLAN-BE:END -->
 
-<!-- PHASE:INT-XM:START traces=REQ-FIN-001,REQ-FIN-037,REQ-FIN-038,XM-FIN-001,XM-FIN-002 -->
-FIN declares two XM: XM-FIN-001 (SOFT-READ → MDL's lookup values) and XM-FIN-002 (READ → SEC's
-user→permission directory, registered at ALIGN-BE for the RULE-FIN-015 fact). MDL and SEC are
-both in the current selection, so both are real linking atoms.
+<!-- PHASE:INT-XM:START traces=REQ-FIN-001,REQ-FIN-037,REQ-FIN-038,XM-FIN-001 -->
+FIN declares exactly ONE XM: XM-FIN-001 (SOFT-READ → MDL's lookup values), consumed by
+FinLookupValidationService through the injected MdlLookupApi. MDL is in the current selection, so it
+is a real linking atom.
+XM-FIN-002 (READ → SEC's user→permission directory, registered at ALIGN-BE for the RULE-FIN-015
+fact) NO LONGER EXISTS — REVISED 2026-09-12. Its only consumer, FinSeparationOfDutiesService, was
+deleted by a recorded human decision, and nothing under com.erp.fin imports com.erp.sec.crossmodule
+any more. XM coverage for this module is therefore 1/1, down from 2/2. TC-FIN-091, which existed
+solely to exercise that call, is RETIRED below rather than deleted, so no id renumbers.
 
 <!-- TC:TC-FIN-047:START traces=XM-FIN-001,REQ-FIN-001,API-FIN-002 -->
 ### TC-FIN-047 — MDL lookup-type not-found is translated into a FIN error code
@@ -1325,23 +1603,30 @@ Expected     : the request fails with FIN-400-INVALID-LOOKUP, message ar "الق
 Test data    : any account payload; MDL's ACCOUNT_TYPE lookup type deactivated (or the MdlLookupApi test double configured to throw MDL_404_TYPE_KEY)
 <!-- TC:TC-FIN-047:END -->
 
-<!-- TC:TC-FIN-091:START traces=XM-FIN-002,REQ-FIN-037,REQ-FIN-038,API-FIN-026 -->
-### TC-FIN-091 — a failed SEC directory read refuses the close instead of approving it
-Derived from : XM-FIN-002 (REQ-FIN-037, REQ-FIN-038) · Exercises: API-FIN-026 PATCH /api/v1/fin/fiscal-periods/{id}/hard-close (same translation on API-FIN-027)
-Rule / code  : XM-FIN-002 (READ) → FIN-403-SOD-VIOLATION — never a 500, and never SEC's own code
-Scenario     : INTEGRATION · data class EDGE · language ALL
-Preconditions: the RULE-FIN-015 fact comes from SEC's
-  `SecUserDirectoryApi.findUserIdsHoldingPermission`, called twice (for
-  PERM_FIN_PERIODS_CLOSE_APPROVE and PERM_FIN_JOURNAL_ENTRIES_CREATE). XM-FIN-002 is in-process
-  Spring injection inside the single deployable — there is no network hop, so the failure mode to
-  drive is the injected directory throwing, not a timeout: configure the `SecUserDirectoryApi` test
-  double to raise on the first call. Also set up TC-FIN-059's approver, so the call would otherwise
-  succeed and the 403 can only come from the failed read
-Steps        : 1. hard-close a SOFT_CLOSE period while the directory read fails
-Expected     : 403 FIN-403-SOD-VIOLATION with FIN's own ar/en messages; the period stays SOFT_CLOSE.
-  The fallback is never "continue without SEC" — an unverified separation-of-duties fact refuses
-  the close rather than approving it
-Test data    : `SecUserDirectoryApi` double throwing on findUserIdsHoldingPermission; a soft-closed period
+<!-- TC:TC-FIN-091:START traces=REQ-FIN-037,REQ-FIN-038,API-FIN-026 -->
+### TC-FIN-091 — RETIRED 2026-09-12 — asserts nothing; the SEC directory read it exercised no longer exists
+Derived from : (was XM-FIN-002) · Exercised: API-FIN-026 PATCH /api/v1/fin/fiscal-periods/{id}/hard-close
+Rule / code  : none — this TC is RETIRED and contributes NO coverage
+Scenario     : RETIRED — do not implement, do not count as a gap
+Status       : RETIRED 2026-09-12. The id is deliberately kept, never deleted and never renumbered,
+  because it is referenced from the TC TRACEABILITY INDEX, test-execution-manifest-fin.md and
+  packages/backend-test/state.json. Any runner that enumerates TCs must SKIP it and must NOT report
+  it as a coverage gap.
+Why retired  : it existed only to drive XM-FIN-002 — a test double for
+  `SecUserDirectoryApi.findUserIdsHoldingPermission` throwing on the first call — and to assert that
+  an unverified separation-of-duties fact answers 403 FIN-403-SOD-VIOLATION rather than approving the
+  close. FIN makes no such call any more. FinSeparationOfDutiesService, FIN's only consumer of
+  SecUserDirectoryApi, and FiscalPeriodDomain.assertCanHardClose(boolean, boolean) with it, were
+  deleted by a recorded human decision; nothing under com.erp.fin imports com.erp.sec.crossmodule,
+  and FIN-403-SOD-VIOLATION has no throw site anywhere in the module. There is no mock to install,
+  no call to fail and no code to answer — so there is nothing real left to assert, which is why this
+  was RETIRED rather than rewritten (unlike TC-FIN-059/060/061, each of which still had a true
+  assertion available).
+Coverage moved: REQ-FIN-037 is covered by TC-FIN-037 (closedBy/closedAt recorded as a distinct act)
+  and now also by TC-FIN-059's Expected. REQ-FIN-038 is covered by TC-FIN-038 and TC-FIN-060 (the
+  denial, on API-FIN-026 and API-FIN-027), TC-FIN-061 (the satisfied direction) and TC-FIN-062 (the
+  gateway resolution). Neither REQ loses coverage. XM coverage DOES drop, 2/2 → 1/1
+Test data    : none
 <!-- TC:TC-FIN-091:END -->
 <!-- PHASE:INT-XM:END -->
 
@@ -1357,8 +1642,8 @@ Test data    : `SecUserDirectoryApi` double throwing on findUserIdsHoldingPermis
 | AC-FIN-012 | TC-FIN-054, 055 | REQ-FIN-012 | API-FIN-020 | RULE-FIN-010 / FIN-422-REMAINDER-NOT-POSITIVE | — |
 | AC-FIN-036 | TC-FIN-056, 084, 085, 086 | REQ-FIN-036 | API-FIN-027 | RULE-FIN-008 year-end exemption / FIN-409-PERIODS-NOT-CLOSED, FIN-409-INVALID-TRANSITION, FIN-404-YEAR, FIN-404-ACCOUNT | — |
 | AC-FIN-002 | TC-FIN-057, 058, 071 | REQ-FIN-002, REQ-FIN-003 | API-FIN-002, 003, 004, 028 | RULE-FIN-001 / FIN-409-PARENT-NOT-LEAF-ELIGIBLE, FIN-404-ACCOUNT | — |
-| AC-FIN-034 | TC-FIN-059 | REQ-FIN-034, REQ-FIN-038 | API-FIN-026 | RULE-FIN-015 (satisfied path) | XM-FIN-002 |
-| AC-FIN-038 | TC-FIN-060, 061, 062 | REQ-FIN-038 | API-FIN-026, 027 | RULE-FIN-015 / FIN-403-SOD-VIOLATION; gateway / platform ACCESS_DENIED (catalog FIN-403-FORBIDDEN) | XM-FIN-002 |
+| AC-FIN-034 | TC-FIN-059 | REQ-FIN-034, REQ-FIN-038 | API-FIN-026 | RULE-FIN-015 (satisfied path — the distinct-permission @PreAuthorize gate is the whole enforcement) | — |
+| AC-FIN-038 | TC-FIN-038, 060, 062 (denial) · TC-FIN-061 (REQ-FIN-038 satisfied) | REQ-FIN-038 | API-FIN-026, 027 | RULE-FIN-015 / FIN-403-FORBIDDEN — FIN-403-SOD-VIOLATION has no throw site and is asserted by nothing | — |
 | AC-FIN-001 | TC-FIN-063, 064, 070 | REQ-FIN-001 | API-FIN-001, 002 | FIN-400-INVALID-SORT, FIN-409-ACCOUNT-DUP | — |
 | AC-FIN-004 | TC-FIN-065, 072 | REQ-FIN-004 | API-FIN-005, 006 | FIN-409-DIMENSION-DUP | — |
 | AC-FIN-005 | TC-FIN-066 | REQ-FIN-005 | API-FIN-008 | FIN-404-DIMENSION | — |
@@ -1375,10 +1660,10 @@ Test data    : `SecUserDirectoryApi` double throwing on findUserIdsHoldingPermis
 | AC-FIN-014 | TC-FIN-087, 088 | REQ-FIN-014 | API-FIN-019, 022 | docNo `JV-{fiscalYearCode}-{NNNNNN}` (business code, no error row) | — |
 | AC-FIN-043 | TC-FIN-089 | REQ-FIN-043 | API-FIN-032 | FIN-404-DIMENSION | — |
 | AC-FIN-045 | TC-FIN-090 | REQ-FIN-045 | API-FIN-010, 002 | FIN-400-INVALID-LOOKUP | XM-FIN-001 |
-| — | TC-FIN-091 | REQ-FIN-037, REQ-FIN-038 | API-FIN-026 | FIN-403-SOD-VIOLATION (failure translation) | XM-FIN-002 |
+| — | TC-FIN-091 — **RETIRED 2026-09-12**, covers nothing | REQ-FIN-037 → TC-FIN-037/059 · REQ-FIN-038 → TC-FIN-038/060/061/062 | API-FIN-026 | none — XM-FIN-002 and FIN-403-SOD-VIOLATION are both unreachable | — |
 | AC-FIN-013 | TC-FIN-092 | REQ-FIN-013, REQ-FIN-007 | API-FIN-034, API-FIN-020 | RULE-FIN-005 / FIN-404-NO-ACTIVE-RULE (reachable via deactivation) | — |
 | AC-FIN-021 | TC-FIN-093 | REQ-FIN-021, REQ-FIN-005 | API-FIN-035, API-FIN-019 | RULE-FIN-009 / FIN-409-INVALID-DIMENSION (inactive-value branch) | — |
-| AC-FIN-031 | TC-FIN-094, 095 | REQ-FIN-031 | API-FIN-033 | FIN-400-INVALID-SORT; platform ACCESS_DENIED | — |
+| AC-FIN-031 | TC-FIN-094, 095 | REQ-FIN-031 | API-FIN-033 | FIN-400-INVALID-SORT; FIN-403-FORBIDDEN | — |
 | AC-FIN-007 | TC-FIN-096, 097 | REQ-FIN-007 | API-FIN-034, API-FIN-010 | FIN-404-RULE; FIN-409-RULE-DUP (deactivate does not free the event type) | — |
 | AC-FIN-005 | TC-FIN-098 | REQ-FIN-005 | API-FIN-035 | FIN-404-DIMVALUE | — |
 | AC-FIN-040 | TC-FIN-099 | REQ-FIN-040 | API-FIN-029 | FIN-404-PERIOD (only when periodId is supplied) | — |
@@ -1386,13 +1671,52 @@ Test data    : `SecUserDirectoryApi` double throwing on findUserIdsHoldingPermis
 | AC-FIN-042 | TC-FIN-101 | REQ-FIN-042 | API-FIN-031 | FIN-404-YEAR, FIN-404-PERIOD | — |
 | AC-FIN-036 | TC-FIN-102 | REQ-FIN-036 | API-FIN-027, API-FIN-019 | dormant close: empty line sets, RULE-FIN-006 reads 0 = 0 as balanced; VALIDATION_ERROR on `lines: []` | — |
 | AC-FIN-021 | TC-FIN-103 | REQ-FIN-021 | API-FIN-019 | RULE-FIN-009 / FIN-409-INVALID-DIMENSION (wrong-dimension branch) | — |
+| AC-FIN-022 | TC-FIN-104 | REQ-FIN-022 | API-FIN-036 | FIN-404-TEMPLATE; FIN-403-FORBIDDEN (no SRS rule guards a deactivate) | — |
+| AC-FIN-025 | TC-FIN-105 | REQ-FIN-025 | API-FIN-037 | FIN-404-ALLOCATION-RULE; FIN-403-FORBIDDEN (no SRS rule guards a deactivate) | — |
+| AC-FIN-023 | TC-FIN-106 | REQ-FIN-023 | API-FIN-036, API-FIN-014 | FIN-409-NOT-ACTIVE (409) via RecurringTemplateDomain.assertCanRun() — recorded human decision, no RULE-FIN-* states it | — |
+| AC-FIN-026 | TC-FIN-107 | REQ-FIN-026 | API-FIN-037, API-FIN-017 | FIN-409-NOT-ACTIVE (409) via AllocationRuleDomain.assertCanRun() — recorded human decision, no RULE-FIN-* states it | — |
+| AC-FIN-022 | TC-FIN-108 | REQ-FIN-022 | API-FIN-012, API-FIN-015 | isActiveFl(EXACT) filter now discriminates (no error row) | — |
+| AC-FIN-010 | TC-FIN-109 | REQ-FIN-010 | API-FIN-020, API-FIN-011 | RULE-FIN-010 (build half) / FIN-422-INVALID-PERCENTAGE-VALUE — malformed stored config, not a rule violation | — |
 
 ## COVERAGE
-AC covered 46/46 (0 gaps) · REQ covered 46/46 · API covered 35/35, each with a happy path AND its
-principal failure. The three endpoints added since the previous count are API-FIN-033 (period
+RE-MEASURED 2026-09-12. TC ids 109 (TC-FIN-109 added, nothing renumbered) · TCs IN FORCE 108
+(TC-FIN-091 RETIRED — it is not a gap and must not be counted as one) · AC covered 46/46 (0 gaps) ·
+REQ covered 46/46 · XM covered 1/1, DOWN from 2/2 · 40 FIN error-code constants, of which 39 are
+exercised.
+AC-FIN-038 keeps THREE denial TCs (TC-FIN-038, TC-FIN-060, TC-FIN-062) plus TC-FIN-061 for
+REQ-FIN-038's satisfied direction, so neither AC-FIN-038 nor REQ-FIN-038 loses coverage when
+TC-FIN-091 retires; REQ-FIN-037 keeps TC-FIN-037 and gains TC-FIN-059's closedBy/closedAt assertion.
+API covered 37/37, each with a happy path AND its
+principal failure — 37 re-counted against the delivered controllers, which carry API-FIN-001…037
+with no gap (API-FIN-028…032 are ReportController's five). The TWO endpoints added since the
+previous count are API-FIN-036 (deactivate recurring template — TC-FIN-104: happy with a correct
+lineCount, FIN-404-TEMPLATE and FIN-403-FORBIDDEN) and API-FIN-037 (deactivate allocation rule —
+TC-FIN-105: the same three, with a correct targetCount). Both reuse an existing permission
+(FIN_RECURRING_TEMPLATES/UPDATE and FIN_ALLOCATION_RULES/UPDATE, seeded by
+V24__fin_security_seed.sql), so neither needed a migration and neither added an error code. The
+three endpoints added in the count before that are API-FIN-033 (period
 search — TC-FIN-094 happy, TC-FIN-095 FIN-400-INVALID-SORT and the 403), API-FIN-034 (deactivate
 event-type rule — TC-FIN-096 happy and FIN-404-RULE, TC-FIN-097 the duplicate-code limitation) and
 API-FIN-035 (deactivate dimension value — TC-FIN-098 happy and FIN-404-DIMVALUE).
+CLOSED 2026-09-12 — the KNOWN OPEN ITEM this section used to carry is resolved in code, and the two
+scenarios that pinned it are flipped. API-FIN-036 and API-FIN-037 now GATE both run paths:
+RecurringTemplateDomain.assertCanRun() and AllocationRuleDomain.assertCanRun() throw
+LocalizedException(Status.CONFLICT, FIN_409_NOT_ACTIVE), so API-FIN-014 and API-FIN-017 answer
+409 FIN-409-NOT-ACTIVE on a deactivated definition and post nothing. Each guard runs FIRST, before
+the period is resolved / before the target set is loaded, so the refusal precedes RULE-FIN-006/007/
+008/009 and RULE-FIN-003 respectively. TC-FIN-106 and TC-FIN-107 assert that; they previously
+asserted "201, still runs and still posts", which would now FAIL.
+State plainly what this gate is NOT: no REQ, AC or RULE-FIN-* requires it. RULE-FIN-001..017 were
+each read and none constrains running a retired template or rule; AC-FIN-023 and AC-FIN-026 state
+outcomes only for the ACTIVE case. FIN-409-NOT-ACTIVE and both assertCanRun() methods rest on a
+RECORDED HUMAN DECISION, not on a requirement that was always there — no scenario may imply
+otherwise.
+Deactivation itself is still UNGUARDED on the way in — nothing is delegated before the mutation, and
+re-deactivating stays idempotent — which is exactly what TC-FIN-104 and TC-FIN-105 assert and which
+the gate does not change. The other thing the two endpoints change is that the isActiveFl(EXACT)
+filter advertised on API-FIN-012 and API-FIN-015 finally discriminates — before them the column was
+NOT NULL, defaulted TRUE and had no writer reachable from the API — and that is TC-FIN-108, also
+unaffected.
 SUPERSEDED, and stated plainly because this file previously claimed the opposite: API-FIN-029/030/031
 no longer "declare no reachable failure of their own, so none was invented". The report service now
 resolves the keying id first, so API-FIN-030 and API-FIN-031 answer FIN-404-YEAR on an unknown
@@ -1402,16 +1726,31 @@ stays a valid 200 across all periods (TC-FIN-099), so a scenario asserting 404 o
 periodId would be wrong · every selected-module
 (AC-FIN-030 carries two TCs — TC-FIN-030 for the non-POSTED half of RULE-FIN-013 and
 TC-FIN-048 for its double-reversal half; the 1:1 row above is otherwise unchanged.)
-XM covered 2/2 (XM-FIN-001 → TC-FIN-047 and TC-FIN-090; XM-FIN-002 → TC-FIN-091, including the
-failure translation into FIN-403-SOD-VIOLATION).
+XM covered 1/1 (XM-FIN-001 → TC-FIN-047 and TC-FIN-090). DOWN FROM 2/2, said plainly rather than
+quietly re-based: XM-FIN-002 (FIN → SEC's user→permission directory) NO LONGER EXISTS.
+FinSeparationOfDutiesService, FIN's only consumer of SecUserDirectoryApi, was deleted by a recorded
+human decision, and nothing under com.erp.fin imports com.erp.sec.crossmodule any more — FIN's sole
+crossmodule import today is com.erp.mdl.crossmodule.MdlLookupApi, in FinLookupValidationService.
+TC-FIN-091 existed only to exercise that SEC call and is RETIRED — its id is kept so nothing
+renumbers, it contributes no coverage, and a runner must skip it rather than report it as a gap.
+Note for the governance owner, NOT fixed here (out of this session's scope): XM-FIN-002 is still
+declared in P2/db-script-fin.md, P3_1/backend-execution-plan-fin.md and several
+packages/backend-execution/ files. Those declarations are now stale.
 RULE covered 17/17, each with both paths, except where the rule has no violated path by
 construction: RULE-FIN-011 and RULE-FIN-012 are success-path only (TC-FIN-028/029) and
 RULE-FIN-016 is enforced by omission — there is no route to violate, which TC-FIN-016/017
 assert. RULE-FIN-017 is covered by TC-FIN-049/050 (violated) and TC-FIN-051 (satisfied, at both
 inclusive period bounds); RULE-FIN-008's year-end exemption by TC-FIN-056; RULE-FIN-010's
 per-side computation by TC-FIN-054 and its non-positive residue by TC-FIN-055; RULE-FIN-015 by
-TC-FIN-059 (satisfied), TC-FIN-038/060/061 (violated: creator-only, nobody holding
-close-approval, one user holding both). RULE-FIN-005's violated path is now covered twice, from two
+TC-FIN-059 (satisfied, API-FIN-026) and TC-FIN-061 (satisfied, API-FIN-027, by a caller holding BOTH
+permission codes) against TC-FIN-038 and TC-FIN-060 (violated: a role without
+PERM_FIN_PERIODS_CLOSE_APPROVE is denied, on API-FIN-026 and API-FIN-027 respectively). REVISED
+2026-09-12 — the previous reading of this rule ("violated: creator-only, nobody holding
+close-approval, one user holding both") is FALSE. The rule is satisfied by the DISTINCT PERMISSION
+alone, enforced by SEC's own mechanism, exactly as RULE-FIN-015's Data source line and AC-FIN-038
+state; it was never a requirement that the two permissions' USER SETS be disjoint. The deleted
+FinSeparationOfDutiesService enforced that stricter reading and refused the close for everyone
+whenever any one user held both codes. RULE-FIN-005's violated path is now covered twice, from two
 different starting states: TC-FIN-013 from an event type that never had a rule, and TC-FIN-092 from
 one whose rule was retired through API-FIN-034 — a transition nothing could stage through the API
 before that endpoint existed. RULE-FIN-009 is now covered on BOTH of its
@@ -1421,19 +1760,64 @@ as data), and the wrong-dimension branch by TC-FIN-103 — a real hole until now
 a single `if` over both conditions and nothing exercised the second one. Both branches answer the
 same FIN-409-INVALID-DIMENSION by design, so the pair is distinguished by its fixture, never by the
 response.
-ERROR CODES: all 37 registered `FinErrorCodes` constants are reachable by at least one scenario
-(36 before this delivery; FIN-404-DIMVALUE is the one added, covered by TC-FIN-098 and never
-conflated with the parent's FIN-404-DIMENSION). Both bundles carry exactly 37 `FIN-*` keys, matching
-the constant count.
-Three catalog rows are deliberately NOT given a scenario and are not constants: FIN-503 is struck
-(XM-FIN-001 is in-process injection, so no 503 producer exists), FIN-500 is the infrastructure
-fallthrough with no sanctioned way to provoke it from the API surface, and FIN-403-FORBIDDEN never
-reaches the wire as a FIN code — TC-FIN-062 asserts the platform `ACCESS_DENIED` body instead,
-which is deliberate platform behaviour, not a FIN scenario gap. The localization half of the old
-ERROR ENVELOPE finding is CLOSED: the shared handler now resolves that body's message through
-MessageSource and `ACCESS_DENIED` is registered in both bundles, so TC-FIN-062 expects an ar/en
-message. The wire `code` is unchanged — still `ACCESS_DENIED`, never FIN-403-FORBIDDEN — and the
-English text is byte-identical to before, so only Arabic callers see any change. All 14 of the plan's §12 must-honor
+ERROR CODES, re-measured in source for this revision and not carried over: 40 `FinErrorCodes`
+constants, 40 `^FIN-` keys in messages.properties and 40 in messages_ar.properties — all three sets
+identical, compared key by key. Up from the 38 this file last recorded; the three added since are
+FIN-403-FORBIDDEN, FIN-409-NOT-ACTIVE and FIN-422-INVALID-PERCENTAGE-VALUE (FIN-403-SOD-VIOLATION
+was not removed from either the constants or the bundles — see below).
+Of those 40, 39 are exercised by at least one scenario. The ONE that is not, stated rather than
+hidden:
+  · FIN-403-SOD-VIOLATION — the constant (FinErrorCodes) and both bundle rows still exist, but the
+    code has NO throw site anywhere in com.erp.fin: FinSeparationOfDutiesService and
+    FiscalPeriodDomain.assertCanHardClose(boolean, boolean) were deleted by a recorded human
+    decision, and FiscalPeriodDomain now carries an explicit "there is deliberately NO
+    assertCanHardClose(...) method here" comment in its place. No scenario can produce it and none
+    claims to any more. Whether the Error Catalog row itself is struck is a separate edit to the
+    catalog, deliberately NOT made here.
+CLOSED 2026-09-12: FIN-422-INVALID-PERCENTAGE-VALUE was the second such row when this revision
+began — a registered constant with both bundle rows and a live throw site
+(EventTypeRuleDomain.sourcedAmount, the PERCENTAGE branch's NumberFormatException catch) that NO
+scenario exercised. It is reachable: RuleLineCreateRequest puts no format constraint on
+amountSourceValue, so API-FIN-011 stores an unparseable one and API-FIN-020 — the throw site's only
+caller — raises 422 while building the lines. TC-FIN-109 now covers it. That code was NOT introduced
+by this revision's work; the gap predated it.
+FIN-409-NOT-ACTIVE is the code the run-gate decision added and is covered by TC-FIN-106 and
+TC-FIN-107. FIN-403-FORBIDDEN is covered by TC-FIN-038 and TC-FIN-060 (both re-pointed at it this
+revision) plus TC-FIN-062, TC-FIN-095, TC-FIN-098, TC-FIN-104 and TC-FIN-105; FIN-404-DIMVALUE by
+TC-FIN-098, never conflated with the parent's FIN-404-DIMENSION. FIN-404-TEMPLATE has a second
+producer (TC-FIN-104 alongside TC-FIN-076) and FIN-404-ALLOCATION-RULE likewise (TC-FIN-105
+alongside TC-FIN-077).
+SEPARATELY from those two unexercised CONSTANTS, TWO Error Catalog rows are deliberately NOT given
+a scenario and are not constants at all: FIN-503 is struck
+(XM-FIN-001 is in-process injection, so no 503 producer exists) and FIN-500 is the infrastructure
+fallthrough with no sanctioned way to provoke it from the API surface. FIN-403-FORBIDDEN was a third
+such row until FinForbiddenAdvisor landed, and this file previously claimed it "never reaches the
+wire as a FIN code" — that is now FALSE. The advisor intercepts every AccessDeniedException raised
+inside `com.erp.fin.service` and re-raises it as LocalizedException(FORBIDDEN, FIN_403_FORBIDDEN),
+so a @PreAuthorize denial on any FIN service answers FIN's own code with a bundle-resolved message:
+ar "لا تملك صلاحية المالية المطلوبة لهذه العملية" /
+en "You do not hold the Finance permission required for this operation".
+All 42 @PreAuthorize annotations in FIN sit on `com.erp.fin.service` methods (none on a controller,
+none anywhere else under com.erp.fin; 42 re-counted in source for this revision — this file
+previously recorded 43, measured before FinSeparationOfDutiesService was deleted, and "44" before
+that; the two deactivate methods are part of the current 42)
+and SecurityConfig adds no URL-level authority rule for FIN, so in practice every FIN permission
+denial takes that path. Two boundaries stay true and no scenario may claim otherwise: a denial raised
+by the Spring Security filter chain BEFORE any FIN service is entered is written by
+SecSecurityErrorHandler and still answers SEC-403-FORBIDDEN (unreachable for FIN today —
+SecurityConfig authorizes FIN paths with `.anyRequest().authenticated()` only — but it exists); and
+FIN-403-SOD-VIOLATION is moot rather than "unaffected". This file previously said the advisor never
+sees it, "which is exactly what TC-FIN-059/060/061/091 assert" — FALSE on both halves as of
+2026-09-12: the code has no throw site at all, and not one of those four scenarios asserts it any
+more (TC-FIN-059 and TC-FIN-061 are success paths, TC-FIN-060 asserts FIN-403-FORBIDDEN, TC-FIN-091
+is RETIRED).
+PLATFORM I18N, residual: `INTERNAL_ERROR`, `DATA_INTEGRITY_VIOLATION`, `VALIDATION_ERROR` and
+`ACCESS_DENIED` now all resolve through MessageSource. One half stays open and is stated here rather
+than hidden: GlobalExceptionHandler.handleMalformedRequestBody emits hardcoded English
+("The request body is malformed or does not match the expected structure") because it shares the
+`VALIDATION_ERROR` wire code with the bean-validation handler but needs different text, and one
+bundle key cannot carry two messages — so an Arabic caller sending a malformed body still gets
+English. No TC asserts a localized message for that response. All 14 of the plan's §12 must-honor
 points are individually exercised: 1→TC-018, 2→TC-040 (sign presentation, checked
 structurally by the report), 3→TC-019, 4→TC-020, 5→TC-018/all amount fields (CHK
 constraint, exercised implicitly by every posting TC), 6→TC-012/026, 7→TC-028, 8→TC-040,
