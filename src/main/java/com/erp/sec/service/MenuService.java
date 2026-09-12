@@ -2,11 +2,13 @@ package com.erp.sec.service;
 
 import com.erp.common.domain.status.ServiceResult;
 import com.erp.common.util.SecurityContextHelper;
+import com.erp.sec.domain.RoleActionGrantDomain;
 import com.erp.sec.dto.ModuleMenuResponse;
 import com.erp.sec.dto.ScreenMenuResponse;
 import com.erp.sec.entity.User;
 import com.erp.sec.mapper.ModuleRegistryMapper;
 import com.erp.sec.mapper.ScreenRegistryMapper;
+import com.erp.sec.repository.EffectiveGrantProjection;
 import com.erp.sec.repository.ModuleRegistryRepository;
 import com.erp.sec.repository.RoleActionGrantRepository;
 import com.erp.sec.repository.ScreenRegistryRepository;
@@ -77,6 +79,41 @@ public class MenuService {
             .map(caller -> Set.copyOf(
                 roleActionGrantRepository.findEffectivePermissionCodesForUser(caller.getUserPk())))
             .orElseGet(Set::of);
+
+        return ServiceResult.success(codes);
+    }
+
+    /**
+     * The same read path with RULE-SEC-007 applied: a non-VIEW permission survives only while its
+     * screen's VIEW is also held. REQ-SEC-033's {@code JwtAuthenticationFilter} installs exactly
+     * this set as the caller's authorities.
+     *
+     * <p>The screen of each held code is the registry's {@code SEC_SCREEN_REG} row, read in the
+     * very same query as the codes themselves (QR-SEC-027's registry shape) — never derived from
+     * the permission code's text. A code's action may be any number of words
+     * ({@code PERM_FIN_PERIODS_CLOSE_APPROVE} on screen {@code FIN_PERIODS}, gated by
+     * {@code PERM_FIN_PERIODS_VIEW}) and still resolve to the right screen, which a split on the
+     * code's last underscore cannot do. One query per call, no per-code lookup.
+     */
+    @Transactional(readOnly = true)
+    @PreAuthorize("isAuthenticated()")
+    public ServiceResult<Set<String>> effectiveAuthorityCodes() {
+        log.debug("Resolving the gateway-applied permission codes of the authenticated caller");
+
+        List<EffectiveGrantProjection> grants = resolveCaller()
+            .map(caller -> roleActionGrantRepository.findEffectiveGrantsForUser(caller.getUserPk()))
+            .orElseGet(List::of);
+
+        Set<Long> screensWithGateway = grants.stream()
+            .filter(grant -> RoleActionGrantDomain.isGatewayAction(grant.actionCode()))
+            .map(EffectiveGrantProjection::screenRegPk)
+            .collect(Collectors.toUnmodifiableSet());
+
+        Set<String> codes = grants.stream()
+            .filter(grant -> RoleActionGrantDomain.isGatewayAction(grant.actionCode())
+                || screensWithGateway.contains(grant.screenRegPk()))
+            .map(EffectiveGrantProjection::permissionCode)
+            .collect(Collectors.toUnmodifiableSet());
 
         return ServiceResult.success(codes);
     }

@@ -115,12 +115,12 @@ in place of a generic `key`, cited per field).
 ### ENT-FIN-004 — رأس قيد اليومية / JournalEntry
 | Kind | Ownership | Business number | Operations | Cross-module | Source |
 |---|---|---|---|---|---|
-| transactional | PRIVATE | **Yes** — `docNo` is exactly the numbered transactional document case [§3.3 test (c)]: system-generated on first save, read-only after, unique per fiscal year, from the platform numbering engine | create (4 sources), read, search, reverse | none | general-accounting-system-plan-en.md §7, §8, §9 |
+| transactional | PRIVATE | **Yes** — `docNo` is exactly the numbered transactional document case [§3.3 test (c)]: system-generated on first save, read-only after, unique per fiscal year. Format `JV-{fiscalYearCode}-{NNNNNN}` (e.g. `JV-2026-000123`), counter scoped per `fiscalYearId` and restarting at `000001` each year, one counter across all journal types, produced by a FIN-local generator in `com.erp.fin` — NOT a "platform numbering engine", which does not exist in this platform and never did | create (4 sources), read, search, reverse | none | general-accounting-system-plan-en.md §7, §8, §9 |
 
 | Field | Logical type | Required | Values / source | Notes | Label-ar | Label-en |
 |---|---|---|---|---|---|---|
 | journalEntryPk | number | yes (system) | — | primary key | معرّف القيد | Journal entry id |
-| docNo | text | yes (system) | platform numbering engine; unique per fiscalYearId | read-only after create | رقم المستند | Document number |
+| docNo | text | yes (system) | FIN-local generator (`com.erp.fin`), format `JV-{fiscalYearCode}-{NNNNNN}`; unique per fiscalYearId (UQ_FIN_JOURNAL_ENTRY_YEAR_DOCNO) | read-only after create | رقم المستند | Document number |
 | docDate | date | yes | — | — | تاريخ المستند | Document date |
 | fiscalYearId | reference | yes | ENT-FIN-007 | — | السنة المالية | Fiscal year |
 | periodId | reference | yes | ENT-FIN-008; must be Open at post [RULE-FIN-008] | — | الفترة | Period |
@@ -679,17 +679,17 @@ Pattern    : unwanted
 Statement  : If an entry is not POSTED, then the system shall reject a reverse action on it.
 Traces     : US-FIN-009
 Entities   : ENT-FIN-004
-Rationale  : RULE-FIN-013 — prevents double-reversal or reversing a DRAFT/VOID row
+Rationale  : RULE-FIN-013 — prevents double-reversal (an entry that already carries a reversal link) or reversing a DRAFT row
 Source     : general-accounting-system-plan-en.md §9
 Priority   : MEDIUM
 #### AC-FIN-030 — [REQ-FIN-030]
-Given an entry already reversed once (statusCode=VOID via its own reversal link)
+Given an entry already reversed once (it stays POSTED and carries a reversalEntryId link to its reversal)
 When an accountant attempts to reverse it again
 Then the system rejects the action
 
 ### REQ-FIN-031 — إنشاء سنة مالية وفتراتها / Create a fiscal year with its periods
 Pattern    : event
-Statement  : When a finance administrator creates a fiscal year, the system shall generate its periods in the Open state per the chosen calendar.
+Statement  : When a finance administrator creates a fiscal year, the system shall generate its periods in the Open state per the chosen calendar. As built: a `periodCount` of twelve over a whole year generates the twelve calendar months, named from the JDK's CLDR month names in Arabic and English; any other count falls back to an even day split named "الفترة N" / "Period N".
 Traces     : US-FIN-010
 Entities   : ENT-FIN-007, ENT-FIN-008
 Rationale  : §10.1-§10.2
@@ -918,7 +918,7 @@ Source     : general-accounting-system-plan-en.md §4.2
 ### RULE-FIN-003 — سطر/هدف باقٍ واحد بالضبط عند التوزيع النسبي / Exactly one remainder line/target under percentage distribution
 Scope      : ENT-FIN-010, ENT-FIN-014
 Trigger    : on create/update (rule line or allocation target set)
-Statement  : The system shall require exactly one line or target marked as the remainder whenever any sibling line or target uses percentage distribution.
+Statement  : The system shall require exactly one line or target marked as the remainder whenever the set forms a compound or percentage distribution — that is, whenever any sibling line or target uses percentage distribution, or any line or target is already marked as the remainder (POL-FIN-006). The marker is `isRemainderFl`; a line or target whose marker disagrees with its own REMAINDER distribution/amount-source type code is rejected, since which line is the remainder decides every other line's amount under RULE-FIN-010.
 Data source: ENT-FIN-010.isRemainderFl, ENT-FIN-010.distributionTypeCode, ENT-FIN-014.isRemainderFl, ENT-FIN-014.distributionTypeCode
 Message    : ar: "يلزم تحديد سطر باقٍ واحد بالضبط عند وجود توزيع نسبي" · en: "Exactly one remainder line is required when any percentage distribution is present"
 Traces     : REQ-FIN-009
@@ -963,7 +963,7 @@ Source     : general-accounting-system-plan-en.md §12.3
 ### RULE-FIN-008 — بوابة الفترة عند الترحيل / Period gate at post time
 Scope      : ENT-FIN-004, ENT-FIN-008
 Trigger    : on post (any source)
-Statement  : The system shall reject posting an entry whose period is not Open at that moment.
+Statement  : The system shall reject posting an entry whose period is not Open at that moment, except the year-end closing and opening entries generated by the year-end close (REQ-FIN-036, API-FIN-027), which are exempt from this gate: that close may only run once every period of the year is Hard Closed, so no Open period exists for its own entries by construction. The exemption is part of this rule and applies to no other entry and to no other rule — RULE-FIN-006, RULE-FIN-007 and RULE-FIN-009 apply to both generated entries in full.
 Data source: ENT-FIN-004.periodId, ENT-FIN-008.statusCode
 Message    : ar: "الفترة المستهدفة غير مفتوحة" · en: "The target period is not open"
 Traces     : REQ-FIN-020
@@ -981,7 +981,7 @@ Source     : general-accounting-system-plan-en.md §8.1
 ### RULE-FIN-010 — سطر الباقي يمتص فرق التقريب / The remainder line absorbs the rounding difference
 Scope      : ENT-FIN-005, ENT-FIN-010, ENT-FIN-014
 Trigger    : on build (compound/percentage distribution — rule engine or allocation)
-Statement  : The system shall compute the remainder line's amount as the total minus the sum of every other line, after every percentage line rounds to the smallest currency unit; the remainder line is never itself computed as a percentage.
+Statement  : The system shall compute the remainder line's amount per posting side — the total already carried by the opposing side minus the sum of every other line on the remainder line's own side — after every percentage line rounds to the smallest currency unit. The remainder line is never itself computed as a percentage, and its computed amount must be positive (POL-FIN-005): a distribution whose other lines already equal or exceed the opposing side leaves no residue to absorb and is rejected.
 Data source: ENT-FIN-005.amount, ENT-FIN-005.isRemainderFl, ENT-FIN-010.distributionTypeCode, ENT-FIN-014.distributionValue
 Message    : ar: "سطر الباقي يُحسب كفرق، لا كنسبة" · en: "The remainder line is computed as a difference, never as a percentage"
 Traces     : REQ-FIN-012, REQ-FIN-026
@@ -1041,6 +1041,15 @@ Message    : ar: "القيد المُرحَّل مقفل؛ التصحيح فقط
 Traces     : REQ-FIN-016, REQ-FIN-017
 Source     : general-accounting-system-plan-en.md §8.3, §12.13
 
+### RULE-FIN-017 — تماسك السنة والفترة وتاريخ المستند / Fiscal year, period and document date must cohere
+Scope      : ENT-FIN-004, ENT-FIN-008
+Trigger    : on create (an entry whose fiscalYearId, periodId and docDate are all submitted)
+Statement  : The system shall reject an entry whose submitted period does not belong to its submitted fiscal year, or whose document date falls outside that period's start/end dates. Entries the system itself generates derive the three from one another and are coherent by construction.
+Data source: ENT-FIN-004.fiscalYearId, ENT-FIN-004.periodId, ENT-FIN-004.docDate, ENT-FIN-008.fiscalYearId, ENT-FIN-008.startDate, ENT-FIN-008.endDate
+Message    : ar: "الفترة المحددة لا تتبع السنة المالية المحددة، أو تاريخ المستند خارج نطاقها" · en: "The selected period does not belong to the selected fiscal year, or the document date falls outside it"
+Traces     : REQ-FIN-014, REQ-FIN-017
+Source     : general-accounting-system-plan-en.md §8.1, §10.1
+
 ## A6 — Lookups
 
 All 13 lookup types below are owned by FIN and registered into MDL (module-registry-fin.md
@@ -1053,7 +1062,7 @@ All 13 lookup types below are owned by FIN and registered into MDL (module-regis
 | PERIOD_STATE | OPEN, SOFT_CLOSE, HARD_CLOSE, YEAR_END_CLOSE |
 | FISCAL_YEAR_STATUS | OPEN, CLOSED |
 | JOURNAL_TYPE | EVENT_GENERATED, MANUAL, RECURRING, ALLOCATION, REVERSAL |
-| JOURNAL_STATUS | DRAFT, POSTED, VOID |
+| JOURNAL_STATUS | DRAFT, POSTED, VOID (VOID is seeded in MDL by V26 and declared as `JournalEntry.STATUS_VOID`, but is now UNREACHABLE: classic reversal leaves the original POSTED and no code path writes VOID — see §A7) |
 | ACCOUNTING_EVENT_TYPE | none seeded — host-specific, added as data [§3, §6.4] |
 | PAYMENT_METHOD | none seeded — host-specific |
 | ACCOUNT_DERIVATION_TYPE | CONSTANT, DIRECT, MAPPING |
@@ -1068,9 +1077,17 @@ Consumed lookups: none — FIN owns every coded value list it uses.
 
 **ENT-FIN-004 JournalEntry.statusCode (JOURNAL_STATUS, 3 states)**
 ```
-DRAFT  --(REQ-FIN-017, automatic validation passes)--> POSTED
-POSTED --(REQ-FIN-028, reverse action)----------------> VOID   (the original; its reversal is itself a new POSTED entry)
+DRAFT  --(REQ-FIN-017, automatic validation passes)--> POSTED   (terminal)
+POSTED --(REQ-FIN-028, reverse action)----------------> POSTED  (no transition — classic reversal: the original STAYS POSTED; its reversal is itself a new POSTED entry, and the two are linked through originalEntryId/reversalEntryId)
 ```
+Classic reversal is the convention FIN follows: reversing an entry posts an equal, opposite
+mirror entry and leaves the original POSTED and untouched, so the net effect on every account
+balance is zero and both entries stay visible in the ledger and its audit trail. VOIDing the
+original instead would remove it from the POSTED-only reports while the mirror remained,
+netting to −(original). It also means RULE-FIN-016 (a POSTED row is never modified) holds
+without exception — the reverse action's only write back to the original is the
+reversalEntryId link.
+
 DRAFT is transient (build → validate happens in one orchestration, RULE-FIN-016 locks
 POSTED immediately); a DRAFT that fails validation is never saved (REQ-FIN-015/018-021
 reject before any row is written) — not a stored intermediate state a user can browse.
@@ -1119,14 +1136,16 @@ Filters: code(LIKE), nameAr/nameEn(LIKE), accountTypeCode(EXACT), isActiveFl(EXA
 ### B3 — Input
 Fields: code, nameAr, nameEn, accountTypeCode, natureCode, parentAccountId, isLeafFl (ENT-FIN-001; RULE-FIN-001 blocks isLeafFl=true on a parent). Button: Deactivate.
 ### B4 — Access
-Page code: FIN_ACCOUNTS. Actions: VIEW, CREATE, UPDATE, DELETE (deactivate).
+Page code: FIN_ACCOUNTS. Actions: VIEW, CREATE, UPDATE (covers deactivate — there is no DELETE
+endpoint and no `PERM_FIN_ACCOUNTS_DELETE`; deactivate is `PUT /{id}/deactivate` gated by
+`PERM_FIN_ACCOUNTS_UPDATE`).
 ### B5 — API expectations
 | Operation | Verb | Path | Inputs | Outputs | RULEs | Traces (REQ) |
 |---|---|---|---|---|---|---|
-| search accounts | GET | /api/v1/fin/accounts | filters, paging | Page\<Account\> | — | REQ-FIN-001 |
+| search accounts | POST | /api/v1/fin/accounts/search | filters, paging (request body) | Page\<Account\> | — | REQ-FIN-001 |
 | create account | POST | /api/v1/fin/accounts | account fields | Account | RULE-FIN-001 | REQ-FIN-001, REQ-FIN-002 |
 | update account | PUT | /api/v1/fin/accounts/{id} | account fields | Account | RULE-FIN-001 | REQ-FIN-002 |
-| deactivate account | DELETE | /api/v1/fin/accounts/{id} | id | confirmation | — | REQ-FIN-003 |
+| deactivate account | PUT | /api/v1/fin/accounts/{id}/deactivate | id | Account | — | REQ-FIN-003 |
 
 ## SCR-REQ-FIN-002 — تعريف الأبعاد وقيمها / Dimension definition & values
 ### B1 — Definition
@@ -1143,14 +1162,18 @@ Dimension filters: code(LIKE). Value filters: code(LIKE) — correspond to resul
 ### B3 — Input
 Dimension fields: code, nameAr, nameEn. Value fields: code, nameAr, nameEn, sortOrder (ENT-FIN-002/003).
 ### B4 — Access
-Page code: FIN_DIMENSIONS. Actions: VIEW, CREATE, UPDATE (deactivate only, modeled as UPDATE).
+Page code: FIN_DIMENSIONS. Actions: VIEW, CREATE. No UPDATE and no DELETE: as built, FIN
+publishes no dimension or dimension-value update/deactivate endpoint, V24 seeds no
+`PERM_FIN_DIMENSIONS_UPDATE`, and the "deactivate" listed under B1 Operations is therefore not
+delivered in v1 — the `isActiveFl` columns (DBF-FIN-018, DBF-FIN-029) exist and default TRUE, but
+nothing can flip them through the API.
 ### B5 — API expectations
 | Operation | Verb | Path | Inputs | Outputs | RULEs | Traces (REQ) |
 |---|---|---|---|---|---|---|
-| search dimensions | GET | /api/v1/fin/dimensions | filters, paging | Page\<Dimension\> | — | REQ-FIN-004 |
+| search dimensions | POST | /api/v1/fin/dimensions/search | filters, paging (request body) | Page\<Dimension\> | — | REQ-FIN-004 |
 | create dimension | POST | /api/v1/fin/dimensions | code, nameAr, nameEn | Dimension | — | REQ-FIN-004 |
 | create dimension value | POST | /api/v1/fin/dimensions/{id}/values | code, nameAr, nameEn, sortOrder | DimensionValue | RULE-FIN-002 | REQ-FIN-005, REQ-FIN-006 |
-| search dimension values | GET | /api/v1/fin/dimensions/{id}/values | filters, paging | Page\<DimensionValue\> | — | REQ-FIN-005 |
+| search dimension values | POST | /api/v1/fin/dimensions/values/search | filters (incl. dimensionId), paging (request body) | Page\<DimensionValue\> | — | REQ-FIN-005 |
 
 ## SCR-REQ-FIN-003 — قواعد المحرك / Engine rules
 ### B1 — Definition
@@ -1170,11 +1193,13 @@ accountDerivationValue, amountSourceTypeCode, amountSourceValue, directionCode, 
 isRemainderFl (ENT-FIN-010; RULE-FIN-003 blocks saving until exactly one remainder line exists
 when a percentage line is present).
 ### B4 — Access
-Page code: FIN_RULES. Actions: VIEW, CREATE, UPDATE, DELETE (deactivate rule / delete line).
+Page code: FIN_RULES. Actions: VIEW, CREATE, UPDATE (covers adding a rule line — API-FIN-011).
+No DELETE: FIN publishes no delete endpoint and no rule-line delete endpoint, and V24 seeds no
+`PERM_FIN_RULES_DELETE`.
 ### B5 — API expectations
 | Operation | Verb | Path | Inputs | Outputs | RULEs | Traces (REQ) |
 |---|---|---|---|---|---|---|
-| search rules | GET | /api/v1/fin/event-rules | filters, paging | Page\<EventTypeRule\> | — | REQ-FIN-007 |
+| search rules | POST | /api/v1/fin/event-rules/search | filters, paging (request body) | Page\<EventTypeRule\> | — | REQ-FIN-007 |
 | create rule | POST | /api/v1/fin/event-rules | eventTypeCode, nameAr, nameEn | EventTypeRule | — | REQ-FIN-007 |
 | add rule line | POST | /api/v1/fin/event-rules/{id}/lines | line fields | RuleLine | RULE-FIN-003 | REQ-FIN-008, REQ-FIN-009 |
 
@@ -1194,11 +1219,12 @@ Filters: nameAr/nameEn(LIKE), scheduleTypeCode(EXACT), isActiveFl(EXACT).
 Template fields: nameAr, nameEn, scheduleTypeCode, frequencyCode, startDate, endDate (ENT-FIN-011).
 Line fields: accountId, amount, directionCode, dimensionValueId (ENT-FIN-012).
 ### B4 — Access
-Page code: FIN_RECURRING_TEMPLATES. Actions: VIEW, CREATE, UPDATE, DELETE.
+Page code: FIN_RECURRING_TEMPLATES. Actions: VIEW, CREATE, UPDATE (covers "run" — API-FIN-014).
+No DELETE endpoint and no `PERM_FIN_RECURRING_TEMPLATES_DELETE`.
 ### B5 — API expectations
 | Operation | Verb | Path | Inputs | Outputs | RULEs | Traces (REQ) |
 |---|---|---|---|---|---|---|
-| search templates | GET | /api/v1/fin/recurring-templates | filters, paging | Page\<RecurringTemplate\> | — | REQ-FIN-022 |
+| search templates | POST | /api/v1/fin/recurring-templates/search | filters, paging (request body) | Page\<RecurringTemplate\> | — | REQ-FIN-022 |
 | create template | POST | /api/v1/fin/recurring-templates | template + lines | RecurringTemplate | RULE-FIN-006 (reused, balance check applied at run time not save time) | REQ-FIN-022 |
 | run template (system/scheduled) | POST | /api/v1/fin/recurring-templates/{id}/run | — | JournalEntry | RULE-FIN-006, RULE-FIN-007, RULE-FIN-008, RULE-FIN-009, RULE-FIN-011 | REQ-FIN-023, REQ-FIN-024 |
 
@@ -1219,11 +1245,12 @@ Rule fields: nameAr, nameEn, sourceAccountId (ENT-FIN-013). Target fields: targe
 dimensionValueId, distributionTypeCode, distributionValue, isRemainderFl (ENT-FIN-014;
 RULE-FIN-003 applies).
 ### B4 — Access
-Page code: FIN_ALLOCATION_RULES. Actions: VIEW, CREATE, UPDATE, DELETE.
+Page code: FIN_ALLOCATION_RULES. Actions: VIEW, CREATE, UPDATE (covers "run" — API-FIN-017).
+No DELETE endpoint and no `PERM_FIN_ALLOCATION_RULES_DELETE`.
 ### B5 — API expectations
 | Operation | Verb | Path | Inputs | Outputs | RULEs | Traces (REQ) |
 |---|---|---|---|---|---|---|
-| search allocation rules | GET | /api/v1/fin/allocation-rules | filters, paging | Page\<AllocationRule\> | — | REQ-FIN-025 |
+| search allocation rules | POST | /api/v1/fin/allocation-rules/search | filters, paging (request body) | Page\<AllocationRule\> | — | REQ-FIN-025 |
 | create allocation rule | POST | /api/v1/fin/allocation-rules | rule + targets | AllocationRule | RULE-FIN-003 | REQ-FIN-025 |
 | run allocation rule | POST | /api/v1/fin/allocation-rules/{id}/run | — | JournalEntry | RULE-FIN-006..011 | REQ-FIN-026 |
 
@@ -1251,8 +1278,8 @@ as an update-class action per §7.1 custom-action convention — `PERM_FIN_JOURN
 ### B5 — API expectations
 | Operation | Verb | Path | Inputs | Outputs | RULEs | Traces (REQ) |
 |---|---|---|---|---|---|---|
-| search entries | GET | /api/v1/fin/journal-entries | filters, paging | Page\<JournalEntry\> | — | REQ-FIN-027 |
-| create manual entry | POST | /api/v1/fin/journal-entries | header + lines | JournalEntry (DRAFT then POSTED) | RULE-FIN-006, RULE-FIN-007, RULE-FIN-008, RULE-FIN-009 | REQ-FIN-014, REQ-FIN-015, REQ-FIN-017, REQ-FIN-018, REQ-FIN-019, REQ-FIN-020, REQ-FIN-021 |
+| search entries | POST | /api/v1/fin/journal-entries/search | filters, paging (request body) | Page\<JournalEntry\> | — | REQ-FIN-027 |
+| create manual entry | POST | /api/v1/fin/journal-entries | header + lines | JournalEntry (DRAFT then POSTED) | RULE-FIN-006, RULE-FIN-007, RULE-FIN-008, RULE-FIN-009, RULE-FIN-017 | REQ-FIN-014, REQ-FIN-015, REQ-FIN-017, REQ-FIN-018, REQ-FIN-019, REQ-FIN-020, REQ-FIN-021 |
 | build event entry (system) | POST | /api/v1/fin/journal-entries/from-event | canonical event payload | JournalEntry | RULE-FIN-004, RULE-FIN-005, RULE-FIN-006..009, RULE-FIN-010 | REQ-FIN-010, REQ-FIN-011, REQ-FIN-012, REQ-FIN-013, REQ-FIN-017..021 |
 | reverse entry | POST | /api/v1/fin/journal-entries/{id}/reverse | id | JournalEntry (the new reversal) | RULE-FIN-011, RULE-FIN-012, RULE-FIN-013 | REQ-FIN-028, REQ-FIN-029, REQ-FIN-030 |
 | read entry | GET | /api/v1/fin/journal-entries/{id} | id | JournalEntry with lines | — | REQ-FIN-016, REQ-FIN-027 |
@@ -1283,7 +1310,13 @@ custom action `PERM_FIN_PERIODS_CLOSE_APPROVE` for hard-close/year-end-close —
 | open period | PATCH | /api/v1/fin/fiscal-periods/{id}/open | id | FiscalPeriod | — | REQ-FIN-032 |
 | soft-close period | PATCH | /api/v1/fin/fiscal-periods/{id}/soft-close | id | FiscalPeriod | — | REQ-FIN-033 |
 | hard-close period (approval) | PATCH | /api/v1/fin/fiscal-periods/{id}/hard-close | id | FiscalPeriod | RULE-FIN-014, RULE-FIN-015 | REQ-FIN-034, REQ-FIN-035, REQ-FIN-037, REQ-FIN-038 |
-| run year-end close | POST | /api/v1/fin/fiscal-years/{id}/year-end-close | id | closing + opening JournalEntry | RULE-FIN-006..009, RULE-FIN-015 | REQ-FIN-036 |
+| run year-end close | POST | /api/v1/fin/fiscal-years/{id}/year-end-close | id | closing + opening JournalEntry | RULE-FIN-006, RULE-FIN-007, RULE-FIN-009, RULE-FIN-015 (RULE-FIN-008 does NOT apply — the year-end CLOSING/OPENING entries are exempt from the period gate by RULE-FIN-008's own carve-out; they are precisely the entries a hard-closed period must still accept) | REQ-FIN-036 |
+
+No fiscal-period search API exists in v1. The B2 filters above are served by API-FIN-023's
+response (the year with its generated periods); the API registry defines no
+`POST /api/v1/fin/fiscal-periods/search`. `PERM_FIN_PERIODS_VIEW` is nevertheless a registered
+action row, because it is the gateway every other FIN_PERIODS permission needs — see the ALIGN-BE
+gap entry for the open question of whether a dedicated period-search endpoint is wanted.
 
 ## SCR-REQ-FIN-008 — دفتر الحساب / Account ledger
 ### B1 — Definition
@@ -1432,13 +1465,13 @@ documented above as a plain DEFAULT.
 ## Access summary
 | Page code | Screen | VIEW | CREATE | UPDATE | DELETE | Custom |
 |---|---|---|---|---|---|---|
-| FIN_ACCOUNTS | Chart of accounts | role-granted | role-granted | role-granted | role-granted (deactivate) | — |
-| FIN_DIMENSIONS | Dimensions | role-granted | role-granted | role-granted | — | — |
-| FIN_RULES | Engine rules | role-granted | role-granted | role-granted | role-granted (deactivate/delete line) | — |
-| FIN_RECURRING_TEMPLATES | Recurring/reversing templates | role-granted | role-granted | role-granted | role-granted | — |
-| FIN_ALLOCATION_RULES | Allocation rules | role-granted | role-granted | role-granted | role-granted | — |
+| FIN_ACCOUNTS | Chart of accounts | role-granted | role-granted | role-granted (incl. deactivate) | — | — |
+| FIN_DIMENSIONS | Dimensions | role-granted | role-granted | — | — | — |
+| FIN_RULES | Engine rules | role-granted | role-granted | role-granted (add line) | — | — |
+| FIN_RECURRING_TEMPLATES | Recurring/reversing templates | role-granted | role-granted | role-granted (run) | — | — |
+| FIN_ALLOCATION_RULES | Allocation rules | role-granted | role-granted | role-granted (run) | — | — |
 | FIN_JOURNAL_ENTRIES | Journal entries | role-granted | role-granted (incl. Post) | — | — | Reverse (`PERM_FIN_JOURNAL_ENTRIES_REVERSE`) |
-| FIN_PERIODS | Fiscal periods & years | role-granted | role-granted (year) | role-granted (open/soft-close) | — | Close-approve (`PERM_FIN_PERIODS_CLOSE_APPROVE` — RULE-FIN-015, held by a role distinct from `PERM_FIN_JOURNAL_ENTRIES_CREATE`) |
+| FIN_PERIODS | Fiscal periods & years | role-granted (gateway only — no read endpoint) | role-granted (year) | role-granted (open/soft-close) | — | Close-approve (`PERM_FIN_PERIODS_CLOSE_APPROVE` — RULE-FIN-015, held by `FIN_CLOSE_APPROVER`, the dedicated role migration V27 mints, which by construction holds no `PERM_FIN_JOURNAL_ENTRIES_CREATE` and is assigned to no user until an administrator picks a non-creator) |
 | FIN_ACCOUNT_LEDGER | Account ledger | role-granted | — | — | — | — |
 | FIN_TRIAL_BALANCE | Trial balance | role-granted | — | — | — | — |
 | FIN_BALANCE_SHEET | Balance sheet | role-granted | — | — | — | — |
@@ -1447,4 +1480,9 @@ documented above as a plain DEFAULT.
 Every action beyond VIEW additionally requires VIEW on the same screen (platform gateway
 convention, `profiles/erp.yaml → conventions.security_model.gateway_action`, enforced by
 SEC's own mechanism — not restated as a FIN-owned RULE).
+
+**DELETE column, as built**: empty for every FIN screen. FIN publishes no `DELETE` endpoint;
+deactivation, where it exists, is `PUT /{id}/deactivate` gated by the screen's UPDATE permission,
+and V24 seeds no `PERM_FIN_*_DELETE` row. The DELETE ✓ marks above were pre-implementation and
+were corrected at ALIGN-BE.
 ══════════════════════════════════════════════════════════════════

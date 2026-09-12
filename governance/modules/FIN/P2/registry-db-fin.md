@@ -4,7 +4,7 @@
 Tables
 | Table | ENT id | Kind | DBF range |
 |---|---|---|---|
-| FIN_ACCOUNT | ENT-FIN-001 | master | DBF-FIN-001 … DBF-FIN-013 |
+| FIN_ACCOUNT | ENT-FIN-001 | master | DBF-FIN-001 … DBF-FIN-013, DBF-FIN-147 |
 | FIN_DIMENSION | ENT-FIN-002 | config | DBF-FIN-014 … DBF-FIN-022 |
 | FIN_DIMENSION_VALUE | ENT-FIN-003 | lookup | DBF-FIN-023 … DBF-FIN-033 |
 | FIN_JOURNAL_ENTRY | ENT-FIN-004 | transactional | DBF-FIN-034 … DBF-FIN-050 |
@@ -40,12 +40,13 @@ DBF-FIN-116, DBF-FIN-117, DBF-FIN-118, DBF-FIN-119, DBF-FIN-120, DBF-FIN-121, DB
 DBF-FIN-123, DBF-FIN-124, DBF-FIN-125, DBF-FIN-126, DBF-FIN-127, DBF-FIN-128, DBF-FIN-129,
 DBF-FIN-130, DBF-FIN-131, DBF-FIN-132, DBF-FIN-133, DBF-FIN-134, DBF-FIN-135, DBF-FIN-136,
 DBF-FIN-137, DBF-FIN-138, DBF-FIN-139, DBF-FIN-140, DBF-FIN-141, DBF-FIN-142, DBF-FIN-143,
-DBF-FIN-144, DBF-FIN-145, DBF-FIN-146
+DBF-FIN-144, DBF-FIN-145, DBF-FIN-146, DBF-FIN-147
 
 XM index
 | XM id | Type | From | To | Status |
 |---|---|---|---|---|
 | XM-FIN-001 | SOFT-READ | FIN | MDL | ACTIVE |
+| XM-FIN-002 | READ | FIN | SEC | ACTIVE |
 
 Lookups
 | Key | Seeded values count | Owner |
@@ -66,13 +67,15 @@ Lookups
 All seeded via MDL's API at onboarding time (BLOCK 8 note), not local INSERTs.
 
 Sequences
-Last DBF: DBF-FIN-146 · Last XM: XM-FIN-001
+Last DBF: DBF-FIN-147 · Last XM: XM-FIN-002
 
 Decisions
 ADR-FIN-001 (ACCEPTED, non-breaking) — see erp/decisions/FIN/ADR-FIN-001.md
 
 Event
-"P2 completed: FIN v1 — 14 tables, 146 DBF, 1 XM"
+"P2 completed: FIN v1 — 14 tables, 147 DBF, 1 XM"
+(XM-FIN-002 was assigned later, at ALIGN-BE, once SEC-BE introduced FIN's read of SEC's user
+directory — the P2 event line records what P2 itself saw and is left as written.)
 
 Cascade
 No registry XM row anywhere in the platform currently targets FIN with status DEFERRED

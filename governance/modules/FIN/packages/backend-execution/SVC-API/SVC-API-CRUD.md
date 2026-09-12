@@ -36,8 +36,8 @@ Security: screen FIN_ACCOUNTS · `PERM_FIN_ACCOUNTS_UPDATE` · Localization: bot
 
 <!-- API:API-FIN-004:START traces=REQ-FIN-003,DBF-FIN-009 -->
 ### API-FIN-004 — deactivate account
-Endpoint: DELETE /api/v1/fin/accounts/{id} · Layers: `AccountController.deactivate`→`AccountService.deactivate`
-Request: path `id` · Response: 200 · confirmation `{accountPk, isActiveFl: false}`
+Endpoint: PUT /api/v1/fin/accounts/{id}/deactivate · Layers: `AccountController.deactivate`→`AccountService.deactivate`
+Request: path `id`, no body · Response: 200 · `AccountResponse` (isActiveFl=false)
 Validations: none beyond existence · Errors: `FIN-404-ACCOUNT`
 Orchestration: load → `Account.deactivate()` → persist (QR-FIN-004) → return (REQ-FIN-019
 subsequently rejects any posting to it)
@@ -57,7 +57,7 @@ Security: screen FIN_DIMENSIONS · `PERM_FIN_DIMENSIONS_CREATE` · Localization:
 
 <!-- API:API-FIN-007:START traces=REQ-FIN-005,REQ-FIN-006,DBF-FIN-024,DBF-FIN-025,DBF-FIN-028 -->
 ### API-FIN-007 — create dimension value
-Endpoint: POST /api/v1/fin/dimensions/{id}/values · Layers: `DimensionValueController.create`→`DimensionValueService.create`
+Endpoint: POST /api/v1/fin/dimensions/{id}/values · Layers: `DimensionController.createDimensionValue`→`DimensionValueService.create`
 Request: path `id` (dimensionId); body `{code, nameAr, nameEn, sortOrder}`
 Response: 201 · `DimensionValueResponse`
 Validations: RULE-FIN-002 (full text: DATA-DOM §ENT-FIN-003) — code unique within the
@@ -85,14 +85,17 @@ once at deployment, not per request.
 
 <!-- API:API-FIN-011:START traces=REQ-FIN-008,REQ-FIN-009,DBF-FIN-101,DBF-FIN-103,DBF-FIN-105,DBF-FIN-106,DBF-FIN-107 -->
 ### API-FIN-011 — add rule line
-Endpoint: POST /api/v1/fin/event-rules/{id}/lines · Layers: `RuleLineController.create`→`RuleLineService.create`
+Endpoint: POST /api/v1/fin/event-rules/{id}/lines · Layers: `EventTypeRuleController.createRuleLine`→`RuleLineService.create`
 Request: path `id` (eventTypeRuleId); body `{accountDerivationTypeCode, accountDerivationValue,
 amountSourceTypeCode, amountSourceValue?, directionCode, distributionTypeCode, isRemainderFl}`
 Response: 201 · `RuleLineResponse`
 Validations: RULE-FIN-003 (full text: DATA-DOM §ENT-FIN-010) — exactly one remainder line
-once any sibling line is PERCENTAGE-distributed (QR-FIN-016); all four lookup codes
-validated via XM-FIN-001
-Errors: `FIN-409-REMAINDER-COUNT`, `FIN-404-RULE`, `FIN-400-INVALID-LOOKUP`
+once the line set is a compound or percentage distribution, i.e. any sibling line is
+PERCENTAGE-distributed OR any line is already marked remainder (QR-FIN-016); and each line's
+`isRemainderFl` marker (DBF-FIN-103) must agree with its own REMAINDER type code, since that
+marker is the single one the API-FIN-020 builder reads; all four lookup codes validated via
+XM-FIN-001
+Errors: `FIN-409-REMAINDER-COUNT`, `FIN-422-REMAINDER-MARKER`, `FIN-404-RULE`, `FIN-400-INVALID-LOOKUP`
 Orchestration: validate lookups → check RULE-FIN-003 across the rule's existing + new line
 (QR-FIN-016) → persist (QR-FIN-015) → return
 Repository: QR-FIN-015, QR-FIN-016 · join NONE · READ_WRITE
@@ -118,8 +121,10 @@ Endpoint: POST /api/v1/fin/allocation-rules · Layers: `AllocationRuleController
 Request: `{nameAr, nameEn, sourceAccountId, targets: [...]}`
 Response: 201 · `AllocationRuleResponse`
 Validations: RULE-FIN-003 (reused) — exactly one remainder target when any sibling is
-PERCENTAGE (QR-FIN-016, reused); distributionTypeCode validated via XM-FIN-001
-Errors: `FIN-409-REMAINDER-COUNT`, `FIN-404-ACCOUNT`, `FIN-400-INVALID-LOOKUP`
+PERCENTAGE or any target is already marked remainder (QR-FIN-016, reused), and each target's
+`isRemainderFl` (DBF-FIN-141) must agree with its own `distributionTypeCode`;
+distributionTypeCode validated via XM-FIN-001
+Errors: `FIN-409-REMAINDER-COUNT`, `FIN-422-REMAINDER-MARKER`, `FIN-404-ACCOUNT`, `FIN-400-INVALID-LOOKUP`
 Orchestration: validate → check RULE-FIN-003 across targets (QR-FIN-016) → persist rule+targets (QR-FIN-021) → return
 Repository: QR-FIN-021, QR-FIN-016 · join NONE · READ_WRITE
 Security: screen FIN_ALLOCATION_RULES · `PERM_FIN_ALLOCATION_RULES_CREATE` · Localization: nameAr/nameEn required
@@ -135,12 +140,35 @@ statusCode, postedAt, audit}
 Response: 201 · `JournalEntryResponse` (statusCode=POSTED on success)
 Validations: RULE-FIN-006 (debit=credit, QR-FIN-029), RULE-FIN-007 (leaf/active accounts,
 QR-FIN-030), RULE-FIN-008 (period open, QR-FIN-031), RULE-FIN-009 (dimension valid,
-QR-FIN-032) — every failure returned together (REQ-FIN-015), nothing posts if any fails
-Errors: `FIN-409-UNBALANCED`, `FIN-409-NOT-POSTABLE-ACCOUNT`, `FIN-409-PERIOD-NOT-OPEN`,
-`FIN-409-INVALID-DIMENSION`
-Orchestration: generate docNo (numbering engine) → build DRAFT (QR-FIN-024) → validate
+QR-FIN-032) — every failure returned together (REQ-FIN-015), nothing posts if any fails.
+RULE-FIN-017 (header coherence) runs FIRST and fail-fast: the submitted `periodId` must
+belong to the submitted `fiscalYearId` (DBF-FIN-076) and `docDate` must fall inside that
+period's [startDate, endDate] (DBF-FIN-080/081) — an incoherent triple makes RULE-FIN-008's
+own period gate meaningless, lets the entry take a docNo from the wrong year's series, and
+corrupts every period-scoped report and the year-end close. This is the only API that needs
+it: every system-generated entry derives the three facts from one another
+Errors: `FIN-400-PERIOD-NOT-IN-YEAR`, `FIN-400-DOCDATE-OUTSIDE-PERIOD`, `FIN-409-UNBALANCED`,
+`FIN-409-NOT-POSTABLE-ACCOUNT`, `FIN-409-PERIOD-NOT-OPEN`, `FIN-409-INVALID-DIMENSION`
+Numbering: `docNo` = `JV-{fiscalYearCode}-{NNNNNN}` — literal prefix `JV-`, the owning
+fiscal year's `code` (DBF-FIN-066, VARCHAR(10)), `-`, then a zero-padded 6-digit counter
+starting at `000001` (e.g. `JV-2026-000123`; worst case 20 chars, inside
+`doc_no VARCHAR(30)`). Counter scoped per `fiscalYearId`, restarting at `000001` each
+fiscal year — one counter for all journal types, never segmented by `journalTypeCode`;
+`UQ_FIN_JOURNAL_ENTRY_YEAR_DOCNO (fiscal_year_id, doc_no)` backs uniqueness at the
+database level. Produced by a FIN-local generator in `com.erp.fin`, deliberately NOT a
+shared `com.erp.common` component (no platform numbering engine exists in this repo);
+implemented in this phase. Assigned once on create, immutable thereafter — excluded from
+every create/update request DTO, present only in responses.
+Orchestration: resolve fiscal year UNDER A ROW LOCK (`SELECT ... FOR UPDATE` on
+FIN_FISCAL_YEAR, the docNo series' allocation lock) → resolve period → check RULE-FIN-017 →
+generate docNo (FIN-local generator) → build DRAFT (QR-FIN-024) → validate
 (QR-FIN-029..032) → on success: post (QR-FIN-033); on failure: discard the whole attempt
-(one transaction, REQ-FIN-015) → return
+(one transaction, REQ-FIN-015) → return. The lock is what makes the per-fiscal-year counter
+safe under concurrency: two simultaneous creates can no longer observe the same predecessor,
+so `UQ_FIN_JOURNAL_ENTRY_YEAR_DOCNO` stays an unreachable backstop instead of surfacing as an
+unlocalized data-integrity 409. A sequence was rejected (the counter restarts per year and the
+schema declares none) and so was catch-and-retry (a service may not catch
+DataIntegrityViolationException)
 Repository: QR-FIN-024, QR-FIN-029, QR-FIN-030, QR-FIN-031, QR-FIN-032, QR-FIN-033 · join
 NONE · READ_WRITE (one transaction, build-through-post)
 Security: screen FIN_JOURNAL_ENTRIES · `PERM_FIN_JOURNAL_ENTRIES_CREATE` · Localization: descriptionAr/En

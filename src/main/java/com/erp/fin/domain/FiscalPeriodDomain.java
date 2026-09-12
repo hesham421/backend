@@ -1,0 +1,242 @@
+package com.erp.fin.domain;
+
+import com.erp.common.domain.status.Status;
+import com.erp.common.exception.LocalizedException;
+import com.erp.fin.entity.FiscalPeriod;
+import com.erp.fin.exception.FinErrorCodes;
+import java.time.LocalDate;
+import java.time.Month;
+import java.time.format.TextStyle;
+import java.time.temporal.ChronoUnit;
+import java.util.Locale;
+
+/**
+ * Domain companion for ENT-FIN-008 (FiscalPeriod), carrying the two SRS rules CORE.md assigns to
+ * it:
+ *
+ * <ul>
+ *   <li><b>RULE-FIN-014</b> — a Hard Closed (or Year-End Closed) period is never reopened
+ *       ({@code FIN-409-NOT-REOPENABLE}, QR-FIN-040, API-FIN-024/026).</li>
+ *   <li><b>RULE-FIN-015</b> — the period-close-approval permission must be held by a role
+ *       distinct from the journal-entry-creation permission ({@code FIN-403-SOD-VIOLATION},
+ *       API-FIN-026/027).</li>
+ * </ul>
+ *
+ * <p><b>RULE-FIN-008 is deliberately absent.</b> DATA-DOM-MASTER.md lists the period-open-at-post
+ * -time rule under ENT-FIN-008, but CORE.md assigns it to {@code JournalEntryDomain} (owned by
+ * the DATA-DOM-TRANSACTIONAL sub). Implementing it here too would create exactly the duplicate
+ * ownership A.0.7 exists to prevent.
+ *
+ * <p>Placement note: DATA-DOM-MASTER.md annotates both rules with "owner layer: service";
+ * CORE.md's domain-class mandate and A.5.18 supersede that wording.
+ *
+ * <p><b>How RULE-FIN-015 stays inside the module boundary (A.0.6).</b> The rule's facts live in
+ * SEC: which principal holds {@code PERM_FIN_PERIODS_CLOSE_APPROVE}, and whether that same
+ * principal also holds {@code PERM_FIN_JOURNAL_ENTRIES_CREATE}. This class never imports, injects
+ * or calls SEC — the service resolves both facts through SEC's role/grant read APIs (CORE.md
+ * "Cross-cutting authorization", ADR-FIN-001) and passes them in as two plain {@code boolean}
+ * arguments. The decision — "these two permissions must not meet in one principal" — is what
+ * lives here.
+ */
+public final class FiscalPeriodDomain {
+
+    /** A twelve-period fiscal year is the one shape that maps onto calendar months. */
+    private static final int CALENDAR_MONTHS_PER_YEAR = 12;
+
+    /** The Arabic locale whose CLDR month names the generated periods carry. */
+    private static final Locale ARABIC = Locale.forLanguageTag("ar");
+
+    /** Fallback (non-calendar) period label — see {@link #generatedPeriod}. */
+    private static final String PERIOD_NAME_AR_PREFIX = "الفترة ";
+
+    /** Fallback (non-calendar) period label — see {@link #generatedPeriod}. */
+    private static final String PERIOD_NAME_EN_PREFIX = "Period ";
+
+    private final Long fiscalPeriodPk;
+    private final Integer periodNo;
+    private final String statusCode;
+
+    private FiscalPeriodDomain(Long fiscalPeriodPk, Integer periodNo, String statusCode) {
+        this.fiscalPeriodPk = fiscalPeriodPk;
+        this.periodNo = periodNo;
+        this.statusCode = statusCode;
+    }
+
+    /**
+     * REQ-FIN-031 — a period generated with its fiscal year always starts OPEN (SRS A7); there is
+     * no create-time rule to evaluate, so this factory validates nothing.
+     */
+    public static FiscalPeriodDomain create(Integer periodNo) {
+        return new FiscalPeriodDomain(null, periodNo, FiscalPeriod.STATUS_OPEN);
+    }
+
+    /** Reconstructs a Domain view over a persisted row — no validation. */
+    public static FiscalPeriodDomain from(FiscalPeriod entity) {
+        return new FiscalPeriodDomain(entity.getFiscalPeriodPk(),
+            entity.getPeriodNo(),
+            entity.getStatusCode());
+    }
+
+    /**
+     * RULE-FIN-014 — API-FIN-024 (open period) and API-FIN-026's reopen attempts. HARD_CLOSE and
+     * YEAR_END_CLOSE are terminal (SRS A7). Decision only — the service calls
+     * {@code FiscalPeriod.open()} after this returns.
+     *
+     * @throws LocalizedException {@code FIN-409-NOT-REOPENABLE}
+     */
+    public void assertCanReopen() {
+        if (FiscalPeriod.STATUS_HARD_CLOSE.equals(statusCode)
+            || FiscalPeriod.STATUS_YEAR_END_CLOSE.equals(statusCode)) {
+            throw new LocalizedException(Status.CONFLICT,
+                FinErrorCodes.FIN_409_NOT_REOPENABLE, periodNo);
+        }
+    }
+
+    /**
+     * RULE-FIN-015 — API-FIN-026 (hard-close) and API-FIN-027 (year-end close). Decision only —
+     * the service calls {@code FiscalPeriod.hardClose(...)} after this returns.
+     *
+     * <p>Both arguments are resolved by the service from SEC and passed in as plain facts; this
+     * class holds no SEC reference (A.0.6).
+     *
+     * @param approverHoldsCloseApprovePermission whether the acting principal holds the
+     *                                            close-approval permission
+     * @param approverHoldsEntryCreatePermission  whether that same principal also holds the
+     *                                            journal-entry-creation permission
+     * @throws LocalizedException {@code FIN-403-SOD-VIOLATION} when one principal holds both
+     */
+    public void assertCanHardClose(boolean approverHoldsCloseApprovePermission,
+                                   boolean approverHoldsEntryCreatePermission) {
+        if (!approverHoldsCloseApprovePermission || approverHoldsEntryCreatePermission) {
+            throw new LocalizedException(Status.FORBIDDEN,
+                FinErrorCodes.FIN_403_SOD_VIOLATION, periodNo);
+        }
+    }
+
+    /**
+     * API-FIN-025 (soft-close) — SRS A7's {@code OPEN --(REQ-FIN-033, soft-close)--> SOFT_CLOSE}
+     * edge is the only legal entry into SOFT_CLOSE, so any other current state is rejected.
+     * Decision only — the service calls {@code FiscalPeriod.softClose()} after this returns.
+     *
+     * <p>Added by SVC-API-INT: API-FIN-025's Validations line ("current state must be OPEN") had
+     * no guard on this class, and expressing it as an {@code if} in the service body is exactly
+     * what gov-enforce-backend-contract A.5.18 rejects.
+     *
+     * @throws LocalizedException {@code FIN-409-INVALID-TRANSITION}
+     */
+    public void assertCanSoftClose() {
+        if (!FiscalPeriod.STATUS_OPEN.equals(statusCode)) {
+            throw new LocalizedException(Status.CONFLICT,
+                FinErrorCodes.FIN_409_INVALID_TRANSITION, statusCode);
+        }
+    }
+
+    /**
+     * API-FIN-027 (year-end close) — the §10.4 precondition: every period of the fiscal year must
+     * already be Hard Closed before the year can be closed. Decision only — the service calls
+     * {@code FiscalPeriod.yearEndClose()} on each period after this has returned for all of them.
+     *
+     * <p>Added by SVC-API-INT. It lives here rather than on a FiscalYear Domain object because
+     * the fact it decides over is {@code FiscalPeriod.statusCode} (ENT-FIN-008, the rule's own
+     * scope) and DATA-DOM-MASTER.md deliberately records "DOMAIN RULES: none scoped alone" for
+     * ENT-FIN-007 — manufacturing a second Domain class for the year would breach A.0.7.
+     *
+     * @throws LocalizedException {@code FIN-409-PERIODS-NOT-CLOSED}
+     */
+    public void assertHardClosedForYearEnd() {
+        if (!FiscalPeriod.STATUS_HARD_CLOSE.equals(statusCode)) {
+            throw new LocalizedException(Status.CONFLICT,
+                FinErrorCodes.FIN_409_PERIODS_NOT_CLOSED, periodNo);
+        }
+    }
+
+    /**
+     * One generated period's span and its two stored names — the result of
+     * {@link #generatedPeriod(LocalDate, LocalDate, int, int)}. A plain value carrier: it holds no
+     * entity and takes no decision of its own.
+     */
+    public record GeneratedPeriod(LocalDate startDate, LocalDate endDate,
+                                  String nameAr, String nameEn) {
+    }
+
+    /**
+     * REQ-FIN-031 / API-FIN-023 (QR-FIN-038) — how a fiscal year's span is divided and what each
+     * generated period is called. SVC-API-INT.md's API-FIN-023 block now states this convention
+     * explicitly; it is implemented once, here, so the mapper only builds the row.
+     *
+     * <ul>
+     *   <li><b>Calendar months</b> — when {@code periodCount == 12}, the span starts on the first
+     *       day of a month and covers exactly one whole year, each period IS a calendar month
+     *       (period N = the Nth month of the span, from its 1st to its last day). Month names come
+     *       from {@code java.time.Month.getDisplayName(TextStyle.FULL, locale)} — the JDK's own
+     *       CLDR locale data — for Arabic and English, so neither language is hardcoded here.</li>
+     *   <li><b>Even split</b> (any other period count, or a span that is not a whole year) — the
+     *       days are divided into {@code periodCount} contiguous blocks, the first
+     *       {@code totalDays % periodCount} blocks one day longer, so the last period ends exactly
+     *       on the year's {@code endDate} and no day belongs to two periods. Those periods are
+     *       named "الفترة N" / "Period N", the only naming available when a block is not a month.
+     *       The two Arabic words here are period labels, not calendar data; the platform exposes
+     *       no message-bundle mechanism for row content (its {@code MessageSource} bundles are the
+     *       error-code/validation register, keyed by wire code).</li>
+     * </ul>
+     *
+     * <p>Why here rather than in the mapper: the convention decides which calendar a posted entry
+     * falls into and therefore what every period-scoped report shows, so it is module knowledge,
+     * not row-copying. It is nevertheless a derivation — it permits and denies nothing — and so
+     * throws no catalog code, exactly like {@code JournalEntryDomain.directionOfNet(...)}.
+     *
+     * @param yearStart   the fiscal year's own start date (DBF-FIN-067)
+     * @param yearEnd     the fiscal year's own end date (DBF-FIN-068)
+     * @param periodNo    1-based ordinal of the period being generated
+     * @param periodCount how many periods the year is divided into (transient request input)
+     */
+    public static GeneratedPeriod generatedPeriod(LocalDate yearStart, LocalDate yearEnd,
+                                                  int periodNo, int periodCount) {
+        if (isWholeYearInCalendarMonths(yearStart, yearEnd, periodCount)) {
+            LocalDate start = yearStart.plusMonths(periodNo - 1L);
+            LocalDate end = start.plusMonths(1L).minusDays(1L);
+            Month month = start.getMonth();
+            return new GeneratedPeriod(start, end,
+                month.getDisplayName(TextStyle.FULL, ARABIC),
+                month.getDisplayName(TextStyle.FULL, Locale.ENGLISH));
+        }
+
+        long totalDays = ChronoUnit.DAYS.between(yearStart, yearEnd) + 1L;
+        long baseLength = totalDays / periodCount;
+        long extraDays = totalDays % periodCount;
+
+        long daysBefore = baseLength * (periodNo - 1L) + Math.min(periodNo - 1L, extraDays);
+        long ownLength = baseLength + (periodNo <= extraDays ? 1L : 0L);
+
+        LocalDate start = yearStart.plusDays(daysBefore);
+        LocalDate end = periodNo == periodCount ? yearEnd : start.plusDays(ownLength - 1L);
+
+        return new GeneratedPeriod(start, end,
+            PERIOD_NAME_AR_PREFIX + periodNo, PERIOD_NAME_EN_PREFIX + periodNo);
+    }
+
+    /**
+     * Does the year divide into twelve calendar months? It must ask for twelve periods, begin on
+     * the first day of a month, and end the day before the same date one year later — otherwise
+     * month boundaries and period boundaries cannot coincide and the even split is used instead.
+     */
+    private static boolean isWholeYearInCalendarMonths(LocalDate yearStart, LocalDate yearEnd,
+                                                       int periodCount) {
+        return periodCount == CALENDAR_MONTHS_PER_YEAR
+            && yearStart != null && yearEnd != null
+            && yearStart.getDayOfMonth() == 1
+            && yearEnd.equals(yearStart.plusYears(1L).minusDays(1L));
+    }
+
+    public Long getFiscalPeriodPk() {
+        return fiscalPeriodPk;
+    }
+
+    public Integer getPeriodNo() {
+        return periodNo;
+    }
+
+    public String getStatusCode() {
+        return statusCode;
+    }
+}

@@ -13,7 +13,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpHeaders;
@@ -39,12 +38,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     /** USER_STATUS code a caller must carry to authenticate (REQ-SEC-001, CHK_SEC_USER_STATUS). */
     private static final String STATUS_ACTIVE = "ACTIVE";
-
-    /** DBF-SEC-050's shape, {@code PERM_<PAGE_CODE>_<ACTION_CODE>} — see {@code RegistryService}. */
-    private static final String PERMISSION_PREFIX = "PERM_";
-
-    /** {@code profile.conventions.security_model.gateway_action}, cited by RULE-SEC-007. */
-    private static final String GATEWAY_ACTION_CODE = "VIEW";
 
     private final JwtTokenValidator tokenValidator;
     private final UserRepository userRepository;
@@ -104,7 +97,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(username, null, List.of()));
-            Set<String> codes = menuService.effectivePermissionCodes().getData();
+            Set<String> codes = menuService.effectiveAuthorityCodes().getData();
             SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(username, null, toAuthorities(codes)));
         } catch (RuntimeException e) {
@@ -114,29 +107,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * RULE-SEC-007 applied once for every endpoint: a non-VIEW permission counts only while its
-     * screen's VIEW is also held. {@link InternalCallerContext#INTERNAL_AUTHORITY} is stripped here
-     * so no request can ever acquire it, whatever a registry row might say.
+     * RULE-SEC-007 is already applied by {@link MenuService#effectiveAuthorityCodes()}, against the
+     * registry's own screen rows. All that remains here is
+     * {@link InternalCallerContext#INTERNAL_AUTHORITY}, stripped so no request can ever acquire it,
+     * whatever a registry row might say.
      */
     private List<GrantedAuthority> toAuthorities(Set<String> codes) {
-        Set<String> held = codes.stream()
+        return codes.stream()
             .filter(code -> !InternalCallerContext.INTERNAL_AUTHORITY.equals(code))
-            .collect(Collectors.toUnmodifiableSet());
-        return held.stream()
-            .filter(code -> passesGateway(code, held))
             .map(code -> (GrantedAuthority) new SimpleGrantedAuthority(code))
             .toList();
-    }
-
-    /** A code that does not carry the registry's shape has no screen to gate on, so it is kept. */
-    private boolean passesGateway(String code, Set<String> held) {
-        int separator = code.lastIndexOf('_');
-        if (!code.startsWith(PERMISSION_PREFIX) || separator <= PERMISSION_PREFIX.length()) {
-            return true;
-        }
-        if (GATEWAY_ACTION_CODE.equals(code.substring(separator + 1))) {
-            return true;
-        }
-        return held.contains(code.substring(0, separator + 1) + GATEWAY_ACTION_CODE);
     }
 }

@@ -31,10 +31,21 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(LocalizedException.class)
     public ResponseEntity<ApiResponse<Void>> handleLocalizedException(LocalizedException ex) {
         log.warn("Business error [{}]: {}", ex.getErrorCode(), ex.getMessage());
-        ApiError error = ApiError.builder()
+        ApiError.ApiErrorBuilder builder = ApiError.builder()
             .code(ex.getErrorCode())
-            .message(resolveMessage(ex.getErrorCode(), ex.getArgs()))
-            .build();
+            .message(resolveMessage(ex.getErrorCode(), ex.getArgs()));
+        // Additive (REQ-FIN-015): a multi-error exception also lists every failure, itself
+        // included, in the fieldErrors slot ApiError already exposes. A single-code exception
+        // carries an empty list and therefore serializes byte-identically to before.
+        if (!ex.getErrors().isEmpty()) {
+            builder.fieldErrors(ex.getErrors().stream()
+                .map(detail -> FieldErrorItem.builder()
+                    .field(detail.errorCode())
+                    .message(resolveMessage(detail.errorCode(), detail.args()))
+                    .build())
+                .toList());
+        }
+        ApiError error = builder.build();
         return ResponseEntity.status(ex.getStatus().getHttpStatus())
             .body(ApiResponse.failure(error));
     }

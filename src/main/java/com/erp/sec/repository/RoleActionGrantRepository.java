@@ -93,6 +93,23 @@ public interface RoleActionGrantRepository
     List<String> findEffectivePermissionCodesForUser(@Param("userPk") Long userPk);
 
     /**
+     * QR-SEC-027, registry shape — the same effective grants as
+     * {@link #findEffectivePermissionCodesForUser}, each carrying the {@code SEC_SCREEN_REG} row and
+     * {@code SEC_ACTION_REG} action code behind it, so RULE-SEC-007's gateway can be decided on
+     * registry facts instead of on the permission code's text. One query for the whole authority
+     * set: the screen of every held code arrives with it, so the gateway costs no further round
+     * trip (REQ-SEC-033 runs this on every authenticated request).
+     */
+    @Query("SELECT DISTINCT new com.erp.sec.repository.EffectiveGrantProjection("
+        + "a.permissionCode, s.screenRegPk, a.actionCode) FROM RoleActionGrant g "
+        + "JOIN g.action a JOIN a.screen s JOIN s.module m "
+        + "WHERE a.isActiveFl = TRUE AND g.role.isActiveFl = TRUE "
+        + "AND s.isActiveFl = TRUE AND m.isActiveFl = TRUE "
+        + "AND g.role.rolePk IN ("
+        + "  SELECT ura.role.rolePk FROM UserRoleAssignment ura WHERE ura.user.userPk = :userPk)")
+    List<EffectiveGrantProjection> findEffectiveGrantsForUser(@Param("userPk") Long userPk);
+
+    /**
      * QR-SEC-039 (REQ-SEC-035) — the user ids holding {@code permissionCode} through an active
      * role: the inverse of {@link #findEffectivePermissionCodesForUser}, with the same active-flag
      * predicates. Caller: {@code UserService.findUserIdsHoldingPermission} (A.2.9).
