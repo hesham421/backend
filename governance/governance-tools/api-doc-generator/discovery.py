@@ -70,6 +70,10 @@ class RepositoryContext:
     output: Path
     source_root: Optional[Path] = None
     common_source_roots: list[Path] = field(default_factory=list)
+    # The module's backend execution plan, when one exists — read for its API
+    # REGISTRY only (contract id per endpoint). Optional like every other
+    # discovered input: absent simply means the docs carry no contract ids.
+    execution_plan: Optional[Path] = None
 
 
 def default_backend_root() -> Path:
@@ -78,6 +82,26 @@ def default_backend_root() -> Path:
 
 def default_output_dir(module: str) -> Path:
     return GOVERNANCE_ROOT / "modules" / module / "api-docs"
+
+
+def default_module_dir(module: str) -> Path:
+    return GOVERNANCE_ROOT / "modules" / module
+
+
+def find_execution_plan(module: str) -> Optional[Path]:
+    """The module's backend execution plan, wherever the module's own folder
+    keeps it (SEC has it under P3_1/, a module added later may not). Matched
+    by the file's declared role -- backend-execution-plan[-<mod>].md; both
+    spellings are in use across this repo's modules -- not by a hard-coded
+    phase folder, and never guessed: no match means no contract ids, exactly
+    as a missing --source means no permissions."""
+    module_dir = default_module_dir(module)
+    if not module_dir.is_dir():
+        return None
+    matches = sorted(module_dir.rglob("backend-execution-plan*.md"))
+    # A split package copy (packages/backend-execution/...) restates parts of
+    # the plan; the shallowest match is the plan proper.
+    return min(matches, key=lambda p: (len(p.parts), str(p))) if matches else None
 
 
 def _normalize(s: str) -> str:
@@ -360,9 +384,11 @@ def resolve(
     source_override: Optional[Path] = None,
     common_source_overrides: Optional[list[Path]] = None,
     output_override: Optional[Path] = None,
+    execution_plan_override: Optional[Path] = None,
 ) -> RepositoryContext:
     backend_root = backend_root or default_backend_root()
     output = output_override or default_output_dir(module)
+    execution_plan = execution_plan_override or find_execution_plan(module)
 
     if openapi_override and source_override:
         # Every input explicitly given -- no repository discovery needed at all.
@@ -372,6 +398,7 @@ def resolve(
             output=output,
             source_root=source_override,
             common_source_roots=common_source_overrides or [],
+            execution_plan=execution_plan,
         )
 
     if not backend_root.exists():
@@ -381,7 +408,8 @@ def resolve(
                 f"Pass --openapi explicitly (and --source, if permission/error-code sections are wanted)."
             )
         return RepositoryContext(module=module, openapi_source=openapi_override, output=output,
-                               source_root=source_override, common_source_roots=common_source_overrides or [])
+                               source_root=source_override, common_source_roots=common_source_overrides or [],
+                               execution_plan=execution_plan)
 
     groups = find_openapi_groups(backend_root)
     matched = match_openapi_group(groups, module)
@@ -410,4 +438,5 @@ def resolve(
         output=output,
         source_root=source_root,
         common_source_roots=common_source_roots,
+        execution_plan=execution_plan,
     )

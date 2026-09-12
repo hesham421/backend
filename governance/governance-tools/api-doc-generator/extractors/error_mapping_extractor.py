@@ -48,6 +48,16 @@ STATUS_ENUM_DECL_RE = re.compile(r"\benum\s+Status\b")
 # either as ResponseEntity.status(HttpStatus.X) or one of ResponseEntity's
 # named shortcuts (badRequest()/notFound()/...).
 CREATE_ERROR_CODE_RE = re.compile(r'(?:createError|\.code)\(\s*"([A-Z0-9_]+)"')
+# The same argument written as a constant reference -- .code(CommonErrorCodes.
+# VALIDATION_ERROR) -- which is how this codebase now spells it. Matching only
+# the string-literal form above meant every framework code silently vanished
+# from the docs the moment the handler was refactored to use the constants
+# class, with no error and no empty section to notice: the codes were simply
+# gone. The constant's literal value is then resolved from its own class, and
+# only where that class is actually found; an unresolvable constant keeps its
+# name as the documented code rather than being dropped or guessed at.
+CREATE_ERROR_CODE_CONST_RE = re.compile(r'(?:createError|\.code)\(\s*(?:[A-Z]\w*\.)?([A-Z][A-Z0-9_]*)\s*[,)]')
+_CONSTANT_DECL_RE = re.compile(r'\bstatic\s+final\s+String\s+([A-Z][A-Z0-9_]*)\s*=\s*"([^"]*)"')
 RESPONSE_STATUS_RE = re.compile(r"ResponseEntity\.status\(\s*HttpStatus\.(\w+)\s*\)")
 RESPONSE_SHORTCUT_RE = re.compile(r"ResponseEntity\.(badRequest|notFound|unprocessableEntity)\s*\(")
 RESPONSE_SHORTCUT_STATUS = {
@@ -111,6 +121,21 @@ def find_status_http_mapping_with_source(
     return {}, None
 
 
+def find_error_code_constants(common_source_roots: list[Path]) -> dict[str, str]:
+    """Constant name -> its literal value, for every *ErrorCodes class under
+    the shared roots. Read from the declarations themselves, so a constant
+    whose value differs from its name (SEC-401-INVALID-CREDENTIALS vs
+    SEC_401_INVALID_CREDENTIALS) documents the value actually sent on the
+    wire."""
+    constants: dict[str, str] = {}
+    for root in common_source_roots:
+        for path in sorted(root.rglob("*ErrorCodes.java")):
+            text = path.read_text(encoding="utf-8", errors="ignore")
+            for m in _CONSTANT_DECL_RE.finditer(text):
+                constants.setdefault(m.group(1), m.group(2))
+    return constants
+
+
 def _split_handler_methods(text: str) -> list[str]:
     parts = re.split(r"(?=@ExceptionHandler)", text)
     return parts[1:]
@@ -121,6 +146,7 @@ def find_framework_error_codes(common_source_roots: list[Path]) -> list[ErrorCod
     their real HTTP status, parsed from the shared GlobalExceptionHandler."""
     codes: list[ErrorCode] = []
     seen: set[str] = set()
+    constants = find_error_code_constants(common_source_roots)
     for root in common_source_roots:
         for path in sorted(root.rglob("GlobalExceptionHandler.java")):
             text = path.read_text(encoding="utf-8")
@@ -129,7 +155,7 @@ def find_framework_error_codes(common_source_roots: list[Path]) -> list[ErrorCod
             except ValueError:
                 rel = path.name
             for chunk in _split_handler_methods(text):
-                code_m = CREATE_ERROR_CODE_RE.search(chunk)
+                code_m = CREATE_ERROR_CODE_RE.search(chunk) or CREATE_ERROR_CODE_CONST_RE.search(chunk)
                 if not code_m:
                     continue
                 status_m = RESPONSE_STATUS_RE.search(chunk)
@@ -143,11 +169,12 @@ def find_framework_error_codes(common_source_roots: list[Path]) -> list[ErrorCod
                         # a fixed framework status. Nothing to record here.
                         continue
                     http = RESPONSE_SHORTCUT_STATUS[shortcut_m.group(1)]
-                code = code_m.group(1)
-                if code in seen:
+                name = code_m.group(1)
+                if name in seen:
                     continue
-                seen.add(code)
-                codes.append(ErrorCode(name=code, value=code, source_file=rel, http_status=http))
+                seen.add(name)
+                codes.append(ErrorCode(name=name, value=constants.get(name, name),
+                                       source_file=rel, http_status=http))
     return codes
 
 

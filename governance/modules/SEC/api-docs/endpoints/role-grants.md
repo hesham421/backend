@@ -3,16 +3,18 @@
 
 **Endpoints in this file:**
 
-- [POST /api/v1/sec/roles/{id}/screens](#post-apiv1secrolesidscreens)
-- [POST /api/v1/sec/roles/{id}/modules](#post-apiv1secrolesidmodules)
-- [POST /api/v1/sec/roles/{id}/actions](#post-apiv1secrolesidactions)
-- [DELETE /api/v1/sec/roles/{id}/modules/{moduleId}](#delete-apiv1secrolesidmodulesmoduleid)
+- `API-SEC-016` — [POST /api/v1/sec/roles/{id}/screens](#post-apiv1secrolesidscreens)
+- `API-SEC-014` — [POST /api/v1/sec/roles/{id}/modules](#post-apiv1secrolesidmodules)
+- `API-SEC-017` — [POST /api/v1/sec/roles/{id}/actions](#post-apiv1secrolesidactions)
+- `API-SEC-015` — [DELETE /api/v1/sec/roles/{id}/modules/{moduleId}](#delete-apiv1secrolesidmodulesmoduleid)
 
 ## POST /api/v1/sec/roles/{id}/screens
 
 **Grant screen to role**
 
 منح شاشة لدور
+
+Contract ID: `API-SEC-016`
 
 Operation ID: `grantScreen`
 
@@ -84,6 +86,8 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 
 منح وحدة لدور
 
+Contract ID: `API-SEC-014`
+
 Operation ID: `grantModule`
 
 **Authentication**
@@ -154,6 +158,8 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 
 منح إجراء لدور
 
+Contract ID: `API-SEC-017`
+
 Operation ID: `grantAction`
 
 **Authentication**
@@ -223,6 +229,8 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 **Revoke module grant**
 
 سحب منح وحدة مع منحها المتفرعة
+
+Contract ID: `API-SEC-015`
 
 Operation ID: `revokeModule`
 

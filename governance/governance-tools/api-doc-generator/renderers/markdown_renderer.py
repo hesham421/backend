@@ -11,6 +11,7 @@ get written.
 import json
 import re
 from dataclasses import replace
+from typing import Optional
 
 from models.api_doc_model import (
     ApiDocument,
@@ -301,6 +302,13 @@ def _endpoint_markdown(ep: Endpoint) -> str:
     if ep.description:
         parts.append(ep.description)
         parts.append("")
+    if ep.api_id:
+        # The id every other governance artifact names this endpoint by. It
+        # is printed first, and before the operation id, because resolving
+        # "implement API-SEC-004" against a planning document instead of this
+        # file is what produces a call to a path the backend never served.
+        parts.append(f"Contract ID: `{ep.api_id}`")
+        parts.append("")
     if ep.operation_id:
         parts.append(f"Operation ID: `{ep.operation_id}`")
         parts.append("")
@@ -374,13 +382,21 @@ def _endpoint_markdown(ep: Endpoint) -> str:
     return "\n".join(parts).rstrip() + "\n"
 
 
-def _catalog_table(endpoints: list[Endpoint], group: str, group_file: str) -> str:
-    lines = ["| Method | Path | Summary | Doc |", "|---|---|---|---|"]
+def _catalog_table(endpoints: list[Endpoint], group: str, group_file: str, with_api_ids: bool) -> str:
+    """The API column is the lookup that was missing: a consumer holding a
+    contract id can find the served path here instead of in a planning
+    document. The column is omitted entirely when no endpoint has an id --
+    an empty column would read as "these endpoints have no contract"."""
+    if with_api_ids:
+        lines = ["| API | Method | Path | Summary | Doc |", "|---|---|---|---|---|"]
+    else:
+        lines = ["| Method | Path | Summary | Doc |", "|---|---|---|---|"]
     for ep in endpoints:
         if (ep.group or "Ungrouped") != group:
             continue
         link = f"{group_file}#{_anchor_slug(ep.method, ep.path)}"
-        lines.append(f"| {ep.method} | `{ep.path}` | {ep.summary or ''} | [{ep.slug()}]({link}) |")
+        row = f"| {ep.method} | `{ep.path}` | {ep.summary or ''} | [{ep.slug()}]({link}) |"
+        lines.append(f"| {ep.api_id or '—'} {row}" if with_api_ids else row)
     return "\n".join(lines)
 
 
@@ -395,11 +411,50 @@ def _group_markdown(group: str, endpoints: list[Endpoint]) -> str:
         parts.append("**Endpoints in this file:**")
         parts.append("")
         for ep in endpoints:
-            parts.append(f"- [{ep.method} {ep.path}](#{_anchor_slug(ep.method, ep.path)})")
+            tag = f"`{ep.api_id}` — " if ep.api_id else ""
+            parts.append(f"- {tag}[{ep.method} {ep.path}](#{_anchor_slug(ep.method, ep.path)})")
         parts.append("")
     for ep in endpoints:
         parts.append(_endpoint_markdown(ep))
     return "\n".join(parts).rstrip() + "\n"
+
+
+def _contract_section(doc: ApiDocument) -> Optional[str]:
+    """States where the contract ids came from and, when the declared and the
+    served contract disagree, lists every mismatch. Drift is published rather
+    than only logged: an id that resolves to nothing served is the one fact a
+    consumer cannot discover from anywhere else, and is exactly what sends
+    them back to a stale planning document for a path."""
+    if not doc.contract_source:
+        return None
+    stamped = [ep.api_id for ep in doc.endpoints if ep.api_id]
+    # The illustrative id is taken from this document's own first stamped
+    # endpoint, never written as a literal: a literal would print one module's
+    # id (API-SEC-004) into every other module's index, which is the same
+    # class of stale cross-module reference this whole section exists to stop.
+    example = f"`{stamped[0]}`, ..." if stamped else "an API REGISTRY id"
+    lines = [
+        "## Contract Traceability",
+        "",
+        f"Contract ids joined from `{doc.contract_source}` (API REGISTRY): "
+        f"**{len(stamped)} of {len(doc.endpoints)}** served endpoints carry one.",
+        "",
+        f"Resolve a contract id ({example}) to a path **here** — the API column of the "
+        "catalog below, and the `Contract ID` line of each endpoint. A planning document states "
+        "the path that was proposed, not the one that is served.",
+        "",
+    ]
+    if doc.contract_drift:
+        lines += [
+            "### Drift — declared vs served",
+            "",
+            "| Kind | API | Method | Path | What this means |",
+            "|---|---|---|---|---|",
+        ]
+        for d in doc.contract_drift:
+            lines.append(f"| {d.kind} | {d.api_id or '—'} | {d.method} | `{d.path}` | {d.detail} |")
+        lines.append("")
+    return "\n".join(lines)
 
 
 def _index_markdown(doc: ApiDocument) -> str:
@@ -439,12 +494,15 @@ def _index_markdown(doc: ApiDocument) -> str:
     parts.append(_error_codes_section(doc.error_codes))
     parts.append(_status_mappings_section(doc.status_mappings))
 
+    parts.append(_contract_section(doc))
+
+    with_api_ids = any(ep.api_id for ep in doc.endpoints)
     parts.append("## API Catalog")
     parts.append("")
     for group in doc.groups():
         parts.append(f"### {group}")
         parts.append("")
-        parts.append(_catalog_table(doc.endpoints, group, group_files[group]))
+        parts.append(_catalog_table(doc.endpoints, group, group_files[group], with_api_ids))
         parts.append("")
 
     return "\n".join(p for p in parts if p is not None).strip() + "\n"

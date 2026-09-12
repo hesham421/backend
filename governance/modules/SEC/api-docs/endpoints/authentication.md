@@ -3,16 +3,18 @@
 
 **Endpoints in this file:**
 
-- [POST /api/v1/sec/auth/signup](#post-apiv1secauthsignup)
-- [POST /api/v1/sec/auth/password-reset/request](#post-apiv1secauthpassword-resetrequest)
-- [POST /api/v1/sec/auth/password-reset/complete](#post-apiv1secauthpassword-resetcomplete)
-- [POST /api/v1/sec/auth/login](#post-apiv1secauthlogin)
+- `API-SEC-002` — [POST /api/v1/sec/auth/signup](#post-apiv1secauthsignup)
+- `API-SEC-003` — [POST /api/v1/sec/auth/password-reset/request](#post-apiv1secauthpassword-resetrequest)
+- `API-SEC-004` — [POST /api/v1/sec/auth/password-reset/complete](#post-apiv1secauthpassword-resetcomplete)
+- `API-SEC-001` — [POST /api/v1/sec/auth/login](#post-apiv1secauthlogin)
 
 ## POST /api/v1/sec/auth/signup
 
 **Submit a sign-up request**
 
 تقديم طلب تسجيل
+
+Contract ID: `API-SEC-002`
 
 Operation ID: `signup`
 
@@ -84,6 +86,8 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 
 طلب إعادة تعيين كلمة المرور
 
+Contract ID: `API-SEC-003`
+
 Operation ID: `requestReset`
 
 **Authentication**
@@ -137,6 +141,8 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 **Complete a password reset**
 
 إتمام إعادة تعيين كلمة المرور
+
+Contract ID: `API-SEC-004`
 
 Operation ID: `completeReset`
 
@@ -193,6 +199,8 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 **Login**
 
 تسجيل الدخول وإصدار رمز وصول
+
+Contract ID: `API-SEC-001`
 
 Operation ID: `login`
 

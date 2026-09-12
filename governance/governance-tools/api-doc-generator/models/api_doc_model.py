@@ -95,6 +95,12 @@ class Endpoint:
     # rendered as-is so an endpoint with a real, non-constant authorization
     # rule stops looking unprotected in the docs.
     permission_expression: Optional[str] = None
+    # Populated only by contract_extractor.attach_contract_ids(), only when
+    # the module's backend execution plan (its API REGISTRY) was discovered.
+    # This is the id — API-SEC-004, ... — every other governance artifact
+    # names this endpoint by; without it the published docs are unjoinable to
+    # the rest of the chain. Absent = this endpoint is in no API REGISTRY.
+    api_id: Optional[str] = None
     # Populated only by error_mapping_extractor.attach_endpoint_error_codes(),
     # only when common source roots are available -- see PossibleError.
     possible_errors: list[PossibleError] = field(default_factory=list)
@@ -104,6 +110,28 @@ class Endpoint:
             return self.operation_id
         cleaned = self.path.strip("/").replace("/", "-").replace("{", "").replace("}", "")
         return f"{self.method.lower()}-{cleaned}" if cleaned else self.method.lower()
+
+
+@dataclass
+class ContractEntry:
+    """One row of a module's API REGISTRY (backend execution plan) — the
+    declared contract, as opposed to what is actually served."""
+    api_id: str
+    method: str
+    path: str
+    operation: Optional[str] = None
+
+
+@dataclass
+class ContractDrift:
+    """A declared-vs-served mismatch. kind is "unimplemented" (a registry id
+    with no served endpoint — the id a consumer would resolve to a dead path)
+    or "undeclared" (a served endpoint no registry id names)."""
+    kind: str
+    method: str
+    path: str
+    detail: str
+    api_id: Optional[str] = None
 
 
 @dataclass
@@ -192,6 +220,12 @@ class ApiDocument:
     # Populated only by common_headers_extractor.py, only when a shared
     # common-source root was discovered/given (see 3.12).
     common_headers: list[Parameter] = field(default_factory=list)
+    # Populated only by contract_extractor.py, only when the module's backend
+    # execution plan was discovered. contract_source names the plan file the
+    # ids were joined from; contract_drift is every declared-vs-served
+    # mismatch found while joining.
+    contract_source: Optional[str] = None
+    contract_drift: list[ContractDrift] = field(default_factory=list)
 
     def groups(self) -> list[str]:
         seen: list[str] = []

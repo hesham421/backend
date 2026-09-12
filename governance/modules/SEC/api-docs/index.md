@@ -85,6 +85,7 @@ Source: `com/erp/common/search/PageableBuilder.java`
 | SEC_403_FORBIDDEN | `SEC-403-FORBIDDEN` | exception/SecErrorCodes.java | FORBIDDEN | 403 FORBIDDEN |
 | SEC_400_INVALID_SORT | `SEC-400-INVALID-SORT` | exception/SecErrorCodes.java | VALIDATION_ERROR | 400 BAD_REQUEST |
 | VALIDATION_ERROR | `VALIDATION_ERROR` | com/erp/common/web/GlobalExceptionHandler.java |  | 400 BAD_REQUEST |
+| METHOD_NOT_ALLOWED | `METHOD_NOT_ALLOWED` | com/erp/common/web/GlobalExceptionHandler.java |  | 405 METHOD_NOT_ALLOWED |
 | DATA_INTEGRITY_VIOLATION | `DATA_INTEGRITY_VIOLATION` | com/erp/common/web/GlobalExceptionHandler.java |  | 409 CONFLICT |
 | ACCESS_DENIED | `ACCESS_DENIED` | com/erp/common/web/GlobalExceptionHandler.java |  | 403 FORBIDDEN |
 | INTERNAL_ERROR | `INTERNAL_ERROR` | com/erp/common/web/GlobalExceptionHandler.java |  | 500 INTERNAL_SERVER_ERROR |
@@ -109,81 +110,87 @@ Shared, module-independent mapping every business error code's `Status` resolves
 | UPDATED | 200 OK |
 | VALIDATION_ERROR | 400 BAD_REQUEST |
 
+## Contract Traceability
+
+Contract ids joined from `backend-execution-plan-sec.md` (API REGISTRY): **27 of 27** served endpoints carry one.
+
+Resolve a contract id (`API-SEC-007`, ...) to a path **here** — the API column of the catalog below, and the `Contract ID` line of each endpoint. A planning document states the path that was proposed, not the one that is served.
+
 ## API Catalog
 
 ### Users
 
-| Method | Path | Summary | Doc |
-|---|---|---|---|
-| PUT | `/api/v1/sec/users/{id}` | Update user | [update](endpoints/users.md#put-apiv1secusersid) |
-| DELETE | `/api/v1/sec/users/{id}` | Deactivate user | [deactivate](endpoints/users.md#delete-apiv1secusersid) |
-| PATCH | `/api/v1/sec/users/{id}` | Reactivate user | [reactivate](endpoints/users.md#patch-apiv1secusersid) |
-| PUT | `/api/v1/sec/users/{id}/roles` | Assign roles to user | [assignRoles](endpoints/users.md#put-apiv1secusersidroles) |
-| POST | `/api/v1/sec/users` | Create user | [create](endpoints/users.md#post-apiv1secusers) |
-| POST | `/api/v1/sec/users/search` | Search users | [search](endpoints/users.md#post-apiv1secuserssearch) |
+| API | Method | Path | Summary | Doc |
+|---|---|---|---|---|
+| API-SEC-007 | PUT | `/api/v1/sec/users/{id}` | Update user | [update](endpoints/users.md#put-apiv1secusersid) |
+| API-SEC-009 | DELETE | `/api/v1/sec/users/{id}` | Deactivate user | [deactivate](endpoints/users.md#delete-apiv1secusersid) |
+| API-SEC-010 | PATCH | `/api/v1/sec/users/{id}` | Reactivate user | [reactivate](endpoints/users.md#patch-apiv1secusersid) |
+| API-SEC-008 | PUT | `/api/v1/sec/users/{id}/roles` | Assign roles to user | [assignRoles](endpoints/users.md#put-apiv1secusersidroles) |
+| API-SEC-006 | POST | `/api/v1/sec/users` | Create user | [create](endpoints/users.md#post-apiv1secusers) |
+| API-SEC-005 | POST | `/api/v1/sec/users/search` | Search users | [search](endpoints/users.md#post-apiv1secuserssearch) |
 
 ### Active Sessions
 
-| Method | Path | Summary | Doc |
-|---|---|---|---|
-| POST | `/api/v1/sec/sessions/search` | List active sessions | [search_1](endpoints/active-sessions.md#post-apiv1secsessionssearch) |
-| DELETE | `/api/v1/sec/sessions/{id}` | Terminate session | [terminate](endpoints/active-sessions.md#delete-apiv1secsessionsid) |
+| API | Method | Path | Summary | Doc |
+|---|---|---|---|---|
+| API-SEC-025 | POST | `/api/v1/sec/sessions/search` | List active sessions | [search_1](endpoints/active-sessions.md#post-apiv1secsessionssearch) |
+| API-SEC-026 | DELETE | `/api/v1/sec/sessions/{id}` | Terminate session | [terminate](endpoints/active-sessions.md#delete-apiv1secsessionsid) |
 
 ### Roles
 
-| Method | Path | Summary | Doc |
-|---|---|---|---|
-| POST | `/api/v1/sec/roles` | Create role | [create_1](endpoints/roles.md#post-apiv1secroles) |
-| POST | `/api/v1/sec/roles/search` | Search roles | [search_2](endpoints/roles.md#post-apiv1secrolessearch) |
+| API | Method | Path | Summary | Doc |
+|---|---|---|---|---|
+| API-SEC-013 | POST | `/api/v1/sec/roles` | Create role | [create_1](endpoints/roles.md#post-apiv1secroles) |
+| API-SEC-012 | POST | `/api/v1/sec/roles/search` | Search roles | [search_2](endpoints/roles.md#post-apiv1secrolessearch) |
 
 ### Role Grants
 
-| Method | Path | Summary | Doc |
-|---|---|---|---|
-| POST | `/api/v1/sec/roles/{id}/screens` | Grant screen to role | [grantScreen](endpoints/role-grants.md#post-apiv1secrolesidscreens) |
-| POST | `/api/v1/sec/roles/{id}/modules` | Grant module to role | [grantModule](endpoints/role-grants.md#post-apiv1secrolesidmodules) |
-| POST | `/api/v1/sec/roles/{id}/actions` | Grant action to role | [grantAction](endpoints/role-grants.md#post-apiv1secrolesidactions) |
-| DELETE | `/api/v1/sec/roles/{id}/modules/{moduleId}` | Revoke module grant | [revokeModule](endpoints/role-grants.md#delete-apiv1secrolesidmodulesmoduleid) |
+| API | Method | Path | Summary | Doc |
+|---|---|---|---|---|
+| API-SEC-016 | POST | `/api/v1/sec/roles/{id}/screens` | Grant screen to role | [grantScreen](endpoints/role-grants.md#post-apiv1secrolesidscreens) |
+| API-SEC-014 | POST | `/api/v1/sec/roles/{id}/modules` | Grant module to role | [grantModule](endpoints/role-grants.md#post-apiv1secrolesidmodules) |
+| API-SEC-017 | POST | `/api/v1/sec/roles/{id}/actions` | Grant action to role | [grantAction](endpoints/role-grants.md#post-apiv1secrolesidactions) |
+| API-SEC-015 | DELETE | `/api/v1/sec/roles/{id}/modules/{moduleId}` | Revoke module grant | [revokeModule](endpoints/role-grants.md#delete-apiv1secrolesidmodulesmoduleid) |
 
 ### Module Registry
 
-| Method | Path | Summary | Doc |
-|---|---|---|---|
-| POST | `/api/v1/sec/registry/search` | Search the registry | [search_3](endpoints/module-registry.md#post-apiv1secregistrysearch) |
-| POST | `/api/v1/sec/registry/screens` | Register a screen | [registerScreen](endpoints/module-registry.md#post-apiv1secregistryscreens) |
-| POST | `/api/v1/sec/registry/modules` | Register a module | [registerModule](endpoints/module-registry.md#post-apiv1secregistrymodules) |
-| POST | `/api/v1/sec/registry/actions` | Register an action | [registerAction](endpoints/module-registry.md#post-apiv1secregistryactions) |
+| API | Method | Path | Summary | Doc |
+|---|---|---|---|---|
+| API-SEC-021 | POST | `/api/v1/sec/registry/search` | Search the registry | [search_3](endpoints/module-registry.md#post-apiv1secregistrysearch) |
+| API-SEC-019 | POST | `/api/v1/sec/registry/screens` | Register a screen | [registerScreen](endpoints/module-registry.md#post-apiv1secregistryscreens) |
+| API-SEC-018 | POST | `/api/v1/sec/registry/modules` | Register a module | [registerModule](endpoints/module-registry.md#post-apiv1secregistrymodules) |
+| API-SEC-020 | POST | `/api/v1/sec/registry/actions` | Register an action | [registerAction](endpoints/module-registry.md#post-apiv1secregistryactions) |
 
 ### Authentication
 
-| Method | Path | Summary | Doc |
-|---|---|---|---|
-| POST | `/api/v1/sec/auth/signup` | Submit a sign-up request | [signup](endpoints/authentication.md#post-apiv1secauthsignup) |
-| POST | `/api/v1/sec/auth/password-reset/request` | Request a password reset | [requestReset](endpoints/authentication.md#post-apiv1secauthpassword-resetrequest) |
-| POST | `/api/v1/sec/auth/password-reset/complete` | Complete a password reset | [completeReset](endpoints/authentication.md#post-apiv1secauthpassword-resetcomplete) |
-| POST | `/api/v1/sec/auth/login` | Login | [login](endpoints/authentication.md#post-apiv1secauthlogin) |
+| API | Method | Path | Summary | Doc |
+|---|---|---|---|---|
+| API-SEC-002 | POST | `/api/v1/sec/auth/signup` | Submit a sign-up request | [signup](endpoints/authentication.md#post-apiv1secauthsignup) |
+| API-SEC-003 | POST | `/api/v1/sec/auth/password-reset/request` | Request a password reset | [requestReset](endpoints/authentication.md#post-apiv1secauthpassword-resetrequest) |
+| API-SEC-004 | POST | `/api/v1/sec/auth/password-reset/complete` | Complete a password reset | [completeReset](endpoints/authentication.md#post-apiv1secauthpassword-resetcomplete) |
+| API-SEC-001 | POST | `/api/v1/sec/auth/login` | Login | [login](endpoints/authentication.md#post-apiv1secauthlogin) |
 
 ### Audit Log
 
-| Method | Path | Summary | Doc |
-|---|---|---|---|
-| POST | `/api/v1/sec/audit-log/search` | Search the audit log | [search_4](endpoints/audit-log.md#post-apiv1secaudit-logsearch) |
-| GET | `/api/v1/sec/audit-log/export` | Export the audit log | [export](endpoints/audit-log.md#get-apiv1secaudit-logexport) |
+| API | Method | Path | Summary | Doc |
+|---|---|---|---|---|
+| API-SEC-023 | POST | `/api/v1/sec/audit-log/search` | Search the audit log | [search_4](endpoints/audit-log.md#post-apiv1secaudit-logsearch) |
+| API-SEC-024 | GET | `/api/v1/sec/audit-log/export` | Export the audit log | [export](endpoints/audit-log.md#get-apiv1secaudit-logexport) |
 
 ### Sign-up Requests
 
-| Method | Path | Summary | Doc |
-|---|---|---|---|
-| PATCH | `/api/v1/sec/signup-requests/{id}` | Approve or reject a sign-up request | [decide](endpoints/sign-up-requests.md#patch-apiv1secsignup-requestsid) |
+| API | Method | Path | Summary | Doc |
+|---|---|---|---|---|
+| API-SEC-011 | PATCH | `/api/v1/sec/signup-requests/{id}` | Approve or reject a sign-up request | [decide](endpoints/sign-up-requests.md#patch-apiv1secsignup-requestsid) |
 
 ### Menu
 
-| Method | Path | Summary | Doc |
-|---|---|---|---|
-| GET | `/api/v1/sec/menu` | Get the effective menu | [effective](endpoints/menu.md#get-apiv1secmenu) |
+| API | Method | Path | Summary | Doc |
+|---|---|---|---|---|
+| API-SEC-027 | GET | `/api/v1/sec/menu` | Get the effective menu | [effective](endpoints/menu.md#get-apiv1secmenu) |
 
 ### Security Dashboard
 
-| Method | Path | Summary | Doc |
-|---|---|---|---|
-| GET | `/api/v1/sec/dashboard` | Get the dashboard summary | [summary](endpoints/security-dashboard.md#get-apiv1secdashboard) |
+| API | Method | Path | Summary | Doc |
+|---|---|---|---|---|
+| API-SEC-022 | GET | `/api/v1/sec/dashboard` | Get the dashboard summary | [summary](endpoints/security-dashboard.md#get-apiv1secdashboard) |

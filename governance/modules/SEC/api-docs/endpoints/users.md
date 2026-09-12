@@ -3,18 +3,20 @@
 
 **Endpoints in this file:**
 
-- [PUT /api/v1/sec/users/{id}](#put-apiv1secusersid)
-- [DELETE /api/v1/sec/users/{id}](#delete-apiv1secusersid)
-- [PATCH /api/v1/sec/users/{id}](#patch-apiv1secusersid)
-- [PUT /api/v1/sec/users/{id}/roles](#put-apiv1secusersidroles)
-- [POST /api/v1/sec/users](#post-apiv1secusers)
-- [POST /api/v1/sec/users/search](#post-apiv1secuserssearch)
+- `API-SEC-007` — [PUT /api/v1/sec/users/{id}](#put-apiv1secusersid)
+- `API-SEC-009` — [DELETE /api/v1/sec/users/{id}](#delete-apiv1secusersid)
+- `API-SEC-010` — [PATCH /api/v1/sec/users/{id}](#patch-apiv1secusersid)
+- `API-SEC-008` — [PUT /api/v1/sec/users/{id}/roles](#put-apiv1secusersidroles)
+- `API-SEC-006` — [POST /api/v1/sec/users](#post-apiv1secusers)
+- `API-SEC-005` — [POST /api/v1/sec/users/search](#post-apiv1secuserssearch)
 
 ## PUT /api/v1/sec/users/{id}
 
 **Update user**
 
 تحديث مستخدم
+
+Contract ID: `API-SEC-007`
 
 Operation ID: `update`
 
@@ -115,6 +117,8 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 
 تعطيل مستخدم وإنهاء جلساته النشطة
 
+Contract ID: `API-SEC-009`
+
 Operation ID: `deactivate`
 
 **Authentication**
@@ -161,6 +165,8 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 
 إعادة تفعيل مستخدم معطَّل
 
+Contract ID: `API-SEC-010`
+
 Operation ID: `reactivate`
 
 **Authentication**
@@ -206,6 +212,8 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 **Assign roles to user**
 
 إسناد أدوار إلى مستخدم
+
+Contract ID: `API-SEC-008`
 
 Operation ID: `assignRoles`
 
@@ -305,6 +313,8 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 
 إنشاء مستخدم
 
+Contract ID: `API-SEC-006`
+
 Operation ID: `create`
 
 **Authentication**
@@ -401,6 +411,8 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 **Search users**
 
 بحث المستخدمين
+
+Contract ID: `API-SEC-005`
 
 Operation ID: `search`
 

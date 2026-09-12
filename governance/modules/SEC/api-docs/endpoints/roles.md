@@ -3,14 +3,16 @@
 
 **Endpoints in this file:**
 
-- [POST /api/v1/sec/roles](#post-apiv1secroles)
-- [POST /api/v1/sec/roles/search](#post-apiv1secrolessearch)
+- `API-SEC-013` — [POST /api/v1/sec/roles](#post-apiv1secroles)
+- `API-SEC-012` — [POST /api/v1/sec/roles/search](#post-apiv1secrolessearch)
 
 ## POST /api/v1/sec/roles
 
 **Create role**
 
 إنشاء دور
+
+Contract ID: `API-SEC-013`
 
 Operation ID: `create_1`
 
@@ -94,6 +96,8 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 **Search roles**
 
 بحث الأدوار
+
+Contract ID: `API-SEC-012`
 
 Operation ID: `search_2`
 

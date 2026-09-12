@@ -7,6 +7,8 @@
 
 الموافقة على طلب تسجيل أو رفضه
 
+Contract ID: `API-SEC-011`
+
 Operation ID: `decide`
 
 **Authentication**

@@ -66,6 +66,16 @@ extractors/
                          operations into Endpoint objects: method, path,
                          summary/description, tag, path/query/header params,
                          auth requirement + scheme names. Also reads `info.version`.
+  contract_extractor.py  Joins the module's own API REGISTRY (from its backend
+                         execution plan) to the served endpoints, stamping each
+                         one with its contract id (API-SEC-004, ...) and
+                         reporting both directions of declared-vs-served drift.
+                         This is what makes the generated docs addressable by
+                         the ids every other governance artifact -- SRS,
+                         frontend execution plan, test manifest -- is written
+                         in; without it, resolving an id to a path meant
+                         opening a planning document, which states the path
+                         that was PROPOSED, not the one that is served.
   dto_extractor.py       Resolves $ref schemas into field lists, recursively:
                          a field whose own type (or array-item type) is itself
                          an object schema with properties gets its own fields
@@ -248,6 +258,7 @@ python3 generate.py --module SEC --function generate \
     --openapi ./openapi.json \
     --source ../../../src/main/java/com/erp/sec \
     --common-source ../../../src/main/java \
+    --execution-plan ../../modules/SEC/P3_1/backend-execution-plan-sec.md \
     --output ../../modules/SEC/api-docs/
 ```
 
@@ -374,6 +385,14 @@ modules/ORG/api-docs/
   they depend on (the permission-constants holder, the Status table's home)
   are matched structurally rather than hardcoded, so a rename degrades into
   partial output instead of silently emptying a whole section.
+- **Contract ids need a machine-readable API REGISTRY.** The registry table is
+  read from the module's `backend-execution-plan*.md`, in either spelling in
+  use here: a markdown table under `**API REGISTRY**` (SEC, MDL, FIN) or a
+  box-drawing (`│`) table under a bare `API REGISTRY` line (CU). NOTIF and
+  FILE write their registry as compressed prose — several entries per line,
+  `CRUD` in place of a verb — which carries no unambiguous verb+path pair, so
+  those modules document without contract ids rather than have one guessed.
+  Giving those plans a table is the whole fix; nothing here changes.
 - **Requires `<api-docs-path>/<group>` to actually work as a path segment**, not a
   query string — springdoc groups aren't filterable via `?group=x`.
 

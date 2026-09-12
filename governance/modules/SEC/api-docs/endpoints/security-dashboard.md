@@ -7,6 +7,8 @@
 
 عرض أرقام لوحة تحكم الأمان محسوبة حيًا
 
+Contract ID: `API-SEC-022`
+
 Operation ID: `summary`
 
 **Authentication**

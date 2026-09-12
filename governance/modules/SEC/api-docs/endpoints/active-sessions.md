@@ -3,14 +3,16 @@
 
 **Endpoints in this file:**
 
-- [POST /api/v1/sec/sessions/search](#post-apiv1secsessionssearch)
-- [DELETE /api/v1/sec/sessions/{id}](#delete-apiv1secsessionsid)
+- `API-SEC-025` — [POST /api/v1/sec/sessions/search](#post-apiv1secsessionssearch)
+- `API-SEC-026` — [DELETE /api/v1/sec/sessions/{id}](#delete-apiv1secsessionsid)
 
 ## POST /api/v1/sec/sessions/search
 
 **List active sessions**
 
 عرض الجلسات غير المنتهية
+
+Contract ID: `API-SEC-025`
 
 Operation ID: `search_1`
 
@@ -86,6 +88,8 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 **Terminate session**
 
 إنهاء جلسة نشطة
+
+Contract ID: `API-SEC-026`
 
 Operation ID: `terminate`
 

@@ -3,14 +3,16 @@
 
 **Endpoints in this file:**
 
-- [POST /api/v1/sec/audit-log/search](#post-apiv1secaudit-logsearch)
-- [GET /api/v1/sec/audit-log/export](#get-apiv1secaudit-logexport)
+- `API-SEC-023` — [POST /api/v1/sec/audit-log/search](#post-apiv1secaudit-logsearch)
+- `API-SEC-024` — [GET /api/v1/sec/audit-log/export](#get-apiv1secaudit-logexport)
 
 ## POST /api/v1/sec/audit-log/search
 
 **Search the audit log**
 
 بحث سجل التدقيق
+
+Contract ID: `API-SEC-023`
 
 Operation ID: `search_4`
 
@@ -91,6 +93,8 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 **Export the audit log**
 
 تصدير سجل التدقيق بصيغة CSV
+
+Contract ID: `API-SEC-024`
 
 Operation ID: `export`
 

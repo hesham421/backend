@@ -7,6 +7,8 @@
 
 عرض القائمة المبنية على المنح الفعلية للمستخدم
 
+Contract ID: `API-SEC-027`
+
 Operation ID: `effective`
 
 **Authentication**

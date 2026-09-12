@@ -3,16 +3,18 @@
 
 **Endpoints in this file:**
 
-- [POST /api/v1/sec/registry/search](#post-apiv1secregistrysearch)
-- [POST /api/v1/sec/registry/screens](#post-apiv1secregistryscreens)
-- [POST /api/v1/sec/registry/modules](#post-apiv1secregistrymodules)
-- [POST /api/v1/sec/registry/actions](#post-apiv1secregistryactions)
+- `API-SEC-021` — [POST /api/v1/sec/registry/search](#post-apiv1secregistrysearch)
+- `API-SEC-019` — [POST /api/v1/sec/registry/screens](#post-apiv1secregistryscreens)
+- `API-SEC-018` — [POST /api/v1/sec/registry/modules](#post-apiv1secregistrymodules)
+- `API-SEC-020` — [POST /api/v1/sec/registry/actions](#post-apiv1secregistryactions)
 
 ## POST /api/v1/sec/registry/search
 
 **Search the registry**
 
 بحث سجل الوحدات والشاشات والإجراءات
+
+Contract ID: `API-SEC-021`
 
 Operation ID: `search_3`
 
@@ -148,6 +150,8 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 
 تسجيل شاشة ضمن وحدة مسجَّلة
 
+Contract ID: `API-SEC-019`
+
 Operation ID: `registerScreen`
 
 **Authentication**
@@ -256,6 +260,8 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 
 تسجيل وحدة جديدة
 
+Contract ID: `API-SEC-018`
+
 Operation ID: `registerModule`
 
 **Authentication**
@@ -330,6 +336,8 @@ Structurally guaranteed by this endpoint's own shape (auth requirement, permissi
 **Register an action**
 
 تسجيل إجراء ضمن شاشة مسجَّلة
+
+Contract ID: `API-SEC-020`
 
 Operation ID: `registerAction`
 

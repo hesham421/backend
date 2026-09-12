@@ -33,6 +33,7 @@ import sync
 from discovery import RepositoryContext
 from extractors import (
     common_headers_extractor,
+    contract_extractor,
     dto_extractor,
     error_mapping_extractor,
     exception_extractor,
@@ -81,7 +82,26 @@ def build_document(context: RepositoryContext):
             source_root, context.common_source_roots
         )
 
+    # Last: the contract-id join. It needs the full endpoint list, and it is
+    # what makes the generated docs addressable by the ids every other
+    # governance artifact (SRS, frontend plan, test manifest) is written in.
+    if context.execution_plan is not None:
+        entries = contract_extractor.load_api_registry(context.execution_plan)
+        contract_extractor.attach_contract_ids(document, entries, context.execution_plan.name)
+
     return document
+
+
+def _contract_line(document) -> str:
+    """Contract-id coverage is reported on every run, in every mode: an
+    unstamped endpoint or a drifting registry id is precisely what makes a
+    consumer fall back to a planning document for a path."""
+    if not document.contract_source:
+        return "Contract ids: none — no API REGISTRY found for this module"
+    stamped = sum(1 for ep in document.endpoints if ep.api_id)
+    drift = len(document.contract_drift)
+    suffix = f", {drift} DRIFT (see index.md)" if drift else ""
+    return f"Contract ids: {stamped}/{len(document.endpoints)} from {document.contract_source}{suffix}"
 
 
 def run(context: RepositoryContext, mode: str) -> str:
@@ -99,8 +119,11 @@ def run(context: RepositoryContext, mode: str) -> str:
         lines.append(f"Endpoints   : {len(document.endpoints)}")
         lines.append(f"Groups      : {len(document.groups())}")
         lines.append(f"Error codes : {len(document.error_codes)}")
+        lines.append(_contract_line(document))
         lines.append(f"Output      : {context.output}")
         return "\n".join(lines)
+
+    lines.append(_contract_line(document))
 
     existing = sync.read_existing(context.output)
     report = sync.compare(existing, files, document.endpoints, mode=mode)
