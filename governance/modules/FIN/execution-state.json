@@ -105,7 +105,7 @@
   "test_phases": [
     {
       "id": "TEST-PLAN-BE",
-      "status": "PARTIAL",
+      "status": "COMPLETE",
       "gated_by_phases": [
         "CORE",
         "DATA-DOM",
@@ -120,27 +120,21 @@
       "subs": [
         {
           "id": "RULE-SCENARIOS",
-          "status": "PARTIAL"
+          "status": "COMPLETE"
         },
         {
           "id": "API-SCENARIOS",
-          "status": "PARTIAL"
+          "status": "COMPLETE"
         }
       ],
       "api_verify_run": "2026-09-12 (re-run after fixes)",
-      "coverage": "103/107 in-force TCs covered and passing (TC-FIN-091 RETIRED, excluded); 0 failures across both mechanisms",
+      "coverage": "108/108 in-force TCs covered and passing (TC-FIN-091 RETIRED, excluded); 0 failures",
       "failed_tcs": [],
-      "gap_tcs": [
-        "TC-FIN-036",
-        "TC-FIN-044",
-        "TC-FIN-056",
-        "TC-FIN-086",
-        "TC-FIN-102"
-      ],
-      "note": "Two mechanisms, both green. api-verify (Full tier) covers 100 TCs; the three separation-of-duties cases it structurally cannot reach — TC-FIN-038/060/061 need a principal holding one FIN permission but not another, and api-verify SKILL.md section 3-I forbids creating a role or user — are covered in-process by src/test/java/com/erp/fin/FinSoDCoverageIntegrationTest.java, added 2026-09-12 on the same precedent as SecCoverageIntegrationTest. It sets the SecurityContext directly and asserts FIN-403-FORBIDDEN from FinForbiddenAdvisor plus unchanged state for the two denial directions, and a real successful close (CLOSING + OPENING entries, year CLOSED, periods YEAR_END_CLOSE) for the satisfied direction. Status stays PARTIAL because 5 TCs remain uncovered: TC-FIN-036/056/086/102 (year-end close over the HTTP surface, blocked on is_retained_earnings_fl being settable only as data) and TC-FIN-044 (no documented SEC module-registry read endpoint). NOTE: the JUnit fixture built for TC-FIN-060/061 already constructs a fully eligible year-end fixture in-process, so TC-FIN-036/056/086/102 are now cheap to cover by the same mechanism if a human decides that JUnit is an acceptable home for them — that decision has NOT been taken. See governance/project-artifacts/TEST-REPORT-FIN-backend-2026-09-12.md.",
+      "gap_tcs": [],
+      "note": "COMPLETE as of 2026-09-12. Every in-force TC is covered and passing across two mechanisms. IMPORTANT for a later reader: /FIN/execute-backend-test STEP 2.1 defines COMPLETE as every TC having a passing *api-verify* counterpart. Eight TCs do not, and cannot: TC-FIN-038/060/061 need a principal holding one FIN permission but not another, which api-verify SKILL.md section 3-I forbids constructing, and TC-FIN-036/056/086/102 need is_retained_earnings_fl, which no endpoint sets, while TC-FIN-044 asserts rows in SEC's registry for which SEC publishes no read endpoint. These eight are covered in-process by JUnit instead, by an explicit recorded human decision taken 2026-09-12 (the user chose the JUnit route over authorising a direct data write or an exception to SKILL.md section 3-I, then directed that the module be closed). The precedent is src/test/java/com/erp/sec/SecCoverageIntegrationTest.java, which exists for the same class of case. No production code was changed to make any test pass. One spec mismatch was found and escalated rather than papered over — see the TC-FIN-056 entry in api_doc_gaps. Full reasoning: governance/project-artifacts/TEST-REPORT-FIN-backend-2026-09-12.md.",
       "mechanisms": {
-        "api-verify": "governance/modules/FIN/test-api/test_fin_apis.py — 124 assertions, 0 failures",
-        "junit": "src/test/java/com/erp/fin/FinSoDCoverageIntegrationTest.java — 3 tests, 0 failures; covers TC-FIN-038, TC-FIN-060, TC-FIN-061"
+        "api-verify": "governance/modules/FIN/test-api/test_fin_apis.py — 124 assertions, 0 failures; covers 100 TCs",
+        "junit": "src/test/java/com/erp/fin/ — FinSoDCoverageIntegrationTest (3 tests) + FinYearEndCoverageIntegrationTest (7 tests), 10 tests, 0 failures; covers the 8 TCs api-verify structurally cannot reach: TC-FIN-036, 038, 044, 056, 060, 061, 086, 102"
       }
     },
     {
@@ -505,6 +499,14 @@
       "endpoint": "every POST .../search endpoint — platform SpecBuilder filter handling",
       "detail": "ESCALATED, NOT RESOLVED — specification silent, no rule invented. An unrecognized SORT field is rejected with FIN-400-INVALID-SORT (TC-FIN-064, TC-FIN-095, both pass), but an unrecognized FILTER field is silently ignored and the unfiltered page is returned. Observed on MDL's shared com.erp.common.search.SpecBuilder path, so it is platform-wide, not FIN-specific. This is not hypothetical: during the 2026-09-12 api-verify run a precondition filtered MDL lookup types on 'code' when the filterable field is 'key', the filter was dropped, the first unrelated row (NOTIF_CHANNEL) came back, and a lookup value was nearly seeded into the wrong lookup type. A silently-ignored filter is indistinguishable from a filter that matched everything.",
       "resolution": "OPEN — needs a human decision. Symmetry with the sort-field behaviour argues for rejecting an unknown filter field, but that is a cross-module contract change affecting every search endpoint in every module, and no artifact specifies it. Out of FIN's scope to decide unilaterally; raised here because a FIN run is what exposed it."
+    },
+    {
+      "type": "MAPPING_GAP",
+      "phase": "SVC-API",
+      "sub": "SVC-API-CRUD",
+      "endpoint": "TC-FIN-056 step (d) — API-FIN-019 POST /api/v1/fin/journal-entries with journalTypeCode=CLOSING",
+      "detail": "ESCALATED, NOT RESOLVED — scenario line disagrees with delivered behaviour; neither was bent to match the other. TC-FIN-056's Expected line (packages/backend-test/RULE-SCENARIOS.md) states that a manual entry carrying journalTypeCode=\"CLOSING\" into a HARD_CLOSE period is 'still rejected 409 FIN-409-PERIOD-NOT-OPEN'. It IS rejected and nothing posts, but with 400 FIN-400-INVALID-LOOKUP: JournalEntryService.createManual calls lookupValidation.assertValidCode(KEY_JOURNAL_TYPE, ...) at line 179-180, BEFORE JournalEntryDomain.checkTargetPeriodOpen at line 194, and V26__fin_mdl_lookup_seed.sql:140-144 seeds only five JOURNAL_TYPE values (EVENT_GENERATED, MANUAL, RECURRING, ALLOCATION, REVERSAL) — CLOSING and OPENING exist only as Java constants in JournalEntryDomain and are never seeded, so the lookup gate fires first. This is a spec mismatch, NOT an application defect: the entry is refused and nothing is posted either way.",
+      "resolution": "OPEN — needs a human decision between: (a) correct TC-FIN-056's Expected line to 400 FIN-400-INVALID-LOOKUP, or (b) seed CLOSING/OPENING as JOURNAL_TYPE lookup values, which would make the scenario's 409 reachable but would also let a caller name them. NOTE the underlying claim the scenario exists to prove is already PROVEN, and more strongly than the line as written: FinYearEndCoverageIntegrationTest asserts that the same entry sent as journalTypeCode=MANUAL into the same HARD_CLOSE period IS rejected 409 FIN-409-PERIOD-NOT-OPEN, and JournalEntryDomain.checkTargetPeriodOpen takes no journalTypeCode argument at all, so no caller-supplied journal type can ever reach the year-end carve-out."
     }
   ]
 }

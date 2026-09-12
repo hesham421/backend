@@ -23,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,7 +54,8 @@ public class ConfigurationService {
     );
 
     @Transactional
-    // TODO: SEC-PENDING — re-add @PreAuthorize(hasAuthority(PermissionConstants.CONFIG_CREATE)) once the new SEC module ships PermissionConstants
+    @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants)"
+        + ".CONFIG_CREATE)")
     public ServiceResult<ConfigurationResponse> create(ConfigurationCreateRequest request) {
         log.info("Creating Configuration with key: {}", request.getConfigKey());
 
@@ -75,7 +77,8 @@ public class ConfigurationService {
     }
 
     @Transactional(readOnly = true)
-    // TODO: SEC-PENDING — re-add @PreAuthorize(hasAuthority(PermissionConstants.CONFIG_VIEW)) once the new SEC module ships PermissionConstants
+    @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants)"
+        + ".CONFIG_VIEW)")
     public ServiceResult<Page<ConfigurationResponse>> search(ConfigurationSearchRequest searchRequest) {
         log.debug("Searching Configuration");
 
@@ -92,7 +95,8 @@ public class ConfigurationService {
     }
 
     @Transactional
-    // TODO: SEC-PENDING — re-add @PreAuthorize(hasAuthority(PermissionConstants.CONFIG_UPDATE)) once the new SEC module ships PermissionConstants
+    @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants)"
+        + ".CONFIG_UPDATE)")
     public ServiceResult<ConfigurationResponse> update(String configKey, ConfigurationUpdateRequest request) {
         log.info("Updating Configuration key: {}", configKey);
 
@@ -107,16 +111,21 @@ public class ConfigurationService {
         // 3. Delegate RULE-CU-002 (configValue required on update)
         AppConfigurationDomain.from(entity).assertCanUpdate(request.getConfigValue());
 
-        // 4. Mutate + persist
+        // 4. Mutate + persist. saveAndFlush (not save) so Hibernate runs the UPDATE — and with it
+        // AuditEntityListener's @PreUpdate — before the response is mapped; a plain save() defers
+        // the flush to commit, which happens after this method returns, so the mapped response
+        // would carry the pre-update updatedAt/updatedBy while the persisted row carries the new
+        // ones.
         mapper.updateEntityFromRequest(entity, request);
-        AppConfiguration saved = repository.save(entity);
+        AppConfiguration saved = repository.saveAndFlush(entity);
         log.info("Updated Configuration key: {}", saved.getConfigKey());
 
         return ServiceResult.success(mapper.toResponse(saved), Status.UPDATED);
     }
 
     @Transactional(readOnly = true)
-    // TODO: SEC-PENDING — re-add @PreAuthorize(hasAuthority(PermissionConstants.CONFIG_VIEW)) once the new SEC module ships PermissionConstants
+    @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants)"
+        + ".CONFIG_VIEW)")
     public ServiceResult<ConfigurationResponse> getByKey(String configKey) {
         log.debug("Fetching Configuration key: {}", configKey);
 
@@ -136,7 +145,8 @@ public class ConfigurationService {
      * schema can ever reference this entity (ROOT module, single table, no children).
      */
     @Transactional
-    // TODO: SEC-PENDING — re-add @PreAuthorize(hasAuthority(PermissionConstants.CONFIG_DEACTIVATE)) once the new SEC module ships PermissionConstants
+    @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants)"
+        + ".CONFIG_DEACTIVATE)")
     public void deactivate(String configKey) {
         log.info("Deactivating Configuration key: {}", configKey);
 

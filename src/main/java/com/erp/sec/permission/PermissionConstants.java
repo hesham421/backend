@@ -246,4 +246,110 @@ public final class PermissionConstants {
      * accompanies this: the row and both grants are already applied.
      */
     public static final String PERM_FIN_PERIODS_VIEW = "PERM_FIN_PERIODS_VIEW";
+
+    // ─────────────────────────────────────────────────────────────────────────────────────────
+    // CU — Common Utilities. Backend-only module: CU/SEC-BE.md declares "no screens", so these
+    // four codes deliberately DEVIATE from PERM_<PAGE_CODE>_<ACTION> and are the literal strings
+    // ConfigurationService's @PreAuthorize gates resolve. That deviation is a recorded, already-
+    // made decision — see V13__cu_security_seed.sql's header ("Do NOT rename them"), re-applied
+    // against the current SEC schema by V31__cu_notif_file_security_seed.sql, which anchors them
+    // to the backend-only holder screen CU_CONFIGURATIONS (SEC_ACTION_REG.SCREEN_ID is NOT NULL).
+    // ─────────────────────────────────────────────────────────────────────────────────────────
+
+    /** API-CU-002 (search configurations), API-CU-003 (read by key) — screen CU_CONFIGURATIONS. */
+    public static final String CONFIG_VIEW = "CONFIG_VIEW";
+
+    /** API-CU-001 (create configuration) — screen CU_CONFIGURATIONS. */
+    public static final String CONFIG_CREATE = "CONFIG_CREATE";
+
+    /** API-CU-004 (update configuration value) — screen CU_CONFIGURATIONS. */
+    public static final String CONFIG_UPDATE = "CONFIG_UPDATE";
+
+    /**
+     * API-CU-005 (deactivate configuration) — screen CU_CONFIGURATIONS. CU names its soft-delete
+     * authority DEACTIVATE rather than DELETE; V13 typed it DELETE-class and the row keeps the
+     * action code DEACTIVATE so the permission code stays exactly this string.
+     */
+    public static final String CONFIG_DEACTIVATE = "CONFIG_DEACTIVATE";
+
+    // ─────────────────────────────────────────────────────────────────────────────────────────
+    // NOTIF — Notification Service. NOTIF/SEC-BE.md: SCR-NOTIF-001 NOTIF_TEMPLATES and
+    // SCR-NOTIF-002 NOTIF_CHANNELS each expose the full VIEW/CREATE/UPDATE/DELETE set (CORE-9,
+    // "4 permissions per page"); SCR-NOTIF-003 NOTIF_LOG is read-only — "CREATE/UPDATE/DELETE not
+    // exposed" — so it declares VIEW only. All granted to NOTIF_ADMIN (and SYS_ADMIN) by V31.
+    // ─────────────────────────────────────────────────────────────────────────────────────────
+
+    /** API-NOTIF-004 (search templates, read one) — screen NOTIF_TEMPLATES. */
+    public static final String PERM_NOTIF_TEMPLATES_VIEW = "PERM_NOTIF_TEMPLATES_VIEW";
+
+    /** API-NOTIF-004 (create template) — screen NOTIF_TEMPLATES. */
+    public static final String PERM_NOTIF_TEMPLATES_CREATE = "PERM_NOTIF_TEMPLATES_CREATE";
+
+    /** API-NOTIF-004 (update template) — screen NOTIF_TEMPLATES. */
+    public static final String PERM_NOTIF_TEMPLATES_UPDATE = "PERM_NOTIF_TEMPLATES_UPDATE";
+
+    /**
+     * API-NOTIF-004 (deactivate template) — screen NOTIF_TEMPLATES. NOTIF's soft-delete is the
+     * matrix's DELETE cell; NotificationTemplateService.deactivate() is the method it gates.
+     */
+    public static final String PERM_NOTIF_TEMPLATES_DELETE = "PERM_NOTIF_TEMPLATES_DELETE";
+
+    /** API-NOTIF-005 (search channel configs, read one) — screen NOTIF_CHANNELS. */
+    public static final String PERM_NOTIF_CHANNELS_VIEW = "PERM_NOTIF_CHANNELS_VIEW";
+
+    /** API-NOTIF-005 (create channel config) — screen NOTIF_CHANNELS. */
+    public static final String PERM_NOTIF_CHANNELS_CREATE = "PERM_NOTIF_CHANNELS_CREATE";
+
+    /** API-NOTIF-005 (update channel config) — screen NOTIF_CHANNELS. */
+    public static final String PERM_NOTIF_CHANNELS_UPDATE = "PERM_NOTIF_CHANNELS_UPDATE";
+
+    /**
+     * API-NOTIF-005 (disable channel config) — screen NOTIF_CHANNELS, the matrix's DELETE cell;
+     * NotificationChannelConfigService.disable() is the method it gates.
+     */
+    public static final String PERM_NOTIF_CHANNELS_DELETE = "PERM_NOTIF_CHANNELS_DELETE";
+
+    /**
+     * API-NOTIF-002, 003 (search the notification log, read one entry) — screen NOTIF_LOG, its
+     * only action. Dispatch (API-NOTIF-001) is a service endpoint behind the Security filter
+     * (RULE-NOTIF-005) and is tied to no management screen, so it declares no permission.
+     */
+    public static final String PERM_NOTIF_LOG_VIEW = "PERM_NOTIF_LOG_VIEW";
+
+    // ─────────────────────────────────────────────────────────────────────────────────────────
+    // FILE — File Service. FILE/SEC-BE.md: SCR-FILE-001 FILE_CATEGORIES exposes the full CRUD set
+    // (API-FILE-007); SCR-FILE-002 FILE_BROWSER is VIEW (API-FILE-004/005) + UPDATE/DELETE
+    // (API-FILE-006) with CREATE "contextual in owner module". Only the codes an implemented gate
+    // names are declared here: PERM_FILE_BROWSER_UPDATE / _DELETE are registered by V31 (the
+    // matrix names them) but declare no constant, because FileService.softDelete still selects
+    // between them by request argument and carries no @PreAuthorize yet.
+    // ─────────────────────────────────────────────────────────────────────────────────────────
+
+    /** API-FILE-007 (search categories, read one) — screen FILE_CATEGORIES. */
+    public static final String PERM_FILE_CATEGORIES_VIEW = "PERM_FILE_CATEGORIES_VIEW";
+
+    /** API-FILE-007 (create category) — screen FILE_CATEGORIES. */
+    public static final String PERM_FILE_CATEGORIES_CREATE = "PERM_FILE_CATEGORIES_CREATE";
+
+    /** API-FILE-007 (update category) — screen FILE_CATEGORIES. */
+    public static final String PERM_FILE_CATEGORIES_UPDATE = "PERM_FILE_CATEGORIES_UPDATE";
+
+    /**
+     * API-FILE-007 (deactivate category) — screen FILE_CATEGORIES, the matrix's DELETE cell;
+     * FileCategoryService.deactivate() is the method it gates.
+     */
+    public static final String PERM_FILE_CATEGORIES_DELETE = "PERM_FILE_CATEGORIES_DELETE";
+
+    /**
+     * API-FILE-004, 005 (file metadata, owner list) and API-FILE-002 (issue a download token) —
+     * screen FILE_BROWSER. Also the gateway (VIEW) permission of that screen.
+     */
+    public static final String PERM_FILE_BROWSER_VIEW = "PERM_FILE_BROWSER_VIEW";
+
+    /**
+     * API-FILE-001 (upload) — screen FILE_BROWSER. SEC-BE.md calls upload "contextual in owner
+     * module"; RULE-SEC-011's 4-per-page rule still registers the CREATE action on the screen, and
+     * FileService.store() is the gate that consumes it.
+     */
+    public static final String PERM_FILE_BROWSER_CREATE = "PERM_FILE_BROWSER_CREATE";
 }

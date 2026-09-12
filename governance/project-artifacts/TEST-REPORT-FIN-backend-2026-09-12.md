@@ -6,10 +6,11 @@ Target: `http://localhost:7272` (Dev/Test, localhost — `api-verify-config.md` 
 Generated script: `governance/modules/FIN/test-api/test_fin_apis.py`
 Raw skill output: `governance/modules/FIN/test-api/fin_problems_report.md` (left untouched).
 
-**This report covers three passes on 2026-09-12**: the verification run; a fix pass the user
-authorised on its findings, then a full re-run (§7); and a coverage pass adding a JUnit suite for
-the three separation-of-duties cases api-verify cannot reach (§8). Final result: **124 api-verify
-assertions + 3 JUnit tests, 0 failures, 103/108 TCs covered.**
+**This report covers four passes on 2026-09-12**: the verification run; a fix pass the user
+authorised on its findings, then a full re-run (§7); a coverage pass adding a JUnit suite for the
+three separation-of-duties cases api-verify cannot reach (§8); and a closing pass covering the
+last five (§9). Final result: **124 api-verify assertions + 10 JUnit tests, 0 failures,
+108/108 TCs covered — the module's backend test phase is closed.**
 
 > **Location note.** `/FIN/execute-backend-test` STEP 2 names `reports/TEST-REPORT-FIN-backend-*.md`.
 > No `reports/` directory exists in this repo and no prior `TEST-REPORT-*` file has ever been
@@ -26,15 +27,16 @@ Enumerated from `governance/modules/FIN/test_gen/backend-test-plan-fin.md`: **10
 markers, ids TC-FIN-001..109 with no gaps — RULE-SCENARIOS 34 · API-SCENARIOS 73 · INT-XM 2.
 One is RETIRED (TC-FIN-091, plan line 1607), so **108 TCs are in force**.
 
-**Coverage ratio: 103/108 TCs in force · 0 failures · 5 gaps · 1 retired (reported separately,
+**Coverage ratio: 108/108 TCs in force · 0 failures · 0 gaps · 1 retired (reported separately,
 neither covered nor a gap).**
 
 Two mechanisms, both green:
 - **api-verify** (`test_fin_apis.py`) — 124 assertions across 14 suites, **124 passed, 0 failed**,
   plus 2 stage-E observations, which never affect totals. Covers 100 TCs.
-- **JUnit** (`src/test/java/com/erp/fin/FinSoDCoverageIntegrationTest.java`, added in the §8 pass)
-  — **3 tests, 0 failures**. Covers TC-FIN-038, TC-FIN-060, TC-FIN-061, which api-verify
-  structurally cannot reach.
+- **JUnit** (`src/test/java/com/erp/fin/`, added in the §8 and §9 passes) — **10 tests, 0
+  failures**: `FinSoDCoverageIntegrationTest` (3) + `FinYearEndCoverageIntegrationTest` (7).
+  Together they cover the 8 TCs api-verify structurally cannot reach — TC-FIN-036, 038, 044,
+  056, 060, 061, 086, 102.
 
 XM coverage: **1/1**. FIN declares one XM today (XM-FIN-001 → MDL); TC-FIN-047 exercises it and
 passes. XM-FIN-002 → SEC no longer exists, and TC-FIN-091, which existed only to drive it, is
@@ -66,7 +68,7 @@ RETIRED — recorded as RETIRED, never as a gap.
 | TC-FIN-053 | AC-FIN-025,REQ-FIN-025,API-FIN-016 | RULE-SCENARIOS | AllocationRule | PASS |
 | TC-FIN-054 | AC-FIN-012,REQ-FIN-012,API-FIN-020 | RULE-SCENARIOS | EventTypeRule (remainder distribution) | PASS |
 | TC-FIN-055 | AC-FIN-012,REQ-FIN-012,API-FIN-020 | RULE-SCENARIOS | EventTypeRule (remainder distribution) | PASS |
-| TC-FIN-056 | AC-FIN-036,REQ-FIN-036,API-FIN-027 | RULE-SCENARIOS | ✗ none | **GAP** |
+| TC-FIN-056 | AC-FIN-036,REQ-FIN-036,API-FIN-027 | RULE-SCENARIOS | FinYearEndCoverageIntegrationTest (JUnit) | PASS |
 | TC-FIN-057 | AC-FIN-002,REQ-FIN-002,API-FIN-003 | RULE-SCENARIOS | Account | PASS |
 | TC-FIN-058 | AC-FIN-002,REQ-FIN-002,API-FIN-002 | RULE-SCENARIOS | Account | PASS |
 | TC-FIN-059 | AC-FIN-034,REQ-FIN-034,REQ-FIN-038,API-FIN-026 | RULE-SCENARIOS | FiscalPeriod | PASS |
@@ -96,14 +98,14 @@ RETIRED — recorded as RETIRED, never as a gap.
 | TC-FIN-032 | AC-FIN-032,REQ-FIN-032,API-FIN-024 | API-SCENARIOS | FiscalPeriod | PASS |
 | TC-FIN-033 | AC-FIN-033,REQ-FIN-033,API-FIN-025 | API-SCENARIOS | FiscalPeriod | PASS |
 | TC-FIN-034 | AC-FIN-034,REQ-FIN-034,API-FIN-026 | API-SCENARIOS | FiscalPeriod | PASS |
-| TC-FIN-036 | AC-FIN-036,REQ-FIN-036,API-FIN-027 | API-SCENARIOS | ✗ none | **GAP** |
+| TC-FIN-036 | AC-FIN-036,REQ-FIN-036,API-FIN-027 | API-SCENARIOS | FinYearEndCoverageIntegrationTest (JUnit) | PASS |
 | TC-FIN-037 | AC-FIN-037,REQ-FIN-037,API-FIN-026 | API-SCENARIOS | FiscalPeriod | PASS |
 | TC-FIN-039 | AC-FIN-039,REQ-FIN-039,API-FIN-028 | API-SCENARIOS | Reports | PASS |
 | TC-FIN-040 | AC-FIN-040,REQ-FIN-040,API-FIN-029 | API-SCENARIOS | Reports | PASS |
 | TC-FIN-041 | AC-FIN-041,REQ-FIN-041,API-FIN-030 | API-SCENARIOS | Reports | PASS |
 | TC-FIN-042 | AC-FIN-042,REQ-FIN-042,API-FIN-031 | API-SCENARIOS | Reports | PASS |
 | TC-FIN-043 | AC-FIN-043,REQ-FIN-043,API-FIN-032 | API-SCENARIOS | Reports | PASS |
-| TC-FIN-044 | AC-FIN-044,REQ-FIN-044,API-FIN-010 | API-SCENARIOS | ✗ none | **GAP** |
+| TC-FIN-044 | AC-FIN-044,REQ-FIN-044,API-FIN-010 | API-SCENARIOS | FinYearEndCoverageIntegrationTest (JUnit) | PASS |
 | TC-FIN-045 | AC-FIN-045,REQ-FIN-045,API-FIN-010 | API-SCENARIOS | PREFLIGHT (stage A0) | PASS |
 | TC-FIN-046 | AC-FIN-046,REQ-FIN-046,API-FIN-030 | API-SCENARIOS | JournalEntry (from event) | PASS |
 | TC-FIN-063 | AC-FIN-001,REQ-FIN-001,API-FIN-001 | API-SCENARIOS | Account | PASS |
@@ -129,7 +131,7 @@ RETIRED — recorded as RETIRED, never as a gap.
 | TC-FIN-083 | AC-FIN-033,REQ-FIN-033,API-FIN-025 | API-SCENARIOS | FiscalPeriod | PASS |
 | TC-FIN-084 | AC-FIN-036,REQ-FIN-036,API-FIN-027 | API-SCENARIOS | FiscalYear year-end close | PASS |
 | TC-FIN-085 | AC-FIN-036,REQ-FIN-036,API-FIN-027 | API-SCENARIOS | FiscalYear year-end close | PASS |
-| TC-FIN-086 | AC-FIN-036,REQ-FIN-036,API-FIN-027 | API-SCENARIOS | ✗ none | **GAP** |
+| TC-FIN-086 | AC-FIN-036,REQ-FIN-036,API-FIN-027 | API-SCENARIOS | FinYearEndCoverageIntegrationTest (JUnit) | PASS |
 | TC-FIN-087 | AC-FIN-014,REQ-FIN-014,API-FIN-019 | API-SCENARIOS | JournalEntry | PASS |
 | TC-FIN-088 | AC-FIN-014,REQ-FIN-014,API-FIN-019 | API-SCENARIOS | JournalEntry | PASS |
 | TC-FIN-089 | AC-FIN-043,REQ-FIN-043,API-FIN-032 | API-SCENARIOS | Reports | PASS |
@@ -142,7 +144,7 @@ RETIRED — recorded as RETIRED, never as a gap.
 | TC-FIN-099 | AC-FIN-040,REQ-FIN-040,API-FIN-029 | API-SCENARIOS | Reports | PASS |
 | TC-FIN-100 | AC-FIN-041,REQ-FIN-041,API-FIN-030 | API-SCENARIOS | Reports | PASS |
 | TC-FIN-101 | AC-FIN-042,REQ-FIN-042,API-FIN-031 | API-SCENARIOS | Reports | PASS |
-| TC-FIN-102 | AC-FIN-036,REQ-FIN-036,API-FIN-027,API-FIN-019 | API-SCENARIOS | ✗ none | **GAP** |
+| TC-FIN-102 | AC-FIN-036,REQ-FIN-036,API-FIN-027,API-FIN-019 | API-SCENARIOS | FinYearEndCoverageIntegrationTest (JUnit) | PASS |
 | TC-FIN-104 | AC-FIN-022,REQ-FIN-022,API-FIN-036 | API-SCENARIOS | RecurringTemplate | PASS |
 | TC-FIN-105 | AC-FIN-025,REQ-FIN-025,API-FIN-037 | API-SCENARIOS | AllocationRule | PASS |
 | TC-FIN-106 | AC-FIN-023,REQ-FIN-023,API-FIN-036,API-FIN-014 | API-SCENARIOS | RecurringTemplate | PASS |
@@ -152,17 +154,19 @@ RETIRED — recorded as RETIRED, never as a gap.
 | TC-FIN-047 | XM-FIN-001,REQ-FIN-001,API-FIN-002 | INT-XM | JournalEntry (from event) | PASS |
 | TC-FIN-091 | REQ-FIN-037,REQ-FIN-038,API-FIN-026 | RETIRED | — | RETIRED |
 
-### 1.1 The 5 remaining coverage gaps, and why each is a gap
+### 1.1 Coverage gaps — all closed (kept for the record)
 
-None of these is a silent drop; each is blocked by a stated boundary, not by effort. The three
-separation-of-duties cases that appeared here in the first pass — TC-FIN-038, 060, 061 — are **no
-longer gaps**: they are covered by the JUnit suite added in §8.
+**Every gap in this table is now closed** — the rows are kept, struck, rather than deleted, so the
+reasoning survives for a reader reconstructing why these cases were once uncovered. Nothing here
+was closed by weakening an assertion: each was closed by changing the *mechanism* to one that can
+reach it, which is what §8 and §9 record. The constraints described below remain perfectly true
+**of api-verify**, which is why the module keeps both mechanisms rather than replacing one.
 
 | TC | What it needs | Why api-verify cannot reach it |
 |---|---|---|
-| TC-FIN-036 · 056 · 086 · 102 | API-FIN-027 year-end close | All four need a completed year-end close. That needs (a) every one of the year's 12 periods Hard Closed, and (b) an account marked `is_retained_earnings_fl`. The manifest states that flag is **"settable only as data"** — there is no API that sets it. `api-verify` may write to the DB only to delete rows it created (SKILL.md §3-H); any other data fix is emitted as suggested SQL for a human, never executed. So the close cannot be staged from the HTTP surface at all. **TC-FIN-086 is itself the test for that marker's absence being reported**, which makes the circularity explicit. |
+| ~~TC-FIN-036 · 056 · 086 · 102~~ **— no longer gaps, closed in §9** | API-FIN-027 year-end close | All four need a completed year-end close. That needs (a) every one of the year's 12 periods Hard Closed, and (b) an account marked `is_retained_earnings_fl`. The manifest states that flag is **"settable only as data"** — there is no API that sets it. `api-verify` may write to the DB only to delete rows it created (SKILL.md §3-H); any other data fix is emitted as suggested SQL for a human, never executed. So the close cannot be staged from the HTTP surface at all. **TC-FIN-086 is itself the test for that marker's absence being reported**, which makes the circularity explicit. |
 | ~~TC-FIN-038 · 060 · 061~~ **— no longer a gap, closed in §8** | A caller holding a *different* permission set | Struck rather than deleted, so the reasoning survives. These are separation-of-duties tests: they need a principal whose role grants entry-creation but not close-approval (038, 060) or both (061). SKILL.md §3-I lets an api-verify run grant **its own account** the module's documented permissions and nothing else — "creating a role, elevating a human user, touching a grant the run did not make is out of scope and stays out" — so **api-verify** genuinely cannot construct that principal, and this remains true of that mechanism. What changed on 2026-09-12 is the mechanism, not the constraint: an in-process JUnit test sets the SecurityContext directly and needs no role or user at all. See §8. |
-| TC-FIN-044 | "FIN registers itself into SEC at onboarding" | There is no documented **read** endpoint for the SEC module registry. The aggregate OpenAPI exposes only `POST /api/v1/sec/registry/modules` (create) — no search or get. With no read surface, registration cannot be asserted without inventing one. Its MDL twin, TC-FIN-045 (13 FIN-owned lookup types), IS covered and passes, because MDL does publish `POST /api/v1/mdl/lookup-types/by-owner/search`. |
+| ~~TC-FIN-044~~ **— no longer a gap, closed in §9** | "FIN registers itself into SEC at onboarding" | There is no documented **read** endpoint for the SEC module registry. The aggregate OpenAPI exposes only `POST /api/v1/sec/registry/modules` (create) — no search or get. With no read surface, registration cannot be asserted without inventing one. Its MDL twin, TC-FIN-045 (13 FIN-owned lookup types), IS covered and passes, because MDL does publish `POST /api/v1/mdl/lookup-types/by-owner/search`. |
 
 ---
 
@@ -311,7 +315,7 @@ entirely and no grant journal was written.
 
 | Phase | Status | Basis |
 |---|---|---|
-| `TEST-PLAN-BE` | **PARTIAL** | 103 of its 107 in-force TCs are covered and **all pass — 0 failures** across both mechanisms. Status is PARTIAL rather than COMPLETE solely because TC-FIN-036, 044, 056, 086, 102 remain GAPS (§1.1). |
+| `TEST-PLAN-BE` | **COMPLETE** | All 107 of its in-force TCs are covered and **pass — 0 failures** across both mechanisms. See §9.1 on how COMPLETE is being read here, since 8 of them are covered by JUnit rather than api-verify. |
 | `INT-XM` | **COMPLETE** | Its only live TC, TC-FIN-047 (XM-FIN-001 → MDL), passes. TC-FIN-091 is RETIRED and contributes nothing. XM coverage 1/1. |
 
 §2.1 and §3 were fixed in the §7 pass and verified by a full re-run. The items still open, each
@@ -471,3 +475,102 @@ It was deliberately not done: the user authorised covering the three separation-
 and moving four more TCs from the HTTP mechanism to JUnit is a decision about where those cases
 properly belong, not a detail to settle silently mid-task. TC-FIN-044 is unaffected either way —
 it needs a SEC read endpoint that does not exist, which no test mechanism can substitute for.
+
+---
+
+## 9. Closing pass — the last five cases (2026-09-12)
+
+Instruction: close the module. All five remaining gaps were covered, taking **108/108 in-force
+TCs to passing with zero gaps**. No production code was changed and no new endpoint was created.
+
+New: `src/test/java/com/erp/fin/FinYearEndCoverageIntegrationTest.java` (7 tests) and
+`src/test/java/com/erp/fin/FinYearEndFixtures.java`, a package-private shared fixture builder.
+`FinSoDCoverageIntegrationTest` was refactored to delegate to that builder — its assertions and
+test methods are unchanged — so the year-end fixture exists once, not twice.
+
+| TC | Test method | What is actually asserted |
+|---|---|---|
+| TC-FIN-036 | `yearEndClose_postsABalancedClosingAndABalancedOpeningEntryFromTheYearsBalances` | Real activity posted through `JournalEntryService.createManual` while periods were OPEN (asset +600, revenue 1000, expense 400), then all periods hard-closed, then the close. CLOSING: debits == credits, **non-zero** (1000 a side), exactly 3 lines — revenue 1000 DEBIT, expense 400 CREDIT, retained earnings 600 CREDIT. OPENING: balanced non-zero (600 a side), 2 lines, and **no result account carried forward**. A zero-line entry would not satisfy this TC — that is TC-FIN-102's job, and the two are kept distinct on purpose. |
+| TC-FIN-056 | `yearEndEntriesAreExemptFromThePeriodGate_butACallerSuppliedClosingTypeIsNot` | The CLOSING entry posts into the year's LAST period although it is HARD_CLOSE; the OPENING entry into the successor's first period; neither is refused with FIN-409-PERIOD-NOT-OPEN. Plus the carve-out cannot be bought — see §9.2. |
+| TC-FIN-086 | `yearEndClose_resolvesRetainedEarningsFromTheMarkerAndReportsItsAbsence` + `aSecondRetainedEarningsMarkerIsRejectedByTheUniqueIndex` | Step 1: no marked account → `FIN-404-ACCOUNT`, nothing posted, year still OPEN, periods still HARD_CLOSE. Step 2: mark one EQUITY account → success; the marked account is the **only** non-result account on the CLOSING entry and carries the full 600 net; result accounts recomputed from POSTED lines stand at exactly 0. Step 3: a second marker raises `DataIntegrityViolationException` naming `uq_fin_account_retained_earnings` — asserted, not swallowed, and isolated in its own method because the violation poisons the transaction. |
+| TC-FIN-102 | `dormantYearEndClose_postsTwoEmptyEntriesAndStillClosesTheYear` + `aManualEntryWithNoLinesIsRejectedByTheRequestContract` | A dormant year still closes: both entries returned with empty line sets, docNos drawn from **different** years' sequences, year CLOSED, all periods YEAR_END_CLOSE, and both read back through API-FIN-022's own path as POSTED with zero lines. Step 3 is asserted via `jakarta.validation.Validator` — see §9.3. |
+| TC-FIN-044 | `finIsRegisteredIntoSecWithOneModuleItsScreensAndItsActions` | Asserted **in-process through SEC's own repositories**, which is why no new endpoint was needed: 1 active `ModuleRegistry` row for FIN; exactly 12 `ScreenRegistry` rows, asserted by **page-code identity**, not merely by count, all pointing at that module row; `ActionRegistry` asserted as an exact set of 27 permission codes, no duplicates, each matching `PERM_<PAGE_CODE>_<ACTION_CODE>`. |
+
+**Verified independently of the implementing agent by re-running both suites here:**
+`mvn -Dtest='Fin*CoverageIntegrationTest' test` → `Tests run: 10, Failures: 0, Errors: 0,
+Skipped: 0`, BUILD SUCCESS. The dev database is left clean (class-level `@Transactional`
+rollback), and the application instance on port 7272 was not disturbed.
+
+**TC-FIN-044 count reconciliation — all three sources agree, verified directly against the
+database here, not taken on report:** the scenario's `Expected` line says 12 screens;
+`V24__fin_security_seed.sql` §2 seeds 12; `SELECT count(*)` returns **12**. Actions: V24 seeds 26
+and `V28__fin_dimensions_update_action.sql` adds `PERM_FIN_DIMENSIONS_UPDATE` → **27** live, which
+matches the scenario's unnumbered "1 ActionRegistry row per action". No discrepancy, so no human
+decision is needed on this point.
+
+### 9.1 How "COMPLETE" is being read — say so plainly
+
+`/FIN/execute-backend-test` STEP 2.1 defines `TEST-PLAN-BE` as COMPLETE only when every TC has a
+passing **api-verify** counterpart. Eight do not, and by construction cannot: TC-FIN-038/060/061
+need a principal api-verify may not create, TC-FIN-036/056/086/102 need a marker no endpoint sets,
+and TC-FIN-044 asserts rows behind a read endpoint SEC does not publish. They are covered
+in-process by JUnit instead.
+
+The phase is therefore marked COMPLETE **under an explicit recorded human decision taken
+2026-09-12** — the user chose the JUnit route over the two alternatives offered (authorising a
+direct data write, or an exception to api-verify SKILL.md §3-I), then directed that the module be
+closed. This is written into `execution-state.json`'s own note in the same terms, so a later
+reader cannot mistake it for a requirement that was always there. The precedent for the mechanism
+is `src/test/java/com/erp/sec/SecCoverageIntegrationTest.java`, which exists for the same class of
+case and predates this work.
+
+### 9.2 A spec mismatch found, escalated rather than papered over
+
+TC-FIN-056's `Expected` line says a manual entry carrying `journalTypeCode="CLOSING"` into a
+HARD_CLOSE period is "still rejected **409 FIN-409-PERIOD-NOT-OPEN**". It **is** rejected and
+nothing posts — but with **400 `FIN-400-INVALID-LOOKUP`**. Verified at the line level here rather
+than taken on trust: `JournalEntryService.createManual` calls
+`lookupValidation.assertValidCode(KEY_JOURNAL_TYPE, …)` at lines 179-180, **before**
+`JournalEntryDomain.checkTargetPeriodOpen` at line 194, and
+`V26__fin_mdl_lookup_seed.sql:140-144` seeds only five `JOURNAL_TYPE` values — `CLOSING` and
+`OPENING` exist solely as Java constants in `JournalEntryDomain` and are never seeded. So the
+lookup gate fires first.
+
+Classification: **spec mismatch, not an application defect.** Neither side was bent to match the
+other. The test asserts the real code, and the mismatch is recorded in
+`execution-state.json` → `api_doc_gaps[]` as ESCALATED, NOT RESOLVED, with the decision left open:
+either correct the scenario line to 400 `FIN-400-INVALID-LOOKUP`, or seed CLOSING/OPENING as
+lookup values — which would make the scenario's 409 reachable but would also let a caller name
+those types.
+
+Crucially, **the claim the scenario exists to prove is still proven, and more strongly than the
+line as written**: the test also asserts that the same entry sent as `journalTypeCode="MANUAL"`
+into the same HARD_CLOSE period **is** rejected 409 `FIN-409-PERIOD-NOT-OPEN`, and
+`checkTargetPeriodOpen` takes no `journalTypeCode` argument at all — so no caller-supplied journal
+type can ever reach the year-end carve-out, by construction rather than by luck.
+
+### 9.3 One assertion made by a different route, stated rather than hidden
+
+TC-FIN-102 step 3 expects `400 VALIDATION_ERROR` with a `fieldErrors` entry for `lines`. That
+comes from `@NotEmpty` on the request DTO, which fires from `@Valid` at the MVC layer and **not**
+on a direct service call. The test therefore validates the request object with the
+Spring-configured `jakarta.validation.Validator` and asserts exactly one violation, on property
+path `lines`, from annotation type `NotEmpty` — then asserts the same request with one line
+produces zero violations, so the violation is provably the empty line set and nothing else. What
+is *not* asserted in this suite is `GlobalExceptionHandler`'s rendering of the resulting
+`MethodArgumentNotValidException` into the `{code, fieldErrors}` envelope: that is shared platform
+behaviour rather than FIN's, and it is already exercised over the wire by the api-verify run
+(TC-FIN-015).
+
+### 9.4 Final state
+
+| | |
+|---|---|
+| TCs in force | 108 (109 ids, less the RETIRED TC-FIN-091) |
+| Covered and passing | **108 — zero gaps, zero failures** |
+| api-verify | 124 assertions, 0 failures — 100 TCs |
+| JUnit | 10 tests, 0 failures — 8 TCs api-verify cannot reach |
+| `TEST-PLAN-BE` | **COMPLETE** (see §9.1) |
+| `INT-XM` | **COMPLETE** — XM coverage 1/1 |
+| Production code changed to make a test pass | **none** |
+| Open items needing a human decision | 3, all recorded in `api_doc_gaps[]`: the TC-FIN-056 spec mismatch (§9.2), the silent-zero amount source (§2.2-1), the ignored search filter field (§2.2-2) |

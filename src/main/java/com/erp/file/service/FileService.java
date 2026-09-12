@@ -73,7 +73,8 @@ public class FileService {
 
     /** API-FILE-001 — upload: validate ownership → resolve limits → detect+enforce type → enforce size → store ACTIVE. */
     @Transactional
-    // TODO: SEC-PENDING — re-add @PreAuthorize(hasAuthority(PermissionConstants.PERM_FILE_BROWSER_CREATE)) once the new SEC module ships PermissionConstants
+    @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants)"
+        + ".PERM_FILE_BROWSER_CREATE)")
     public ServiceResult<FileMetadataResponse> store(UploadRequest request, MultipartFile file) {
         log.info("Storing file for owner {}/{} in module {}",
             request != null ? request.getOwnerType() : null,
@@ -115,7 +116,8 @@ public class FileService {
 
     /** API-FILE-002 — issue a fresh single-use download token; store its nonce in Redis for the TTL. */
     @Transactional(readOnly = true)
-    // TODO: SEC-PENDING — re-add @PreAuthorize(hasAuthority(PermissionConstants.PERM_FILE_BROWSER_VIEW)) once the new SEC module ships PermissionConstants
+    @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants)"
+        + ".PERM_FILE_BROWSER_VIEW)")
     public ServiceResult<AccessTokenResponse> issueAccessToken(Long id) {
         log.info("Issuing access token for file ID: {}", id);
 
@@ -178,7 +180,8 @@ public class FileService {
 
     /** API-FILE-004 — metadata by id (bytes excluded, DRV-003). */
     @Transactional(readOnly = true)
-    // TODO: SEC-PENDING — re-add @PreAuthorize(hasAuthority(PermissionConstants.PERM_FILE_BROWSER_VIEW)) once the new SEC module ships PermissionConstants
+    @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants)"
+        + ".PERM_FILE_BROWSER_VIEW)")
     public ServiceResult<FileMetadataResponse> getMetadata(Long id) {
         log.debug("Fetching file metadata ID: {}", id);
 
@@ -192,7 +195,8 @@ public class FileService {
 
     /** API-FILE-005 — owner list (bytes excluded, DRV-003). Empty result is a 200 empty page. */
     @Transactional(readOnly = true)
-    // TODO: SEC-PENDING — re-add @PreAuthorize(hasAuthority(PermissionConstants.PERM_FILE_BROWSER_VIEW)) once the new SEC module ships PermissionConstants
+    @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants)"
+        + ".PERM_FILE_BROWSER_VIEW)")
     public ServiceResult<Page<FileMetadataResponse>> listByOwner(Long ownerId, String ownerType,
             String moduleCode, String fileTypeId, String fileStatusId, int page, int size, String sort) {
         log.debug("Listing files for owner {}/{} in module {}", ownerType, ownerId, moduleCode);

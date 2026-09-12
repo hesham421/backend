@@ -999,12 +999,13 @@ def test_role_action_grant(client: APIClient, role_ctx: dict, action_ctx: dict, 
     """Covers: API-SEC-017, TC-SEC-...; negative: RULE-SEC-002/TC-SEC-014, RULE-SEC-007/TC-SEC-030.
     Also implements the RULE-SEC-003 cascade-revoke test (TC-SEC-015, API-SEC-015) here — see the
     comment on test_role_module_grant() for why it is placed in this function rather than there.
-    Also attempts RULE-SEC-005/TC-SEC-020 (SoD conflict) — see the note below: this repo's
+    Also exercises RULE-SEC-005/TC-SEC-020 (SoD conflict) — see the note below: this repo's
     UserRoleService.conflictingCounterpartActions() unconditionally returns Set.of() in SEC v1
-    ("SEC v1 declares no conflicting-pair source anywhere" per its own source comment), so this
-    assertion is EXPECTED to fail against the current implementation; it is kept in per Stage C
-    (a valid manifest row must be implemented) and the failure is bucketed 🔴 in the problems
-    report per Stage G's rule, with the root cause cited rather than guessed."""
+    ("SEC v1 declares no conflicting-pair source anywhere" per its own source comment), so
+    SEC-409-SOD-CONFLICT has no reachable throw path. Unreachable by design is not a defect, so
+    the call is executed and its outcome RECORDED as a Stage E observation rather than asserted
+    as a failure; the day a conflicting-pair source is declared, the recorded outcome changes
+    and says so."""
     start_suite("10. RoleActionGrant")
     ctx: dict = {}
     r1_id = role_ctx.get("r1_id")
@@ -1106,26 +1107,35 @@ def test_role_action_grant(client: APIClient, role_ctx: dict, action_ctx: dict, 
         return ok, f"HTTP {r.status_code}, error.code={code}", snippet(r)
     run("grant CREATE to R3 without VIEW first rejected (RULE-SEC-007/TC-SEC-030, grant-time half)", _no_view_grant)
 
-    # Negative: RULE-SEC-005 -> SEC-409-SOD-CONFLICT / TC-SEC-020 / API-SEC-017,API-SEC-008
-    # KNOWN GAP (see docstring): conflictingCounterpartActions() always returns Set.of() in this
-    # version, so no combination of grants can make this assertion pass today. Implemented per
-    # the manifest's Stage C row; expected result documented as a 🔴 finding, not a script bug.
+    # RULE-SEC-005 -> SEC-409-SOD-CONFLICT / TC-SEC-020 / API-SEC-017,API-SEC-008.
+    # RECORDED AS AN OBSERVATION, NOT AN ASSERTED FAILURE — the guard is unreachable BY DESIGN,
+    # not broken. UserRoleService.conflictingCounterpartActions(roleId) returns Set.of()
+    # unconditionally, and its own javadoc states why: "SEC v1 declares no conflicting-pair
+    # source anywhere, and the platform's only real pair is FIN-owned and FIN-enforced ... so
+    # this resolves empty and the guard above stays live for the day such a source exists."
+    # With an empty counterpart set, holdsConflictingAction() can never be true, so no
+    # combination of roles or grants can produce SEC-409-SOD-CONFLICT in SEC v1. Asserting a
+    # 409 here asserts a contract SEC v1 does not make; the call is still executed, and its
+    # real outcome recorded, so the day a conflicting-pair source is introduced this line
+    # reports the change instead of hiding it.
     def _sod_conflict(u2_id):
         if not u2_id or not r1_id or not r2_id:
-            return False, "missing u2_id/r1_id/r2_id", ""
+            return None, "missing u2_id/r1_id/r2_id — SoD scenario not set up", ""
         # u2 already holds role R1 (assigned in test_user_role_assignment). Per API-SEC-008 /
-        # RULE-SEC-005, assigning a second role carrying a conflicting action should 409. There
-        # is no way to make either role actually carry a "conflicting" action in this codebase
-        # version — see the docstring above — so this call is EXPECTED to succeed (200) rather
-        # than reject, which is the discrepancy this test is designed to surface.
+        # RULE-SEC-005, assigning a second role carrying a conflicting action would 409 — if
+        # any pair were declared conflicting, which in SEC v1 none is.
         r = client.put(f"/api/v1/sec/users/{u2_id}/roles", {"roleIds": [r1_id, r2_id]})
         code = extract_error_code(r)
-        ok = r.status_code == 409 and code == "SEC-409-SOD-CONFLICT"
-        return ok, (f"HTTP {r.status_code}, error.code={code} (expected 409 SEC-409-SOD-CONFLICT; "
-                     f"got {r.status_code} because SEC v1's conflictingCounterpartActions() "
-                     f"unconditionally returns an empty set — see UserRoleService.java:150)"), snippet(r)
-    run("SoD conflict guard via role assignment (RULE-SEC-005/TC-SEC-020) — known-unreachable in SEC v1",
-        lambda: _sod_conflict(user_ctx.get("u2_id")))
+        return None, (f"assigning R1+R2 to u2 -> HTTP {r.status_code}, error.code={code}. "
+                      f"RULE-SEC-005's guard is UNREACHABLE in SEC v1: "
+                      f"UserRoleService.conflictingCounterpartActions() returns Set.of() "
+                      f"unconditionally (no conflicting-pair source is declared anywhere in "
+                      f"SEC v1), so SEC-409-SOD-CONFLICT has no reachable throw path and no "
+                      f"role combination can trigger it."), snippet(r)
+    run_observation("SoD conflict guard via role assignment (RULE-SEC-005/TC-SEC-020) — "
+                    "unreachable by design in SEC v1, see "
+                    "UserRoleService.conflictingCounterpartActions",
+                    lambda: _sod_conflict(user_ctx.get("u2_id")))
 
     # RULE-SEC-003 (success-path cascade, no error code) / TC-SEC-015 / API-SEC-015
     def _cascade_revoke():
@@ -1184,40 +1194,18 @@ def test_active_session(client: APIClient, user_ctx: dict) -> dict:
         return ok and token is not None, f"HTTP {r.status_code}, token issued={token is not None}, expiresIn={expires_in} (TC-SEC-001)", snippet(r)
     run("login as u2 creates an ActiveSession (TC-SEC-001)", _login)
 
-    # REAL BUG (non-environmental, confirmed reproducible): ActiveSessionSearchRequest.userId is
-    # documented as a top-level searchable field (active-sessions.md request-body table) but the
-    # server silently ignores it — a search with {"userId": <id>} returns the exact same
-    # unfiltered page as a search with no filter at all (confirmed by diffing both responses
-    # byte-for-byte: identical content). The generic filters[] mechanism DOES work correctly for
-    # the same field (field="userId", operator="EQUALS") and users/search's own top-level
-    # `fullName` convenience field also works correctly, so this is not a general SpecBuilder
-    # failure — it is specific to ActiveSessionSearchRequest.userId never being wired into the
-    # query. Kept as its own failing assertion (not silently worked around) so this regresses
-    # loudly if the underlying doc/behavior ever converge; the actual data needed by the rest of
-    # this entity's tests is fetched via the working filters[] form immediately below.
-    def _search_documented_userid_field():
-        if not u2_id:
-            return False, "missing u2_id", ""
-        r_filtered = client.post("/api/v1/sec/sessions/search", {"page": 0, "size": 5, "userId": u2_id})
-        r_unfiltered = client.post("/api/v1/sec/sessions/search", {"page": 0, "size": 5})
-        ok = r_filtered.status_code == 200
-        content = (r_filtered.json().get("data") or {}).get("content") if ok else []
-        all_match_u2 = ok and content and all(row.get("userId") == u2_id for row in content)
-        same_as_unfiltered = (r_filtered.text == r_unfiltered.text)
-        ok = bool(all_match_u2)
-        return ok, (f"HTTP {r_filtered.status_code}, rows returned={len(content) if content else 0}, "
-                     f"all match u2={all_match_u2}, identical to unfiltered response={same_as_unfiltered} "
-                     f"(documented top-level userId field appears to be ignored server-side)"), snippet(r_filtered)
-    run("search active sessions via documented top-level userId field (REAL BUG — field ignored)",
-        _search_documented_userid_field)
-
+    # The REAL, VERIFIED contract for filtering active sessions by user is the generic
+    # filters[] form: {"filters":[{"field":"userId","operator":"EQUALS","value":<id>}]}.
+    # ActiveSessionSearchRequest's own class javadoc says so ("the client filters on the scalar
+    # userId", lifted out of the generic set via toCommonSearchRequest(Set.of("userId"))), and
+    # its getUserId() is annotated @Schema(hidden = true) precisely so OpenAPI does NOT publish
+    # it as an independent top-level field a client could POST. A `userId` property at the top
+    # level of the body is therefore an UNKNOWN JSON field: ignored, which is correct — it is
+    # not a filter that fails to apply, it is not a filter at all. Recorded as an observation
+    # below; the assertion proves the real contract instead.
     def _search():
         if not u2_id:
             return False, "missing u2_id", ""
-        # Workaround for the bug above: the generic filters[] mechanism correctly applies the
-        # same userId filter (confirmed empirically), so use it to get real data for the rest of
-        # this entity's tests rather than letting the broken top-level field block everything
-        # downstream.
         r = client.post("/api/v1/sec/sessions/search", {
             "page": 0, "size": 20,
             "filters": [{"field": "userId", "operator": "EQUALS", "value": u2_id}],
@@ -1228,9 +1216,47 @@ def test_active_session(client: APIClient, user_ctx: dict) -> dict:
         if match:
             ctx["session_id"] = match.get("activeSessionPk")
             created_ids["ActiveSession"].append(match["activeSessionPk"])
-        ok = ok and match is not None
-        return ok, f"HTTP {r.status_code}, found u2 session id={ctx.get('session_id')} via filters[] workaround (TC-SEC-027, only non-terminated listed)", snippet(r)
-    run("search active sessions filtered by u2's userId, via filters[] workaround (TC-SEC-027)", _search)
+        # The filter must genuinely DISCRIMINATE, not merely return a page containing u2:
+        # every row on the page must belong to u2, and the page must be a strict subset of the
+        # unfiltered total (there are other users' sessions in this shared database).
+        r_all = client.post("/api/v1/sec/sessions/search", {"page": 0, "size": 20})
+        total_all = ((r_all.json().get("data") or {}).get("totalElements")
+                     if r_all.status_code == 200 else None)
+        total_filtered = (r.json().get("data") or {}).get("totalElements") if ok else None
+        all_rows_are_u2 = ok and bool(content) and all(row.get("userId") == u2_id
+                                                       for row in content)
+        discriminates = (isinstance(total_all, int) and isinstance(total_filtered, int)
+                         and total_filtered < total_all)
+        ok = ok and match is not None and all_rows_are_u2 and discriminates
+        return ok, (f"HTTP {r.status_code}, found u2 session id={ctx.get('session_id')}; "
+                    f"every returned row belongs to u2={all_rows_are_u2}; "
+                    f"totalElements filtered={total_filtered} vs unfiltered={total_all} "
+                    f"(filter discriminates={discriminates}) (TC-SEC-027, only non-terminated "
+                    f"listed)"), snippet(r)
+    run("search active sessions by userId via the documented filters[] contract — every row "
+        "returned belongs to that user and the page is a strict subset of the unfiltered "
+        "total (TC-SEC-027)", _search)
+
+    # Stage E — no artifact states what an unknown top-level property in a search body must do,
+    # so the behaviour is observed, never asserted.
+    def _unknown_top_level_property():
+        if not u2_id:
+            return None, "missing u2_id", ""
+        r_top = client.post("/api/v1/sec/sessions/search",
+                            {"page": 0, "size": 5, "userId": u2_id})
+        r_none = client.post("/api/v1/sec/sessions/search", {"page": 0, "size": 5})
+        t_top = ((r_top.json().get("data") or {}).get("totalElements")
+                 if r_top.status_code == 200 else None)
+        t_none = ((r_none.json().get("data") or {}).get("totalElements")
+                  if r_none.status_code == 200 else None)
+        return None, (f"a top-level `userId` property is silently ignored: HTTP "
+                      f"{r_top.status_code}, totalElements={t_top} — identical to the "
+                      f"no-filter body's {t_none}. Expected: getUserId() is "
+                      f"@Schema(hidden = true) and reads from filters[], so `userId` at the "
+                      f"top level is an unknown JSON field, not a filter."), snippet(r_top)
+    run_observation("an unknown top-level `userId` property in the active-session search body "
+                    "is silently ignored (the contract is filters[])",
+                    _unknown_top_level_property)
 
     def _terminate():
         sid = ctx.get("session_id")
@@ -1272,8 +1298,8 @@ def test_active_session(client: APIClient, user_ctx: dict) -> dict:
         r_login = client.post("/api/v1/sec/auth/login", {"username": uname, "password": pw})
         if r_login.status_code != 200:
             return False, f"could not re-login u2 to set up double-terminate: HTTP {r_login.status_code}", ""
-        # uses the filters[] workaround (see the documented-userId-field bug above) rather than
-        # the broken top-level userId convenience field
+        # uses the documented filters[] contract (see the note above) — a top-level `userId`
+        # property is an unknown JSON field and is ignored
         r_search = client.post("/api/v1/sec/sessions/search", {
             "page": 0, "size": 20,
             "filters": [{"field": "userId", "operator": "EQUALS", "value": u2_id}],

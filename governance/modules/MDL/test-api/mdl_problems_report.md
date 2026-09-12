@@ -1,41 +1,41 @@
 # MDL api-verify problems report
 
-Run: 148395  ·  Tier: FULL
+Run: 223695  ·  Tier: FULL
 
 **Totals: 30 PASS / 0 FAIL** (observations excluded)
 
 ## Suites
 ### 0. Setup — grant MDL permissions to SYS_ADMIN role — 9 pass / 0 fail
 - [PASS] locate SYS_ADMIN role — SYS_ADMIN rolePk=1
-- [PASS] locate MDL module/screens/actions in SEC registry — module_id=10, screens={'MDL_LOOKUPS': 22, 'MDL_TYPE_REGISTRY': 23}, actions=['PERM_MDL_LOOKUPS_CREATE', 'PERM_MDL_LOOKUPS_UPDATE', 'PERM_MDL_LOOKUPS_VIEW', 'PERM_MDL_TYPE_REGISTRY_VIEW']
-- [PASS] grant MDL module to SYS_ADMIN — HTTP 201 (newly granted)
-- [PASS] grant screen MDL_LOOKUPS to SYS_ADMIN — HTTP 201 (newly granted, MDL_LOOKUPS)
-- [PASS] grant screen MDL_TYPE_REGISTRY to SYS_ADMIN — HTTP 201 (newly granted, MDL_TYPE_REGISTRY)
-- [PASS] grant action PERM_MDL_LOOKUPS_VIEW to SYS_ADMIN — HTTP 201 (newly granted, PERM_MDL_LOOKUPS_VIEW)
-- [PASS] grant action PERM_MDL_LOOKUPS_CREATE to SYS_ADMIN — HTTP 201 (newly granted, PERM_MDL_LOOKUPS_CREATE)
-- [PASS] grant action PERM_MDL_LOOKUPS_UPDATE to SYS_ADMIN — HTTP 201 (newly granted, PERM_MDL_LOOKUPS_UPDATE)
-- [PASS] grant action PERM_MDL_TYPE_REGISTRY_VIEW to SYS_ADMIN — HTTP 201 (newly granted, PERM_MDL_TYPE_REGISTRY_VIEW)
+- [PASS] locate MDL module/screens/actions in SEC registry — module_id=2, screens={'MDL_LOOKUPS': 10, 'MDL_TYPE_REGISTRY': 11}, actions=['PERM_MDL_LOOKUPS_CREATE', 'PERM_MDL_LOOKUPS_UPDATE', 'PERM_MDL_LOOKUPS_VIEW', 'PERM_MDL_TYPE_REGISTRY_VIEW']
+- [PASS] grant MDL module to SYS_ADMIN — HTTP 409 SEC-409-GRANT-DUP (already granted)
+- [PASS] grant screen MDL_LOOKUPS to SYS_ADMIN — HTTP 409 SEC-409-GRANT-DUP (already granted, MDL_LOOKUPS)
+- [PASS] grant screen MDL_TYPE_REGISTRY to SYS_ADMIN — HTTP 409 SEC-409-GRANT-DUP (already granted, MDL_TYPE_REGISTRY)
+- [PASS] grant action PERM_MDL_LOOKUPS_VIEW to SYS_ADMIN — HTTP 409 SEC-409-GRANT-DUP (already granted, PERM_MDL_LOOKUPS_VIEW)
+- [PASS] grant action PERM_MDL_LOOKUPS_CREATE to SYS_ADMIN — HTTP 409 SEC-409-GRANT-DUP (already granted, PERM_MDL_LOOKUPS_CREATE)
+- [PASS] grant action PERM_MDL_LOOKUPS_UPDATE to SYS_ADMIN — HTTP 409 SEC-409-GRANT-DUP (already granted, PERM_MDL_LOOKUPS_UPDATE)
+- [PASS] grant action PERM_MDL_TYPE_REGISTRY_VIEW to SYS_ADMIN — HTTP 409 SEC-409-GRANT-DUP (already granted, PERM_MDL_TYPE_REGISTRY_VIEW)
 ### 1. LookupType — 11 pass / 0 fail
-- [PASS] create LookupType main (TC-MDL-001) — HTTP 201, id=8, isActiveFl=True
+- [PASS] create LookupType main (TC-MDL-001) — HTTP 201, id=56, isActiveFl=True
 - [PASS] create LookupType with unregistered owner module rejected (RULE-MDL-001/TC-MDL-002) — HTTP 409, error.code=MDL-409-MODULE-NOT-REGISTERED
-- [PASS] update LookupType main — names change, key unchanged (TC-MDL-003 step 1) — HTTP 200, key=TEST_TYPE_148395 (expect unchanged TEST_TYPE_148395)
-- [PASS] update LookupType main with an extra `key` field is ignored or rejected, never applied (TC-MDL-003 step 2) — HTTP 200, key=TEST_TYPE_148395 (expect key never changes)
-- [PASS] create LookupType fixture: deactivation test (TC-MDL-004 setup) — HTTP 201, id=9
-- [PASS] create LookupType fixture: payment method (TC-MDL-011 setup) — HTTP 201, id=10
-- [PASS] create LookupType fixture: reorder (TC-MDL-010 setup) — HTTP 201, id=11
-- [PASS] create LookupType fixture: search (TC-MDL-005 setup) — HTTP 201, id=12
-- [PASS] create LookupType fixture: SEC-owned type (TC-MDL-013 setup) — HTTP 201, id=13
+- [PASS] update LookupType main — names change, key unchanged (TC-MDL-003 step 1) — HTTP 200, key=TEST_TYPE_223695 (expect unchanged TEST_TYPE_223695)
+- [PASS] update LookupType main with an extra `key` field is ignored or rejected, never applied (TC-MDL-003 step 2) — HTTP 200, key=TEST_TYPE_223695 (expect key never changes)
+- [PASS] create LookupType fixture: deactivation test (TC-MDL-004 setup) — HTTP 201, id=57
+- [PASS] create LookupType fixture: payment method (TC-MDL-011 setup) — HTTP 201, id=58
+- [PASS] create LookupType fixture: reorder (TC-MDL-010 setup) — HTTP 201, id=59
+- [PASS] create LookupType fixture: search (TC-MDL-005 setup) — HTTP 201, id=60
+- [PASS] create LookupType fixture: SEC-owned type (TC-MDL-013 setup) — HTTP 201, id=61
 - [PASS] search lookup types by key (API-MDL-001) — HTTP 200, content len=1
-- [PASS] browse lookup-type registry grouped by owner=MDL/SEC (TC-MDL-013) — HTTP 200, groups=2, MDL group contains TEST_TYPE_148395=True, SEC group contains TEST_SEC_OWNED_148395=True
+- [PASS] browse lookup-type registry grouped by owner=MDL/SEC (TC-MDL-013) — HTTP 200, groups=5, MDL group contains TEST_TYPE_223695=True, SEC group contains TEST_SEC_OWNED_223695=True
 ### 2. LookupValue — 10 pass / 0 fail
-- [PASS] create LookupValue under main type (TC-MDL-006) — HTTP 201, id=1, isActiveFl=True
+- [PASS] create LookupValue under main type (TC-MDL-006) — HTTP 201, id=188, isActiveFl=True
 - [PASS] create LookupValue with duplicate code under same type rejected (RULE-MDL-002/TC-MDL-007) — HTTP 409, error.code=MDL-409-VALUE-DUP
 - [PASS] update LookupValue — names/sortOrder change, code+lookupTypeId unchanged (TC-MDL-008) — HTTP 200, code unchanged=True, lookupTypeId unchanged=True
 - [PASS] search values of a type — 3 values, ordered by sortOrder (TC-MDL-005) — HTTP 200, content len=3, ordered by sortOrder=True
-- [PASS] reorder lookup values — consumer read reflects new order (TC-MDL-010) — HTTP 200; consumer read order=['RV3_148395', 'RV1_148395', 'RV2_148395'] (expect ['RV3_148395', 'RV1_148395', 'RV2_148395'])
+- [PASS] reorder lookup values — consumer read reflects new order (TC-MDL-010) — HTTP 200; consumer read order=['RV3_223695', 'RV1_223695', 'RV2_223695'] (expect ['RV3_223695', 'RV1_223695', 'RV2_223695'])
 - [PASS] deactivate LookupValue (TC-MDL-009 step 1) — HTTP 200, isActiveFl=False
 - [PASS] consumer read no longer returns the deactivated value (TC-MDL-009 step 2) — HTTP 200, deactivated value excluded=True
-- [PASS] read active values by key, ordered — 2 active + 1 inactive (TC-MDL-011) — HTTP 200, codes=['PM1_148395', 'PM2_148395'] (expect exactly the 2 active, ordered: ['PM1_148395', 'PM2_148395'])
+- [PASS] read active values by key, ordered — 2 active + 1 inactive (TC-MDL-011) — HTTP 200, codes=['PM1_223695', 'PM2_223695'] (expect exactly the 2 active, ordered: ['PM1_223695', 'PM2_223695'])
 - [PASS] read lookups by unknown type key rejected (RULE-MDL-004/TC-MDL-012) — HTTP 404, error.code=MDL-404-TYPE-KEY
 - [PASS] deactivating a type excludes its values from consumer reads (TC-MDL-004) — deactivate: HTTP 200; consumer read after deactivate: HTTP 404, error.code=MDL-404-TYPE-KEY (excluded via 404, not an empty 200 list)
 

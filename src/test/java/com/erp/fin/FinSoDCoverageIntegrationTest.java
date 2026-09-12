@@ -8,7 +8,6 @@ import com.erp.common.domain.status.Status;
 import com.erp.common.exception.LocalizedException;
 import com.erp.fin.domain.JournalEntryDomain;
 import com.erp.fin.dto.YearEndCloseResponse;
-import com.erp.fin.entity.Account;
 import com.erp.fin.entity.FiscalPeriod;
 import com.erp.fin.entity.FiscalYear;
 import com.erp.fin.exception.FinErrorCodes;
@@ -17,19 +16,16 @@ import com.erp.fin.repository.FiscalPeriodRepository;
 import com.erp.fin.repository.FiscalYearRepository;
 import com.erp.fin.service.FiscalPeriodService;
 import com.erp.fin.service.FiscalYearService;
+import com.erp.fin.FinYearEndFixtures.YearEndFixture;
 import com.erp.main.ErpMainApplication;
 import com.erp.sec.permission.PermissionConstants;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
@@ -219,84 +215,33 @@ class FinSoDCoverageIntegrationTest {
      * successor year (its {@code startDate} the day after this year's {@code endDate}) holding a
      * period for the opening entry. Every precondition {@code FiscalYearService.yearEndClose}
      * checks is therefore satisfied before either test calls it.
+     *
+     * <p>Built by {@link FinYearEndFixtures}, which {@code FinYearEndCoverageIntegrationTest}
+     * shares — the setup has one implementation, not two that can drift apart.
      */
     private YearEndFixture eligibleYearEndFixture() {
-        LocalDate yearStart = FIXTURE_YEAR_START;
-        LocalDate yearEnd = yearStart.plusYears(1).minusDays(1);
-
-        FiscalYear year = persistYear(yearStart, yearEnd);
-        List<FiscalPeriod> periods = List.of(
-            persistPeriod(year, 1, FiscalPeriod.STATUS_HARD_CLOSE),
-            persistPeriod(year, 2, FiscalPeriod.STATUS_HARD_CLOSE));
-
-        LocalDate successorStart = yearEnd.plusDays(1);
-        FiscalYear successor =
-            persistYear(successorStart, successorStart.plusYears(1).minusDays(1));
-        persistPeriod(successor, 1, FiscalPeriod.STATUS_OPEN);
-
-        retainedEarningsAccount();
-
-        return new YearEndFixture(year, successor, periods);
+        return fixtures().eligibleYearEndFixture(FIXTURE_YEAR_START);
     }
 
     private FiscalYear persistYear(LocalDate startDate, LocalDate endDate) {
-        return fiscalYearRepository.save(FiscalYear.builder()
-            .code("Y" + uniqueSuffix())
-            .startDate(startDate)
-            .endDate(endDate)
-            .statusCode(FiscalYear.STATUS_OPEN)
-            .build());
+        return fixtures().persistYear(startDate, endDate);
     }
 
     private FiscalPeriod persistPeriod(FiscalYear year, int periodNo, String statusCode) {
-        LocalDate start = year.getStartDate().plusMonths(periodNo - 1L);
-        return fiscalPeriodRepository.save(FiscalPeriod.builder()
-            .fiscalYear(year)
-            .periodNo(periodNo)
-            .nameAr("فترة اختبار " + periodNo)
-            .nameEn("Test period " + periodNo)
-            .startDate(start)
-            .endDate(start.plusMonths(1).minusDays(1))
-            .statusCode(statusCode)
-            .build());
+        return fixtures().persistPeriod(year, periodNo, statusCode);
     }
 
-    /**
-     * {@code UQ_FIN_ACCOUNT_RETAINED_EARNINGS} is a partial unique index over the marked rows, so
-     * at most one account may carry the flag: reuse the marked account when the database already
-     * has one, and mark a new EQUITY account only when it does not.
-     */
-    private Account retainedEarningsAccount() {
-        return accountRepository.findFirstByIsRetainedEarningsFlTrueOrderByAccountPkAsc()
-            .orElseGet(() -> accountRepository.save(Account.builder()
-                .code("RE" + uniqueSuffix())
-                .nameAr("الأرباح المحتجزة")
-                .nameEn("Retained earnings")
-                // ACCOUNT_TYPE / DEBIT_CREDIT values seeded by
-                // V26__fin_mdl_lookup_seed.sql. AccountDomain publishes constants only for the
-                // two RESULT types (REVENUE/EXPENSE) it classifies, so EQUITY is the seeded code
-                // itself; the nature reuses the shared DEBIT_CREDIT lookup constant.
-                .accountTypeCode("EQUITY")
-                .natureCode(JournalEntryDomain.DIRECTION_CREDIT)
-                .isLeafFl(Boolean.TRUE)
-                .isActiveFl(Boolean.TRUE)
-                .isRetainedEarningsFl(Boolean.TRUE)
-                .build()));
+    private FinYearEndFixtures fixtures() {
+        return new FinYearEndFixtures(
+            fiscalYearRepository, fiscalPeriodRepository, accountRepository);
     }
 
     private void setAuthenticatedPrincipal(String username, String... authorities) {
-        List<SimpleGrantedAuthority> grantedAuthorities =
-            Stream.of(authorities).map(SimpleGrantedAuthority::new).toList();
-        SecurityContextHolder.getContext().setAuthentication(
-            new UsernamePasswordAuthenticationToken(username, "N/A", grantedAuthorities));
+        FinYearEndFixtures.setAuthenticatedPrincipal(username, authorities);
     }
 
     private String uniqueSuffix() {
-        return UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        return FinYearEndFixtures.uniqueSuffix();
     }
 
-    /** The fully-eligible year-end setup TC-FIN-060 and TC-FIN-061 both run against. */
-    private record YearEndFixture(FiscalYear year, FiscalYear successor,
-                                  List<FiscalPeriod> periods) {
-    }
 }

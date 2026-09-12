@@ -302,7 +302,20 @@ class SecCoverageIntegrationTest {
         // directly, so NOTIF's own update path (and any future validation on it) still runs. Safe
         // to mutate: the whole test method is wrapped in the class-level @Transactional and rolls
         // back on completion.
+        //
+        // The channel-administration call is the ONLY step here that needs a principal:
+        // NotificationChannelConfigService.update is gated on PERM_NOTIF_CHANNELS_UPDATE. The
+        // elevation is opened immediately before it and cleared immediately after, so it covers
+        // the setup call and nothing else. POST /api/v1/sec/auth/password-reset/request is an
+        // ANONYMOUS endpoint in production, and the assertion this TC actually makes is that it
+        // still succeeds with the channel disabled — letting an authenticated context leak into
+        // that call would quietly convert an anonymous-path test into an authenticated-path one
+        // and it would stop proving REQ-SEC-006. Hence the explicit clear below rather than
+        // relying on the class's @AfterEach, which only runs after the assertions.
+        setAuthenticatedPrincipal("notif-channel-admin-" + uniqueSuffix(),
+            PermissionConstants.PERM_NOTIF_CHANNELS_UPDATE);
         notificationChannelAdminApi.setChannelEnabled("EMAIL", false);
+        SecurityContextHolder.clearContext();
 
         User userWithNotifOff = persistUser("pwresetnotifoff");
         ServiceResult<ConfirmationResponse> resultOff = passwordResetService.request(

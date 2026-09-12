@@ -35,13 +35,6 @@
         1
       ],
       "current_version": 1
-    },
-    "FIN": {
-      "code": "FIN",
-      "description": "الحسابات العامة / Finance (General Ledger) — chart of accounts, dimensions, fiscal years and periods, journal entries, recurring templates, allocation and event rules, and financial reports.",
-      "registered_at": "2026-09-12T18:59:10.604102",
-      "versions": [],
-      "current_version": null
     }
   }
 }

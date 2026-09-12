@@ -154,6 +154,15 @@
       "detail": "SVC-API gated dispatch with @PreAuthorize hasAuthority(PERM_NOTIF_DISPATCH), but dispatch (API-NOTIF-001, RULE-NOTIF-005) is behind the Security filter with no management screen and SEC_PERMISSION.PAGE_FK is NOT NULL — so no PERM_NOTIF_DISPATCH row can be seeded, meaning the gate would always deny.",
       "resolution": "RESOLVED. Re-gated dispatch to @PreAuthorize(\"isAuthenticated()\") (any authenticated principal, matching 'behind the Security filter'); removed the unused PERM_NOTIF_DISPATCH constant and dropped its crossmodule javadoc references; no dispatch permission is seeded in V7. Programmatic/event-driven dispatch with no principal (internal trusted-caller pattern) is a future concern — the XM/event triggers are DEFERRED, so no principal-less caller exists yet.",
       "recorded_at": "2026-09-05"
+    },
+    {
+      "type": "UNREACHABLE_ERROR_CODE",
+      "phase": "SVC-API",
+      "sub": "SVC-API",
+      "endpoint": "POST /api/v1/notifications/templates and PUT /api/v1/notifications/templates/{id} (API-NOTIF-004) — ERR-0001 NOTIF_TEMPLATE_BILINGUAL_REQUIRED (RULE-NOTIF-004 / TC-BE-NOTIF-006)",
+      "detail": "The module's artifacts publish ERR-0001 NOTIF_TEMPLATE_BILINGUAL_REQUIRED, but the code is structurally unreachable over HTTP on BOTH create and update. TemplateCreateRequest and TemplateUpdateRequest each carry @NotBlank on bodyAr and bodyEn, so Spring bean validation refuses at the controller boundary and GlobalExceptionHandler.handleValidation answers 400 / VALIDATION_ERROR with a fieldErrors entry naming the missing body, before NotificationTemplateService's domain re-validation — the throw site of ERR-0001 — is entered. Verified against the running app 2026-09-12: create without bodyEn returns 400 VALIDATION_ERROR naming bodyEn; update dropping bodyAr returns 400 VALIDATION_ERROR naming bodyAr. The rule IS enforced; only the published code is unobservable. TC-BE-NOTIF-006 was corrected on both halves to assert the real contract (400, VALIDATION_ERROR, fieldErrors naming bodyEn / bodyAr).",
+      "resolution": "OPEN — human decision required: either (a) relax the @NotBlank bean validation on the template body fields so the domain rule owns the refusal and ERR-0001 becomes reachable (losing handleValidation's per-field detail and its report-all-failures-at-once behaviour), or (b) strike ERR-0001 from NOTIF's error catalog and state in the artifacts that RULE-NOTIF-004 is enforced structurally at the DTO layer. No error-catalog file was edited by this entry.",
+      "recorded_at": "2026-09-12"
     }
   ]
 }

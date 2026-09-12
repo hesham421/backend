@@ -23,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,7 +50,8 @@ public class NotificationTemplateService {
     );
 
     @Transactional
-    // TODO: SEC-PENDING — re-add @PreAuthorize(hasAuthority(PermissionConstants.PERM_NOTIF_TEMPLATES_CREATE)) once the new SEC module ships PermissionConstants
+    @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants)"
+        + ".PERM_NOTIF_TEMPLATES_CREATE)")
     public ServiceResult<TemplateResponse> create(TemplateCreateRequest request) {
         log.info("Creating NotificationTemplate with code: {}", request.getTemplateCode());
 
@@ -71,7 +73,8 @@ public class NotificationTemplateService {
     }
 
     @Transactional(readOnly = true)
-    // TODO: SEC-PENDING — re-add @PreAuthorize(hasAuthority(PermissionConstants.PERM_NOTIF_TEMPLATES_VIEW)) once the new SEC module ships PermissionConstants
+    @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants)"
+        + ".PERM_NOTIF_TEMPLATES_VIEW)")
     public ServiceResult<Page<TemplateResponse>> search(TemplateSearchRequest searchRequest) {
         log.debug("Searching NotificationTemplate");
 
@@ -88,7 +91,8 @@ public class NotificationTemplateService {
     }
 
     @Transactional(readOnly = true)
-    // TODO: SEC-PENDING — re-add @PreAuthorize(hasAuthority(PermissionConstants.PERM_NOTIF_TEMPLATES_VIEW)) once the new SEC module ships PermissionConstants
+    @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants)"
+        + ".PERM_NOTIF_TEMPLATES_VIEW)")
     public ServiceResult<TemplateResponse> getById(Long id) {
         log.debug("Fetching NotificationTemplate ID: {}", id);
 
@@ -100,7 +104,8 @@ public class NotificationTemplateService {
     }
 
     @Transactional
-    // TODO: SEC-PENDING — re-add @PreAuthorize(hasAuthority(PermissionConstants.PERM_NOTIF_TEMPLATES_UPDATE)) once the new SEC module ships PermissionConstants
+    @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants)"
+        + ".PERM_NOTIF_TEMPLATES_UPDATE)")
     public ServiceResult<TemplateResponse> update(Long id, TemplateUpdateRequest request) {
         log.info("Updating NotificationTemplate ID: {}", id);
 
@@ -124,7 +129,8 @@ public class NotificationTemplateService {
      * no active-child guard, so it simply flips the flag. Returns void so the controller responds 204.
      */
     @Transactional
-    // TODO: SEC-PENDING — re-add @PreAuthorize(hasAuthority(PermissionConstants.PERM_NOTIF_TEMPLATES_DELETE)) once the new SEC module ships PermissionConstants
+    @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants)"
+        + ".PERM_NOTIF_TEMPLATES_DELETE)")
     public void deactivate(Long id) {
         log.info("Deactivating NotificationTemplate ID: {}", id);
 
