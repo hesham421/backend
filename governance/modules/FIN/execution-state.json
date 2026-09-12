@@ -128,19 +128,20 @@
         }
       ],
       "api_verify_run": "2026-09-12 (re-run after fixes)",
-      "coverage": "100/107 in-force TCs covered and passing (TC-FIN-091 RETIRED, excluded); 0 failures",
+      "coverage": "103/107 in-force TCs covered and passing (TC-FIN-091 RETIRED, excluded); 0 failures across both mechanisms",
       "failed_tcs": [],
       "gap_tcs": [
         "TC-FIN-036",
-        "TC-FIN-038",
         "TC-FIN-044",
         "TC-FIN-056",
-        "TC-FIN-060",
-        "TC-FIN-061",
         "TC-FIN-086",
         "TC-FIN-102"
       ],
-      "note": "api-verify Full tier, re-run 2026-09-12 after the fix pass: 124 assertions, 0 failures. TC-FIN-016 now PASSES — DELETE /api/v1/fin/journal-entries/{id} returns 405 with an Allow header instead of the previous 500; root cause was com/erp/common/web/GlobalExceptionHandler.java having no handler for Spring's standard MVC exceptions, fixed platform-wide (a MissingServletRequestParameterException now returns 400 too). Status stays PARTIAL, not COMPLETE, solely because 8 TCs remain structurally unreachable from the HTTP surface: TC-FIN-036/056/086/102 need year-end close, which needs is_retained_earnings_fl (settable only as data); TC-FIN-038/060/061 need a second principal with a different permission set, which api-verify SKILL.md section 3-I forbids creating; TC-FIN-044 has no documented SEC module-registry read endpoint. Closing these needs a decision about how they should be covered, not more test code. See governance/project-artifacts/TEST-REPORT-FIN-backend-2026-09-12.md."
+      "note": "Two mechanisms, both green. api-verify (Full tier) covers 100 TCs; the three separation-of-duties cases it structurally cannot reach — TC-FIN-038/060/061 need a principal holding one FIN permission but not another, and api-verify SKILL.md section 3-I forbids creating a role or user — are covered in-process by src/test/java/com/erp/fin/FinSoDCoverageIntegrationTest.java, added 2026-09-12 on the same precedent as SecCoverageIntegrationTest. It sets the SecurityContext directly and asserts FIN-403-FORBIDDEN from FinForbiddenAdvisor plus unchanged state for the two denial directions, and a real successful close (CLOSING + OPENING entries, year CLOSED, periods YEAR_END_CLOSE) for the satisfied direction. Status stays PARTIAL because 5 TCs remain uncovered: TC-FIN-036/056/086/102 (year-end close over the HTTP surface, blocked on is_retained_earnings_fl being settable only as data) and TC-FIN-044 (no documented SEC module-registry read endpoint). NOTE: the JUnit fixture built for TC-FIN-060/061 already constructs a fully eligible year-end fixture in-process, so TC-FIN-036/056/086/102 are now cheap to cover by the same mechanism if a human decides that JUnit is an acceptable home for them — that decision has NOT been taken. See governance/project-artifacts/TEST-REPORT-FIN-backend-2026-09-12.md.",
+      "mechanisms": {
+        "api-verify": "governance/modules/FIN/test-api/test_fin_apis.py — 124 assertions, 0 failures",
+        "junit": "src/test/java/com/erp/fin/FinSoDCoverageIntegrationTest.java — 3 tests, 0 failures; covers TC-FIN-038, TC-FIN-060, TC-FIN-061"
+      }
     },
     {
       "id": "INT-XM",
