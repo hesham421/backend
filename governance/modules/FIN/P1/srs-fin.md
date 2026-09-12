@@ -1151,7 +1151,8 @@ endpoint and no `PERM_FIN_ACCOUNTS_DELETE`; deactivate is `PUT /{id}/deactivate`
 ### B1 — Definition
 Purpose      : إدارة الأبعاد وقيمها.
 Entities     : ENT-FIN-002, ENT-FIN-003
-Operations   : search, create, read, deactivate (dimension); create, read, search, deactivate (value)
+Operations   : search, create (dimension — no deactivate, deliberate; see B4); search, create,
+               deactivate (value — API-FIN-035)
 Users        : مسؤول مالي
 Navigation   : FIN → Setup → Dimensions
 Content shape: header + repeating lines (master dimensions + detail values)
@@ -1162,11 +1163,35 @@ Dimension filters: code(LIKE). Value filters: code(LIKE) — correspond to resul
 ### B3 — Input
 Dimension fields: code, nameAr, nameEn. Value fields: code, nameAr, nameEn, sortOrder (ENT-FIN-002/003).
 ### B4 — Access
-Page code: FIN_DIMENSIONS. Actions: VIEW, CREATE. No UPDATE and no DELETE: as built, FIN
-publishes no dimension or dimension-value update/deactivate endpoint, V24 seeds no
-`PERM_FIN_DIMENSIONS_UPDATE`, and the "deactivate" listed under B1 Operations is therefore not
-delivered in v1 — the `isActiveFl` columns (DBF-FIN-018, DBF-FIN-029) exist and default TRUE, but
-nothing can flip them through the API.
+Page code: FIN_DIMENSIONS. Actions: VIEW, CREATE, UPDATE.
+
+**UPDATE — the dimension-VALUE deactivate, and only that.** UPDATE covers exactly one endpoint:
+API-FIN-035, `PUT /api/v1/fin/dimensions/values/{id}/deactivate`, published on
+`DimensionController` (child endpoints live on the parent's controller) and delegating to
+`DimensionValueService.deactivate`, gated by `PERM_FIN_DIMENSIONS_UPDATE`. That permission is
+declared in `PermissionConstants` and is both registered and granted to `SYS_ADMIN` by migration
+`V28__fin_dimensions_update_action.sql` — V24 had seeded VIEW and CREATE only, and V25's grant
+statement (a `SELECT` over the registry) had already run, so V28 carries its own explicit grant
+rather than relying on it. Deactivate is modelled as UPDATE and not DELETE, exactly as
+FIN_ACCOUNTS models API-FIN-004. An unknown dimension-value id answers `FIN-404-DIMVALUE`, a new
+code registered in `FinErrorCodes` and in both i18n bundles.
+
+**The PARENT dimension deliberately has no deactivate.** No REQ, AC or RULE asks for one and
+`Dimension.isActiveFl` (DBF-FIN-018) drives no behaviour, so that column stays unflippable through
+the API by decision, not by oversight. The value-level flag (DBF-FIN-029) is the one RULE-FIN-009 /
+REQ-FIN-021 read when rejecting a journal line that cites an INACTIVE dimension value —
+`DimensionValueDomain.checkUsableOnLine` returns `FIN-409-INVALID-DIMENSION` off exactly this flag
+— so before API-FIN-035 that branch was unreachable and untestable, and closing that gap is the
+whole reason this half, and only this half, was built. No `activate` counterpart was added either,
+matching the delivered `AccountService.deactivate` precedent.
+
+**Previously recorded here, now superseded**: this section stated that FIN publishes no dimension
+or dimension-value update/deactivate endpoint at all and that V24 seeds no
+`PERM_FIN_DIMENSIONS_UPDATE`. That was an accurate description of the as-built state before
+API-FIN-035 and V28; it is no longer true for the value half, and remains true for the parent half.
+
+No DELETE: FIN publishes no `DELETE` endpoint on any screen, and neither V24 nor V28 seeds a
+`PERM_FIN_DIMENSIONS_DELETE` row.
 ### B5 — API expectations
 | Operation | Verb | Path | Inputs | Outputs | RULEs | Traces (REQ) |
 |---|---|---|---|---|---|---|
@@ -1174,12 +1199,18 @@ nothing can flip them through the API.
 | create dimension | POST | /api/v1/fin/dimensions | code, nameAr, nameEn | Dimension | — | REQ-FIN-004 |
 | create dimension value | POST | /api/v1/fin/dimensions/{id}/values | code, nameAr, nameEn, sortOrder | DimensionValue | RULE-FIN-002 | REQ-FIN-005, REQ-FIN-006 |
 | search dimension values | POST | /api/v1/fin/dimensions/values/search | filters (incl. dimensionId), paging (request body) | Page\<DimensionValue\> | — | REQ-FIN-005 |
+| deactivate dimension value | PUT | /api/v1/fin/dimensions/values/{id}/deactivate | id | DimensionValue (isActiveFl=false) | — | REQ-FIN-005 |
+
+API-FIN-035 (the last row) is the endpoint that makes REQ-FIN-021 / RULE-FIN-009 reachable at all:
+it is the only way to set `DimensionValue.isActiveFl` to false. There is no parent-dimension
+counterpart and no `activate` — see B4.
 
 ## SCR-REQ-FIN-003 — قواعد المحرك / Engine rules
 ### B1 — Definition
 Purpose      : إدارة قواعد ربط أنواع الأحداث بسطور القيد.
 Entities     : ENT-FIN-009, ENT-FIN-010
-Operations   : search, create, read, update, deactivate (rule); create, read, update, delete (line)
+Operations   : search, create, deactivate (rule — API-FIN-034); create (line). As built there is
+               no update and no by-id read on either, and no line delete — see B4
 Users        : مسؤول مالي
 Navigation   : FIN → Setup → Engine rules
 Content shape: header + repeating lines (rule header + its lines)
@@ -1193,15 +1224,32 @@ accountDerivationValue, amountSourceTypeCode, amountSourceValue, directionCode, 
 isRemainderFl (ENT-FIN-010; RULE-FIN-003 blocks saving until exactly one remainder line exists
 when a percentage line is present).
 ### B4 — Access
-Page code: FIN_RULES. Actions: VIEW, CREATE, UPDATE (covers adding a rule line — API-FIN-011).
-No DELETE: FIN publishes no delete endpoint and no rule-line delete endpoint, and V24 seeds no
-`PERM_FIN_RULES_DELETE`.
+Page code: FIN_RULES. Actions: VIEW, CREATE, UPDATE.
+
+**UPDATE covers two endpoints**, both gated by the single `PERM_FIN_RULES_UPDATE` that V24 already
+seeds — no new permission constant and no migration were needed: API-FIN-011 (add a rule line) and
+API-FIN-034, `PUT /api/v1/fin/event-rules/{id}/deactivate` (note the base path is
+`/api/v1/fin/event-rules`, not `event-type-rules`). An unknown rule id answers the pre-existing
+`FIN-404-RULE`. API-FIN-034 exists because until it landed no rule could ever be retired, which
+left `FIN-404-NO-ACTIVE-RULE` (RULE-FIN-005, raised by API-FIN-020) unreachable. **Stated
+limitation**, recorded in `EventTypeRuleService`'s own javadoc: deactivating a rule does NOT free
+its event type for a replacement rule, because `EventTypeRuleService.create` guards uniqueness with
+`existsByEventTypeCode`, which is not scoped to the active flag. No `activate` counterpart was
+added, matching the delivered `AccountService.deactivate` precedent.
+
+**Not built, and why.** `EventTypeRuleService` publishes exactly `create`, `deactivate` and
+`search`; `RuleLineService` publishes `create` alone. So the rule has no update and no by-id read
+endpoint, and the line has none of update, by-id read or delete. The rule-line *delete* named under
+B1 Operations is a deliberate v1 exclusion rather than an oversight: ENT-FIN-010 carries no active
+flag to soft-delete against, and FIN publishes no `DELETE` endpoint on any screen — V24 seeds no
+`PERM_FIN_RULES_DELETE` row for this or any other FIN screen.
 ### B5 — API expectations
 | Operation | Verb | Path | Inputs | Outputs | RULEs | Traces (REQ) |
 |---|---|---|---|---|---|---|
 | search rules | POST | /api/v1/fin/event-rules/search | filters, paging (request body) | Page\<EventTypeRule\> | — | REQ-FIN-007 |
 | create rule | POST | /api/v1/fin/event-rules | eventTypeCode, nameAr, nameEn | EventTypeRule | — | REQ-FIN-007 |
 | add rule line | POST | /api/v1/fin/event-rules/{id}/lines | line fields | RuleLine | RULE-FIN-003 | REQ-FIN-008, REQ-FIN-009 |
+| deactivate rule | PUT | /api/v1/fin/event-rules/{id}/deactivate | id | EventTypeRule (isActiveFl=false) | — | REQ-FIN-007 |
 
 ## SCR-REQ-FIN-004 — قوالب متكررة/عكسية / Recurring / reversing templates
 ### B1 — Definition
@@ -1295,28 +1343,45 @@ Content shape: header + repeating lines (year + its periods)
 Traces       : REQ-FIN-031, REQ-FIN-032, REQ-FIN-033, REQ-FIN-034, REQ-FIN-035, REQ-FIN-036, REQ-FIN-037, REQ-FIN-038
 Composite    : Master (years) + Detail (periods) = ONE screen requirement
 ### B2 — Search / list
-Filters: fiscalYearId(EXACT), statusCode(EXACT).
+Filters: fiscalYearId(EXACT), statusCode(EXACT) — both OPTIONAL. As delivered by API-FIN-033 these
+are exactly the two filters implemented (`FiscalPeriodSearchRequest`), plus paging and sort.
+`fiscalYearId` travels inside the body's `filters` list and narrows to one year's periods when
+supplied; omitting it is a legitimate "all periods" request, deliberately unlike the dimension-value
+child search (API-FIN-008), which rejects a missing parent id. The divergence is the point of the
+endpoint: a client that did not create the fiscal year in the same session must still be able to
+discover a period id.
 ### B3 — Input
 Year fields: code, startDate, endDate, periodCount (ENT-FIN-007). Period actions per row:
 Open, Soft-close, Hard-close (approval-gated). Year action: "Run year-end close" (enabled
 only once every period is Hard Closed).
 ### B4 — Access
-Page code: FIN_PERIODS. Actions: VIEW, CREATE (year), UPDATE (open/soft-close, and a distinct
-custom action `PERM_FIN_PERIODS_CLOSE_APPROVE` for hard-close/year-end-close — RULE-FIN-015).
+Page code: FIN_PERIODS. Actions: VIEW (`PERM_FIN_PERIODS_VIEW` — the screen's gateway, and since
+API-FIN-033 also the permission behind a real read endpoint), CREATE (year), UPDATE
+(open/soft-close, and a distinct custom action `PERM_FIN_PERIODS_CLOSE_APPROVE` for
+hard-close/year-end-close — RULE-FIN-015).
 ### B5 — API expectations
 | Operation | Verb | Path | Inputs | Outputs | RULEs | Traces (REQ) |
 |---|---|---|---|---|---|---|
+| search fiscal periods | POST | /api/v1/fin/fiscal-periods/search | filters (fiscalYearId?, statusCode?), paging (request body) | Page\<FiscalPeriod\> | — | REQ-FIN-031 |
 | create fiscal year | POST | /api/v1/fin/fiscal-years | code, startDate, endDate, periodCount | FiscalYear + FiscalPeriod[] | — | REQ-FIN-031 |
 | open period | PATCH | /api/v1/fin/fiscal-periods/{id}/open | id | FiscalPeriod | — | REQ-FIN-032 |
 | soft-close period | PATCH | /api/v1/fin/fiscal-periods/{id}/soft-close | id | FiscalPeriod | — | REQ-FIN-033 |
 | hard-close period (approval) | PATCH | /api/v1/fin/fiscal-periods/{id}/hard-close | id | FiscalPeriod | RULE-FIN-014, RULE-FIN-015 | REQ-FIN-034, REQ-FIN-035, REQ-FIN-037, REQ-FIN-038 |
 | run year-end close | POST | /api/v1/fin/fiscal-years/{id}/year-end-close | id | closing + opening JournalEntry | RULE-FIN-006, RULE-FIN-007, RULE-FIN-009, RULE-FIN-015 (RULE-FIN-008 does NOT apply — the year-end CLOSING/OPENING entries are exempt from the period gate by RULE-FIN-008's own carve-out; they are precisely the entries a hard-closed period must still accept) | REQ-FIN-036 |
 
-No fiscal-period search API exists in v1. The B2 filters above are served by API-FIN-023's
-response (the year with its generated periods); the API registry defines no
-`POST /api/v1/fin/fiscal-periods/search`. `PERM_FIN_PERIODS_VIEW` is nevertheless a registered
-action row, because it is the gateway every other FIN_PERIODS permission needs — see the ALIGN-BE
-gap entry for the open question of whether a dedicated period-search endpoint is wanted.
+**A fiscal-period search API now exists: API-FIN-033**, `POST /api/v1/fin/fiscal-periods/search`
+(`FiscalPeriodController.search` → `FiscalPeriodService.search`), serving the B2 filters directly
+and gated by `PERM_FIN_PERIODS_VIEW` — which was already a registered V24 action row and already
+granted by V25/V27, so no migration was needed; the endpoint only added the matching
+`PermissionConstants` constant. Until it landed, the B2 filters were served solely by API-FIN-023's
+response (the year with its generated periods), which is what this paragraph previously recorded,
+and `PERM_FIN_PERIODS_VIEW` was a gateway row with no endpoint behind it. That is no longer the
+case.
+
+Why it was built: `JournalEntryCreateRequest` requires both `fiscalYearId` and `periodId`
+(API-FIN-019, RULE-FIN-017), and API-FIN-029/030/031 require a period or year id of their own, yet
+no API returned a fiscal period except the API-FIN-023 create response. A client that had not
+created the year in the same session therefore could not post an entry or run a report at all.
 
 ## SCR-REQ-FIN-008 — دفتر الحساب / Account ledger
 ### B1 — Definition
@@ -1350,7 +1415,7 @@ Content shape: flat record (one row per account)
 Traces       : REQ-FIN-040, REQ-FIN-046
 Composite    : single screen (report; no entry)
 ### B2 — Search / list
-Filters: periodId(EXACT), accountTypeCode(EXACT).
+Filters: periodId(EXACT), accountTypeCode(EXACT) — both OPTIONAL query parameters as built.
 ### B3 — Input
 Not applicable.
 ### B4 — Access
@@ -1358,7 +1423,13 @@ Page code: FIN_TRIAL_BALANCE. Action: VIEW.
 ### B5 — API expectations
 | Operation | Verb | Path | Inputs | Outputs | RULEs | Traces (REQ) |
 |---|---|---|---|---|---|---|
-| trial balance | GET | /api/v1/fin/reports/trial-balance | periodId, filters | one row per account (debit/credit balance) | — | REQ-FIN-040, REQ-FIN-046 |
+| trial balance | GET | /api/v1/fin/reports/trial-balance | periodId?, accountTypeCode? | one row per account (debit/credit balance) | — | REQ-FIN-040, REQ-FIN-046 |
+
+**404 on an unknown keying id, as built.** `periodId` stays an OPTIONAL narrowing: omitting it
+means "no period narrowing" and remains a 200 (AC-FIN-040's happy path). When it IS supplied it
+must resolve — an unknown id now answers the pre-existing `FIN-404-PERIOD` rather than a silent 200
+carrying an all-zero report. This aligns the screen with FIN's existing house style, where a
+keying entity id 404s (API-FIN-028 → `FIN-404-ACCOUNT`, API-FIN-032 → `FIN-404-DIMENSION`).
 
 ## SCR-REQ-FIN-010 — الميزانية العمومية / Balance sheet
 ### B1 — Definition
@@ -1371,7 +1442,7 @@ Content shape: header + repeating lines with totals (assets / liabilities / equi
 Traces       : REQ-FIN-041, REQ-FIN-046
 Composite    : single screen (report; no entry)
 ### B2 — Search / list
-Filters: fiscalYearId(EXACT), asOfDate.
+Filters: fiscalYearId(EXACT, REQUIRED), asOfDate (optional cut-off).
 ### B3 — Input
 Not applicable.
 ### B4 — Access
@@ -1379,7 +1450,12 @@ Page code: FIN_BALANCE_SHEET. Action: VIEW.
 ### B5 — API expectations
 | Operation | Verb | Path | Inputs | Outputs | RULEs | Traces (REQ) |
 |---|---|---|---|---|---|---|
-| balance sheet | GET | /api/v1/fin/reports/balance-sheet | fiscalYearId, asOfDate | grouped balance-sheet accounts with balances | — | REQ-FIN-041, REQ-FIN-046 |
+| balance sheet | GET | /api/v1/fin/reports/balance-sheet | fiscalYearId (required), asOfDate? | grouped balance-sheet accounts with balances | — | REQ-FIN-041, REQ-FIN-046 |
+
+**404 on an unknown fiscal year, as built.** `fiscalYearId` is the REQUIRED keying identifier and
+is resolved first: an unknown id answers the pre-existing `FIN-404-YEAR`. Previously it returned a
+200 carrying an all-zero statement that a caller could not tell apart from a genuinely dormant
+year.
 
 ## SCR-REQ-FIN-011 — قائمة الدخل / Income statement
 ### B1 — Definition
@@ -1392,7 +1468,9 @@ Content shape: header + repeating lines with totals (revenue / expense sections)
 Traces       : REQ-FIN-042, REQ-FIN-046
 Composite    : single screen (report; no entry)
 ### B2 — Search / list
-Filters: fiscalYearId(EXACT), periodId(DATE_RANGE within the year).
+Filters: fiscalYearId(EXACT, REQUIRED); the period range is expressed as built by two optional
+period ids, `fromPeriodId` and `toPeriodId`, translated into the `docDate` bounds those periods
+span (DBF-FIN-080 / DBF-FIN-081).
 ### B3 — Input
 Not applicable.
 ### B4 — Access
@@ -1400,7 +1478,13 @@ Page code: FIN_INCOME_STATEMENT. Action: VIEW.
 ### B5 — API expectations
 | Operation | Verb | Path | Inputs | Outputs | RULEs | Traces (REQ) |
 |---|---|---|---|---|---|---|
-| income statement | GET | /api/v1/fin/reports/income-statement | fiscalYearId, period range | grouped revenue/expense accounts with balances | — | REQ-FIN-042, REQ-FIN-046 |
+| income statement | GET | /api/v1/fin/reports/income-statement | fiscalYearId (required), fromPeriodId?, toPeriodId? | grouped revenue/expense accounts with balances | — | REQ-FIN-042, REQ-FIN-046 |
+
+**404 on an unknown keying id, as built.** `fiscalYearId` is resolved first and raises the
+pre-existing `FIN-404-YEAR` when it does not exist; `fromPeriodId` / `toPeriodId` stay OPTIONAL
+narrowings and already raised `FIN-404-PERIOD` when supplied and unknown — that half is unchanged.
+The year check closes an internal contradiction: the same request used to answer 404 on an unknown
+period and 200 on an unknown year.
 
 ## SCR-REQ-FIN-012 — تقارير الأبعاد / Dimension reports
 ### B1 — Definition
@@ -1466,12 +1550,12 @@ documented above as a plain DEFAULT.
 | Page code | Screen | VIEW | CREATE | UPDATE | DELETE | Custom |
 |---|---|---|---|---|---|---|
 | FIN_ACCOUNTS | Chart of accounts | role-granted | role-granted | role-granted (incl. deactivate) | — | — |
-| FIN_DIMENSIONS | Dimensions | role-granted | role-granted | — | — | — |
-| FIN_RULES | Engine rules | role-granted | role-granted | role-granted (add line) | — | — |
+| FIN_DIMENSIONS | Dimensions | role-granted | role-granted | role-granted (dimension-VALUE deactivate only — API-FIN-035; `PERM_FIN_DIMENSIONS_UPDATE`, registered and granted by V28) | — | — |
+| FIN_RULES | Engine rules | role-granted | role-granted | role-granted (add line — API-FIN-011; and deactivate rule — API-FIN-034; one permission, `PERM_FIN_RULES_UPDATE`) | — | — |
 | FIN_RECURRING_TEMPLATES | Recurring/reversing templates | role-granted | role-granted | role-granted (run) | — | — |
 | FIN_ALLOCATION_RULES | Allocation rules | role-granted | role-granted | role-granted (run) | — | — |
 | FIN_JOURNAL_ENTRIES | Journal entries | role-granted | role-granted (incl. Post) | — | — | Reverse (`PERM_FIN_JOURNAL_ENTRIES_REVERSE`) |
-| FIN_PERIODS | Fiscal periods & years | role-granted (gateway only — no read endpoint) | role-granted (year) | role-granted (open/soft-close) | — | Close-approve (`PERM_FIN_PERIODS_CLOSE_APPROVE` — RULE-FIN-015, held by `FIN_CLOSE_APPROVER`, the dedicated role migration V27 mints, which by construction holds no `PERM_FIN_JOURNAL_ENTRIES_CREATE` and is assigned to no user until an administrator picks a non-creator) |
+| FIN_PERIODS | Fiscal periods & years | role-granted (gateway, and now also the read endpoint API-FIN-033) | role-granted (year) | role-granted (open/soft-close) | — | Close-approve (`PERM_FIN_PERIODS_CLOSE_APPROVE` — RULE-FIN-015, held by `FIN_CLOSE_APPROVER`, the dedicated role migration V27 mints, which by construction holds no `PERM_FIN_JOURNAL_ENTRIES_CREATE` and is assigned to no user until an administrator picks a non-creator) |
 | FIN_ACCOUNT_LEDGER | Account ledger | role-granted | — | — | — | — |
 | FIN_TRIAL_BALANCE | Trial balance | role-granted | — | — | — | — |
 | FIN_BALANCE_SHEET | Balance sheet | role-granted | — | — | — | — |
@@ -1483,6 +1567,14 @@ SEC's own mechanism — not restated as a FIN-owned RULE).
 
 **DELETE column, as built**: empty for every FIN screen. FIN publishes no `DELETE` endpoint;
 deactivation, where it exists, is `PUT /{id}/deactivate` gated by the screen's UPDATE permission,
-and V24 seeds no `PERM_FIN_*_DELETE` row. The DELETE ✓ marks above were pre-implementation and
-were corrected at ALIGN-BE.
+and V24 seeds no `PERM_FIN_*_DELETE` row (nor does V28, which adds only
+`PERM_FIN_DIMENSIONS_UPDATE`). The DELETE ✓ marks above were pre-implementation and were corrected
+at ALIGN-BE.
+
+**Deactivate endpoints, as built**: three — API-FIN-004 (account), API-FIN-034 (event-type rule)
+and API-FIN-035 (dimension value). None has an `activate` counterpart, following the delivered
+`AccountService.deactivate` precedent. Deliberately NOT built, and not pending: a deactivate on the
+parent `Dimension` (no REQ/AC/RULE requires it and `Dimension.isActiveFl` drives no behaviour) and
+a rule-line delete (ENT-FIN-010 has no active-flag column and FIN publishes no `DELETE` endpoint on
+any screen) — see SCR-REQ-FIN-002 §B4 and SCR-REQ-FIN-003 §B4.
 ══════════════════════════════════════════════════════════════════

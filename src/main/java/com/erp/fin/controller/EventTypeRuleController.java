@@ -17,6 +17,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -29,6 +30,12 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p>Rule search (API-FIN-009) is {@code POST /api/v1/fin/event-rules/search}, owned by the
  * SVC-API-SEARCH sub.
+ *
+ * <p>Deactivate (API-FIN-034) is {@code PUT /{id}/deactivate} returning 200 with the entity body,
+ * per build-create-controller step 6 — not {@code DELETE}, which this project reserves for a real
+ * hard delete. There is deliberately no {@code activate} counterpart: A.6.7 forbids a single
+ * toggle endpoint but does not require an activate to exist, and no requirement, screen or QR id
+ * anchors one — the same deliberate choice {@code AccountController} records.
  */
 @RestController
 @RequestMapping("/api/v1/fin/event-rules")
@@ -54,6 +61,13 @@ public class EventTypeRuleController {
             @PathVariable("id") Long eventTypeRuleId,
             @Valid @RequestBody RuleLineCreateRequest request) {
         return operationCode.craftResponse(ruleLineService.create(eventTypeRuleId, request));
+    }
+
+    @PutMapping("/{id}/deactivate")
+    @Operation(summary = "Deactivate event-type rule",
+        description = "إلغاء تفعيل قاعدة نوع حدث محاسبي")
+    public ResponseEntity<ApiResponse<EventTypeRuleResponse>> deactivate(@PathVariable Long id) {
+        return operationCode.craftResponse(service.deactivate(id));
     }
 
     @PostMapping("/search")

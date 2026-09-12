@@ -648,7 +648,7 @@ QR-FIN-022 at run time.
 
 API count = 32 ≥ 8 → split by threshold, grouped CRUD / SEARCH / INT.
 
-<!-- SUB:SVC-API-SEARCH:START traces=REQ-FIN-001,REQ-FIN-004,REQ-FIN-007,REQ-FIN-022,REQ-FIN-027,REQ-FIN-039,REQ-FIN-040,REQ-FIN-041,REQ-FIN-042,REQ-FIN-043 -->
+<!-- SUB:SVC-API-SEARCH:START traces=REQ-FIN-001,REQ-FIN-004,REQ-FIN-007,REQ-FIN-022,REQ-FIN-027,REQ-FIN-031,REQ-FIN-039,REQ-FIN-040,REQ-FIN-041,REQ-FIN-042,REQ-FIN-043 -->
 ### SUB — SVC-API-SEARCH (read-only)
 
 <!-- API:API-FIN-001:START traces=REQ-FIN-001,DBF-FIN-002,DBF-FIN-003,DBF-FIN-004,DBF-FIN-005 -->
@@ -738,8 +738,8 @@ Security: screen FIN_ACCOUNT_LEDGER · `PERM_FIN_ACCOUNT_LEDGER_VIEW` · Localiz
 ### API-FIN-029 — trial balance
 Endpoint: GET /api/v1/fin/reports/trial-balance · Layers: `ReportController.trialBalance`→`ReportService.trialBalance`
 Request: `periodId`(EXACT), `accountTypeCode`(EXACT) · Response: 200 · one row per account (debit/credit balance, sign per natureCode — POL-FIN-002)
-Validations: RULE-FIN-006 restated as a report-level guarantee (POL-FIN-008: the sums always match because every contributing entry individually balanced — no separate check needed, an invariant by construction)
-Errors: `FIN-500`
+Validations: RULE-FIN-006 restated as a report-level guarantee (POL-FIN-008: the sums always match because every contributing entry individually balanced — no separate check needed, an invariant by construction). `periodId` is an OPTIONAL narrowing, validated ONLY when supplied: omitting it means "no period narrowing" and stays a 200 (AC-FIN-040's happy path) — it is NOT mandatory
+Errors: `FIN-404-PERIOD` (supplied `periodId` does not resolve), `FIN-500`
 Orchestration: QR-FIN-043 (POSTED lines only, live, grouped by account) → apply nature sign → return
 Repository: QR-FIN-043 · join intra-module · READ_ONLY
 Security: screen FIN_TRIAL_BALANCE · `PERM_FIN_TRIAL_BALANCE_VIEW` · Localization: nameAr/nameEn per account
@@ -749,8 +749,8 @@ Security: screen FIN_TRIAL_BALANCE · `PERM_FIN_TRIAL_BALANCE_VIEW` · Localizat
 ### API-FIN-030 — balance sheet
 Endpoint: GET /api/v1/fin/reports/balance-sheet · Layers: `ReportController.balanceSheet`→`ReportService.balanceSheet`
 Request: `fiscalYearId`(EXACT), `asOfDate` · Response: 200 · grouped ASSET/LIABILITY/EQUITY balances
-Validations: none (continuity itself is guaranteed by REQ-FIN-036's opening-entry generation, not re-validated at read time)
-Errors: `FIN-500`
+Validations: none (continuity itself is guaranteed by REQ-FIN-036's opening-entry generation, not re-validated at read time). The REQUIRED `fiscalYearId` is resolved FIRST, before any aggregation
+Errors: `FIN-404-YEAR` (unknown `fiscalYearId` — previously a silent 200 carrying an all-zero statement), `FIN-500`
 Orchestration: QR-FIN-043 (accountTypeCode IN ASSET,LIABILITY,EQUITY) → group → return
 Repository: QR-FIN-043 · join intra-module · READ_ONLY
 Security: screen FIN_BALANCE_SHEET · `PERM_FIN_BALANCE_SHEET_VIEW` · Localization: nameAr/nameEn per account
@@ -760,8 +760,8 @@ Security: screen FIN_BALANCE_SHEET · `PERM_FIN_BALANCE_SHEET_VIEW` · Localizat
 ### API-FIN-031 — income statement
 Endpoint: GET /api/v1/fin/reports/income-statement · Layers: `ReportController.incomeStatement`→`ReportService.incomeStatement`
 Request: `fiscalYearId`(EXACT), period range · Response: 200 · grouped REVENUE/EXPENSE balances
-Validations: none (zero-opening is guaranteed by REQ-FIN-036 closing result accounts to Retained Earnings, not re-validated at read time)
-Errors: `FIN-500`
+Validations: none (zero-opening is guaranteed by REQ-FIN-036 closing result accounts to Retained Earnings, not re-validated at read time). The REQUIRED `fiscalYearId` is resolved FIRST; the two OPTIONAL period bounds `fromPeriodId`/`toPeriodId` are validated only when supplied, as they already were
+Errors: `FIN-404-YEAR` (unknown `fiscalYearId`), `FIN-404-PERIOD` (supplied period bound does not resolve — unchanged), `FIN-500`
 Orchestration: QR-FIN-043 (accountTypeCode IN REVENUE,EXPENSE, scoped to the year/period range) → group → return
 Repository: QR-FIN-043 · join intra-module · READ_ONLY
 Security: screen FIN_INCOME_STATEMENT · `PERM_FIN_INCOME_STATEMENT_VIEW` · Localization: nameAr/nameEn per account
@@ -776,6 +776,26 @@ Orchestration: QR-FIN-044 (group by account + dimension value, never base accoun
 Repository: QR-FIN-044 · join intra-module (line→line-dim→dimension-value) · READ_ONLY
 Security: screen FIN_DIMENSION_REPORTS · `PERM_FIN_DIMENSION_REPORTS_VIEW` · Localization: nameAr/nameEn
 <!-- API:API-FIN-032:END -->
+
+<!-- API:API-FIN-033:START traces=REQ-FIN-031,DBF-FIN-076,DBF-FIN-077,DBF-FIN-080,DBF-FIN-081,DBF-FIN-082 -->
+### API-FIN-033 — search fiscal periods
+Endpoint: POST /api/v1/fin/fiscal-periods/search · Layers: `FiscalPeriodController.search`→`FiscalPeriodService.search`
+Request: body `FiscalPeriodSearchRequest` — `fiscalYearId`(EXACT, **OPTIONAL**, DBF-FIN-076) carried in the body filters and read by the child parent-id extractor (never a path variable); `statusCode`(EXACT, DBF-FIN-082), paging/sort · Response: 200 · `Page<FiscalPeriodResponse>`
+Validations: none (read-only) · Errors: `FIN-400-INVALID-SORT`, `FIN-500`
+Orchestration: build the generic specification from the remaining filters → AND in an explicit join predicate on `fiscalYear.fiscalYearPk` ONLY when `fiscalYearId` is present → page → map → return
+Repository: `FiscalPeriodRepository` via `JpaSpecificationExecutor.findAll(Specification, Pageable)` — no QR id is assigned; the Query Reference Catalog closes at QR-FIN-049 and extending it is a catalog-level change left to ALIGN · join intra-module (period→year, only when the parent filter is supplied) · READ_ONLY
+Security: screen FIN_PERIODS · `PERM_FIN_PERIODS_VIEW` · Localization: nameAr/nameEn per period
+Parent id OPTIONAL — deliberate divergence from API-FIN-008, which rejects a missing `dimensionId` with `FIN-404-DIMENSION`. SCR-REQ-FIN-007 §B2 makes both filters EXACT but neither mandatory, and the endpoint exists precisely so a client that did NOT create the fiscal year in the same session can discover a period id: requiring the year id first would leave that client with no way in. Same shape API-FIN-018 already uses for its optional `periodId`.
+Why it exists: `JournalEntryCreateRequest` requires `fiscalYearId` + `periodId` (API-FIN-019) and API-FIN-029/030/031 require a period or year id, yet before this endpoint no API returned a fiscal period except API-FIN-023's create response. `PERM_FIN_PERIODS_VIEW` was already a V24 registry row and already granted by V25/V27, so **no migration was needed** — only the matching `PermissionConstants` constant was added.
+<!-- API:API-FIN-033:END -->
+
+**404 on a keying id, as built (API-FIN-029/030/031).** FIN's house style already 404s on the id
+that keys a report — API-FIN-028 answers `FIN-404-ACCOUNT`, API-FIN-032 answers
+`FIN-404-DIMENSION`. API-FIN-030 and API-FIN-031 now do the same for their REQUIRED `fiscalYearId`
+(`FIN-404-YEAR`), and API-FIN-029 for its `periodId` when — and only when — one is supplied
+(`FIN-404-PERIOD`). API-FIN-031 was internally contradictory before: 404 on an unknown period bound
+and 200 on an unknown year, in the same request. No new error code was introduced; both codes were
+already registered in `FinErrorCodes` and both i18n bundles.
 <!-- SUB:SVC-API-SEARCH:END -->
 
 <!-- SUB:SVC-API-CRUD:START traces=REQ-FIN-001,REQ-FIN-002,REQ-FIN-004,REQ-FIN-005,REQ-FIN-006,REQ-FIN-007,REQ-FIN-008,REQ-FIN-009,REQ-FIN-014,REQ-FIN-022,REQ-FIN-025 -->
@@ -845,6 +865,18 @@ Repository: QR-FIN-009, QR-FIN-010 · join NONE · READ_WRITE
 Security: screen FIN_DIMENSIONS · `PERM_FIN_DIMENSIONS_CREATE` · Localization: nameAr/nameEn required
 <!-- API:API-FIN-007:END -->
 
+<!-- API:API-FIN-035:START traces=REQ-FIN-005,REQ-FIN-021,DBF-FIN-029 -->
+### API-FIN-035 — deactivate dimension value
+Endpoint: PUT /api/v1/fin/dimensions/values/{id}/deactivate · Layers: `DimensionController.deactivateDimensionValue`→`DimensionValueService.deactivate`
+Request: path `id` (dimensionValuePk), no body · Response: 200 · `DimensionValueResponse` (isActiveFl=false)
+Validations: none beyond existence · Errors: `FIN-404-DIMVALUE`
+Orchestration: load → `DimensionValue.deactivate()` (the entity's own helper, never a direct field assignment) → persist → return. Effect: `DimensionValueDomain.checkUsableOnLine` reads exactly this flag (DBF-FIN-029), so every posting path citing the value afterwards answers `FIN-409-INVALID-DIMENSION` (RULE-FIN-009 / REQ-FIN-021, via API-FIN-019, 020, 014, 017)
+Repository: `DimensionValueRepository.findById` + `save` — no QR id is assigned; the Query Reference Catalog closes at QR-FIN-049 and extending it is a catalog-level change left to ALIGN · join NONE · READ_WRITE
+Security: screen FIN_DIMENSIONS · `PERM_FIN_DIMENSIONS_UPDATE` · Localization: n/a
+New in this delivery: `FIN-404-DIMVALUE` (`FinErrorCodes.FIN_404_DIMVALUE`, added to BOTH i18n bundles) and `PERM_FIN_DIMENSIONS_UPDATE`. This is the first UPDATE-class endpoint on FIN_DIMENSIONS, so migration `V28__fin_dimensions_update_action.sql` registers the `FIN_DIMENSIONS / UPDATE` action row AND explicitly grants it to `SYS_ADMIN` — V25 grants by a `SELECT` over the registry and has already run, so a later row would otherwise be registered-but-ungrantable.
+Why it exists: RULE-FIN-009 / REQ-FIN-021 reject a journal line citing an INACTIVE dimension value and `DimensionValueDomain` implements that check, but nothing could set the flag false, so the branch was unreachable and untestable. Deliberately NOT built (a decision, not a backlog item): a deactivate on the PARENT `Dimension` — no REQ/AC/RULE requires one and `Dimension.isActiveFl` (DBF-FIN-018) drives no behaviour. No `activate` counterpart either, matching the delivered `AccountService.deactivate` precedent.
+<!-- API:API-FIN-035:END -->
+
 <!-- API:API-FIN-010:START traces=REQ-FIN-007,REQ-FIN-044,REQ-FIN-045,DBF-FIN-090,DBF-FIN-091,DBF-FIN-092 -->
 ### API-FIN-010 — create event-type rule
 Endpoint: POST /api/v1/fin/event-rules · Layers: `EventTypeRuleController.create`→`EventTypeRuleService.create`
@@ -878,6 +910,17 @@ Orchestration: validate lookups → check RULE-FIN-003 across the rule's existin
 Repository: QR-FIN-015, QR-FIN-016 · join NONE · READ_WRITE
 Security: screen FIN_RULES · `PERM_FIN_RULES_UPDATE` · Localization: n/a
 <!-- API:API-FIN-011:END -->
+
+<!-- API:API-FIN-034:START traces=REQ-FIN-007,DBF-FIN-093 -->
+### API-FIN-034 — deactivate event-type rule
+Endpoint: PUT /api/v1/fin/event-rules/{id}/deactivate · Layers: `EventTypeRuleController.deactivate`→`EventTypeRuleService.deactivate`
+Request: path `id`, no body · Response: 200 · `EventTypeRuleResponse` (isActiveFl=false)
+Validations: none beyond existence · Errors: `FIN-404-RULE`
+Orchestration: load → clear the active flag (DBF-FIN-093) → persist → return
+Repository: `EventTypeRuleRepository.findById` + `save` — no QR id is assigned; the Query Reference Catalog closes at QR-FIN-049 and extending it is a catalog-level change left to ALIGN · join NONE · READ_WRITE
+Security: screen FIN_RULES · `PERM_FIN_RULES_UPDATE` (pre-existing — no new constant, no migration) · Localization: n/a
+Why it exists: until this endpoint landed no rule could ever be retired, so `FIN-404-NO-ACTIVE-RULE` (RULE-FIN-005, API-FIN-020) was unreachable. **Stated limitation**, recorded in the service's own javadoc: deactivating does NOT free the event type for a replacement rule, because `EventTypeRuleService.create` guards uniqueness with `existsByEventTypeCode`, which is not scoped to the active flag. No `activate` counterpart, and no rule-line delete — ENT-FIN-010 carries no active-flag column and FIN publishes no `DELETE` endpoint on any screen (a deliberate v1 exclusion, see srs-fin.md SCR-REQ-FIN-003 §B4).
+<!-- API:API-FIN-034:END -->
 
 <!-- API:API-FIN-013:START traces=REQ-FIN-022,DBF-FIN-112,DBF-FIN-113,DBF-FIN-114,DBF-FIN-115 -->
 ### API-FIN-013 — create template
@@ -1133,6 +1176,22 @@ startDate is the day after this year's endDate) — a DERIVED decision, recorded
 execution-state.json because ENT-FIN-007 declares no successor column; no such year is
 `FIN-404-YEAR` · join intra-module · READ_WRITE
 Security: screen FIN_PERIODS · `PERM_FIN_PERIODS_CLOSE_APPROVE` · Localization: n/a
+DORMANT YEAR — a reviewed decision, not an accident. For a fiscal year in which no result account
+carries a non-zero balance, `FiscalYearService.closingLines` contributes no line at all (each
+result account with `net().signum() == 0` is skipped, and the Retained Earnings absorbing line is
+added only when the running `resultTotal` is itself non-zero), and symmetrically
+`openingLines` contributes none when no balance-sheet account carries a non-zero balance. The run
+therefore posts a CLOSING (and OPENING) journal entry with an EMPTY line set, and that entry still
+consumes a `docNo`: `JournalPostingService.buildValidateAndPost` allocates the number from the
+locked fiscal-year series before it validates, and writes the entry unconditionally.
+This was reviewed and deliberately KEPT. `JournalEntryDomain.checkBalanced` sums debits and
+credits and returns empty when they compare equal, so 0 = 0 passes — a lineless entry literally
+satisfies AC-FIN-036's "both entries individually balanced". Omitting the entry would make
+AC-FIN-036's "posts a closing entry" false, and refusing the close outright would invent a rule no
+artifact states.
+Reachable only from here. `JournalEntryCreateRequest.lines` carries `@NotEmpty`, so API-FIN-019
+rejects a lineless entry at the DTO boundary. This shape exists solely on the internal year-end
+path, which builds its lines itself and never passes through that DTO.
 <!-- API:API-FIN-027:END -->
 <!-- SUB:SVC-API-INT:END -->
 <!-- PHASE:SVC-API:END -->
@@ -1230,12 +1289,12 @@ own P2 when it exists.
 | Screen (page code) | VIEW | CREATE | UPDATE | DELETE | Custom |
 |---|---|---|---|---|---|
 | FIN_ACCOUNTS | ✓ (API-FIN-001) | ✓ (API-FIN-002) | ✓ (API-FIN-003, and API-FIN-004 deactivate) | — | — |
-| FIN_DIMENSIONS | ✓ (API-FIN-005,008) | ✓ (API-FIN-006,007) | — | — | — |
-| FIN_RULES | ✓ (API-FIN-009) | ✓ (API-FIN-010) | ✓ (API-FIN-011, add line) | — | — |
+| FIN_DIMENSIONS | ✓ (API-FIN-005,008) | ✓ (API-FIN-006,007) | ✓ (API-FIN-035, deactivate a dimension VALUE — `PERM_FIN_DIMENSIONS_UPDATE`, added by V28) | — | — |
+| FIN_RULES | ✓ (API-FIN-009) | ✓ (API-FIN-010) | ✓ (API-FIN-011, add line; and API-FIN-034, deactivate rule) | — | — |
 | FIN_RECURRING_TEMPLATES | ✓ (API-FIN-012) | ✓ (API-FIN-013) | ✓ (API-FIN-014, run) | — | — |
 | FIN_ALLOCATION_RULES | ✓ (API-FIN-015) | ✓ (API-FIN-016) | ✓ (API-FIN-017, run) | — | — |
 | FIN_JOURNAL_ENTRIES | ✓ (API-FIN-018,022) | ✓ (API-FIN-019,020) | — | — | Reverse (`PERM_FIN_JOURNAL_ENTRIES_REVERSE`, API-FIN-021) |
-| FIN_PERIODS | ✓ (no API — gateway row only, see below) | ✓ (API-FIN-023, year) | ✓ (API-FIN-024,025) | — | Close-approve (`PERM_FIN_PERIODS_CLOSE_APPROVE`, API-FIN-026,027 — RULE-FIN-015 SoD) |
+| FIN_PERIODS | ✓ (API-FIN-033, search periods — and still the gateway, see below) | ✓ (API-FIN-023, year) | ✓ (API-FIN-024,025) | — | Close-approve (`PERM_FIN_PERIODS_CLOSE_APPROVE`, API-FIN-026,027 — RULE-FIN-015 SoD) |
 | FIN_ACCOUNT_LEDGER | ✓ (API-FIN-028) | — | — | — | — |
 | FIN_TRIAL_BALANCE | ✓ (API-FIN-029) | — | — | — | — |
 | FIN_BALANCE_SHEET | ✓ (API-FIN-030) | — | — | — | — |
@@ -1245,24 +1304,51 @@ own P2 when it exists.
 **DELETE column — deliberately empty everywhere.** FIN exposes no `DELETE` endpoint at all.
 Deactivation is `PUT /{id}/deactivate` gated by the screen's UPDATE permission (see
 `AccountService.deactivate`, `@PreAuthorize` on `PERM_FIN_ACCOUNTS_UPDATE`), exactly as
-MDL_LOOKUPS models it, and V24 seeds no `PERM_FIN_*_DELETE` row for any FIN screen. The
-FIN_ACCOUNTS row above read "✓ deactivate (API-FIN-004)" under DELETE until ALIGN-BE moved it
-to UPDATE; inventing DELETE rows here would create permanently-unreferenced registry data.
+MDL_LOOKUPS models it, and neither V24 nor V28 seeds a `PERM_FIN_*_DELETE` row for any FIN screen.
+The FIN_ACCOUNTS row above read "✓ deactivate (API-FIN-004)" under DELETE until ALIGN-BE moved it
+to UPDATE; inventing DELETE rows here would create permanently-unreferenced registry data. The two
+later deactivates follow the same modelling: API-FIN-034 (event-type rule) under FIN_RULES/UPDATE
+and API-FIN-035 (dimension value) under FIN_DIMENSIONS/UPDATE. There are three deactivate
+endpoints in FIN and no `activate` anywhere — API-FIN-034 and API-FIN-035 each deliberately omit a
+counterpart, following the delivered `AccountService.deactivate` precedent.
 
-**FIN_PERIODS / VIEW — a registered gateway with no endpoint.** `PERM_FIN_PERIODS_VIEW` is a
+**FIN_DIMENSIONS / UPDATE — the one cell V24 did not seed.** `PERM_FIN_DIMENSIONS_UPDATE` is
+declared in `PermissionConstants` and registered by `V28__fin_dimensions_update_action.sql`, which
+also grants it explicitly to `SYS_ADMIN`. The explicit grant is not optional: V25 grants SYS_ADMIN
+its FIN actions with a `SELECT` over `SEC_ACTION_REG` and has already run everywhere, so Flyway
+will never re-evaluate it against a row inserted later — registering without granting is exactly
+the MDL failure V19/V21 had to repair. Tiers 1 and 2 need nothing new (V25 already grants SYS_ADMIN
+the FIN module row and every FIN screen, FIN_DIMENSIONS included), and the RULE-SEC-007 gateway
+holds because V24/V25 already registered and granted `PERM_FIN_DIMENSIONS_VIEW` on the same screen.
+`FIN_CLOSE_APPROVER` (V27) deliberately gets nothing from V28 — its grants are scoped to
+FIN_PERIODS and two permission codes.
+
+**FIN_RULES / UPDATE — one permission, two endpoints.** API-FIN-034 reuses the pre-existing
+`PERM_FIN_RULES_UPDATE` that V24 already seeds and V25 already granted, so it needed no new
+constant, no new error code and no migration.
+
+**FIN_PERIODS / VIEW — a gateway that now also has an endpoint.** `PERM_FIN_PERIODS_VIEW` is a
 real V24 action row and is load-bearing: `MenuService.effectiveAuthorityCodes()` keeps a granted
 permission only if the same screen also carries a granted gateway (VIEW) action, so V27's
 FIN_CLOSE_APPROVER role must hold it for `PERM_FIN_PERIODS_CLOSE_APPROVE` to survive into the
-caller's authorities. It is nevertheless the one of 26 action rows with no `PermissionConstants`
-constant, because FIN publishes no fiscal-period read endpoint — SCR-REQ-FIN-007's §B2 names
-period list filters, but §B5 and the API registry define no search API for them, and the screen
-gets its rows from API-FIN-023's response. Recorded as an open ALIGN-BE gap.
+caller's authorities. That much is unchanged.
+
+What HAS changed: the row is no longer constant-less and no longer endpoint-less. API-FIN-033
+(`POST /api/v1/fin/fiscal-periods/search`, `FiscalPeriodService.search`) is gated on
+`PERM_FIN_PERIODS_VIEW`, and the matching `PermissionConstants` constant was added with it. No
+migration was needed — the action row was already registered by V24 and already granted by V25 and
+V27. This section previously recorded the opposite state ("no `PermissionConstants` constant,
+because FIN publishes no fiscal-period read endpoint … §B5 and the API registry define no search
+API"); that was accurate before API-FIN-033 and is superseded now. srs-fin.md SCR-REQ-FIN-007 §B5
+carries the endpoint row.
 
 **Seed data** (REQ-FIN-044): 12 SEC_PAGES rows registered via SEC's screen-registration
 endpoint at FIN onboarding; one action row per action above via SEC's action-registration
 endpoint, following `PERM_<PAGE_CODE>_<ACTION>` — including the two custom actions
 (`PERM_FIN_JOURNAL_ENTRIES_REVERSE`, `PERM_FIN_PERIODS_CLOSE_APPROVE`). Delivered as migrations
-V24 (registry) and V25 (SYS_ADMIN grants); V27 adds the dedicated `FIN_CLOSE_APPROVER` role.
+V24 (registry) and V25 (SYS_ADMIN grants); V27 adds the dedicated `FIN_CLOSE_APPROVER` role; V28
+adds the one later action row, `FIN_DIMENSIONS / UPDATE`, together with its own explicit SYS_ADMIN
+grant.
 
 **SoD enforcement (RULE-FIN-015, POL-FIN-016)**: `PERM_FIN_PERIODS_CLOSE_APPROVE` and
 `PERM_FIN_JOURNAL_ENTRIES_CREATE` must never be held by the same role by platform
@@ -1283,14 +1369,22 @@ holding both). The SEC read behind this check is XM-FIN-002.
 convention, SEC's own interceptor — not restated as a FIN-owned RULE).
 
 **Forbidden responses**: `FIN-403-SOD-VIOLATION` maps through the `LocalizedException`
-envelope, carrying a registered FIN code and both ar/en messages. `FIN-403-FORBIDDEN` does
-NOT: an authorization failure at `@PreAuthorize` is rendered by
-`com.erp.common.web.GlobalExceptionHandler.handleAccessDenied`, which builds an `ApiError` with
-the hardcoded code `ACCESS_DENIED` and a hardcoded English message, bypassing `MessageSource`;
-`FIN-403-FORBIDDEN` is in no `FinErrorCodes` constant and in neither i18n bundle. It is the
-catalog's *name* for that platform response, not a FIN code. This is platform-wide (SEC, MDL,
-CU, NOTIF, FILE behave identically), so changing it is a platform decision — recorded as an
-open ALIGN-BE finding, not fixed here.
+envelope, carrying a registered FIN code and both ar/en messages. `FIN-403-FORBIDDEN` still does
+NOT, and that half is unchanged: an authorization failure at `@PreAuthorize` is rendered by
+`com.erp.common.web.GlobalExceptionHandler.handleAccessDenied`, which emits the platform code
+`ACCESS_DENIED`; `FIN-403-FORBIDDEN` is in no `FinErrorCodes` constant and in neither i18n bundle.
+It is the catalog's *name* for that platform response, not a FIN code, and **FIN still has no
+`FIN-403-FORBIDDEN` on the wire**.
+
+What DID change, platform-wide: the 403 body is now localized. `handleAccessDenied` resolves its
+message through the same `resolveMessage(...)` helper and `MessageSource` every other handler uses,
+keyed on a new `CommonErrorCodes.ACCESS_DENIED` constant, and `ACCESS_DENIED` was added to BOTH
+`messages.properties` and `messages_ar.properties`. The wire `code` is unchanged and the English
+text is byte-identical to the string that was hardcoded before, so only Arabic callers observe any
+difference. The earlier description of this response as carrying "a hardcoded English message,
+bypassing `MessageSource`" is therefore no longer accurate; the separate point — that this is a
+platform response and not a FIN code — still stands, as does the fact that routing it through
+`LocalizedException` would change every module's 403 envelope and remains a platform decision.
 <!-- PHASE:SEC-BE:END -->
 
 <!-- PHASE:ALIGN-BE:START traces=REQ-FIN-017 -->
@@ -1313,9 +1407,10 @@ Envelope: `LocalizedException → {code, messageAr, messageEn}`. Runtime code fo
 | FIN-409-DIMENSION-DUP | PLATFORM-STD | API-FIN-006 | 409 | duplicate dimension code | رمز البُعد مستخدم بالفعل | Dimension code already in use |
 | FIN-409-DIMVALUE-DUP | RULE-FIN-002 | API-FIN-007 | 409 | duplicate code within dimension | هذا الرمز مستخدم بالفعل ضمن هذا البُعد | This code is already used within this dimension |
 | FIN-404-DIMENSION | PLATFORM-STD | API-FIN-007, 008, 032 | 404 | unknown dimension id | البُعد غير موجود | Dimension not found |
+| FIN-404-DIMVALUE | PLATFORM-STD | API-FIN-035 | 404 | unknown dimension-value id | قيمة البُعد غير موجودة | Dimension value not found |
 | FIN-409-RULE-DUP | PLATFORM-STD (§6.4) | API-FIN-010 | 409 | event type already has an active rule | يوجد بالفعل قاعدة نشطة لهذا النوع | An active rule already exists for this event type |
 | FIN-409-REMAINDER-COUNT | RULE-FIN-003 | API-FIN-011, 016 | 409 | wrong remainder-line/target count | يلزم تحديد سطر باقٍ واحد بالضبط عند وجود توزيع نسبي | Exactly one remainder line is required when any percentage distribution is present |
-| FIN-404-RULE | PLATFORM-STD | API-FIN-011 | 404 | unknown event-type rule id | القاعدة غير موجودة | Rule not found |
+| FIN-404-RULE | PLATFORM-STD | API-FIN-011, 034 | 404 | unknown event-type rule id | القاعدة غير موجودة | Rule not found |
 | FIN-400-MISSING-FREQUENCY | PLATFORM-STD | API-FIN-013 | 400 | recurring template with no frequency | يلزم تحديد التكرار للقالب المتكرر | A frequency is required for a recurring template |
 | FIN-404-TEMPLATE | PLATFORM-STD | API-FIN-014 | 404 | unknown recurring template id | القالب المتكرر غير موجود | Recurring template not found |
 | FIN-404-ALLOCATION-RULE | PLATFORM-STD | API-FIN-017 | 404 | unknown allocation rule id | قاعدة التوزيع غير موجودة | Allocation rule not found |
@@ -1333,14 +1428,14 @@ Envelope: `LocalizedException → {code, messageAr, messageEn}`. Runtime code fo
 | FIN-409-NOT-REOPENABLE | RULE-FIN-014 | API-FIN-024, 026 | 409 | period Hard Closed | الفترة مغلقة إغلاقًا صارمًا ولا يمكن إعادة فتحها | The period is hard-closed and cannot be reopened |
 | FIN-409-INVALID-TRANSITION | PLATFORM-STD | API-FIN-025, 027 | 409 | period not in the expected state; fiscal year already CLOSED when year-end close is re-run | لا يمكن تنفيذ هذا الانتقال من الحالة الحالية | This transition is not allowed from the current status |
 | FIN-403-SOD-VIOLATION | RULE-FIN-015 | API-FIN-026, 027 | 403 | close-approver also holds entry-creation permission | صلاحية اعتماد الإغلاق منفصلة عن صلاحية إنشاء القيود | The close-approval permission is separate from the entry-creation permission |
-| FIN-404-PERIOD | PLATFORM-STD | API-FIN-024, 025, 026 | 404 | unknown period id | الفترة غير موجودة | Period not found |
+| FIN-404-PERIOD | PLATFORM-STD | API-FIN-024, 025, 026, 029, 031 | 404 | unknown period id — on API-FIN-029 only when the OPTIONAL `periodId` is actually supplied (omitting it stays a 200); API-FIN-031's `fromPeriodId`/`toPeriodId` already raised it before the report-404 change and are unchanged | الفترة غير موجودة | Period not found |
 | FIN-409-PERIODS-NOT-CLOSED | PLATFORM-STD (§10.4 precondition) | API-FIN-027 | 409 | not every period Hard Closed | يجب إغلاق كل الفترات إغلاقًا صارمًا أولًا | Every period must be hard-closed first |
-| FIN-404-YEAR | PLATFORM-STD | API-FIN-027 | 404 | unknown fiscal year id | السنة المالية غير موجودة | Fiscal year not found |
+| FIN-404-YEAR | PLATFORM-STD | API-FIN-027, 030, 031 | 404 | unknown fiscal year id — on API-FIN-030 and API-FIN-031 the REQUIRED `fiscalYearId` is resolved first and raises this instead of the silent all-zero 200 those reports previously returned | السنة المالية غير موجودة | Fiscal year not found |
 | FIN-422-REMAINDER-MARKER | RULE-FIN-003, RULE-FIN-010 | API-FIN-011, 016, 017, 020 | 422 | `isRemainderFl` (DBF-FIN-103/141) disagrees with the line's/target's own REMAINDER type code, so which line is the remainder is ambiguous | علامة سطر الباقي لا تتفق مع نوع التوزيع أو مصدر المبلغ لنفس السطر | The remainder marker disagrees with the line's own distribution or amount-source type |
 | FIN-422-REMAINDER-NOT-POSITIVE | RULE-FIN-010 | API-FIN-017, 020 | 422 | the remainder line's per-side difference is zero or negative — the other lines on its side already equal or exceed the opposing side (POL-FIN-005) | سطر الباقي يُحسب كفرق ويجب أن يكون موجبًا؛ السطور الأخرى تستهلك المبلغ بالكامل | The remainder line is computed as a difference and must be positive; the other lines already consume the full amount |
 | FIN-400-PERIOD-NOT-IN-YEAR | RULE-FIN-017 | API-FIN-019 | 400 | submitted `periodId` belongs to a different fiscal year than the submitted `fiscalYearId` (DBF-FIN-076) | الفترة المحددة لا تتبع السنة المالية المحددة | The selected period does not belong to the selected fiscal year |
 | FIN-400-DOCDATE-OUTSIDE-PERIOD | RULE-FIN-017 | API-FIN-019 | 400 | submitted `docDate` falls outside the submitted period's `[startDate, endDate]` span (DBF-FIN-080/081) | تاريخ المستند خارج نطاق الفترة المحددة | The document date falls outside the selected period |
-| FIN-403-FORBIDDEN | PLATFORM-STD (CORE interceptor) | every secured API | 403 | missing module/screen/action grant — **rendered on the wire as the platform `ACCESS_DENIED` envelope, not as this code**: `GlobalExceptionHandler.handleAccessDenied` builds an `ApiError` with a hardcoded `ACCESS_DENIED` code and a hardcoded English message, bypassing `MessageSource`. This row is the catalog's name for that response, not a `FinErrorCodes` constant, and it is in neither i18n bundle. Platform-wide (SEC/MDL/CU/NOTIF/FILE identical); changing it is a platform decision, recorded as an open ALIGN-BE finding | غير مصرح بهذا الإجراء (غير مُفعَّل — الرد الفعلي إنجليزي `ACCESS_DENIED`) | You are not authorized to perform this action (not wired — the actual response is the platform `ACCESS_DENIED` body) |
+| FIN-403-FORBIDDEN | PLATFORM-STD (CORE interceptor) | every secured API | 403 | missing module/screen/action grant — **rendered on the wire as the platform `ACCESS_DENIED` envelope, not as this code**: `GlobalExceptionHandler.handleAccessDenied` builds an `ApiError` whose code is the `CommonErrorCodes.ACCESS_DENIED` constant. The message is now LOCALIZED — it is resolved through the same `resolveMessage(...)`/`MessageSource` path as every other handler, and `ACCESS_DENIED` was added to both i18n bundles; the wire `code` is unchanged and the English text is byte-identical to the string previously hardcoded, so only Arabic callers see a difference. (This row previously said the message was hardcoded English, bypassing `MessageSource`; that is no longer true.) This row remains the catalog's name for that response, not a `FinErrorCodes` constant, and `FIN-403-FORBIDDEN` itself is in neither i18n bundle. Platform-wide (SEC/MDL/CU/NOTIF/FILE identical); routing it through `LocalizedException` as a FIN code is still a platform decision, recorded as an open ALIGN-BE finding | غير مصرح بهذا الإجراء (غير مُفعَّل — الرد الفعلي هو مغلف `ACCESS_DENIED` المنصّي، وهو الآن مُترجَم في اللغتين) | You are not authorized to perform this action (not wired — the actual response is the platform `ACCESS_DENIED` body, now localized in both languages) |
 | FIN-400-INVALID-SORT | PLATFORM-STD | every search API | 400 | unrecognized sort field | حقل الترتيب غير معروف | Unrecognized sort field |
 | ~~FIN-503~~ STRUCK | PLATFORM-STD (MDL unreachable) | — | — | unreachable: XM-FIN-001 is in-process `MdlLookupApi` injection, so there is no network hop to fail (and `Status` has no SERVICE_UNAVAILABLE); an invalid code raises `FIN-400-INVALID-LOOKUP`, anything else falls through to `FIN-500` | — | — |
 | FIN-500 | PLATFORM-STD (infrastructure) | any | 500 | unhandled server error | حدث خطأ في الخادم | A server error occurred |
@@ -1356,18 +1451,22 @@ this block read "PASSED ✓ — 0 findings"; that was false and is superseded he
 
 TRACEABILITY      ✓ re-verified. REQ-FIN-001..046 and DBF-FIN-001..147 all defined upstream; every PHASE/SUB/atom carries traces=. Three id sets grew after this block was first written and are now reflected everywhere: RULE-FIN-017 (srs §A5), QR-FIN-045..049 (ALIGN-BE, for queries already implemented), XM-FIN-002 (ALIGN-BE). No id was renumbered.
 BINDING (§2A)     ✓ re-verified. No placeholder; every column cites a DBF; every RULE message present in ar+en. docNo is `JV-{fiscalYearCode}-{NNNNNN}`, counter per fiscalYearId, generated by a FIN-local generator in com.erp.fin (the "platform numbering engine" the pre-implementation text named does not exist and never did).
-MANIFEST (§4)     ✓ after correction. All 147 DBF listed, only the mandated columns. Corrected here: the XM count read "12 columns across 8 tables" and is 16 across 10 (V22 carries 16 XM-FIN-001 COMMENT ON COLUMN lines); five rows named a `_pk` column `...Id` (DBF-FIN-098/109/122/130/139) — one of them, DBF-FIN-130, colliding with DBF-FIN-140's real FK of the same name — and now match the entity. RESIDUAL, not corrected: db-script-fin.md's 14 matrix rows still describe `GENERATED ALWAYS AS IDENTITY` PKs where V22 deliberately built SEQUENCE PKs (deviation justified at V22:15-22 and noted in this plan's extraction block); 20 FK rows are modelled as scalar Long where the entity uses @ManyToOne; AuditableEntity.createdBy/updatedBy declare length 255 against VARCHAR(100) in every FIN audit column (platform-wide).
+MANIFEST (§4)     ✓ after correction. All 147 DBF listed, only the mandated columns. Corrected here: the XM count read "12 columns across 8 tables" and is 16 across 10 (V22 carries 16 XM-FIN-001 COMMENT ON COLUMN lines); five rows named a `_pk` column `...Id` (DBF-FIN-098/109/122/130/139) — one of them, DBF-FIN-130, colliding with DBF-FIN-140's real FK of the same name — and now match the entity. RESIDUAL, not corrected: db-script-fin.md's 14 matrix rows still describe `GENERATED ALWAYS AS IDENTITY` PKs where V22 deliberately built SEQUENCE PKs (deviation justified at V22:15-22 and noted in this plan's extraction block); 20 FK rows are modelled as scalar Long where the entity uses @ManyToOne. The third residual is now HALF-CLOSED: AuditableEntity.createdBy/updatedBy declared `length = 255` against the VARCHAR(100) of every FIN audit column and were narrowed to 100 today (read at AuditableEntity.java:26 and :32). The PHYSICAL schema was NOT changed and is still split — measured by grepping `(created_by|updated_by) +VARCHAR` across src/main/resources/db/migration/ and discarding the eight V2 tables that V14__drop_legacy_security_schema.sql drops: 16 LIVE tables at VARCHAR(100) (SEC 5 · MDL 2 · FIN 9) and 6 at VARCHAR(255) (CU_APP_CONFIGURATION V1:25/27; NOTIF_TEMPLATE V6:30/32; NOTIF_CHANNEL_CONFIG V6:41/43; NOTIF_LOG V6:62/64; FILE_CATEGORY V8:26/28; FILE_DOCUMENT V8:47/49), which is exactly the 22 classes `grep -rl "extends AuditableEntity"` returns. Platform-wide, so still not FIN's to settle — written up in governance/project-artifacts/platform-audit-widths-and-error-localization.md.
 QRC (§5)          ✓ after correction. Both directions re-run. Forward: all 49 QR ids have a real implementation; no join resolves a lookup label (zero MDL joins in any FIN @Query). Backward: four repository methods had ZERO call sites (contract rule A.2.9) and were DELETED at ALIGN-BE — FiscalPeriodRepository.existsByFiscalPeriodPkAndStatusCode, JournalEntryRepository.existsByJournalEntryPkAndStatusCode, JournalLineRepository.countByJournalEntryPk, RecurringTemplateRepository.findByIsActiveFlAndNextRunDateLessThanEqual; the first two claimed to be the "cheap pre-check" for QR-FIN-040/035, which are in fact decided by FiscalPeriodDomain.assertCanReopen and JournalEntryDomain.assertCanReverse on the loaded entity, with no query at all. Five real, called queries had no QR id and now carry QR-FIN-045..049. Three catalog cross-references corrected (QR-FIN-022 cited QR-FIN-040 for a balance, now QR-FIN-043; QR-FIN-016's table scope now matches its id definition and the code; QR-FIN-042 no longer claims to return a running balance).
-API (R3)          ✓ re-verified against the controllers. 32 endpoints, exactly API-FIN-001..032, in the shapes the controller skill mandates: every search is POST /<resource>/search, deactivate is PUT /{id}/deactivate, child endpoints sit on the parent's controller, and there is no DELETE and no activate anywhere in FIN. Create/update requests exclude PK/audit/system fields (docNo, statusCode, postedAt); docNo appears only in responses. Every RULE in a Validations line has a catalog row; 36 error codes are declared in FinErrorCodes and present in BOTH i18n bundles (36/36/36, no orphan in either direction); the catalog's three remaining rows are deliberately not constants — FIN-503 is struck, FIN-500 is the infrastructure fallthrough, and FIN-403-FORBIDDEN is the platform ACCESS_DENIED envelope (see ERROR ENVELOPE below). Eight codes were added after this block was first written: FIN-422-REMAINDER-MARKER, FIN-422-REMAINDER-NOT-POSITIVE, FIN-400-PERIOD-NOT-IN-YEAR, FIN-400-DOCDATE-OUTSIDE-PERIOD, FIN-409-ALREADY-REVERSED, FIN-404-TEMPLATE, FIN-422-MAPPING-UNSUPPORTED and FIN-400-INVALID-SORT.
+API (R3)          ✓ re-measured against the controllers today, NOT carried over. 35 endpoints — counted by listing every `@GetMapping/@PostMapping/@PutMapping/@PatchMapping/@DeleteMapping` in each of the nine files under src/main/java/com/erp/fin/controller/ and summing: Account 4, AllocationRule 3, Dimension 5, EventTypeRule 4, FiscalPeriod 4, FiscalYear 2, JournalEntry 5, RecurringTemplate 3, Report 5 — covering exactly API-FIN-001..035 (the previous revision of this line said "32 endpoints, exactly API-FIN-001..032"; three endpoints were delivered after it was written). Shapes unchanged: every search is POST /<resource>/search, every deactivate is a PUT on the resource's own id path (`/{id}/deactivate`, or `/values/{id}/deactivate` for the dimension-value child), the three period transitions are PATCH, child endpoints sit on the parent's controller, and there is still NO @DeleteMapping and no activate anywhere in FIN (grep returns zero of each). Create/update requests exclude PK/audit/system fields (docNo, statusCode, postedAt); docNo appears only in responses. Every RULE in a Validations line has a catalog row. 37 error codes, measured three ways and diffed pairwise with zero orphans in either direction: 37 `FIN-*` string constants in FinErrorCodes.java, 37 keys matching `^FIN-` in messages.properties, 37 in messages_ar.properties — 37/37/37 (the previous revision said 36/36/36; FIN-404-DIMVALUE was added today at FinErrorCodes.java:188, messages.properties:154, messages_ar.properties:151). The catalog's three remaining rows are still deliberately not constants — FIN-503 is struck, FIN-500 is the infrastructure fallthrough, and FIN-403-FORBIDDEN is the platform ACCESS_DENIED envelope (see ERROR ENVELOPE below).
 CROSS-MODULE      ✓ after correction. 2 XM, 2 placed, 0 mismatched, both ACTIVE: XM-FIN-001 (SOFT-READ → MDL_LOOKUP_VALUE) and XM-FIN-002 (READ → SEC's SecUserDirectoryApi), the latter registered at ALIGN-BE — the line previously read "1 XM ... 1 placed", which stopped being true the moment SEC-BE added the RULE-FIN-015 directory read. Boundary itself verified clean: FIN's only non-FIN imports under src/main/java/com/erp/fin are com.erp.mdl.crossmodule.{MdlLookupApi, LookupOptionView} and com.erp.sec.crossmodule.SecUserDirectoryApi; consumption is in-process Spring interface injection, never HTTP; CrossModuleBoundaryArchTest passes. Inbound stub XM-INBOUND-STUB-3 notation unchanged.
-SECURITY (R7)     ⚠ 1 OPEN FINDING. Verified: 25 PERM_FIN_* constants, each matching a V24 registry row character-for-character and each used by a @PreAuthorize; no FIN service public method left ungated; V25 grants SYS_ADMIN everything except close-approval; V27 mints FIN_CLOSE_APPROVER holding PERM_FIN_PERIODS_CLOSE_APPROVE plus the PERM_FIN_PERIODS_VIEW gateway and deliberately NOT entry creation, assigned to no user. Corrected: the FIN_ACCOUNTS/DELETE cell read "✓ deactivate (API-FIN-004)" — deactivate is PUT /{id}/deactivate gated by PERM_FIN_ACCOUNTS_UPDATE and there is no DELETE permission, so the ✓ moved to UPDATE. OPEN: PERM_FIN_PERIODS_VIEW is a registered action row and a load-bearing gateway (V27 grants it; MenuService drops a permission whose screen carries no granted gateway), but it is the one of 26 rows with no PermissionConstants constant, because FIN exposes no fiscal-period read endpoint — see the ALIGN-BE gap entry for the precise question.
+SECURITY (R7)     ✓ ORIGINAL FINDING CLOSED, re-measured. 27 PERM_FIN_* constants (counted with `grep -cE 'String PERM_FIN_[A-Z_]+ *=' PermissionConstants.java`) against 27 registered action rows — 26 seeded by V24 (counted by extracting the `INSERT INTO SEC_ACTION_REG ... JOIN SEC_SCREEN_REG` range and counting its `('FIN_...', 'ACTION', ...)` VALUES rows) plus the 27th added by the new V28__fin_dimensions_update_action.sql. Synthesising `'PERM_' || page_code || '_' || action_code` from those 27 rows and diffing the sorted set against the sorted constant list gives an EXACT 27/27 match, no orphan in either direction; each of the 27 was then checked individually and every one is referenced from a service under com.erp.fin. The open half is gone: PERM_FIN_PERIODS_VIEW, previously "the one of 26 rows with no PermissionConstants constant", is now declared at PermissionConstants.java:248 and consumed by FiscalPeriodService.java:176's @PreAuthorize behind API-FIN-033 (POST /api/v1/fin/fiscal-periods/search, FiscalPeriodController.java:68) — the fiscal-period read endpoint whose absence was the whole cause of the finding. No migration was needed for it: the registry row and its V25/V27 grants already existed. PERM_FIN_DIMENSIONS_UPDATE (PermissionConstants.java:97, DimensionValueService.java:100) is the genuinely new one, which is why V28 both registers it AND grants it to SYS_ADMIN explicitly — V25 grants by a SELECT over the registry and has already run, so it can never see a row inserted later. V25/V27 behaviour otherwise unchanged; FIN_CLOSE_APPROVER deliberately gets nothing from V28. Corrected earlier and still standing: the FIN_ACCOUNTS ✓ sits on UPDATE, not DELETE.
 CORE (R1)         ✓ re-verified. Layers, domain placement, error signalling (`FIN-{http}[-{SLUG}]`) and type mapping all as declared. 7 Domain classes carry the rule decisions; services delegate.
 DECISIONS         ✓ ADR-FIN-001 (carried from P2) cited and still correct as written — see INT-C for why the SecUserDirectoryApi read is nevertheless a formal XM row. DEFAULTs landed since: JOURNAL_TYPE gains CLOSING/OPENING (data-only); docNo format and FIN-local generator ownership; classic reversal (the original stays POSTED and is linked to its reversal; a second reversal is rejected; nothing writes VOID); RULE-FIN-008 exempts API-FIN-027's year-end CLOSING/OPENING entries; MAPPING account derivation is rejected with FIN-422-MAPPING-UNSUPPORTED; a twelve-period fiscal year generates calendar months. No BLOCKED ADR.
 ACCOUNTING §12    ✓ all 14 must-honor points still traced and re-verified: (1) RULE-FIN-006 · (2) POL-FIN-002/API-FIN-029 sign presentation · (3) RULE-FIN-007 · (4) RULE-FIN-008, now with its explicit carve-out for API-FIN-027's year-end CLOSING/OPENING entries · (5) CHK_FIN_JOURNAL_LINE_AMOUNT_POSITIVE + directionCode · (6) RULE-FIN-003/010, plus FIN-422-REMAINDER-MARKER and FIN-422-REMAINDER-NOT-POSITIVE · (7) RULE-FIN-011, now CLASSIC reversal: the original stays POSTED, reversalEntryId/originalEntryId link the pair, a second reversal is rejected with FIN-409-ALREADY-REVERSED, net ledger effect zero, and no path writes VOID · (8) API-FIN-029 (balances by construction) · (9) every report QR reads POSTED lines live, no stored balance column anywhere in db-script-fin.md · (10) REQ-FIN-036/RULE for continuity · (11) RULE-FIN-009 + QR-FIN-044 dimension grouping · (12) RULE-FIN-004 · (13) RULE-FIN-016 lock + no DELETE mapping anywhere (FIN publishes no DELETE endpoint at all) · (14) POL-FIN-014, no host-specific branch anywhere in this plan
-ERROR ENVELOPE    ⚠ 1 OPEN FINDING, platform-wide. FIN-403-FORBIDDEN does not reach the wire as a FIN code: AccessDeniedException is rendered by common/web/GlobalExceptionHandler with a hardcoded `ACCESS_DENIED` code and a hardcoded English message, bypassing MessageSource. Annotated in the Error Catalog above; routing it through LocalizedException would change every module's 403 body and needs a platform decision.
-SCHEMA COMMENT    ⚠ 1 OPEN FINDING. V22's `COMMENT ON TABLE FIN_ACCOUNT` reads `[DBF-FIN-001..013]`; db-script-fin.md says `[DBF-FIN-001..013, DBF-FIN-147]`. V23 added the column comment but no table comment, and V22 is applied and must never be edited — so the live DB's table comment omits DBF-FIN-147 until someone decides a forward migration is worth it for a comment.
-SCOPE vs SRS      ⚠ 1 OPEN FINDING. Two SRS screen operations are specified but not delivered, and this is a code-vs-requirement gap, not a stale document — so the requirement text was left standing rather than rewritten away. SCR-REQ-FIN-002 lists "deactivate" for Dimension and DimensionValue: no such endpoint exists, DimensionService has no deactivate method, and no PERM_FIN_DIMENSIONS_UPDATE is declared or seeded, so a dimension can be created but never switched off through the API (DBF-FIN-018/029 exist and default TRUE). SCR-REQ-FIN-003 lists "delete" for RuleLine and deactivate for EventTypeRule: neither endpoint exists. The §B4 Access lines and the Access summary now describe what is built; whether to narrow the requirement or build the endpoints is a human call, recorded as an ALIGN-BE gap.
-RESULT            PASSED WITH FINDINGS — 4 open, 0 blocking, 0 unverified lines: SECURITY (PERM_FIN_PERIODS_VIEW registered and load-bearing but with no constant, because FIN publishes no fiscal-period read endpoint); ERROR ENVELOPE (FIN-403-FORBIDDEN never reaches the wire as a FIN code — platform-wide); SCHEMA COMMENT (V22's FIN_ACCOUNT table comment omits DBF-FIN-147 and V22 is immutable); SCOPE vs SRS (dimension deactivate / rule-line delete specified, not delivered). Every ✓ above was re-derived from the delivered code at ALIGN-BE, not carried over from the pre-implementation block; each ⚠ names the artefact it was checked against. This block must not be returned to "PASSED ✓ — 0 findings" until those four are actually closed.
+ERROR ENVELOPE    ⚠ PARTIALLY CLOSED — 1 residue STILL OPEN, platform-wide. Closed half, read at GlobalExceptionHandler.java:90-96: handleAccessDenied no longer hardcodes anything — it builds `.code(CommonErrorCodes.ACCESS_DENIED)` and `.message(resolveMessage(CommonErrorCodes.ACCESS_DENIED, null))`, the same MessageSource path (:109-115) every LocalizedException already used, and ACCESS_DENIED now exists in BOTH bundles (messages.properties:16, messages_ar.properties:13) plus as a constant at CommonErrorCodes.java:11. The English is byte-identical to the string it replaced — "You do not have permission to perform this operation", confirmed by reading the diff — so only Arabic callers see a change. The previous revision of this line said the handler used "a hardcoded English message, bypassing MessageSource"; that is no longer true and has been removed rather than left standing. OPEN RESIDUE, unchanged and deliberate: the wire `code` is still ACCESS_DENIED and is still NOT FIN-403-FORBIDDEN. Re-verified today — FIN-403-FORBIDDEN appears in no FinErrorCodes constant and in neither i18n bundle, so FIN's 403 remains the platform envelope, not a FIN code. Routing AccessDeniedException through LocalizedException as a FIN code would change every module's 403 body and is still a platform decision nobody has taken.
+SCHEMA COMMENT    ⚠ STILL OPEN — re-verified today, unchanged, and expected to stay open. Read at V22__fin_schema.sql:240: `COMMENT ON TABLE FIN_ACCOUNT IS 'ENT-FIN-001 Account — PRIVATE; [DBF-FIN-001..013]';`. Read at db-script-fin.md:447: the same statement, but `[DBF-FIN-001..013, DBF-FIN-147]`. V23 added only the COLUMN comment (V23__fin_account_retained_earnings_flag.sql:25) and V22 is applied and immutable, so the live database's table comment still omits DBF-FIN-147 until someone decides a forward migration is worth writing purely for a comment. Nothing delivered today touches it; do not mark this closed without pointing at the migration that closed it.
+SCOPE vs SRS      ✓ ORIGINAL FINDING CLOSED — by a SPLIT decision, half built and half deliberately excluded, both now recorded in srs-fin.md. BUILT: API-FIN-035, `PUT /api/v1/fin/dimensions/values/{id}/deactivate` (DimensionController.java:80 on base path /api/v1/fin/dimensions), gated on the new PERM_FIN_DIMENSIONS_UPDATE (DimensionValueService.java:100), raising the new FIN-404-DIMVALUE (DimensionValueService.java:106), registered and granted by V28; and API-FIN-034, `PUT /api/v1/fin/event-rules/{id}/deactivate` (EventTypeRuleController.java:66), on the PRE-EXISTING PERM_FIN_RULES_UPDATE (EventTypeRuleService.java:100) and the PRE-EXISTING FIN-404-RULE (FinErrorCodes.java:194) — so it needed no migration and no new code. NOT BUILT, deliberately, and now v1 DECISIONS rather than gaps: a deactivate on the PARENT Dimension (srs-fin.md:1154 and the reasoning at :1179 — no REQ, AC or RULE asks for one) and a rule-line DELETE (srs-fin.md:1212 and :1243, and the summary at :1578 — ENT-FIN-010 carries no active-flag column and FIN publishes no DELETE endpoint on any screen). The requirement text was narrowed WITH its reason attached, not silently deleted. A DIFFERENT, newly-surfaced SRS/code divergence is recorded below as SRS OPERATIONS — it is not this finding returning.
+DOC QUOTATION     ⚠ NEW OPEN FINDING — a FABRICATED quotation inside an applied, immutable migration. V24__fin_security_seed.sql:52-53 asserts that srs-fin.md's B4 "Actions:" lines for FIN_DIMENSIONS, FIN_RULES, FIN_RECURRING_TEMPLATES and FIN_ALLOCATION_RULES `say "DELETE (deactivate ..., modeled as UPDATE)"`. Measured: `grep -c 'DELETE (deactivate' governance/modules/FIN/P1/srs-fin.md` returns 0 and `grep -c 'modeled as UPDATE' governance/modules/FIN/P1/srs-fin.md` returns 0 — that string occurs nowhere in srs-fin.md, in any spelling. What those four lines ACTUALLY read, opened at srs-fin.md:1166, :1227, :1270 and :1296, is `Actions: VIEW, CREATE, UPDATE` (two of them with a parenthetical about "run"), and none of the four mentions DELETE at all. The phrase's real home is MDL: `(deactivate only, modeled as UPDATE — no hard-delete endpoint exists)` at modules/MDL/packages/backend-execution/SEC-BE/SEC-BE.md:8 and modules/MDL/P3_1/backend-execution-plan-mdl.md:509 — so it was copied across modules, not read out of FIN's SRS. V24 is applied and MUST NOT be edited, so this cannot be corrected at source; it is recorded here and in execution-state.json precisely so no future session re-quotes it as srs text. Note the CONCLUSION V24 draws (seed no PERM_FIN_*_DELETE rows) is independently correct and is NOT in dispute — only the evidence it cites for it.
+ERROR CAT COVER   ⚠ NEW OPEN FINDING. Two Error Catalog rows under-list the APIs that raise their code, measured by grepping `FinErrorCodes.FIN_404_YEAR` and `FinErrorCodes.FIN_404_PERIOD` across src/main/java/com/erp/fin/ and reading every hit. FIN-404-YEAR's API column names API-FIN-027, 030, 031; it is ALSO thrown at JournalEntryService.java:171 (createManual — API-FIN-019), JournalPostingService.java:152 (the posting path behind API-FIN-019/020/021) and FiscalYearService.java:364 (successorOf) and :371 (findOrThrow — API-FIN-023/027). FIN-404-PERIOD's API column names API-FIN-024, 025, 026, 029, 031; it is ALSO thrown at RecurringTemplateService.java:284 (template run — API-FIN-014), JournalEntryService.java:174 (API-FIN-019), JournalPostingService.java:208 and FiscalYearService.java:314 and :322 (year-end close — API-FIN-027). The two catalog rows sit OUTSIDE this self-check block, in territory three earlier sessions already aligned, so this session deliberately did not edit them — it records the divergence instead.
+SRS OPERATIONS    ⚠ NEW OPEN FINDING, and distinct from the CLOSED SCOPE vs SRS one above. Several B1 "Operations" lines still name operations no controller publishes — verified by listing every `@*Mapping` in src/main/java/com/erp/fin/controller/ and comparing. srs-fin.md:1128 (SCR-REQ-FIN-001, Chart of accounts) lists `read`: AccountController publishes create, update, deactivate and search only — no `GET /{id}` — and the screen's own B5 table (srs-fin.md:1145-1148) has no read row either, so the B1 line is the sole claim. srs-fin.md:1258 (SCR-REQ-FIN-004) lists `read, update, deactivate` for the template and `create, read, update, delete` for the line: RecurringTemplateController publishes exactly POST create (API-FIN-013), POST /{id}/run (API-FIN-014) and POST /search (API-FIN-012). srs-fin.md:1283 (SCR-REQ-FIN-005) lists the same set for rule and target: AllocationRuleController publishes exactly POST create (API-FIN-016), POST /{id}/run (API-FIN-017) and POST /search (API-FIN-015). A probable fourth, same shape, flagged rather than asserted: srs-fin.md:1339 (SCR-REQ-FIN-007) lists `create (year), search, read` — FiscalYearController publishes only POST create and POST /{id}/year-end-close, and the search that now exists (API-FIN-033) is over PERIODS, not years. SCR-REQ-FIN-006 is NOT affected — JournalEntryController does publish `GET /{id}` (API-FIN-022) — and neither is SCR-REQ-FIN-008, whose `read` is the account-ledger report. srs-fin.md is OUTSIDE this session's scope and was not edited; recorded so a human can either narrow the requirements or schedule the endpoints.
+PLATFORM I18N     ⚠ NEW OPEN FINDING, platform-wide, and one half of it needs a HUMAN to pick wording. Read at GlobalExceptionHandler.java:54-105: three handlers still build hardcoded English. INTERNAL_ERROR (:103-104) hardcodes `"An unexpected error occurred"`, yet BOTH bundles already carry an INTERNAL_ERROR entry that nothing resolves — messages.properties:15 `An unexpected error occurred. Please try again later.` and messages_ar.properties:12 — and the two English strings DIFFER, so simply routing it through resolveMessage would silently change the wire text for every existing English caller. That wording conflict is a human call, not a mechanical fix. VALIDATION_ERROR (:63 `"Validation failed"` and :74 `"The request body is malformed or does not match the expected structure"`) and DATA_INTEGRITY_VIOLATION (:84) have NO bundle entry in either language — `grep '^VALIDATION_ERROR='` and `grep '^DATA_INTEGRITY_VIOLATION='` return nothing in both files — so localizing those needs new keys minted first. Only LocalizedException (:32-46) and, since today, AccessDeniedException (:90-96) resolve through MessageSource. Written up in governance/project-artifacts/platform-audit-widths-and-error-localization.md.
+RESULT            PASSED WITH FINDINGS — 6 open, 0 blocking, 0 unverified lines. Of the four findings the previous revision carried: SECURITY is CLOSED (PERM_FIN_PERIODS_VIEW now has both a constant and the endpoint that justifies it — API-FIN-033); SCOPE vs SRS is CLOSED (split decision — API-FIN-034/035 built, parent-Dimension deactivate and rule-line delete recorded in srs-fin.md as reasoned v1 exclusions); ERROR ENVELOPE is PARTIALLY CLOSED with its residue named precisely (the 403 message is localized through MessageSource, but the wire code is still the platform ACCESS_DENIED and FIN-403-FORBIDDEN still never reaches the wire); SCHEMA COMMENT is UNTOUCHED and still OPEN (V22 is applied and immutable). Four findings were ADDED by this session, each verified against the real artifact before being written: DOC QUOTATION, ERROR CAT COVER, SRS OPERATIONS, PLATFORM I18N. The six open are therefore ERROR ENVELOPE (residue), SCHEMA COMMENT, DOC QUOTATION, ERROR CAT COVER, SRS OPERATIONS, PLATFORM I18N. Every count on every line above was re-measured from the real artifact by this session and each line states how it was measured; nothing was carried forward from the previous revision unre-counted. This block must NOT be returned to "PASSED ✓ — 0 findings", and its open count must not be lowered, while any finding above still stands — closing one means naming, on its own line, the artifact that closed it.
 ```
 
 **Coverage — ENT/DBF → phases → QR → XM**: every ENT-FIN-001..014 appears in exactly one

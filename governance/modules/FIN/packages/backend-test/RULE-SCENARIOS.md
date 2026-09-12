@@ -1,6 +1,6 @@
 <!-- source: PHASE:TEST-PLAN-BE / SUB:RULE-SCENARIOS -->
-<!-- traces: AC-FIN-002, AC-FIN-006, AC-FIN-009, AC-FIN-011, AC-FIN-012, AC-FIN-013, AC-FIN-014, AC-FIN-017, AC-FIN-018, AC-FIN-019, AC-FIN-020, AC-FIN-021, AC-FIN-025, AC-FIN-028, AC-FIN-029, AC-FIN-030, AC-FIN-034, AC-FIN-035, AC-FIN-036, AC-FIN-038, API-FIN-002, API-FIN-003, API-FIN-007, API-FIN-011, API-FIN-016, API-FIN-019, API-FIN-020, API-FIN-021, API-FIN-024, API-FIN-026, API-FIN-027, REQ-FIN-002, REQ-FIN-006, REQ-FIN-009, REQ-FIN-011, REQ-FIN-012, REQ-FIN-013, REQ-FIN-014, REQ-FIN-017, REQ-FIN-018, REQ-FIN-019, REQ-FIN-020, REQ-FIN-021, REQ-FIN-025, REQ-FIN-028, REQ-FIN-029, REQ-FIN-030, REQ-FIN-034, REQ-FIN-035, REQ-FIN-036, REQ-FIN-038 -->
-<!-- SUB:RULE-SCENARIOS:START traces=REQ-FIN-002,REQ-FIN-006,REQ-FIN-009,REQ-FIN-011,REQ-FIN-012,REQ-FIN-013,REQ-FIN-014,REQ-FIN-017,REQ-FIN-018,REQ-FIN-019,REQ-FIN-020,REQ-FIN-021,REQ-FIN-025,REQ-FIN-028,REQ-FIN-029,REQ-FIN-030,REQ-FIN-034,REQ-FIN-035,REQ-FIN-036,REQ-FIN-038 -->
+<!-- traces: AC-FIN-002, AC-FIN-006, AC-FIN-009, AC-FIN-011, AC-FIN-012, AC-FIN-013, AC-FIN-014, AC-FIN-017, AC-FIN-018, AC-FIN-019, AC-FIN-020, AC-FIN-021, AC-FIN-025, AC-FIN-028, AC-FIN-029, AC-FIN-030, AC-FIN-034, AC-FIN-035, AC-FIN-036, AC-FIN-038, API-FIN-002, API-FIN-003, API-FIN-007, API-FIN-011, API-FIN-016, API-FIN-019, API-FIN-020, API-FIN-021, API-FIN-024, API-FIN-026, API-FIN-027, API-FIN-034, API-FIN-035, REQ-FIN-002, REQ-FIN-005, REQ-FIN-006, REQ-FIN-007, REQ-FIN-009, REQ-FIN-011, REQ-FIN-012, REQ-FIN-013, REQ-FIN-014, REQ-FIN-017, REQ-FIN-018, REQ-FIN-019, REQ-FIN-020, REQ-FIN-021, REQ-FIN-025, REQ-FIN-028, REQ-FIN-029, REQ-FIN-030, REQ-FIN-034, REQ-FIN-035, REQ-FIN-036, REQ-FIN-038 -->
+<!-- SUB:RULE-SCENARIOS:START traces=REQ-FIN-002,REQ-FIN-005,REQ-FIN-006,REQ-FIN-007,REQ-FIN-009,REQ-FIN-011,REQ-FIN-012,REQ-FIN-013,REQ-FIN-014,REQ-FIN-017,REQ-FIN-018,REQ-FIN-019,REQ-FIN-020,REQ-FIN-021,REQ-FIN-025,REQ-FIN-028,REQ-FIN-029,REQ-FIN-030,REQ-FIN-034,REQ-FIN-035,REQ-FIN-036,REQ-FIN-038 -->
 ### SUB — RULE-SCENARIOS (the 14 §12 must-honor points + SoD)
 
 <!-- TC:TC-FIN-002:START traces=AC-FIN-002,REQ-FIN-002,API-FIN-003 -->
@@ -412,11 +412,84 @@ Preconditions: a role granted PERM_FIN_PERIODS_CLOSE_APPROVE on screen FIN_PERIO
 Steps        : 1. call hard-close as the gateway-less role's user — 2. call it as a FIN_CLOSE_APPROVER
   holder (TC-FIN-059's setup)
 Expected     : 1. the authority is stripped during resolution and the call answers 403 with the
-  platform body {code: "ACCESS_DENIED"}, an English message and no ar/en localization (the known
-  open ERROR ENVELOPE finding — assert that body, not a FIN code) — 2. the authority survives and
+  platform body {code: "ACCESS_DENIED"} — assert that code, NOT a FIN code: FIN-403-FORBIDDEN is a
+  catalog row that never reaches the wire. The message is now resolved through the shared
+  MessageSource, so it IS localized per Accept-Language: ar "ليس لديك صلاحية لتنفيذ هذه العملية" /
+  en "You do not have permission to perform this operation". The English text is byte-identical to
+  what the handler returned before, so only an Arabic caller sees the change, and the wire `code`
+  is unchanged — 2. the authority survives and
   the call reaches the RULE-FIN-015 check, proving the gateway is matched against the screen's own
   registry rows and not by splitting the code at its last underscore (which would demand a
   non-existent PERM_FIN_PERIODS_CLOSE_VIEW)
 Test data    : one role with CLOSE_APPROVE only; FIN_CLOSE_APPROVER for the contrast
 <!-- TC:TC-FIN-062:END -->
+
+<!-- TC:TC-FIN-092:START traces=AC-FIN-013,REQ-FIN-013,REQ-FIN-007,API-FIN-034,API-FIN-020 -->
+### TC-FIN-092 — deactivating a rule makes RULE-FIN-005's failure reachable for the first time
+Derived from : AC-FIN-013 (REQ-FIN-013, REQ-FIN-007) · Exercises: API-FIN-034 PUT /api/v1/fin/event-rules/{id}/deactivate, then API-FIN-020 POST /api/v1/fin/journal-entries/from-event
+Rule / code  : RULE-FIN-005 → FIN-404-NO-ACTIVE-RULE
+Scenario     : STATE · data class EDGE · language ALL
+Preconditions: one ACTIVE EventTypeRule for eventTypeCode "INVOICE_PAID" (TC-FIN-073's setup, which
+  needs TC-FIN-090's host-supplied ACCOUNTING_EVENT_TYPE value first) and a caller holding
+  PERM_FIN_RULES_UPDATE. Until API-FIN-034 landed nothing could clear
+  FIN_EVENT_TYPE_RULE.IS_ACTIVE_FL (DBF-FIN-093), so THIS transition — an event type that HAD a
+  working rule and no longer has an active one — could not be staged through the API at all;
+  TC-FIN-013 reaches the same code only from an event type that never had a rule
+Steps        : 1. POST an event of type "INVOICE_PAID" — 2. PUT /api/v1/fin/event-rules/{id}/deactivate
+  on that rule — 3. POST a second event of the same type, with a fresh eventReference
+Expected     : 1. 201, the entry is built from the rule — 2. 200 `EventTypeRuleResponse` with
+  isActiveFl=false — 3. 404 FIN-404-NO-ACTIVE-RULE, ar "لا توجد قاعدة نشطة لهذا النوع من الأحداث" /
+  en "No active rule exists for this event type"; no entry created and the step-1 entry untouched.
+  The deactivated row still exists and is still returned by API-FIN-009, so the miss comes from the
+  flag and not from a deleted row — the resolution is
+  `findByEventTypeCodeAndIsActiveFl(code, TRUE)`, fail-fast before any other check
+Test data    : eventTypeCode "INVOICE_PAID"; two distinct eventReferences
+<!-- TC:TC-FIN-092:END -->
+
+<!-- TC:TC-FIN-093:START traces=AC-FIN-021,REQ-FIN-021,REQ-FIN-005,API-FIN-035,API-FIN-019 -->
+### TC-FIN-093 — RULE-FIN-009's inactive-value branch, now reachable end to end
+Derived from : AC-FIN-021 (REQ-FIN-021, REQ-FIN-005) · Exercises: API-FIN-035 PUT /api/v1/fin/dimensions/values/{id}/deactivate, then API-FIN-019 POST /api/v1/fin/journal-entries
+Rule / code  : RULE-FIN-009 → FIN-409-INVALID-DIMENSION
+Scenario     : STATE · data class EDGE · language ALL
+Preconditions: dimension "REGION" with an ACTIVE value "NORTH"; an OPEN period; a caller holding
+  PERM_FIN_DIMENSIONS_UPDATE (registered AND granted to SYS_ADMIN by V28). TC-FIN-021 already
+  states the inactive half of RULE-FIN-009, but before API-FIN-035 no endpoint could clear
+  FIN_DIMENSION_VALUE.IS_ACTIVE_FL (DBF-FIN-029), so its precondition could only be staged by
+  writing the flag as data — this TC is the API-only route to the same branch
+Steps        : 1. POST a balanced entry whose line cites REGION/NORTH — 2. PUT
+  /api/v1/fin/dimensions/values/{id}/deactivate on NORTH — 3. POST an otherwise identical entry
+  citing REGION/NORTH again
+Expected     : 1. 201 — 2. 200 `DimensionValueResponse` with isActiveFl=false — 3. 409
+  FIN-409-INVALID-DIMENSION, ar "قيمة البُعد غير صالحة" / en "The dimension value is invalid",
+  the offending line and dimension named; nothing posted. Deactivation is forward-only in effect:
+  it blocks NEW lines and never retracts the step-1 entry, which still reads back POSTED
+Test data    : dimension "REGION", value "NORTH"; one 2-line balanced payload submitted twice
+<!-- TC:TC-FIN-093:END -->
+
+<!-- TC:TC-FIN-103:START traces=AC-FIN-021,REQ-FIN-021,API-FIN-019 -->
+### TC-FIN-103 — reject a value belonging to a DIFFERENT dimension (§12.11, RULE-FIN-009's other half)
+Derived from : AC-FIN-021 (REQ-FIN-021) · Exercises: API-FIN-019 POST /api/v1/fin/journal-entries
+Rule / code  : RULE-FIN-009 → FIN-409-INVALID-DIMENSION
+Scenario     : VIOLATION · data class INVALID · language ALL
+Preconditions: two dimensions — "REGION" holding value "NORTH", "PROJECT" holding value "P100" —
+  with BOTH values ACTIVE, so the inactive condition cannot be what fires. Read as the sibling of
+  TC-FIN-021: that TC drives RULE-FIN-009's inactive branch, this one drives its wrong-dimension
+  branch, and only the two together cover the guard on both of its conditions
+Steps        : 1. submit a balanced entry whose line carries a dimension tag stating dimensionId =
+  REGION with dimensionValueId = P100 — an active value owned by PROJECT, not by REGION
+Expected     : 409 FIN-409-INVALID-DIMENSION, ar "قيمة البُعد غير صالحة" / en "The dimension value
+  is invalid"; nothing posted. ASSERT THE CODE, NOT THE BRANCH — the two conditions are ONE guard
+  returning ONE code: `checkUsableOnLine` tests `!active || dimensionPk == null ||
+  !dimensionPk.equals(statedDimensionPk)` and answers FIN-409-INVALID-DIMENSION either way, with
+  the value's own `code` as the message argument and a registered message text that carries no
+  placeholder, so the rendered ar/en strings are identical too. The branches are indistinguishable
+  on the wire BY DESIGN, not by accident; do not write an assertion that tries to tell them apart,
+  and do not read a pass here as proof the wrong-dimension path was the one taken unless the
+  fixture really does leave both values active — which is why that is a stated precondition.
+  Both ids are resolved independently BEFORE the pairing check and each answers this same
+  FIN-409-INVALID-DIMENSION (not a 404) when the id itself is unknown, so the fixture must cite two
+  REAL ids or it proves nothing about this branch
+Test data    : dimensions "REGION"/"PROJECT"; active values "NORTH" (REGION) and "P100" (PROJECT);
+  the tag pairs REGION with P100
+<!-- TC:TC-FIN-103:END -->
 <!-- SUB:RULE-SCENARIOS:END -->

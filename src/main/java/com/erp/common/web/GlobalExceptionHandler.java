@@ -1,5 +1,6 @@
 package com.erp.common.web;
 
+import com.erp.common.exception.CommonErrorCodes;
 import com.erp.common.exception.LocalizedException;
 import java.util.List;
 import java.util.Locale;
@@ -89,8 +90,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException ex) {
         ApiError error = ApiError.builder()
-            .code("ACCESS_DENIED")
-            .message("You do not have permission to perform this operation")
+            .code(CommonErrorCodes.ACCESS_DENIED)
+            .message(resolveMessage(CommonErrorCodes.ACCESS_DENIED, null))
             .build();
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure(error));
     }

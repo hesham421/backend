@@ -76,6 +76,26 @@ public final class PermissionConstants {
     /** API-FIN-006, 007 — screen FIN_DIMENSIONS (SEC-BE.md matrix, FIN_DIMENSIONS / CREATE). */
     public static final String PERM_FIN_DIMENSIONS_CREATE = "PERM_FIN_DIMENSIONS_CREATE";
 
+    /**
+     * API-FIN-035 (deactivate a dimension value) — screen FIN_DIMENSIONS. Deactivate is modelled
+     * as UPDATE, not DELETE: srs-fin.md:1139-1141 gates API-FIN-004's
+     * {@code PUT /{id}/deactivate} on {@code PERM_FIN_ACCOUNTS_UPDATE} ("there is no DELETE
+     * endpoint and no PERM_FIN_ACCOUNTS_DELETE"), and srs-fin.md:1484-1487 states the same
+     * module-wide — "deactivation, where it exists, is PUT /{id}/deactivate gated by the screen's
+     * UPDATE permission, and V24 seeds no PERM_FIN_*_DELETE row".
+     *
+     * <p>srs-fin.md:1165-1169 still records this screen as having no UPDATE row and no
+     * dimension-value deactivate endpoint. That is an accurate description of the state BEFORE
+     * API-FIN-035; the spec-alignment session is bringing it into line.
+     *
+     * <p>Unlike every other FIN constant here, this one has NO action row in
+     * {@code V24__fin_security_seed.sql}: that seed registered FIN_DIMENSIONS with VIEW and CREATE
+     * only, because no UPDATE-class endpoint existed on the screen yet. The row — and the
+     * SYS_ADMIN grant V25's already-applied {@code SELECT} over the registry cannot retroactively
+     * pick up — is added by {@code V28__fin_dimensions_update_action.sql}.
+     */
+    public static final String PERM_FIN_DIMENSIONS_UPDATE = "PERM_FIN_DIMENSIONS_UPDATE";
+
     /** API-FIN-010 — screen FIN_RULES (SEC-BE.md matrix, FIN_RULES / CREATE). */
     public static final String PERM_FIN_RULES_CREATE = "PERM_FIN_RULES_CREATE";
 
@@ -211,4 +231,19 @@ public final class PermissionConstants {
      * FIN_DIMENSION_REPORTS / VIEW, its only action).
      */
     public static final String PERM_FIN_DIMENSION_REPORTS_VIEW = "PERM_FIN_DIMENSION_REPORTS_VIEW";
+
+    /**
+     * API-FIN-033 (search fiscal periods) — screen FIN_PERIODS (SEC-BE.md matrix,
+     * FIN_PERIODS / VIEW). The action row already exists in the database:
+     * {@code V24__fin_security_seed.sql} seeds the tuple {@code ('FIN_PERIODS', 'VIEW', 'عرض')}
+     * and synthesizes its code as {@code 'PERM_' || v.page_code || '_' || v.action_code}, giving
+     * {@code PERM_FIN_PERIODS_VIEW}; {@code V25__fin_role_grants.sql} grants it to SYS_ADMIN (it
+     * excludes only {@code PERM_FIN_PERIODS_CLOSE_APPROVE}) and
+     * {@code V27__fin_close_approver_role.sql} grants it to FIN_CLOSE_APPROVER. V24's own header
+     * records why it was seeded without a constant — "FIN exposes no read endpoint on FIN_PERIODS"
+     * and "either the matrix's FIN_PERIODS/VIEW ✓ is spurious, or a FIN_PERIODS read endpoint is
+     * missing". API-FIN-033 is that endpoint, so the constant is declared here now. No migration
+     * accompanies this: the row and both grants are already applied.
+     */
+    public static final String PERM_FIN_PERIODS_VIEW = "PERM_FIN_PERIODS_VIEW";
 }

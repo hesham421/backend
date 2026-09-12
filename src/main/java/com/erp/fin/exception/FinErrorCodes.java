@@ -179,8 +179,17 @@ public final class FinErrorCodes {
     public static final String FIN_404_DIMENSION = "FIN-404-DIMENSION";
 
     /**
+     * PLATFORM-STD — unknown dimension value id. Its own row rather than a reuse of
+     * {@link #FIN_404_DIMENSION}: the catalog assigns a distinct 404 per entity, and raising the
+     * parent's code here would tell the client the DIMENSION was missing when the value was.
+     * Not to be confused with {@link #FIN_409_DIMVALUE_DUP}, which is the duplicate-code scenario.
+     * API: API-FIN-035. HTTP 404 ({@code Status.NOT_FOUND}).
+     */
+    public static final String FIN_404_DIMVALUE = "FIN-404-DIMVALUE";
+
+    /**
      * PLATFORM-STD — unknown event-type rule id.
-     * API: API-FIN-011. HTTP 404.
+     * APIs: API-FIN-011, API-FIN-034. HTTP 404.
      */
     public static final String FIN_404_RULE = "FIN-404-RULE";
 

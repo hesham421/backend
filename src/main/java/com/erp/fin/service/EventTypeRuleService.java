@@ -2,6 +2,7 @@ package com.erp.fin.service;
 
 import com.erp.common.domain.status.ServiceResult;
 import com.erp.common.domain.status.Status;
+import com.erp.common.exception.LocalizedException;
 import com.erp.common.search.DefaultFieldValueConverter;
 import com.erp.common.search.PageableBuilder;
 import com.erp.common.search.SearchRequest;
@@ -12,6 +13,7 @@ import com.erp.fin.dto.EventTypeRuleCreateRequest;
 import com.erp.fin.dto.EventTypeRuleSearchRequest;
 import com.erp.fin.dto.EventTypeRuleResponse;
 import com.erp.fin.entity.EventTypeRule;
+import com.erp.fin.exception.FinErrorCodes;
 import com.erp.fin.mapper.EventTypeRuleMapper;
 import com.erp.fin.repository.EventTypeRuleRepository;
 import java.util.Set;
@@ -74,6 +76,41 @@ public class EventTypeRuleService {
         log.info("Created EventTypeRule ID: {}", saved.getEventTypeRulePk());
 
         return ServiceResult.success(mapper.toResponse(saved), Status.CREATED);
+    }
+
+    /**
+     * API-FIN-034 — soft deactivation only: retire an event-type rule so the event-entry build
+     * stops resolving it. No SRS rule answers "may this rule be deactivated?", so there is nothing
+     * to delegate to {@link EventTypeRuleDomain} — the same shape as {@code AccountService
+     * .deactivate} (API-FIN-004) — and the flag moves through ENT-FIN-009's own
+     * {@code deactivate()} helper, never a direct assignment.
+     *
+     * <p>Effect: {@code EventEntryService} resolves the rule through
+     * {@code findByEventTypeCodeAndIsActiveFl(code, TRUE)}, so once no active rule remains for the
+     * event type, API-FIN-020 answers {@code FIN-404-NO-ACTIVE-RULE} (RULE-FIN-005).
+     *
+     * <p>Stated plainly, because it is not what a reader would assume: deactivating does NOT free
+     * the event type for a replacement rule. {@link #create(EventTypeRuleCreateRequest)} asks
+     * {@code repository.existsByEventTypeCode(...)}, which is NOT scoped to the active flag, so
+     * §6.4's one-rule-per-event-type check still sees the deactivated row and answers
+     * {@code FIN-409-RULE-DUP}. Narrowing that check is a separate decision and is not made here.
+     */
+    @Transactional
+    @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants)"
+        + ".PERM_FIN_RULES_UPDATE)")
+    public ServiceResult<EventTypeRuleResponse> deactivate(Long id) {
+        log.info("Deactivating EventTypeRule ID: {}", id);
+
+        EventTypeRule entity = repository.findById(id)
+            .orElseThrow(() -> new LocalizedException(
+                Status.NOT_FOUND, FinErrorCodes.FIN_404_RULE, id));
+
+        entity.deactivate();
+
+        EventTypeRule saved = repository.save(entity);
+        log.info("Deactivated EventTypeRule ID: {}", saved.getEventTypeRulePk());
+
+        return ServiceResult.success(mapper.toResponse(saved), Status.UPDATED);
     }
 
     /**

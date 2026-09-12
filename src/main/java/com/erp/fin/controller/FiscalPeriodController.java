@@ -3,22 +3,29 @@ package com.erp.fin.controller;
 import com.erp.common.web.ApiResponse;
 import com.erp.common.web.OperationCode;
 import com.erp.fin.dto.FiscalPeriodResponse;
+import com.erp.fin.dto.FiscalPeriodSearchRequest;
 import com.erp.fin.service.FiscalPeriodService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Thin controller for ENT-FIN-008's three guarded status transitions — API-FIN-024 (open),
- * API-FIN-025 (soft-close) and API-FIN-026 (hard-close), SVC-API-INT.md. A period is never created
- * on its own: REQ-FIN-031 generates the whole set with its fiscal year (API-FIN-023), so this
- * resource carries no {@code POST} and, since SRS A7 allows no deletion, no {@code DELETE} either.
- * Searching periods belongs to SVC-API-SEARCH.
+ * Thin controller for ENT-FIN-008: the three guarded status transitions — API-FIN-024 (open),
+ * API-FIN-025 (soft-close) and API-FIN-026 (hard-close), SVC-API-INT.md — plus API-FIN-033, the
+ * period search (SCR-REQ-FIN-007 §B1 "search", §B2's {@code fiscalYearId}/{@code statusCode}
+ * filters). A period is never created on its own: REQ-FIN-031 generates the whole set with its
+ * fiscal year (API-FIN-023), so this resource carries no creating {@code POST} — the only
+ * {@code POST} is {@code /search}, per A.6.6 — and, since SRS A7 allows no deletion, no
+ * {@code DELETE} either.
  *
  * <p><b>Why {@code PATCH}.</b> Each endpoint is a named domain state transition over a single
  * column, exactly as its spec block states ({@code PATCH /api/v1/fin/fiscal-periods/{id}/open},
@@ -56,5 +63,13 @@ public class FiscalPeriodController {
         description = "إغلاق صارم لفترة محاسبية باعتماد")
     public ResponseEntity<ApiResponse<FiscalPeriodResponse>> hardClose(@PathVariable Long id) {
         return operationCode.craftResponse(service.hardClose(id));
+    }
+
+    @PostMapping("/search")
+    @Operation(summary = "Search fiscal periods",
+        description = "البحث في الفترات المحاسبية")
+    public ResponseEntity<ApiResponse<Page<FiscalPeriodResponse>>> search(
+            @Valid @RequestBody FiscalPeriodSearchRequest searchRequest) {
+        return operationCode.craftResponse(service.search(searchRequest));
     }
 }

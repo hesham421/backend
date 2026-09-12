@@ -18,6 +18,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -35,6 +36,14 @@ import org.springframework.web.bind.annotation.RestController;
  * search and sits on this parent controller too (A.6.9); its parent dimension id travels inside
  * the request body's filters, never as a path variable — see
  * {@code DimensionValueSearchRequest}.
+ *
+ * <p>Deactivating a dimension value (API-FIN-035) is {@code PUT /values/{id}/deactivate} on this
+ * same parent controller (A.6.9), matching the {@code /values/search} path shape. It returns 200
+ * with the entity body per build-create-controller step 6 — not {@code DELETE}, which this project
+ * reserves for a real hard delete. There is deliberately no {@code activate} counterpart, and no
+ * deactivate on the PARENT dimension: A.6.7 forbids a single toggle endpoint but does not require
+ * an activate to exist, and no REQ/AC/RULE anchors either one — {@code Dimension.isActiveFl}
+ * drives no behaviour, whereas {@code DimensionValue.isActiveFl} is read by RULE-FIN-009.
  */
 @RestController
 @RequestMapping("/api/v1/fin/dimensions")
@@ -66,6 +75,14 @@ public class DimensionController {
     public ResponseEntity<ApiResponse<Page<DimensionResponse>>> search(
             @Valid @RequestBody DimensionSearchRequest searchRequest) {
         return operationCode.craftResponse(service.search(searchRequest));
+    }
+
+    @PutMapping("/values/{id}/deactivate")
+    @Operation(summary = "Deactivate dimension value",
+        description = "إلغاء تفعيل قيمة ضمن بُعد تحليلي")
+    public ResponseEntity<ApiResponse<DimensionValueResponse>> deactivateDimensionValue(
+            @PathVariable("id") Long dimensionValueId) {
+        return operationCode.craftResponse(dimensionValueService.deactivate(dimensionValueId));
     }
 
     @PostMapping("/values/search")

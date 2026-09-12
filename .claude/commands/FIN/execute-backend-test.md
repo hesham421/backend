@@ -26,17 +26,23 @@ longer relies on; the flat file is the sole source of truth.
 The file contains two `<!-- PHASE:*:START -->` blocks:
 - `TEST-PLAN-BE` — the base module-scope phase, with two nested `<!-- SUB:*:START -->`
   blocks: `RULE-SCENARIOS` (TC-FIN-002, 006, 009, 011, 012, 013, 017, 018, 019, 020,
-  021, 028, 029, 030, 035, 038 — 16 TCs) and `API-SCENARIOS` (TC-FIN-001, 003, 004, 005,
+  021, 028, 029, 030, 035, 038, 048, 049, 050, 051, 052, 053, 054, 055, 056, 057, 058,
+  059, 060, 061, 062, 092, 093, 103 — 34 TCs) and `API-SCENARIOS` (TC-FIN-001, 003, 004, 005,
   007, 008, 010, 014, 015, 016, 022, 023, 024, 025, 026, 027, 031, 032, 033, 034, 036,
-  037, 039, 040, 041, 042, 043, 044, 045, 046 — 30 TCs).
-- `INT-XM` — the cross-module integration phase (FIN declares XM-FIN-001 → MDL), holding
-  one TC directly in the phase with no nested SUB (TC-FIN-047, an INTEGRATION/EDGE
-  scenario: graceful degradation when MDL is unreachable during lookup-code validation).
+  037, 039, 040, 041, 042, 043, 044, 045, 046, 063–090, 094–102 — 67 TCs).
+- `INT-XM` — the cross-module integration phase (FIN declares XM-FIN-001 → MDL and
+  XM-FIN-002 → SEC), holding TWO TCs directly in the phase with no nested SUB: TC-FIN-047
+  (INTEGRATION/EDGE — MDL's lookup-type failure translated into FIN-400-INVALID-LOOKUP)
+  and TC-FIN-091 (INTEGRATION/EDGE — a failed SEC directory read refuses the close with
+  FIN-403-SOD-VIOLATION rather than approving it).
+
+Do not trust these id lists over the file: they are a convenience, and the plan has grown
+more than once. Enumerate the `TC:TC-FIN-*:START` markers actually present and use that.
 
 Per TC extract: its `TC-FIN-<seq>` id, the `AC-*`/`REQ-*`/`XM-*` it traces (from its
 `traces=` marker attribute / `Derived from` line), and its one-line scenario. This list —
-46 module-scope TCs (TC-FIN-001..046) + 1 integration TC (TC-FIN-047) — is the
-**REQUIRED COVERAGE** for this run.
+101 module-scope TCs + 2 integration TCs (TC-FIN-047 and TC-FIN-091), 103 in total,
+TC-FIN-001..103 with no gaps — is the **REQUIRED COVERAGE** for this run.
 
 ### 0.2 — Gate Check (MANDATORY)
 Read `governance/modules/FIN/execution-state.json` → for each entry in `test_phases[]`
@@ -124,9 +130,10 @@ no corresponding `Covers:` entry, or a negative `TC-*` with no corresponding
 the manifest that would have produced a negative test simply doesn't exist
 yet (state that explicitly, don't silently treat it as covered).
 
-TC-FIN-047 (the `INT-XM` phase's MDL-unreachable degradation scenario) is
-checked here exactly like any other — a cross-module dependency with no
-exercising test is a gap, same as an uncovered `AC-*`.
+TC-FIN-047 and TC-FIN-091 (the `INT-XM` phase's two cross-module degradation
+scenarios, against MDL and SEC respectively) are checked here exactly like any
+other — a cross-module dependency with no exercising test is a gap, same as an
+uncovered `AC-*`.
 
 Produce this table for the report:
 
@@ -140,8 +147,9 @@ TC-FIN-047    │ XM-FIN-001           │ MDL unreachable → …   │ ✗ non
 
 - A delivered `TC-*` with no matching `test_<entity>()` reference is a
   **coverage gap** — list it prominently; it is never dropped silently.
-- Record the coverage ratio: `<covered>/47` REQUIRED-COVERAGE TCs (46 module-
-  scope + 1 integration).
+- Record the coverage ratio: `<covered>/103` REQUIRED-COVERAGE TCs (101 module-
+  scope + 2 integration). If the enumeration in STEP 0.1 finds a different total,
+  that total is the denominator — the plan is the source of truth, not this line.
 
 ---
 
@@ -185,7 +193,7 @@ For each entry in `test_phases[]` (`TEST-PLAN-BE`, `INT-XM`), set its status
 from the STEP 1.9 result:
 - `COMPLETE` only when EVERY `TC-*` under that phase (STEP 0.1) has a passing
   `api-verify` counterpart (STEP 1.9). Note `TEST-PLAN-BE` and `INT-XM` are
-  graded independently — `INT-XM` covers only TC-FIN-047.
+  graded independently — `INT-XM` covers only TC-FIN-047 and TC-FIN-091.
 - `PARTIAL` when some pass but at least one `TC-*` is a gap or a fail — attach
   the gap/fail `TC-*` list to the entry.
 - `PENDING` if the phase never ran.

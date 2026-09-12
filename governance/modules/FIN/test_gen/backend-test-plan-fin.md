@@ -3,13 +3,16 @@
 Module : FIN   Version : v1   Profile : erp   Scope : project (modules FIN, MDL, SEC)
 Sources: srs-fin.md v1 · backend-execution-plan-fin.md v1 · registry-srs-fin.md v1 · registry-db-fin.md v1
 Framework: agnostic. REDUCED: no. Open ADRs: 0 new (ADR-FIN-001 unaffected).
-TC count: 89 (module scope) · 2 (integration — XM-FIN-001, FIN declares → MDL; XM-FIN-002, FIN declares → SEC)
-Extended after ALIGN-BE with TC-FIN-049..091 (no existing TC id, marker or trace was changed).
+TC count: 101 (module scope) · 2 (integration — XM-FIN-001, FIN declares → MDL; XM-FIN-002, FIN declares → SEC)
+Extended after ALIGN-BE with TC-FIN-049..091, then with TC-FIN-092..103 for the API-FIN-033/034/035
+delivery, the report-404 change and RULE-FIN-009's previously uncovered wrong-dimension branch (no
+existing TC id, marker or trace was changed; TC-FIN-062's Expected was rewritten in place for the
+now-localized ACCESS_DENIED body).
 ══════════════════════════════════════════════════════════════════
 
 <!-- PHASE:TEST-PLAN-BE:START traces=REQ-FIN-001,REQ-FIN-002,REQ-FIN-003,REQ-FIN-004,REQ-FIN-005,REQ-FIN-006,REQ-FIN-007,REQ-FIN-008,REQ-FIN-009,REQ-FIN-010,REQ-FIN-011,REQ-FIN-012,REQ-FIN-013,REQ-FIN-014,REQ-FIN-015,REQ-FIN-016,REQ-FIN-017,REQ-FIN-018,REQ-FIN-019,REQ-FIN-020,REQ-FIN-021,REQ-FIN-022,REQ-FIN-023,REQ-FIN-024,REQ-FIN-025,REQ-FIN-026,REQ-FIN-027,REQ-FIN-028,REQ-FIN-029,REQ-FIN-030,REQ-FIN-031,REQ-FIN-032,REQ-FIN-033,REQ-FIN-034,REQ-FIN-035,REQ-FIN-036,REQ-FIN-037,REQ-FIN-038,REQ-FIN-039,REQ-FIN-040,REQ-FIN-041,REQ-FIN-042,REQ-FIN-043,REQ-FIN-044,REQ-FIN-045,REQ-FIN-046 -->
 
-<!-- SUB:RULE-SCENARIOS:START traces=REQ-FIN-002,REQ-FIN-006,REQ-FIN-009,REQ-FIN-011,REQ-FIN-012,REQ-FIN-013,REQ-FIN-014,REQ-FIN-017,REQ-FIN-018,REQ-FIN-019,REQ-FIN-020,REQ-FIN-021,REQ-FIN-025,REQ-FIN-028,REQ-FIN-029,REQ-FIN-030,REQ-FIN-034,REQ-FIN-035,REQ-FIN-036,REQ-FIN-038 -->
+<!-- SUB:RULE-SCENARIOS:START traces=REQ-FIN-002,REQ-FIN-005,REQ-FIN-006,REQ-FIN-007,REQ-FIN-009,REQ-FIN-011,REQ-FIN-012,REQ-FIN-013,REQ-FIN-014,REQ-FIN-017,REQ-FIN-018,REQ-FIN-019,REQ-FIN-020,REQ-FIN-021,REQ-FIN-025,REQ-FIN-028,REQ-FIN-029,REQ-FIN-030,REQ-FIN-034,REQ-FIN-035,REQ-FIN-036,REQ-FIN-038 -->
 ### SUB — RULE-SCENARIOS (the 14 §12 must-honor points + SoD)
 
 <!-- TC:TC-FIN-002:START traces=AC-FIN-002,REQ-FIN-002,API-FIN-003 -->
@@ -421,13 +424,86 @@ Preconditions: a role granted PERM_FIN_PERIODS_CLOSE_APPROVE on screen FIN_PERIO
 Steps        : 1. call hard-close as the gateway-less role's user — 2. call it as a FIN_CLOSE_APPROVER
   holder (TC-FIN-059's setup)
 Expected     : 1. the authority is stripped during resolution and the call answers 403 with the
-  platform body {code: "ACCESS_DENIED"}, an English message and no ar/en localization (the known
-  open ERROR ENVELOPE finding — assert that body, not a FIN code) — 2. the authority survives and
+  platform body {code: "ACCESS_DENIED"} — assert that code, NOT a FIN code: FIN-403-FORBIDDEN is a
+  catalog row that never reaches the wire. The message is now resolved through the shared
+  MessageSource, so it IS localized per Accept-Language: ar "ليس لديك صلاحية لتنفيذ هذه العملية" /
+  en "You do not have permission to perform this operation". The English text is byte-identical to
+  what the handler returned before, so only an Arabic caller sees the change, and the wire `code`
+  is unchanged — 2. the authority survives and
   the call reaches the RULE-FIN-015 check, proving the gateway is matched against the screen's own
   registry rows and not by splitting the code at its last underscore (which would demand a
   non-existent PERM_FIN_PERIODS_CLOSE_VIEW)
 Test data    : one role with CLOSE_APPROVE only; FIN_CLOSE_APPROVER for the contrast
 <!-- TC:TC-FIN-062:END -->
+
+<!-- TC:TC-FIN-092:START traces=AC-FIN-013,REQ-FIN-013,REQ-FIN-007,API-FIN-034,API-FIN-020 -->
+### TC-FIN-092 — deactivating a rule makes RULE-FIN-005's failure reachable for the first time
+Derived from : AC-FIN-013 (REQ-FIN-013, REQ-FIN-007) · Exercises: API-FIN-034 PUT /api/v1/fin/event-rules/{id}/deactivate, then API-FIN-020 POST /api/v1/fin/journal-entries/from-event
+Rule / code  : RULE-FIN-005 → FIN-404-NO-ACTIVE-RULE
+Scenario     : STATE · data class EDGE · language ALL
+Preconditions: one ACTIVE EventTypeRule for eventTypeCode "INVOICE_PAID" (TC-FIN-073's setup, which
+  needs TC-FIN-090's host-supplied ACCOUNTING_EVENT_TYPE value first) and a caller holding
+  PERM_FIN_RULES_UPDATE. Until API-FIN-034 landed nothing could clear
+  FIN_EVENT_TYPE_RULE.IS_ACTIVE_FL (DBF-FIN-093), so THIS transition — an event type that HAD a
+  working rule and no longer has an active one — could not be staged through the API at all;
+  TC-FIN-013 reaches the same code only from an event type that never had a rule
+Steps        : 1. POST an event of type "INVOICE_PAID" — 2. PUT /api/v1/fin/event-rules/{id}/deactivate
+  on that rule — 3. POST a second event of the same type, with a fresh eventReference
+Expected     : 1. 201, the entry is built from the rule — 2. 200 `EventTypeRuleResponse` with
+  isActiveFl=false — 3. 404 FIN-404-NO-ACTIVE-RULE, ar "لا توجد قاعدة نشطة لهذا النوع من الأحداث" /
+  en "No active rule exists for this event type"; no entry created and the step-1 entry untouched.
+  The deactivated row still exists and is still returned by API-FIN-009, so the miss comes from the
+  flag and not from a deleted row — the resolution is
+  `findByEventTypeCodeAndIsActiveFl(code, TRUE)`, fail-fast before any other check
+Test data    : eventTypeCode "INVOICE_PAID"; two distinct eventReferences
+<!-- TC:TC-FIN-092:END -->
+
+<!-- TC:TC-FIN-093:START traces=AC-FIN-021,REQ-FIN-021,REQ-FIN-005,API-FIN-035,API-FIN-019 -->
+### TC-FIN-093 — RULE-FIN-009's inactive-value branch, now reachable end to end
+Derived from : AC-FIN-021 (REQ-FIN-021, REQ-FIN-005) · Exercises: API-FIN-035 PUT /api/v1/fin/dimensions/values/{id}/deactivate, then API-FIN-019 POST /api/v1/fin/journal-entries
+Rule / code  : RULE-FIN-009 → FIN-409-INVALID-DIMENSION
+Scenario     : STATE · data class EDGE · language ALL
+Preconditions: dimension "REGION" with an ACTIVE value "NORTH"; an OPEN period; a caller holding
+  PERM_FIN_DIMENSIONS_UPDATE (registered AND granted to SYS_ADMIN by V28). TC-FIN-021 already
+  states the inactive half of RULE-FIN-009, but before API-FIN-035 no endpoint could clear
+  FIN_DIMENSION_VALUE.IS_ACTIVE_FL (DBF-FIN-029), so its precondition could only be staged by
+  writing the flag as data — this TC is the API-only route to the same branch
+Steps        : 1. POST a balanced entry whose line cites REGION/NORTH — 2. PUT
+  /api/v1/fin/dimensions/values/{id}/deactivate on NORTH — 3. POST an otherwise identical entry
+  citing REGION/NORTH again
+Expected     : 1. 201 — 2. 200 `DimensionValueResponse` with isActiveFl=false — 3. 409
+  FIN-409-INVALID-DIMENSION, ar "قيمة البُعد غير صالحة" / en "The dimension value is invalid",
+  the offending line and dimension named; nothing posted. Deactivation is forward-only in effect:
+  it blocks NEW lines and never retracts the step-1 entry, which still reads back POSTED
+Test data    : dimension "REGION", value "NORTH"; one 2-line balanced payload submitted twice
+<!-- TC:TC-FIN-093:END -->
+
+<!-- TC:TC-FIN-103:START traces=AC-FIN-021,REQ-FIN-021,API-FIN-019 -->
+### TC-FIN-103 — reject a value belonging to a DIFFERENT dimension (§12.11, RULE-FIN-009's other half)
+Derived from : AC-FIN-021 (REQ-FIN-021) · Exercises: API-FIN-019 POST /api/v1/fin/journal-entries
+Rule / code  : RULE-FIN-009 → FIN-409-INVALID-DIMENSION
+Scenario     : VIOLATION · data class INVALID · language ALL
+Preconditions: two dimensions — "REGION" holding value "NORTH", "PROJECT" holding value "P100" —
+  with BOTH values ACTIVE, so the inactive condition cannot be what fires. Read as the sibling of
+  TC-FIN-021: that TC drives RULE-FIN-009's inactive branch, this one drives its wrong-dimension
+  branch, and only the two together cover the guard on both of its conditions
+Steps        : 1. submit a balanced entry whose line carries a dimension tag stating dimensionId =
+  REGION with dimensionValueId = P100 — an active value owned by PROJECT, not by REGION
+Expected     : 409 FIN-409-INVALID-DIMENSION, ar "قيمة البُعد غير صالحة" / en "The dimension value
+  is invalid"; nothing posted. ASSERT THE CODE, NOT THE BRANCH — the two conditions are ONE guard
+  returning ONE code: `checkUsableOnLine` tests `!active || dimensionPk == null ||
+  !dimensionPk.equals(statedDimensionPk)` and answers FIN-409-INVALID-DIMENSION either way, with
+  the value's own `code` as the message argument and a registered message text that carries no
+  placeholder, so the rendered ar/en strings are identical too. The branches are indistinguishable
+  on the wire BY DESIGN, not by accident; do not write an assertion that tries to tell them apart,
+  and do not read a pass here as proof the wrong-dimension path was the one taken unless the
+  fixture really does leave both values active — which is why that is a stated precondition.
+  Both ids are resolved independently BEFORE the pairing check and each answers this same
+  FIN-409-INVALID-DIMENSION (not a 404) when the id itself is unknown, so the fixture must cite two
+  REAL ids or it proves nothing about this branch
+Test data    : dimensions "REGION"/"PROJECT"; active values "NORTH" (REGION) and "P100" (PROJECT);
+  the tag pairs REGION with P100
+<!-- TC:TC-FIN-103:END -->
 <!-- SUB:RULE-SCENARIOS:END -->
 
 <!-- SUB:API-SCENARIOS:START traces=REQ-FIN-001,REQ-FIN-002,REQ-FIN-003,REQ-FIN-004,REQ-FIN-005,REQ-FIN-007,REQ-FIN-008,REQ-FIN-010,REQ-FIN-014,REQ-FIN-015,REQ-FIN-016,REQ-FIN-022,REQ-FIN-023,REQ-FIN-024,REQ-FIN-025,REQ-FIN-026,REQ-FIN-027,REQ-FIN-031,REQ-FIN-032,REQ-FIN-033,REQ-FIN-034,REQ-FIN-036,REQ-FIN-037,REQ-FIN-039,REQ-FIN-040,REQ-FIN-041,REQ-FIN-042,REQ-FIN-043,REQ-FIN-044,REQ-FIN-045,REQ-FIN-046 -->
@@ -1063,6 +1139,173 @@ Expected     : 1. exactly 13 FIN-owned types and 36 active values; ACCOUNTING_EV
   step, not a defect — 3. 201 — 4. 201, every other lookup-backed create works out of the box
 Test data    : the seeded 13 keys; one host-supplied ACCOUNTING_EVENT_TYPE value
 <!-- TC:TC-FIN-090:END -->
+
+<!-- TC:TC-FIN-094:START traces=AC-FIN-031,REQ-FIN-031,API-FIN-033 -->
+### TC-FIN-094 — search fiscal periods, with and without the OPTIONAL fiscalYearId
+Derived from : AC-FIN-031 (REQ-FIN-031) · Exercises: API-FIN-033 POST /api/v1/fin/fiscal-periods/search
+Scenario     : HAPPY · data class VALID · language ALL
+Preconditions: two fiscal years, each with its 12 generated periods (API-FIN-023, TC-FIN-081), at
+  least one OPEN in each; a caller holding PERM_FIN_PERIODS_VIEW. fiscalYearId travels inside the
+  body's filters list and is read by the child parent-id extractor, never as a path variable
+Steps        : 1. POST {filters: [fiscalYearId = year A], paging} — 2. POST {filters: [statusCode =
+  "OPEN"], paging} with NO fiscalYearId — 3. POST {filters: [fiscalYearId = year A, statusCode =
+  "OPEN"], sort periodNo asc}
+Expected     : 1. 200 `Page<FiscalPeriodResponse>` holding only year A's 12 periods, nameAr/nameEn
+  returned — 2. 200 listing the OPEN periods of BOTH years: omitting the parent id is a legitimate
+  "all periods" request, NOT the 404 its sibling child search answers. API-FIN-033 diverges from
+  API-FIN-008 (TC-FIN-066, which 404s FIN-404-DIMENSION on a missing dimensionId) on purpose,
+  because this endpoint is the only way a client that did not create the year in the same session
+  can discover a period id at all — 3. 200, both filters ANDed, ordered by periodNo. Nothing is
+  modified by any of the three
+Test data    : years "2026"/"2027", 12 periods each; statusCode "OPEN"
+<!-- TC:TC-FIN-094:END -->
+
+<!-- TC:TC-FIN-095:START traces=AC-FIN-031,REQ-FIN-031,API-FIN-033 -->
+### TC-FIN-095 — fiscal-period search rejects an unrecognized sort field and an ungranted caller
+Derived from : AC-FIN-031 (REQ-FIN-031) · Exercises: API-FIN-033 POST /api/v1/fin/fiscal-periods/search
+Scenario     : VIOLATION + PERMISSION · data class INVALID/ATTACK · language ALL
+Preconditions: periods exist; one caller holds PERM_FIN_PERIODS_VIEW and one holds no FIN_PERIODS
+  action grant at all. The endpoint's allowed sort/filter set is fiscalPeriodPk, periodNo, nameAr,
+  nameEn, startDate, endDate, statusCode, createdAt — fiscalYearId is deliberately NOT on it (it is
+  the `fiscalYear` association, ANDed in as an explicit join, not a flat path), and neither are
+  closedBy/closedAt
+Steps        : 1. POST a search sorted by "closedAt" — 2. POST a search sorted by "fiscalYearId" —
+  3. POST a valid search as the ungranted caller
+Expected     : 1 and 2. 400 FIN-400-INVALID-SORT, ar "حقل الترتيب غير معروف" / en "Unrecognized sort
+  field"; no page returned — the whitelist check runs BEFORE the shared pageable builder, which
+  would otherwise drop the field silently and return a differently ordered page with nothing saying
+  so — 3. 403 carrying the platform envelope {code: "ACCESS_DENIED"} — never a FIN code — with the
+  message localized per Accept-Language: ar "ليس لديك صلاحية لتنفيذ هذه العملية" / en "You do not
+  have permission to perform this operation"
+Test data    : sort fields "closedAt" and "fiscalYearId"; a user with no FIN_PERIODS action grant
+<!-- TC:TC-FIN-095:END -->
+
+<!-- TC:TC-FIN-096:START traces=AC-FIN-007,REQ-FIN-007,API-FIN-034 -->
+### TC-FIN-096 — deactivate an event-type rule, and reject an unknown rule id
+Derived from : AC-FIN-007 (REQ-FIN-007) · Exercises: API-FIN-034 PUT /api/v1/fin/event-rules/{id}/deactivate
+Scenario     : HAPPY + VIOLATION · data class VALID/INVALID · language ALL
+Preconditions: an active EventTypeRule; a caller holding PERM_FIN_RULES_UPDATE — pre-existing, the
+  same permission API-FIN-011 uses, so this endpoint needed no migration. The base path is
+  /api/v1/fin/event-rules, NOT /event-type-rules
+Steps        : 1. PUT /{id}/deactivate with no body — 2. PUT /{id}/deactivate again on the same id —
+  3. PUT /{id}/deactivate on an id matching no EventTypeRule row
+Expected     : 1. 200 `EventTypeRuleResponse` with isActiveFl=false; the row is not deleted and is
+  still returned by API-FIN-009 — 2. 200 again, still isActiveFl=false: no rule guards the
+  transition and the catalog registers no code for re-deactivating, so the endpoint is idempotent —
+  3. 404 FIN-404-RULE, ar "القاعدة غير موجودة" / en "Rule not found", never FIN-404-TEMPLATE.
+  No `activate` counterpart exists on this or any FIN entity, so step 1 is not reversible through
+  the API
+Test data    : an active rule for "INVOICE_PAID"; ruleId 999999
+<!-- TC:TC-FIN-096:END -->
+
+<!-- TC:TC-FIN-097:START traces=AC-FIN-007,REQ-FIN-007,API-FIN-034,API-FIN-010 -->
+### TC-FIN-097 — deactivating a rule does NOT free its event type for a replacement
+Derived from : AC-FIN-007 (REQ-FIN-007) · Exercises: API-FIN-034 PUT /api/v1/fin/event-rules/{id}/deactivate, then API-FIN-010 POST /api/v1/fin/event-rules
+Scenario     : STATE · data class EDGE · language ALL
+Preconditions: exactly one rule, active, for eventTypeCode "INVOICE_PAID". Asserted as a KNOWN
+  LIMITATION, not as desired behaviour: the create path guards uniqueness with
+  `existsByEventTypeCode`, which is NOT scoped to the active flag, so the deactivated row still
+  satisfies the one-rule-per-event-type check
+Steps        : 1. PUT /{id}/deactivate — 2. POST a NEW rule for "INVOICE_PAID"
+Expected     : 1. 200, isActiveFl=false — 2. 409 FIN-409-RULE-DUP, ar "يوجد بالفعل قاعدة نشطة لهذا
+  النوع" / en "An active rule already exists for this event type" — the message says "active" while
+  the blocking row is inactive, which is exactly the limitation this TC pins. The event type is
+  therefore left with no usable rule and no API route to configure a replacement, and
+  TC-FIN-092's FIN-404-NO-ACTIVE-RULE becomes its permanent answer. If the uniqueness check is
+  later narrowed to active rows, this TC must flip to expecting 201 — the current 409 is recorded
+  as as-built behaviour, not endorsed as the contract
+Test data    : eventTypeCode "INVOICE_PAID"; one deactivated rule, one replacement payload
+<!-- TC:TC-FIN-097:END -->
+
+<!-- TC:TC-FIN-098:START traces=AC-FIN-005,REQ-FIN-005,API-FIN-035 -->
+### TC-FIN-098 — deactivate a dimension value, and reject an unknown dimension-value id
+Derived from : AC-FIN-005 (REQ-FIN-005) · Exercises: API-FIN-035 PUT /api/v1/fin/dimensions/values/{id}/deactivate
+Scenario     : HAPPY + VIOLATION · data class VALID/INVALID · language ALL
+Preconditions: dimension "REGION" with active value "NORTH"; a caller holding
+  PERM_FIN_DIMENSIONS_UPDATE — the FIRST UPDATE-class permission on screen FIN_DIMENSIONS,
+  registered AND granted to SYS_ADMIN by V28__fin_dimensions_update_action.sql (the earlier grant
+  migration grants by a SELECT over the registry and has already run, so registration alone would
+  have left the endpoint ungrantable)
+Steps        : 1. PUT /api/v1/fin/dimensions/values/{id}/deactivate with no body — 2. POST
+  /api/v1/fin/dimensions/values/search for that dimension — 3. PUT the same path with an id
+  matching no DimensionValue row — 4. repeat step 1 as a caller holding only the screen's VIEW and
+  CREATE grants
+Expected     : 1. 200 `DimensionValueResponse` with isActiveFl=false; the row is not deleted — 2.
+  200, the value is still returned by the search with only its flag changed — 3. 404
+  FIN-404-DIMVALUE, ar "قيمة البُعد غير موجودة" / en "Dimension value not found" — its own row,
+  never the parent's FIN-404-DIMENSION, which would say the DIMENSION was missing when the VALUE
+  was — 4. 403 {code: "ACCESS_DENIED"}. There is deliberately no deactivate on the PARENT Dimension
+  and no `activate` counterpart; neither is a gap
+Test data    : dimension "REGION", value "NORTH"; dimensionValueId 999999
+<!-- TC:TC-FIN-098:END -->
+
+<!-- TC:TC-FIN-099:START traces=AC-FIN-040,REQ-FIN-040,API-FIN-029 -->
+### TC-FIN-099 — trial balance 404s on a SUPPLIED unknown periodId, and still serves an omitted one
+Derived from : AC-FIN-040 (REQ-FIN-040) · Exercises: API-FIN-029 GET /api/v1/fin/reports/trial-balance
+Scenario     : VIOLATION + HAPPY · data class INVALID/VALID · language ALL
+Preconditions: posted entries across ≥2 periods; a caller holding PERM_FIN_TRIAL_BALANCE_VIEW.
+  periodId is an OPTIONAL narrowing on this report — unlike API-FIN-030/031's REQUIRED fiscalYearId
+Steps        : 1. GET ?periodId=999999 — 2. GET with no periodId at all — 3. GET ?periodId=<a real
+  period id>
+Expected     : 1. 404 FIN-404-PERIOD, ar "الفترة غير موجودة" / en "Period not found"; no report
+  body — the id is resolved only BECAUSE it was supplied — 2. 200, the trial balance across ALL
+  periods, still balancing (TC-FIN-040): omitting the parameter is a valid request and must NEVER
+  answer 404 — a scenario asserting 404 on an omitted periodId would be wrong — 3. 200, narrowed to
+  that period
+Test data    : periodId 999999; one real period id
+<!-- TC:TC-FIN-099:END -->
+
+<!-- TC:TC-FIN-100:START traces=AC-FIN-041,REQ-FIN-041,API-FIN-030 -->
+### TC-FIN-100 — balance sheet 404s on an unknown fiscalYearId instead of an all-zero report
+Derived from : AC-FIN-041 (REQ-FIN-041) · Exercises: API-FIN-030 GET /api/v1/fin/reports/balance-sheet
+Scenario     : VIOLATION · data class INVALID · language ALL
+Preconditions: a caller holding PERM_FIN_BALANCE_SHEET_VIEW. fiscalYearId is REQUIRED on this
+  report and is resolved BEFORE any aggregation runs
+Steps        : 1. GET ?fiscalYearId=999999 — 2. GET ?fiscalYearId=999999&asOfDate=2026-06-30
+Expected     : both 404 FIN-404-YEAR, ar "السنة المالية غير موجودة" / en "Fiscal year not found";
+  no report body. Specifically NOT a 200 carrying an all-zero balance sheet: an unknown year and a
+  real year with no activity used to be indistinguishable to the caller, and keeping them apart is
+  the whole point of this TC. The optional asOfDate does not change the answer — the year is
+  resolved first
+Test data    : fiscalYearId 999999
+<!-- TC:TC-FIN-100:END -->
+
+<!-- TC:TC-FIN-101:START traces=AC-FIN-042,REQ-FIN-042,API-FIN-031 -->
+### TC-FIN-101 — income statement 404s on an unknown fiscal year and on an unknown period bound
+Derived from : AC-FIN-042 (REQ-FIN-042) · Exercises: API-FIN-031 GET /api/v1/fin/reports/income-statement
+Scenario     : VIOLATION · data class INVALID · language ALL
+Preconditions: one real fiscal year with periods; a caller holding PERM_FIN_INCOME_STATEMENT_VIEW.
+  fiscalYearId is REQUIRED; fromPeriodId/toPeriodId are OPTIONAL narrowings that already raised
+  their own 404 before this change
+Steps        : 1. GET ?fiscalYearId=999999 — 2. GET ?fiscalYearId=<real>&fromPeriodId=999999 —
+  3. GET ?fiscalYearId=<real>&toPeriodId=999999 — 4. GET ?fiscalYearId=<real> with neither bound
+Expected     : 1. 404 FIN-404-YEAR, ar "السنة المالية غير موجودة" / en "Fiscal year not found",
+  raised before any aggregation and never a 200 all-zero report — 2 and 3. 404 FIN-404-PERIOD,
+  ar "الفترة غير موجودة" / en "Period not found"; the year is resolved FIRST, so a request wrong in
+  both answers FIN-404-YEAR — 4. 200, the whole year: omitting both bounds is valid
+Test data    : fiscalYearId 999999; fromPeriodId/toPeriodId 999999; one real year
+<!-- TC:TC-FIN-101:END -->
+
+<!-- TC:TC-FIN-102:START traces=AC-FIN-036,REQ-FIN-036,API-FIN-027,API-FIN-019 -->
+### TC-FIN-102 — a dormant fiscal year still closes, posting two EMPTY entries (reviewed and kept)
+Derived from : AC-FIN-036 (REQ-FIN-036) · Exercises: API-FIN-027 POST /api/v1/fin/fiscal-years/{id}/year-end-close
+Scenario     : STATE · data class EDGE · language ALL
+Preconditions: TC-FIN-056's full KNOWN-BLOCKED setup (a close-approver holding no entry-creation
+  permission, an account marked is_retained_earnings_fl, every period HARD_CLOSE, an adjacent
+  successor year) — but over a fiscal year with NO posted lines at all, so neither a result account
+  nor a balance-sheet account carries a non-zero net
+Steps        : 1. run year-end close on that dormant year — 2. read both returned entries
+  (API-FIN-022) — 3. POST a manual entry with lines: [] (API-FIN-019)
+Expected     : 1. 201 `YearEndCloseResponse` carrying BOTH a CLOSING and an OPENING entry, each
+  with an EMPTY line set and each consuming a docNo from its own fiscal year's sequence; the year
+  becomes CLOSED and every period YEAR_END_CLOSE — 2. both read back POSTED with zero lines. This
+  is a reviewed and deliberately kept outcome, not a defect: the closing and opening line builders
+  skip every zero-net account, and RULE-FIN-006 treats 0 = 0 as balanced, so the run satisfies
+  AC-FIN-036 literally — 3. 400 {code: "VALIDATION_ERROR"} with a fieldErrors entry for `lines`
+  (the request contract's own @NotEmpty), which is what makes the empty-entry shape reachable ONLY
+  through the internal year-end path and never from a caller
+Test data    : a fully hard-closed fiscal year with zero posted entries; an adjacent successor year
+<!-- TC:TC-FIN-102:END -->
 <!-- SUB:API-SCENARIOS:END -->
 <!-- PHASE:TEST-PLAN-BE:END -->
 
@@ -1133,12 +1376,30 @@ Test data    : `SecUserDirectoryApi` double throwing on findUserIdsHoldingPermis
 | AC-FIN-043 | TC-FIN-089 | REQ-FIN-043 | API-FIN-032 | FIN-404-DIMENSION | — |
 | AC-FIN-045 | TC-FIN-090 | REQ-FIN-045 | API-FIN-010, 002 | FIN-400-INVALID-LOOKUP | XM-FIN-001 |
 | — | TC-FIN-091 | REQ-FIN-037, REQ-FIN-038 | API-FIN-026 | FIN-403-SOD-VIOLATION (failure translation) | XM-FIN-002 |
+| AC-FIN-013 | TC-FIN-092 | REQ-FIN-013, REQ-FIN-007 | API-FIN-034, API-FIN-020 | RULE-FIN-005 / FIN-404-NO-ACTIVE-RULE (reachable via deactivation) | — |
+| AC-FIN-021 | TC-FIN-093 | REQ-FIN-021, REQ-FIN-005 | API-FIN-035, API-FIN-019 | RULE-FIN-009 / FIN-409-INVALID-DIMENSION (inactive-value branch) | — |
+| AC-FIN-031 | TC-FIN-094, 095 | REQ-FIN-031 | API-FIN-033 | FIN-400-INVALID-SORT; platform ACCESS_DENIED | — |
+| AC-FIN-007 | TC-FIN-096, 097 | REQ-FIN-007 | API-FIN-034, API-FIN-010 | FIN-404-RULE; FIN-409-RULE-DUP (deactivate does not free the event type) | — |
+| AC-FIN-005 | TC-FIN-098 | REQ-FIN-005 | API-FIN-035 | FIN-404-DIMVALUE | — |
+| AC-FIN-040 | TC-FIN-099 | REQ-FIN-040 | API-FIN-029 | FIN-404-PERIOD (only when periodId is supplied) | — |
+| AC-FIN-041 | TC-FIN-100 | REQ-FIN-041 | API-FIN-030 | FIN-404-YEAR | — |
+| AC-FIN-042 | TC-FIN-101 | REQ-FIN-042 | API-FIN-031 | FIN-404-YEAR, FIN-404-PERIOD | — |
+| AC-FIN-036 | TC-FIN-102 | REQ-FIN-036 | API-FIN-027, API-FIN-019 | dormant close: empty line sets, RULE-FIN-006 reads 0 = 0 as balanced; VALIDATION_ERROR on `lines: []` | — |
+| AC-FIN-021 | TC-FIN-103 | REQ-FIN-021 | API-FIN-019 | RULE-FIN-009 / FIN-409-INVALID-DIMENSION (wrong-dimension branch) | — |
 
 ## COVERAGE
-AC covered 46/46 (0 gaps) · REQ covered 46/46 · API covered 32/32, each now with a happy path
-AND its principal failure — except API-FIN-029/030/031 (trial balance, balance sheet, income
-statement), whose SVC-API-SEARCH Errors line names only FIN-500: they declare no reachable
-failure of their own, so none was invented · every selected-module
+AC covered 46/46 (0 gaps) · REQ covered 46/46 · API covered 35/35, each with a happy path AND its
+principal failure. The three endpoints added since the previous count are API-FIN-033 (period
+search — TC-FIN-094 happy, TC-FIN-095 FIN-400-INVALID-SORT and the 403), API-FIN-034 (deactivate
+event-type rule — TC-FIN-096 happy and FIN-404-RULE, TC-FIN-097 the duplicate-code limitation) and
+API-FIN-035 (deactivate dimension value — TC-FIN-098 happy and FIN-404-DIMVALUE).
+SUPERSEDED, and stated plainly because this file previously claimed the opposite: API-FIN-029/030/031
+no longer "declare no reachable failure of their own, so none was invented". The report service now
+resolves the keying id first, so API-FIN-030 and API-FIN-031 answer FIN-404-YEAR on an unknown
+REQUIRED fiscalYearId (TC-FIN-100, TC-FIN-101) instead of a silent 200 all-zero report, and
+API-FIN-029 answers FIN-404-PERIOD on an unknown periodId ONLY when one is supplied — omitting it
+stays a valid 200 across all periods (TC-FIN-099), so a scenario asserting 404 on an omitted
+periodId would be wrong · every selected-module
 (AC-FIN-030 carries two TCs — TC-FIN-030 for the non-POSTED half of RULE-FIN-013 and
 TC-FIN-048 for its double-reversal half; the 1:1 row above is otherwise unchanged.)
 XM covered 2/2 (XM-FIN-001 → TC-FIN-047 and TC-FIN-090; XM-FIN-002 → TC-FIN-091, including the
@@ -1150,13 +1411,29 @@ assert. RULE-FIN-017 is covered by TC-FIN-049/050 (violated) and TC-FIN-051 (sat
 inclusive period bounds); RULE-FIN-008's year-end exemption by TC-FIN-056; RULE-FIN-010's
 per-side computation by TC-FIN-054 and its non-positive residue by TC-FIN-055; RULE-FIN-015 by
 TC-FIN-059 (satisfied), TC-FIN-038/060/061 (violated: creator-only, nobody holding
-close-approval, one user holding both).
-ERROR CODES: all 36 registered `FinErrorCodes` constants are reachable by at least one scenario.
+close-approval, one user holding both). RULE-FIN-005's violated path is now covered twice, from two
+different starting states: TC-FIN-013 from an event type that never had a rule, and TC-FIN-092 from
+one whose rule was retired through API-FIN-034 — a transition nothing could stage through the API
+before that endpoint existed. RULE-FIN-009 is now covered on BOTH of its
+conditions, which it was not before: the inactive branch by TC-FIN-021 (stated) and TC-FIN-093
+(arranged end to end through API-FIN-035, rather than by writing FIN_DIMENSION_VALUE.IS_ACTIVE_FL
+as data), and the wrong-dimension branch by TC-FIN-103 — a real hole until now, since the guard is
+a single `if` over both conditions and nothing exercised the second one. Both branches answer the
+same FIN-409-INVALID-DIMENSION by design, so the pair is distinguished by its fixture, never by the
+response.
+ERROR CODES: all 37 registered `FinErrorCodes` constants are reachable by at least one scenario
+(36 before this delivery; FIN-404-DIMVALUE is the one added, covered by TC-FIN-098 and never
+conflated with the parent's FIN-404-DIMENSION). Both bundles carry exactly 37 `FIN-*` keys, matching
+the constant count.
 Three catalog rows are deliberately NOT given a scenario and are not constants: FIN-503 is struck
 (XM-FIN-001 is in-process injection, so no 503 producer exists), FIN-500 is the infrastructure
 fallthrough with no sanctioned way to provoke it from the API surface, and FIN-403-FORBIDDEN never
 reaches the wire as a FIN code — TC-FIN-062 asserts the platform `ACCESS_DENIED` body instead,
-which is the open ERROR ENVELOPE finding, not a FIN scenario gap. All 14 of the plan's §12 must-honor
+which is deliberate platform behaviour, not a FIN scenario gap. The localization half of the old
+ERROR ENVELOPE finding is CLOSED: the shared handler now resolves that body's message through
+MessageSource and `ACCESS_DENIED` is registered in both bundles, so TC-FIN-062 expects an ar/en
+message. The wire `code` is unchanged — still `ACCESS_DENIED`, never FIN-403-FORBIDDEN — and the
+English text is byte-identical to before, so only Arabic callers see any change. All 14 of the plan's §12 must-honor
 points are individually exercised: 1→TC-018, 2→TC-040 (sign presentation, checked
 structurally by the report), 3→TC-019, 4→TC-020, 5→TC-018/all amount fields (CHK
 constraint, exercised implicitly by every posting TC), 6→TC-012/026, 7→TC-028, 8→TC-040,

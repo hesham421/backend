@@ -21,6 +21,7 @@ import com.erp.fin.repository.AccountBalanceView;
 import com.erp.fin.repository.AccountRepository;
 import com.erp.fin.repository.DimensionRepository;
 import com.erp.fin.repository.FiscalPeriodRepository;
+import com.erp.fin.repository.FiscalYearRepository;
 import com.erp.fin.repository.JournalLineDimensionRepository;
 import com.erp.fin.repository.JournalLineRepository;
 import java.math.BigDecimal;
@@ -77,6 +78,7 @@ public class ReportService {
     private final AccountRepository accountRepository;
     private final DimensionRepository dimensionRepository;
     private final FiscalPeriodRepository fiscalPeriodRepository;
+    private final FiscalYearRepository fiscalYearRepository;
     private final JournalLineRepository journalLineRepository;
     private final JournalLineDimensionRepository journalLineDimensionRepository;
     private final ReportMapper mapper;
@@ -120,6 +122,11 @@ public class ReportService {
      * a false value means the posted data or the query is wrong, and the plan's own Validations
      * line says no separate check is required.
      *
+     * <p>{@code periodId} is an OPTIONAL narrowing, not a key: omitting it means "no period
+     * narrowing" and stays a 200 (AC-FIN-040's happy path). Supplied, it must resolve — an unknown
+     * id is {@code FIN-404-PERIOD}, the same code {@link #incomeStatement} already raises for its
+     * own period bounds — rather than silently yielding an all-zero report.
+     *
      * <p>Note the flag is only meaningful over the UNFILTERED result: asking for one account type
      * deliberately returns a slice, and a slice of a balanced set need not balance.
      */
@@ -129,6 +136,10 @@ public class ReportService {
     public ServiceResult<TrialBalanceResponse> trialBalance(Long periodId,
                                                             String accountTypeCode) {
         log.debug("Building trial balance for Period ID: {}", periodId);
+
+        if (periodId != null) {
+            periodOf(periodId);
+        }
 
         List<AccountBalanceRowResponse> rows = balanceRows(periodId, null, null, null,
             accountTypeCode == null || accountTypeCode.isBlank()
@@ -151,6 +162,10 @@ public class ReportService {
      * API-FIN-030 — the balance sheet (REQ-FIN-041): the same QR-FIN-043 aggregation kept to
      * ASSET / LIABILITY / EQUITY, scoped to one fiscal year and optionally cut off at a date.
      *
+     * <p>{@code fiscalYearId} is the REQUIRED keying identifier and is resolved first: an unknown
+     * id is {@code FIN-404-YEAR}, never a 200 carrying an all-zero statement a controller could
+     * not tell apart from a genuinely dormant year.
+     *
      * <p>Continuity is not re-validated here, exactly as the plan's Validations line states: the
      * prior year's closing balances are this year's opening balances because REQ-FIN-036's
      * year-end close POSTED them as an opening entry (POL-FIN-010), and those are ordinary posted
@@ -162,6 +177,8 @@ public class ReportService {
     public ServiceResult<BalanceSheetResponse> balanceSheet(Long fiscalYearId,
                                                             LocalDate asOfDate) {
         log.debug("Building balance sheet for FiscalYear ID: {}", fiscalYearId);
+
+        assertFiscalYearExists(fiscalYearId);
 
         List<AccountBalanceRowResponse> rows =
             balanceRows(null, fiscalYearId, null, asOfDate, BALANCE_SHEET_TYPES);
@@ -176,6 +193,10 @@ public class ReportService {
     /**
      * API-FIN-031 — the income statement (REQ-FIN-042): the same QR-FIN-043 aggregation kept to
      * REVENUE / EXPENSE, scoped to one fiscal year and to a range of its periods.
+     *
+     * <p>{@code fiscalYearId} is the REQUIRED keying identifier and is resolved first
+     * ({@code FIN-404-YEAR}); the two period bounds stay OPTIONAL narrowings, validated only when
+     * supplied. Resolving only the bounds and not the year was the asymmetry this closes.
      *
      * <p>The plan says "period range" without naming fields, so the range is expressed as two
      * period ids and translated here into the {@code docDate} bounds those periods span
@@ -194,6 +215,8 @@ public class ReportService {
                                                                   Long fromPeriodId,
                                                                   Long toPeriodId) {
         log.debug("Building income statement for FiscalYear ID: {}", fiscalYearId);
+
+        assertFiscalYearExists(fiscalYearId);
 
         LocalDate fromDate = fromPeriodId == null ? null : periodOf(fromPeriodId).getStartDate();
         LocalDate toDate = toPeriodId == null ? null : periodOf(toPeriodId).getEndDate();
@@ -289,6 +312,22 @@ public class ReportService {
                 .toList()));
         }
         return groups;
+    }
+
+    /**
+     * Asserts API-FIN-030 / API-FIN-031's keying fiscal year exists; unknown id is
+     * {@code FIN-404-YEAR}, already registered in {@link FinErrorCodes} and in both bundles.
+     *
+     * <p>{@code existsById} rather than {@code findById().orElseThrow()}: no report reads a single
+     * field of the year — every figure comes from the QR-FIN-043 aggregation, which takes the id
+     * itself — so loading the row would leave an unused entity. This is exactly the shape
+     * {@link #dimensionReport} already uses for its own existence-only key check.
+     */
+    private void assertFiscalYearExists(Long fiscalYearId) {
+        if (!fiscalYearRepository.existsById(fiscalYearId)) {
+            throw new LocalizedException(
+                Status.NOT_FOUND, FinErrorCodes.FIN_404_YEAR, fiscalYearId);
+        }
     }
 
     /** Resolves one bound of API-FIN-031's period range; unknown id is {@code FIN-404-PERIOD}. */

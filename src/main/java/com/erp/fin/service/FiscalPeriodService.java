@@ -3,17 +3,26 @@ package com.erp.fin.service;
 import com.erp.common.domain.status.ServiceResult;
 import com.erp.common.domain.status.Status;
 import com.erp.common.exception.LocalizedException;
+import com.erp.common.search.PageableBuilder;
+import com.erp.common.search.SearchRequest;
+import com.erp.common.search.SetAllowedFields;
+import com.erp.common.search.SpecBuilder;
 import com.erp.common.util.SecurityContextHelper;
 import com.erp.fin.domain.FiscalPeriodDomain;
 import com.erp.fin.dto.FiscalPeriodResponse;
+import com.erp.fin.dto.FiscalPeriodSearchRequest;
 import com.erp.fin.entity.FiscalPeriod;
 import com.erp.fin.exception.FinErrorCodes;
 import com.erp.fin.mapper.FiscalPeriodMapper;
 import com.erp.fin.repository.FiscalPeriodRepository;
 import com.erp.fin.service.FinSeparationOfDutiesService.SeparationOfDutiesFacts;
 import java.time.Instant;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,13 +37,33 @@ import org.springframework.transaction.annotation.Transactional;
  * gathers whatever facts the guard needs, calls it, then calls the entity's own plain mutator and
  * saves — no business-rule {@code if} appears in this class (A.5.18).
  *
- * <p>No caching annotations — FIN's approved cache register is empty. No
- * {@code ALLOWED_SORT_FIELDS}: period search belongs to SVC-API-SEARCH.
+ * <p>No caching annotations — FIN's approved cache register is empty.
+ *
+ * <p>API-FIN-033 (search periods) was added here afterwards, with the A.5.6
+ * {@code ALLOWED_SORT_FIELDS} whitelist it requires.
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class FiscalPeriodService {
+
+    /**
+     * A.5.6 — the only fields API-FIN-033 may filter or sort by: SCR-REQ-FIN-007 §B2's named
+     * {@code statusCode} filter plus ENT-FIN-008's remaining flat scalar columns, which are what a
+     * client can usefully order a period list by. {@code fiscalYearId} is absent on purpose — it
+     * is the association {@code fiscalYear}, not a flat path, and {@code SpecBuilder} resolves a
+     * field as {@code root.get(field)}; it is ANDed in as an explicit join below (A.5.17).
+     * {@code closedBy}/{@code closedAt} are absent too: {@code closedAt} is an {@code Instant} and
+     * the module's only value-coercion helper covers {@code LocalDate}, so a JSON string bound
+     * would reach the criteria build uncoerced, and {@code closedBy} is not a meaningful ordering
+     * key on its own.
+     */
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
+        "fiscalPeriodPk", "periodNo", "nameAr", "nameEn", "startDate", "endDate",
+        "statusCode", "createdAt");
+
+    /** The {@code DATE} filter/sort fields of ENT-FIN-008; see {@code FinSearchSupport}. */
+    private static final Set<String> DATE_FILTER_FIELDS = Set.of("startDate", "endDate");
 
     private final FiscalPeriodRepository repository;
     private final FiscalPeriodMapper mapper;
@@ -120,6 +149,52 @@ public class FiscalPeriodService {
         period.hardClose(SecurityContextHelper.getCurrentUsername(), Instant.now());
 
         return ServiceResult.success(mapper.toResponse(repository.save(period)), Status.UPDATED);
+    }
+
+    /**
+     * API-FIN-033 — the fiscal-period search SCR-REQ-FIN-007 §B1 lists among this screen's
+     * operations ("create (year), search, read") and whose two filters §B2 names:
+     * {@code fiscalYearId(EXACT)} and {@code statusCode(EXACT)}.
+     *
+     * <p>A.5.17 — {@code fiscalYearId} is the association {@code fiscalYear}, a nested
+     * {@code fiscalYear.fiscalYearPk} path {@code SpecBuilder} cannot resolve, so it becomes an
+     * explicit {@code Specification} join ANDed with the generic specification built from the
+     * remaining filters. {@code startDate}/{@code endDate} bounds arrive as JSON strings and are
+     * coerced to {@code LocalDate} by {@code FinSearchSupport.localDateFieldConverter}.
+     *
+     * <p><b>The parent id is OPTIONAL here — a deliberate divergence from
+     * {@code DimensionValueService.search}, which rejects a null parent id with
+     * {@code FIN-404-DIMENSION} (A.5.16). Do not "fix" this back.</b> §B2 makes both filters EXACT
+     * but neither mandatory, and this endpoint exists precisely so that a client which did NOT
+     * create the fiscal year in the same session can discover a period id at all — requiring the
+     * year id first would leave that client with no way in, which is the gap API-FIN-033 closes.
+     * The predicate is therefore applied only when the id is present, exactly as
+     * {@code JournalEntryService.search} already does for its optional {@code periodId}.
+     */
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants)"
+        + ".PERM_FIN_PERIODS_VIEW)")
+    public ServiceResult<Page<FiscalPeriodResponse>> search(
+            FiscalPeriodSearchRequest searchRequest) {
+        log.debug("Searching FiscalPeriod");
+
+        FinSearchSupport.assertSortAllowed(searchRequest.getSortField(), ALLOWED_SORT_FIELDS);
+
+        SearchRequest commonRequest = searchRequest.toCommonSearchRequest();
+        SetAllowedFields allowedFields = new SetAllowedFields(ALLOWED_SORT_FIELDS);
+        Specification<FiscalPeriod> spec = SpecBuilder.build(commonRequest, allowedFields,
+            FinSearchSupport.localDateFieldConverter(DATE_FILTER_FIELDS));
+
+        Long fiscalYearId = searchRequest.getFiscalYearId();
+        if (fiscalYearId != null) {
+            Specification<FiscalPeriod> parentSpec = (root, query, cb) ->
+                cb.equal(root.get("fiscalYear").get("fiscalYearPk"), fiscalYearId);
+            spec = parentSpec.and(spec);
+        }
+
+        Pageable pageable = PageableBuilder.from(commonRequest, ALLOWED_SORT_FIELDS);
+
+        return ServiceResult.success(repository.findAll(spec, pageable).map(mapper::toResponse));
     }
 
     /** FK resolution, not a rule: an unknown period id is {@code FIN-404-PERIOD}. */

@@ -1,8 +1,9 @@
 ## TEST EXECUTION MANIFEST — FIN v1
 ══════════════════════════════════════════════════════════════════
 Derived from: backend-test-plan-fin.md v1 (this run) · db-script-fin.md v1 (FK/XM) ·
-srs-fin.md v1 (RULE messages). Extended with TC-FIN-049..091 after ALIGN-BE; no existing TC id
-was renumbered. Endpoints API-FIN-026 and API-FIN-027 are KNOWN-BLOCKED on a fresh deployment —
+srs-fin.md v1 (RULE messages). Extended with TC-FIN-049..091 after ALIGN-BE, then with
+TC-FIN-092..102 for API-FIN-033/034/035 and the report-404 change; no existing TC id was
+renumbered. Endpoints API-FIN-026 and API-FIN-027 are KNOWN-BLOCKED on a fresh deployment —
 see TC-FIN-059's precondition block (FIN_CLOSE_APPROVER assigned to a non-creator) and TC-FIN-086
 (an account marked `is_retained_earnings_fl`, settable only as data).
 ══════════════════════════════════════════════════════════════════
@@ -31,12 +32,12 @@ see TC-FIN-059's precondition block (FIN_CLOSE_APPROVER assigned to a non-creato
 | RULE-FIN-003 | FIN-409-REMAINDER-COUNT | TC-FIN-009, TC-FIN-053 | 409 | API-FIN-011, API-FIN-016 |
 | RULE-FIN-003 | FIN-422-REMAINDER-MARKER | TC-FIN-052, TC-FIN-053 | 422 | API-FIN-011, API-FIN-016, API-FIN-017, API-FIN-020 |
 | RULE-FIN-004 | FIN-409-DUPLICATE-EVENT | TC-FIN-011 | 409 | API-FIN-020 |
-| RULE-FIN-005 | FIN-404-NO-ACTIVE-RULE | TC-FIN-013 | 404 | API-FIN-020 |
-| RULE-FIN-006 | FIN-409-UNBALANCED | TC-FIN-018 | 409 | API-FIN-019, 020, 014, 017 |
+| RULE-FIN-005 | FIN-404-NO-ACTIVE-RULE | TC-FIN-013 (never configured), TC-FIN-092 (rule retired via API-FIN-034) | 404 | API-FIN-020 |
+| RULE-FIN-006 | FIN-409-UNBALANCED | TC-FIN-018 · TC-FIN-102 (0 = 0 counts as balanced: the dormant year-end close) | 409 / 201 | API-FIN-019, 020, 014, 017, 027 |
 | RULE-FIN-007 | FIN-409-NOT-POSTABLE-ACCOUNT | TC-FIN-019 | 409 | API-FIN-019, 020, 014, 017 |
 | RULE-FIN-008 | FIN-409-PERIOD-NOT-OPEN | TC-FIN-020 | 409 | API-FIN-019, 020, 014, 017 |
 | RULE-FIN-008 | — (year-end CLOSING/OPENING exemption) | TC-FIN-056 | 201 | API-FIN-027 |
-| RULE-FIN-009 | FIN-409-INVALID-DIMENSION | TC-FIN-021 | 409 | API-FIN-019, 020, 014, 017 |
+| RULE-FIN-009 | FIN-409-INVALID-DIMENSION | TC-FIN-021 · TC-FIN-093 (inactive branch staged through API-FIN-035) | 409 | API-FIN-019, 020, 014, 017 |
 | RULE-FIN-010 | — (success-path computation, per side) | TC-FIN-012, TC-FIN-026, TC-FIN-054 | 200/201 | API-FIN-020, 014, 017 |
 | RULE-FIN-010 | FIN-422-REMAINDER-NOT-POSITIVE | TC-FIN-055 | 422 | API-FIN-017, API-FIN-020 |
 | RULE-FIN-011 | — (success-path) | TC-FIN-028 | 201 | API-FIN-021 |
@@ -46,7 +47,7 @@ see TC-FIN-059's precondition block (FIN_CLOSE_APPROVER assigned to a non-creato
 | RULE-FIN-014 | FIN-409-NOT-REOPENABLE | TC-FIN-035 | 409 | API-FIN-024 |
 | RULE-FIN-015 | FIN-403-SOD-VIOLATION | TC-FIN-038 (creator only), TC-FIN-060 (nobody holds close-approval), TC-FIN-061 (one user holds both), TC-FIN-091 (SEC directory read fails) | 403 | API-FIN-026, API-FIN-027 |
 | RULE-FIN-015 | — (satisfied path, FIN_CLOSE_APPROVER) | TC-FIN-059 | 200 | API-FIN-026 |
-| (platform gateway) | — rendered as the platform `ACCESS_DENIED` body (catalog FIN-403-FORBIDDEN) | TC-FIN-062 | 403 | API-FIN-026 |
+| (platform gateway) | — rendered as the platform `ACCESS_DENIED` body, now localized per Accept-Language (catalog FIN-403-FORBIDDEN never reaches the wire) | TC-FIN-062, TC-FIN-095 | 403 | API-FIN-026, API-FIN-033 |
 | RULE-FIN-016 | — (enforced by omission, no route) | TC-FIN-016, TC-FIN-017 | 404/405 | API-FIN-022 |
 | RULE-FIN-017 | FIN-400-PERIOD-NOT-IN-YEAR | TC-FIN-049 | 400 | API-FIN-019 |
 | RULE-FIN-017 | FIN-400-DOCDATE-OUTSIDE-PERIOD | TC-FIN-050 | 400 | API-FIN-019 |
@@ -57,13 +58,13 @@ see TC-FIN-059's precondition block (FIN_CLOSE_APPROVER assigned to a non-creato
 |---|---|---|---|---|---|---|
 | ENT-FIN-001 Account | ✓ (API-FIN-002) | — | ✓ (API-FIN-001) | ✓ (API-FIN-003) | ✓ (API-FIN-004) | — |
 | ENT-FIN-002 Dimension | ✓ (API-FIN-006) | — | ✓ (API-FIN-005) | — | — | — |
-| ENT-FIN-003 DimensionValue | ✓ (API-FIN-007) | — | ✓ (API-FIN-008) | — | — | — |
+| ENT-FIN-003 DimensionValue | ✓ (API-FIN-007) | — | ✓ (API-FIN-008) | — | ✓ (API-FIN-035) | — (no `activate` anywhere in FIN) |
 | ENT-FIN-004 JournalEntry | ✓ (API-FIN-019, 020) | ✓ (API-FIN-022) | ✓ (API-FIN-018) | — (locked, RULE-FIN-016) | — (no VOID path — classic reversal leaves the original POSTED, API-FIN-021) | — |
 | ENT-FIN-005 JournalLine | ✓ (with header) | ✓ (with header) | — | — | — | — |
 | ENT-FIN-006 JournalLineDimension | ✓ (with line) | ✓ (with line) | — | — | — | — |
 | ENT-FIN-007 FiscalYear | ✓ (API-FIN-023) | — | — | — | ✓ (statusCode=CLOSED, API-FIN-027) | — |
-| ENT-FIN-008 FiscalPeriod | ✓ (with year) | — | — | ✓ (API-FIN-024/025/026, transitions) | — | ✓ (API-FIN-024, reopen) |
-| ENT-FIN-009 EventTypeRule | ✓ (API-FIN-010) | — | ✓ (API-FIN-009) | — | — | — |
+| ENT-FIN-008 FiscalPeriod | ✓ (with year) | — | ✓ (API-FIN-033, parent id OPTIONAL) | ✓ (API-FIN-024/025/026, transitions) | — | ✓ (API-FIN-024, reopen) |
+| ENT-FIN-009 EventTypeRule | ✓ (API-FIN-010) | — | ✓ (API-FIN-009) | — | ✓ (API-FIN-034 — does NOT free the event type, TC-FIN-097) | — (no `activate` anywhere in FIN) |
 | ENT-FIN-010 RuleLine | ✓ (API-FIN-011) | — | — | — | — | — |
 | ENT-FIN-011 RecurringTemplate | ✓ (API-FIN-013) | — | ✓ (API-FIN-012) | — | — | — |
 | ENT-FIN-012 RecurringTemplateLine | ✓ (with template) | — | — | — | — | — |
@@ -75,4 +76,17 @@ see TC-FIN-059's precondition block (FIN_CLOSE_APPROVER assigned to a non-creato
 |---|---|---|---|
 | XM-FIN-001 | MDL | TC-FIN-047, TC-FIN-090 | ACTIVE — covered |
 | XM-FIN-002 | SEC | TC-FIN-091 (failure translation), TC-FIN-059/060/061 (the fact it supplies) | ACTIVE — covered |
+══════════════════════════════════════════════════════════════════
+
+## ENDPOINTS ADDED AFTER THE ORIGINAL MANIFEST
+| API | Endpoint | Permission | TC | Notes |
+|---|---|---|---|---|
+| API-FIN-033 | POST /api/v1/fin/fiscal-periods/search | PERM_FIN_PERIODS_VIEW (pre-existing registry row, already granted — no migration) | TC-FIN-094, TC-FIN-095 | `fiscalYearId` is OPTIONAL, unlike API-FIN-008's required `dimensionId`; allowed sort set is fiscalPeriodPk, periodNo, nameAr, nameEn, startDate, endDate, statusCode, createdAt |
+| API-FIN-034 | PUT /api/v1/fin/event-rules/{id}/deactivate | PERM_FIN_RULES_UPDATE (pre-existing — no migration) | TC-FIN-096, TC-FIN-097, TC-FIN-092 | base path is `event-rules`, not `event-type-rules`; the only way to reach FIN-404-NO-ACTIVE-RULE from a previously working event type |
+| API-FIN-035 | PUT /api/v1/fin/dimensions/values/{id}/deactivate | PERM_FIN_DIMENSIONS_UPDATE (NEW — registered and granted by V28__fin_dimensions_update_action.sql) | TC-FIN-098, TC-FIN-093 | raises the NEW FIN-404-DIMVALUE; makes RULE-FIN-009's inactive branch reachable without writing the flag as data |
+
+Report keying ids, as built: API-FIN-030 and API-FIN-031 resolve their REQUIRED `fiscalYearId`
+first and raise FIN-404-YEAR (TC-FIN-100, TC-FIN-101); API-FIN-029's `periodId` is OPTIONAL and
+raises FIN-404-PERIOD only when supplied (TC-FIN-099). Ordering all three before any run: fiscal
+year and periods must exist before any report call is exercised.
 ══════════════════════════════════════════════════════════════════

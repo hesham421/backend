@@ -192,5 +192,21 @@ startDate is the day after this year's endDate) — a DERIVED decision, recorded
 execution-state.json because ENT-FIN-007 declares no successor column; no such year is
 `FIN-404-YEAR` · join intra-module · READ_WRITE
 Security: screen FIN_PERIODS · `PERM_FIN_PERIODS_CLOSE_APPROVE` · Localization: n/a
+DORMANT YEAR — a reviewed decision, not an accident. For a fiscal year in which no result account
+carries a non-zero balance, `FiscalYearService.closingLines` contributes no line at all (each
+result account with `net().signum() == 0` is skipped, and the Retained Earnings absorbing line is
+added only when the running `resultTotal` is itself non-zero), and symmetrically
+`openingLines` contributes none when no balance-sheet account carries a non-zero balance. The run
+therefore posts a CLOSING (and OPENING) journal entry with an EMPTY line set, and that entry still
+consumes a `docNo`: `JournalPostingService.buildValidateAndPost` allocates the number from the
+locked fiscal-year series before it validates, and writes the entry unconditionally.
+This was reviewed and deliberately KEPT. `JournalEntryDomain.checkBalanced` sums debits and
+credits and returns empty when they compare equal, so 0 = 0 passes — a lineless entry literally
+satisfies AC-FIN-036's "both entries individually balanced". Omitting the entry would make
+AC-FIN-036's "posts a closing entry" false, and refusing the close outright would invent a rule no
+artifact states.
+Reachable only from here. `JournalEntryCreateRequest.lines` carries `@NotEmpty`, so API-FIN-019
+rejects a lineless entry at the DTO boundary. This shape exists solely on the internal year-end
+path, which builds its lines itself and never passes through that DTO.
 <!-- API:API-FIN-027:END -->
 <!-- SUB:SVC-API-INT:END -->

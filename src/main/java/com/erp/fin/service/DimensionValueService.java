@@ -83,6 +83,37 @@ public class DimensionValueService {
     }
 
     /**
+     * API-FIN-035 — soft deactivation only: retire a dimension value so RULE-FIN-009 /
+     * REQ-FIN-021 can reject a journal line that still cites it. No SRS rule answers "may this
+     * value be deactivated?", so there is nothing to delegate to {@link DimensionValueDomain}
+     * before the mutation — the same shape as {@code AccountService.deactivate} (API-FIN-004) —
+     * and the flag moves through ENT-FIN-003's own {@code deactivate()} helper (DBF-FIN-029),
+     * never a direct assignment.
+     *
+     * <p>Effect: {@link DimensionValueDomain#checkUsableOnLine(Long)} reads exactly this flag, so
+     * once a value is deactivated every posting path that cites it (API-FIN-019, 020, 014, 017)
+     * answers {@code FIN-409-INVALID-DIMENSION}. Gated on {@code PERM_FIN_DIMENSIONS_UPDATE} —
+     * deactivate is modelled as UPDATE, exactly as API-FIN-004 and MDL_LOOKUPS do.
+     */
+    @Transactional
+    @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants)"
+        + ".PERM_FIN_DIMENSIONS_UPDATE)")
+    public ServiceResult<DimensionValueResponse> deactivate(Long id) {
+        log.info("Deactivating DimensionValue ID: {}", id);
+
+        DimensionValue entity = repository.findById(id)
+            .orElseThrow(() -> new LocalizedException(
+                Status.NOT_FOUND, FinErrorCodes.FIN_404_DIMVALUE, id));
+
+        entity.deactivate();
+
+        DimensionValue saved = repository.save(entity);
+        log.info("Deactivated DimensionValue ID: {}", saved.getDimensionValuePk());
+
+        return ServiceResult.success(mapper.toResponse(saved), Status.UPDATED);
+    }
+
+    /**
      * API-FIN-008 — QR-FIN-011, the CHILD search. The parent id arrives inside the body's filters
      * and is read through {@link DimensionValueSearchRequest#getDimensionId()}, never as a path
      * variable (the plan's own Request line says so); the endpoint itself is
