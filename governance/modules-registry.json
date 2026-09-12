@@ -27,6 +27,15 @@
       ],
       "current_version": 1
     },
+    "SEC": {
+      "code": "SEC",
+      "description": "",
+      "registered_at": "2026-09-10T15:25:46+00:00",
+      "versions": [
+        1
+      ],
+      "current_version": 1
+    },
     "MDL": {
       "code": "MDL",
       "description": "Master Data Lookup — the platform's lookup mechanism: every module registers its own lookup types here (API-MDL-002) and reads active values by key here (API-MDL-011).",
@@ -40,8 +49,10 @@
       "code": "FIN",
       "description": "الحسابات العامة / Finance (General Ledger) — chart of accounts, dimensions, fiscal years and periods, journal entries, recurring templates, allocation and event rules, and financial reports.",
       "registered_at": "2026-09-12T18:59:10.604102",
-      "versions": [],
-      "current_version": null
+      "versions": [
+        1
+      ],
+      "current_version": 1
     }
   }
 }

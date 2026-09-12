@@ -358,7 +358,8 @@ ownership table below, it almost certainly belongs in
 | Content type | Lives in | Never in |
 |---|---|---|
 | `CLAUDE.md` | `backend/` (repo root — not `backend/governance/`, since this repo already has a root `CLAUDE.md`; see `governance/README.md`'s note) for backend, `frontend/governance/` (frontend has no root `CLAUDE.md` of its own) for frontend | the other repo's matching location |
-| `GOVERNANCE-RULES.md`, `WORKSPACE.md`, `modules-registry.json`, `vision.md` | `backend/governance/` | `frontend/governance/` |
+| `GOVERNANCE-RULES.md`, `WORKSPACE.md`, `vision.md` | `backend/governance/` | `frontend/governance/` |
+| `modules-registry.json` | `governance/` in BOTH repos — a factory-written published copy per repo (see its own row below) | A single copy outside the repos, or a hand-edit in either |
 | P0, P0.5, P1, P2, P2.5 (text only — flow-diagram.md, ui-ux-spec.md), P3.1, P3.5_BE planning docs (per module) | `backend/governance/modules/<MOD>/` | `frontend/governance/` |
 | P2.5 mockups (`visual-mockups/`, rendered via Claude Design) | `frontend/governance/modules/<MOD>/P2_5-mockups/` | `backend/governance/` — this is the one P2.5 artifact type that lives in frontend, since a developer building the UI Shell needs it right there |
 | `packages/backend-execution/<PHASE>/` (CORE, DATA-DOM, SVC-API, DOC, INT-C, INT-R, SEC-BE, ALIGN-BE) | `backend/governance/modules/<MOD>/packages/backend-execution/` | `frontend/governance/` |
@@ -378,7 +379,7 @@ ownership table below, it almost certainly belongs in
 | Postgres MCP (DB inspection, read-only) | wired in `backend/.mcp.json` as the `postgres` server (`postgres-mcp`, `--access-mode=restricted`). A self-hosted equivalent is kept at `backend/governance/mcp-servers/postgres/` for reference — it is NOT the wired server. | `frontend/governance/` — no frontend DB access use case |
 | `mcp-servers/playwright/` | `frontend/governance/mcp-servers/playwright/` only (UI/E2E tests, wired via `frontend/.mcp.json`). Backend had its own copy for API integration tests; removed 2026-08-28 as orphaned — the Playwright API test runner it served (`playwright.config.ts`/`package.json`) was removed the same day and nothing in backend still calls it. | `backend/governance/` — do not re-add without a fresh reason; `testsprite_tests/` is backend's current API test suite |
 | `api-docs/` (auto-generated) | `backend/governance/modules/<MOD>/api-docs/` for backend's own use. Frontend keeps a SEPARATE, independent copy at `frontend/governance/modules/<MOD>/api-docs/`, populated after real implementation (manually, or by whatever process publishes them) — **not** a cross-repo read of backend's copy (superseded 2026-08-27; frontend's `config.py` no longer reaches into `backend/governance/` for this at all) | Backend's copy read live from `frontend/governance/`, or vice versa — the two copies are independent and never synced automatically |
-| `shared/modules-registry.json` (published, read-only copy of `modules-registry.json`) | Project root `shared/` — sibling to `backend/` and `frontend/`, **not** inside either `governance/` tree. Written only by backend's `save_modules_registry()` on every registry write (added 2026-08-27). This is frontend's ONLY sanctioned way to learn which modules are registered — it never reads `backend/governance/modules-registry.json` directly. | Treating this as a second source of truth — `backend/governance/modules-registry.json` remains authoritative; `shared/modules-registry.json` is a mechanical publish target only, never hand-edited |
+| `modules-registry.json` (published copy, read-only to this repo) | `governance/modules-registry.json` in EVERY consumer repo — backend and frontend each hold their own copy INSIDE their own checkout. Derived and written by the governance factory (`gov.py publish`, declared as `repos.<repo>.receives.modules-registry` in `factory.yaml`) on every delivery; the former project-root `shared/` copy was removed 2026-09-12 along with the `save_modules_registry()` writer that no longer existed. Frontend validates module identity against its OWN copy and never reads backend's. | Hand-editing any copy (the next `gov.py publish` overwrites it), or reading another repo's copy — a repo reads only paths inside itself |
 | Reporting / non-impacting markdown | `backend/governance/project-artifacts/` (this repo's own reports, flat — `project-artifacts/backend/` exists but only holds `seed-scripts/`, not reports) and `frontend/governance/project-artifacts/` (frontend's own, same flat layout) | Root of either `governance/` tree, or inside `modules/`/`.claude/commands/` |
 | `governance-shared/` | Empty placeholder in both repos, reserved for a future git submodule | Do not put content in either copy without a separate, explicit human decision |
 | TestSprite governance (`TESTSPRITE-GOVERNANCE.md`, `prompts/`, dated `runs/<date>-<repo>/` bundles) — new category, added 2026-08-29 by explicit human request | Independent copy in each repo: `backend/governance/testsprite/` and `frontend/governance/testsprite/` — mirrored content (same rules, repo-specific mechanism/paths), same pattern as `governance-tools/` | The other repo's `testsprite/` folder; `testsprite_tests/` itself stays repo-root (TestSprite's fixed working path, not relocatable) |
@@ -405,10 +406,10 @@ Do not create a new folder type, a new cross-repo dependency, or a new
 a short written justification and getting explicit human confirmation.
 Never skip straight to implementation.
 
-The one existing exception, already confirmed: `shared/modules-registry.json`
-(project root, outside both `governance/` trees — see the ownership table
-above). Do not treat its existence as precedent for adding further shared
-locations without going through the same confirmation step again.
+There is no longer any exception: the last one (`shared/modules-registry.json`
+at the project root, outside both `governance/` trees) was removed 2026-09-12.
+Every repo now reads only paths inside itself, and anything two repos must agree
+on is written into each of them by the governance factory (`gov.py publish`).
 
 ### Decision authority
 
