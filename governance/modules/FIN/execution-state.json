@@ -105,7 +105,7 @@
   "test_phases": [
     {
       "id": "TEST-PLAN-BE",
-      "status": "PENDING",
+      "status": "PARTIAL",
       "gated_by_phases": [
         "CORE",
         "DATA-DOM",
@@ -120,17 +120,31 @@
       "subs": [
         {
           "id": "RULE-SCENARIOS",
-          "status": "PENDING"
+          "status": "PARTIAL"
         },
         {
           "id": "API-SCENARIOS",
-          "status": "PENDING"
+          "status": "PARTIAL"
         }
-      ]
+      ],
+      "api_verify_run": "2026-09-12 (re-run after fixes)",
+      "coverage": "100/107 in-force TCs covered and passing (TC-FIN-091 RETIRED, excluded); 0 failures",
+      "failed_tcs": [],
+      "gap_tcs": [
+        "TC-FIN-036",
+        "TC-FIN-038",
+        "TC-FIN-044",
+        "TC-FIN-056",
+        "TC-FIN-060",
+        "TC-FIN-061",
+        "TC-FIN-086",
+        "TC-FIN-102"
+      ],
+      "note": "api-verify Full tier, re-run 2026-09-12 after the fix pass: 124 assertions, 0 failures. TC-FIN-016 now PASSES — DELETE /api/v1/fin/journal-entries/{id} returns 405 with an Allow header instead of the previous 500; root cause was com/erp/common/web/GlobalExceptionHandler.java having no handler for Spring's standard MVC exceptions, fixed platform-wide (a MissingServletRequestParameterException now returns 400 too). Status stays PARTIAL, not COMPLETE, solely because 8 TCs remain structurally unreachable from the HTTP surface: TC-FIN-036/056/086/102 need year-end close, which needs is_retained_earnings_fl (settable only as data); TC-FIN-038/060/061 need a second principal with a different permission set, which api-verify SKILL.md section 3-I forbids creating; TC-FIN-044 has no documented SEC module-registry read endpoint. Closing these needs a decision about how they should be covered, not more test code. See governance/project-artifacts/TEST-REPORT-FIN-backend-2026-09-12.md."
     },
     {
       "id": "INT-XM",
-      "status": "PENDING",
+      "status": "COMPLETE",
       "gated_by_phases": [
         "CORE",
         "DATA-DOM",
@@ -142,7 +156,10 @@
         "ALIGN-BE"
       ],
       "header_file": "governance/modules/FIN/test_gen/backend-test-plan-fin.md",
-      "subs": []
+      "subs": [],
+      "api_verify_run": "2026-09-12",
+      "coverage": "1/1 live TC passes (TC-FIN-047, XM-FIN-001 -> MDL); TC-FIN-091 RETIRED",
+      "note": "XM coverage 1/1. TC-FIN-047 passes: an MDL lookup failure surfaces as FIN-400-INVALID-LOOKUP, never an MDL code. TC-FIN-091 is RETIRED (XM-FIN-002 -> SEC no longer exists) and is recorded as RETIRED, not as a gap."
     }
   ],
   "blocked": [],
@@ -471,6 +488,22 @@
       "detail": "Read in source on 2026-09-12 at src/main/java/com/erp/fin/dto/RuleLineCreateRequest.java:41-42. The field is declared `private String amountSourceValue;` carrying a single `@Schema(description = \"Amount source value - قيمة مصدر المبلغ\", example = \"netAmount\")` and NOTHING ELSE — no @NotBlank, no @Size, no @Pattern, no format constraint of any kind. The contrast is local and deliberate-looking rather than accidental: the immediately preceding field amountSourceTypeCode carries @Size(max = 20) and the following one carries @NotBlank. TRACED END TO END: API-FIN-011 (create rule line) persists whatever arrives, including a value that can never be parsed as a decimal, on a line whose amountSourceTypeCode is PERCENTAGE. Nothing rejects it at write time and nothing warns. The failure surfaces only much later, at API-FIN-020 (post from event), when EventTypeRuleDomain.sourcedAmount(...) reaches `new BigDecimal(amountSourceValue)` at EventTypeRuleDomain.java:265-268 and converts the NumberFormatException into FIN-422-INVALID-PERCENTAGE-VALUE. THAT IS THE WHOLE REASON THAT ERROR CODE IS REACHABLE AT ALL — it exists to catch a malformed value the write path should never have accepted. The practical shape of the defect: a configuration mistake made on one screen by one user is reported as a posting failure on another screen, to a different user, possibly much later; and the stored rule stays broken, because FIN publishes create-only on rule lines — there is no update and no delete endpoint for a rule line (recorded separately under SCOPE vs SRS and srs-fin.md:1235), so the only remedy is to create a whole replacement rule.",
       "resolution": "OPEN — A REAL INPUT-VALIDATION GAP, not a documentation defect, and deliberately NOT fixed by this session, which edits state and self-check records only and writes no production code. TWO REASONS IT IS NOT A ONE-LINE FIX, both of which a human must weigh. FIRST, IT IS AN API CONTRACT CHANGE: adding a constraint to API-FIN-011 means a request body that is accepted today would start returning 400 VALIDATION_ERROR, and TestSprite and JUnit scenarios that post rule lines would need re-checking against the new rejection. SECOND, THE CORRECT CONSTRAINT IS CONDITIONAL AND NO RULE STATES IT: amountSourceValue is overloaded by amountSourceTypeCode — for a FIELD-sourced line it is an event-payload FIELD NAME (the @Schema example is literally 'netAmount', and EventTypeRuleDomain looks it up in the eventAmounts map), for a PERCENTAGE-sourced line it must be a decimal number, and for a REMAINDER-sourced line it is not read at all. A flat @Pattern is therefore wrong, and a class-level cross-field validator is a design decision that no REQ-FIN-*, AC-FIN-* or RULE-FIN-* specifies — RULE-FIN-010 governs how the remainder is computed, not how the source value is spelled. THE TWO DEFENSIBLE OUTCOMES: (i) add conditional validation at API-FIN-011 (a class-level constraint keyed on amountSourceTypeCode) and downgrade FIN-422-INVALID-PERCENTAGE-VALUE to a defence-in-depth path that should be unreachable in practice — the stronger product, since it fails at the screen where the mistake is made; or (ii) accept late failure deliberately, and say so in srs-fin.md so that a posting-time 422 for a configuration error is documented behaviour rather than a surprise. Either way FIN-422-INVALID-PERCENTAGE-VALUE still needs its missing Error Catalog row — see the CATALOG GAP entry above, which is a separate finding and does not depend on this one being settled. Carried as the INPUT VALIDATION line of the ALIGN self-check in _SECTIONS.md and its P3_1 mirror.",
       "recorded_at": "2026-09-12"
+    },
+    {
+      "type": "MISSING_IN_DOCS",
+      "phase": "SVC-API",
+      "sub": "SVC-API-INT",
+      "endpoint": "ENT-FIN-010.amountSourceValue (AMOUNT_SOURCE_TYPE=FIELD) — API-FIN-020",
+      "detail": "ESCALATED, NOT RESOLVED — specification silent, no rule invented. EventTypeRuleDomain.sourcedAmount (src/main/java/com/erp/fin/domain/EventTypeRuleDomain.java:274-276) returns BigDecimal.ZERO when a FIELD-sourced rule line names an amount the incoming event does not carry, instead of raising. The zero-amount line then violates the Postgres check constraint chk_fin_journal_line_amount_positive, so the caller receives 409/DATA_INTEGRITY_VIOLATION — a raw persistence failure, not a FIN-* code. This contradicts api-verify-config.md section 3 (error code format {MOD}-{http}[-{SLUG}]) and the gov-enforce-error-handling skill (every exception a LocalizedException carrying a registered module code). No artifact states an expected outcome for this input: srs-fin.md:228 only requires amountSourceValue to be present unless the type is REMAINDER, and says nothing about the event failing to carry the named field at run time. Found by the 2026-09-12 api-verify run and recorded as a stage-E observation, never asserted.",
+      "resolution": "OPEN — needs a human decision between two options, neither of which may be chosen by an agent: (a) raise a NEW registered FIN error code for an unresolvable amount source, which is a new error code and therefore requires an explicit recorded human decision; or (b) declare the silent-zero degrade intended and write that down in srs-fin.md, the Error Catalog and the execution plan. Until decided, nothing in FIN changes."
+    },
+    {
+      "type": "MISSING_IN_DOCS",
+      "phase": "SVC-API",
+      "sub": "SVC-API-SEARCH",
+      "endpoint": "every POST .../search endpoint — platform SpecBuilder filter handling",
+      "detail": "ESCALATED, NOT RESOLVED — specification silent, no rule invented. An unrecognized SORT field is rejected with FIN-400-INVALID-SORT (TC-FIN-064, TC-FIN-095, both pass), but an unrecognized FILTER field is silently ignored and the unfiltered page is returned. Observed on MDL's shared com.erp.common.search.SpecBuilder path, so it is platform-wide, not FIN-specific. This is not hypothetical: during the 2026-09-12 api-verify run a precondition filtered MDL lookup types on 'code' when the filterable field is 'key', the filter was dropped, the first unrelated row (NOTIF_CHANNEL) came back, and a lookup value was nearly seeded into the wrong lookup type. A silently-ignored filter is indistinguishable from a filter that matched everything.",
+      "resolution": "OPEN — needs a human decision. Symmetry with the sort-field behaviour argues for rejecting an unknown filter field, but that is a cross-module contract change affecting every search endpoint in every module, and no artifact specifies it. Out of FIN's scope to decide unilaterally; raised here because a FIN run is what exposed it."
     }
   ]
 }

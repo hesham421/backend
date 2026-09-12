@@ -19,7 +19,9 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Allocation rule target - هدف قاعدة التوزيع")
+@Schema(description = "One entry of a rule's target set — the field examples below describe a "
+    + "single PERCENTAGE entry; the complete, valid payload is on AllocationRuleCreateRequest "
+    + "- هدف قاعدة التوزيع")
 public class AllocationTargetCreateRequest {
 
     @NotNull(message = "{validation.required}")
@@ -39,7 +41,9 @@ public class AllocationTargetCreateRequest {
         + "remainder target - قيمة التوزيع", example = "25.0000")
     private BigDecimal distributionValue;
 
-    @Schema(description = "Carries the remainder of a percentage distribution - هدف الباقي",
+    @Schema(description = "Carries the remainder of a percentage distribution — exactly one target "
+        + "per rule must set this true when any target is PERCENTAGE, and it must be the target "
+        + "whose distributionTypeCode is REMAINDER (ENT-FIN-014, RULE-FIN-003 reused) - هدف الباقي",
         example = "false")
     @Builder.Default
     private Boolean isRemainderFl = Boolean.FALSE;

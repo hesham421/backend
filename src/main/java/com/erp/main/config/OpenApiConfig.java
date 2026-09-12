@@ -75,4 +75,13 @@ public class OpenApiConfig {
             .packagesToScan("com.erp.mdl.controller")
             .build();
     }
+
+    @Bean
+    public GroupedOpenApi finApi() {
+        return GroupedOpenApi.builder()
+            .group("fin")
+            .displayName("FIN — Financials")
+            .packagesToScan("com.erp.fin.controller")
+            .build();
+    }
 }

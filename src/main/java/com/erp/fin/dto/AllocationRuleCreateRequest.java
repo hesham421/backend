@@ -20,7 +20,27 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Create a cost-allocation rule - إنشاء قاعدة توزيع تكلفة")
+@Schema(description = "Create a cost-allocation rule - إنشاء قاعدة توزيع تكلفة",
+    example = """
+        {
+          "nameAr": "توزيع مصاريف الإدارة",
+          "nameEn": "Administrative expense allocation",
+          "sourceAccountId": 31,
+          "targets": [
+            {
+              "targetAccountId": 21,
+              "dimensionValueId": 5,
+              "distributionTypeCode": "PERCENTAGE",
+              "distributionValue": 25.0000,
+              "isRemainderFl": false
+            },
+            {
+              "targetAccountId": 22,
+              "distributionTypeCode": "REMAINDER",
+              "isRemainderFl": true
+            }
+          ]
+        }""")
 public class AllocationRuleCreateRequest {
 
     @NotBlank(message = "{validation.required}")
@@ -40,6 +60,22 @@ public class AllocationRuleCreateRequest {
 
     @NotEmpty(message = "{validation.required}")
     @Valid
-    @Schema(description = "Allocation targets - أهداف التوزيع")
+    @Schema(description = "Allocation targets — when any target uses PERCENTAGE the set must also "
+        + "carry exactly one REMAINDER target (ENT-FIN-014, RULE-FIN-003 reused) - أهداف التوزيع",
+        example = """
+            [
+              {
+                "targetAccountId": 21,
+                "dimensionValueId": 5,
+                "distributionTypeCode": "PERCENTAGE",
+                "distributionValue": 25.0000,
+                "isRemainderFl": false
+              },
+              {
+                "targetAccountId": 22,
+                "distributionTypeCode": "REMAINDER",
+                "isRemainderFl": true
+              }
+            ]""")
     private List<AllocationTargetCreateRequest> targets;
 }
