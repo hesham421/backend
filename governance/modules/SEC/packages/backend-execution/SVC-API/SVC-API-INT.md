@@ -1,7 +1,7 @@
 <!-- source: PHASE:SVC-API / SUB:SVC-API-INT -->
 <!-- context: SVC-API-HEADER.md — phase-level preamble -->
 <!-- traces: DBF-SEC-002, DBF-SEC-004, DBF-SEC-007, DBF-SEC-031, DBF-SEC-032, DBF-SEC-033, DBF-SEC-040, DBF-SEC-041, DBF-SEC-042, DBF-SEC-043, DBF-SEC-050, DBF-SEC-051, DBF-SEC-052, DBF-SEC-053, DBF-SEC-054, DBF-SEC-075, DBF-SEC-076, DBF-SEC-077, DBF-SEC-078, DBF-SEC-084, DBF-SEC-085, DBF-SEC-086, DBF-SEC-087, DBF-SEC-088, DBF-SEC-089, DBF-SEC-092, DBF-SEC-093, DBF-SEC-094, DBF-SEC-095, DBF-SEC-096, DBF-SEC-098, DBF-SEC-099, DBF-SEC-100, DBF-SEC-101, DBF-SEC-102, REQ-SEC-001, REQ-SEC-002, REQ-SEC-003, REQ-SEC-006, REQ-SEC-007, REQ-SEC-008, REQ-SEC-016, REQ-SEC-017, REQ-SEC-018, REQ-SEC-019, REQ-SEC-026, REQ-SEC-029 -->
-<!-- SUB:SVC-API-INT:START traces=REQ-SEC-001,REQ-SEC-002,REQ-SEC-003,REQ-SEC-006,REQ-SEC-007,REQ-SEC-008,REQ-SEC-016,REQ-SEC-017,REQ-SEC-018,REQ-SEC-019,REQ-SEC-026,REQ-SEC-029 -->
+<!-- SUB:SVC-API-INT:START traces=REQ-SEC-001,REQ-SEC-002,REQ-SEC-003,REQ-SEC-006,REQ-SEC-007,REQ-SEC-008,REQ-SEC-016,REQ-SEC-017,REQ-SEC-018,REQ-SEC-019,REQ-SEC-026,REQ-SEC-029,REQ-SEC-036 -->
 ### SUB — SVC-API-INT (auth flows, onboarding registration, export)
 
 <!-- API:API-SEC-001:START traces=REQ-SEC-001,REQ-SEC-002,DBF-SEC-002,DBF-SEC-004,DBF-SEC-007,DBF-SEC-075,DBF-SEC-076,DBF-SEC-077,DBF-SEC-078 -->
@@ -59,6 +59,20 @@ Repository   : QR-SEC-004, QR-SEC-038 · join NONE · transaction READ_WRITE
 Security     : screen SEC_PWD_RESET · public — no permission required
 Localization : `SEC-409-RESET-TOKEN-INVALID` message ar: "رابط إعادة التعيين غير صالح أو منتهي" / en: "This reset link is invalid or has expired"
 <!-- API:API-SEC-004:END -->
+
+<!-- API:API-SEC-028:START traces=REQ-SEC-036,DBF-SEC-077,DBF-SEC-081,DBF-SEC-082 -->
+### API-SEC-028 — logout
+Endpoint     : POST /api/v1/sec/auth/logout   (authenticated — the ONLY /auth/* endpoint that is not pre-authentication)
+Layers       : controller -> `AuthController.logout` ; service -> `AuthService.logout`
+Request      : none — no body. The session is resolved from the caller's own bearer token (its `jti` IS DBF-SEC-077 `tokenRef`, QR-SEC-040). A client-supplied session id is deliberately absent: accepting one would let any caller end another user's session, which is API-SEC-026's administrator-only power
+Response     : 200 · confirmation `{activeSessionPk, terminatedAt}` — the same `SessionTerminationResponse` API-SEC-026 returns. It carries no administrator-only field (no `terminatedBy`, no user, no IP), so the self-service case reuses it unchanged rather than minting a near-duplicate DTO
+Validations  : none that can fail — ending an already-ended session is a no-op, not a conflict (REQ-SEC-036 Note). `SEC-409-ALREADY-TERMINATED` is deliberately NOT raised here: it exists so API-SEC-026 can tell an administrator that someone else's session was already closed; a caller closing their own has no second party to report to
+Errors       : none of its own. Platform-standard 401 only, and it comes from the CORE filter rather than this API — REQ-SEC-028's request-time half already rejects a bearer token whose session is terminated or unknown, so a REPEATED logout with the same token is answered 401 by the filter and never reaches this service. Service-level idempotency below therefore covers the reachable races (a concurrent second logout, or an administrator's API-SEC-026 landing between filter and service), not a second HTTP call
+Orchestration: resolve `tokenRef` from the caller's bearer token -> load that session (QR-SEC-040) -> if still active per the ENT-SEC-010 state machine (`ActiveSessionDomain.isActive()`): set terminatedAt/terminatedBy (QR-SEC-026) and append AuditLogEntry `LOGOUT` carrying the caller's user id and the request IP, exactly as API-SEC-001 records `LOGIN_SUCCESS` -> if already terminated: return the existing stamp unchanged and append NO second audit row -> return
+Repository   : QR-SEC-040, QR-SEC-026 · join NONE · transaction READ_WRITE
+Security     : no page code of its own — every authenticated caller may end their own session; there is no permission to hold and none to withhold (same shape as API-SEC-027). Gated `@PreAuthorize("isAuthenticated()")`, NOT permitAll: SecurityConfig's permitAll list enumerates four exact paths, so this one falls through to `anyRequest().authenticated()` with no change to that list
+Localization : n/a
+<!-- API:API-SEC-028:END -->
 
 <!-- API:API-SEC-018:START traces=REQ-SEC-016,DBF-SEC-031,DBF-SEC-032,DBF-SEC-033 -->
 ### API-SEC-018 — register module

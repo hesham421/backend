@@ -100,15 +100,6 @@ _(partial — only fields with a documented example are shown)_
 }
 ```
 
-### Other Possible Responses
-
-Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
-
-| HTTP Status | Code | Why |
-|---|---|---|
-| 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
-| 400 BAD_REQUEST | VALIDATION_ERROR | Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status. |
-
 ## DELETE /api/v1/sec/users/{id}
 
 **Deactivate user**
@@ -147,14 +138,6 @@ Shape: `UserStatusResponse`
 }
 ```
 
-### Other Possible Responses
-
-Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
-
-| HTTP Status | Code | Why |
-|---|---|---|
-| 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
-
 ## PATCH /api/v1/sec/users/{id}
 
 **Reactivate user**
@@ -192,14 +175,6 @@ Shape: `UserStatusResponse`
   "statusCode": "DISABLED"
 }
 ```
-
-### Other Possible Responses
-
-Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
-
-| HTTP Status | Code | Why |
-|---|---|---|
-| 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
 
 ## PUT /api/v1/sec/users/{id}/roles
 
@@ -290,15 +265,6 @@ _(partial — only fields with a documented example are shown)_
 }
 ```
 
-### Other Possible Responses
-
-Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
-
-| HTTP Status | Code | Why |
-|---|---|---|
-| 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
-| 400 BAD_REQUEST | VALIDATION_ERROR | Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status. |
-
 ## POST /api/v1/sec/users
 
 **Create user**
@@ -386,15 +352,6 @@ _(partial — only fields with a documented example are shown)_
   "updatedBy": "admin"
 }
 ```
-
-### Other Possible Responses
-
-Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
-
-| HTTP Status | Code | Why |
-|---|---|---|
-| 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
-| 400 BAD_REQUEST | VALIDATION_ERROR | Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status. |
 
 ## POST /api/v1/sec/users/search
 
@@ -486,12 +443,3 @@ _(partial — only fields with a documented example are shown)_
   "updatedBy": "admin"
 }
 ```
-
-### Other Possible Responses
-
-Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
-
-| HTTP Status | Code | Why |
-|---|---|---|
-| 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
-| 400 BAD_REQUEST | VALIDATION_ERROR | Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status. |

@@ -11,7 +11,7 @@ Open ADRs : 1 — erp/decisions/SEC/ (ADR-SEC-001, carried from P2; no new ADR t
 ```
 ── FROM srs ──────────────────────────────────────────────────────────────
 ENTITIES      13 — ENT-SEC-001..013, all kind=security (SRS A3)
-REQUIREMENTS  35 — REQ-SEC-001..035 (SRS A4), each with ≥1 AC-SEC-* (034/035 added by the 2026-09-11 amendment)
+REQUIREMENTS  36 — REQ-SEC-001..036 (SRS A4), each with ≥1 AC-SEC-* (034/035 added by the 2026-09-11 amendment; 036 by the 2026-09-12 API-SEC-028 amendment)
 RULES         7 — RULE-SEC-001..007 (SRS A5), full text reused verbatim below
 SCREENS       10 — SCR-REQ-SEC-001..010 (SRS Part B), each composite per profile.conventions.composite_screen
 PERMISSIONS   SEC_PAGES page codes + PERM_<PAGE_CODE>_<ACTION>, gateway VIEW (SRS §7.1 / Access summary)
@@ -190,6 +190,7 @@ Open ADRs: 1 — decisions/SEC/ (ADR-SEC-001, non-breaking, carried from P2)
 | API-SEC-025 | list active sessions | POST | /api/v1/sec/sessions/search | REQ-SEC-027 · DBF-SEC-076,DBF-SEC-079,DBF-SEC-081 |
 | API-SEC-026 | terminate session | DELETE | /api/v1/sec/sessions/{id} | REQ-SEC-028 · DBF-SEC-081,DBF-SEC-082 |
 | API-SEC-027 | effective menu | GET | /api/v1/sec/menu | REQ-SEC-021,REQ-SEC-032,REQ-SEC-033 · DBF-SEC-031,DBF-SEC-040,DBF-SEC-061,DBF-SEC-066 |
+| API-SEC-028 | logout | POST | /api/v1/sec/auth/logout | REQ-SEC-036 · DBF-SEC-077,DBF-SEC-081,DBF-SEC-082 |
 
 **RULE REGISTRY**
 | RULE | Name | Scope (ENT) | Message ar/en ✓ |
@@ -224,7 +225,7 @@ Open ADRs: 1 — decisions/SEC/ (ADR-SEC-001, non-breaking, carried from P2)
 | AUDIT_EVENT_TYPE | eventTypeCode | ENT-SEC-011 |
 
 **QRC SUMMARY** (agent reference only — full catalog below)
-39 QR ids, QR-SEC-001..039 — see §Query Reference Catalog (QR-SEC-039 added 2026-09-11 with REQ-SEC-035).
+40 QR ids, QR-SEC-001..040 — see §Query Reference Catalog (QR-SEC-039 added 2026-09-11 with REQ-SEC-035; QR-SEC-040 added 2026-09-12 with REQ-SEC-036).
 
 **DB ALIGNMENT** — see manifest below — ALIGNED ✓ / issues: 0
 **XM STATUS** — 0 CONSUMED (SEC is ROOT) · 1 EXPOSED crossmodule surface
@@ -391,6 +392,7 @@ All 104 rows: **status ✓ (aligned), XM — (none)** for every row; property/ty
 | QR-SEC-037 | EXISTS | SVC-API | API-SEC-020 | ENT-SEC-005, ENT-SEC-006 | EXISTS | screen exists? + uniqueness: permission code |
 | QR-SEC-038 | EXISTS | SVC-API | API-SEC-004 | ENT-SEC-012 | EXISTS | RULE-SEC-006: token unexpired and unused? |
 | QR-SEC-039 | FIND_ALL | INT-R | — (no API — `SecUserDirectoryApi`) | ENT-SEC-001, ENT-SEC-003, ENT-SEC-006, ENT-SEC-009 | FIND_ALL | REQ-SEC-035: user ids holding a permission code through an active role |
+| QR-SEC-040 | FIND_ONE | SVC-API | API-SEC-028 | ENT-SEC-010 | FIND_ONE | REQ-SEC-036: the caller's own session, resolved by tokenRef (DBF-SEC-077) |
 
 Standard operation defaults (engine §5) apply to every QR above unless noted; no QR overrides
 paging/filter/transaction defaults except where its row states otherwise. Join governance:
@@ -992,7 +994,7 @@ Localization : n/a
 <!-- API:API-SEC-026:END -->
 <!-- SUB:SVC-API-CRUD:END -->
 
-<!-- SUB:SVC-API-INT:START traces=REQ-SEC-001,REQ-SEC-002,REQ-SEC-003,REQ-SEC-006,REQ-SEC-007,REQ-SEC-008,REQ-SEC-016,REQ-SEC-017,REQ-SEC-018,REQ-SEC-019,REQ-SEC-026,REQ-SEC-029 -->
+<!-- SUB:SVC-API-INT:START traces=REQ-SEC-001,REQ-SEC-002,REQ-SEC-003,REQ-SEC-006,REQ-SEC-007,REQ-SEC-008,REQ-SEC-016,REQ-SEC-017,REQ-SEC-018,REQ-SEC-019,REQ-SEC-026,REQ-SEC-029,REQ-SEC-036 -->
 ### SUB — SVC-API-INT (auth flows, onboarding registration, export)
 
 <!-- API:API-SEC-001:START traces=REQ-SEC-001,REQ-SEC-002,DBF-SEC-002,DBF-SEC-004,DBF-SEC-007,DBF-SEC-075,DBF-SEC-076,DBF-SEC-077,DBF-SEC-078 -->
@@ -1050,6 +1052,20 @@ Repository   : QR-SEC-004, QR-SEC-038 · join NONE · transaction READ_WRITE
 Security     : screen SEC_PWD_RESET · public — no permission required
 Localization : `SEC-409-RESET-TOKEN-INVALID` message ar: "رابط إعادة التعيين غير صالح أو منتهي" / en: "This reset link is invalid or has expired"
 <!-- API:API-SEC-004:END -->
+
+<!-- API:API-SEC-028:START traces=REQ-SEC-036,DBF-SEC-077,DBF-SEC-081,DBF-SEC-082 -->
+### API-SEC-028 — logout
+Endpoint     : POST /api/v1/sec/auth/logout   (authenticated — the ONLY /auth/* endpoint that is not pre-authentication)
+Layers       : controller -> `AuthController.logout` ; service -> `AuthService.logout`
+Request      : none — no body. The session is resolved from the caller's own bearer token (its `jti` IS DBF-SEC-077 `tokenRef`, QR-SEC-040). A client-supplied session id is deliberately absent: accepting one would let any caller end another user's session, which is API-SEC-026's administrator-only power
+Response     : 200 · confirmation `{activeSessionPk, terminatedAt}` — the same `SessionTerminationResponse` API-SEC-026 returns. It carries no administrator-only field (no `terminatedBy`, no user, no IP), so the self-service case reuses it unchanged rather than minting a near-duplicate DTO
+Validations  : none that can fail — ending an already-ended session is a no-op, not a conflict (REQ-SEC-036 Note). `SEC-409-ALREADY-TERMINATED` is deliberately NOT raised here: it exists so API-SEC-026 can tell an administrator that someone else's session was already closed; a caller closing their own has no second party to report to
+Errors       : none of its own. Platform-standard 401 only, and it comes from the CORE filter rather than this API — REQ-SEC-028's request-time half already rejects a bearer token whose session is terminated or unknown, so a REPEATED logout with the same token is answered 401 by the filter and never reaches this service. Service-level idempotency below therefore covers the reachable races (a concurrent second logout, or an administrator's API-SEC-026 landing between filter and service), not a second HTTP call
+Orchestration: resolve `tokenRef` from the caller's bearer token -> load that session (QR-SEC-040) -> if still active per the ENT-SEC-010 state machine (`ActiveSessionDomain.isActive()`): set terminatedAt/terminatedBy (QR-SEC-026) and append AuditLogEntry `LOGOUT` carrying the caller's user id and the request IP, exactly as API-SEC-001 records `LOGIN_SUCCESS` -> if already terminated: return the existing stamp unchanged and append NO second audit row -> return
+Repository   : QR-SEC-040, QR-SEC-026 · join NONE · transaction READ_WRITE
+Security     : no page code of its own — every authenticated caller may end their own session; there is no permission to hold and none to withhold (same shape as API-SEC-027). Gated `@PreAuthorize("isAuthenticated()")`, NOT permitAll: SecurityConfig's permitAll list enumerates four exact paths, so this one falls through to `anyRequest().authenticated()` with no change to that list
+Localization : n/a
+<!-- API:API-SEC-028:END -->
 
 <!-- API:API-SEC-018:START traces=REQ-SEC-016,DBF-SEC-031,DBF-SEC-032,DBF-SEC-033 -->
 ### API-SEC-018 — register module
@@ -1145,6 +1161,7 @@ implementation — `index.md` plus `endpoints/<group-slug>.md` — never to this
 | API-SEC-025 | /sessions/search | POST | ActiveSessionSearchRequest | Page\<ActiveSessionResponse\> | v1 |
 | API-SEC-026 | /sessions/{id} | DELETE | — | SessionTerminationResponse | v1 |
 | API-SEC-027 | /menu | GET | — | List\<ModuleMenuResponse\> | v1 |
+| API-SEC-028 | /auth/logout | POST | — | SessionTerminationResponse | v1 |
 (paths relative to `/api/v1/sec`)
 
 **DTO typing constraints**: `statusCode`/`eventTypeCode`/`actionCode` are `String` holding
@@ -1250,6 +1267,7 @@ interceptor (Phase 1) before its controller method body runs.
 | SEC_DASHBOARD | PERM_SEC_DASHBOARD_VIEW (API-SEC-022) + per-widget source VIEW | — | — | — |
 | SEC_AUDIT_LOG | PERM_SEC_AUDIT_LOG_VIEW (API-SEC-023, 024) | — | — | — |
 | SEC_SESSIONS | PERM_SEC_SESSIONS_VIEW (API-SEC-025) | — | — | PERM_SEC_SESSIONS_DELETE (API-SEC-026) |
+| (logout) | no page code of its own — API-SEC-028 is authenticated but permission-free, the same shape as API-SEC-027: a caller ends their OWN session, so there is no grant to hold and none to withhold. Ending another user's session stays API-SEC-026/PERM_SEC_SESSIONS_DELETE. | — | — | — |
 
 **Seed data** (one SEC_PAGES row per composite screen, one action row per action per §7.1):
 9 page rows (SEC_LOGIN, SEC_SIGNUP, SEC_PWD_RESET, SEC_USERS, SEC_ROLES,
@@ -1323,10 +1341,10 @@ module/screen/action gate) rather than restated as individual RULE-* ids; non-br
 ## Alignment self-check (ALIGN) — SEC v1
 
 ```
-TRACEABILITY      ✓ every API-*/QR-*/RULE-*/DBF-* used in a phase appears in the Plan Index; every PHASE/SUB/atom carries traces=; every traces target exists upstream (REQ-SEC-001..035, DBF-SEC-001..104 all defined in srs/db-script)
+TRACEABILITY      ✓ every API-*/QR-*/RULE-*/DBF-* used in a phase appears in the Plan Index; every PHASE/SUB/atom carries traces=; every traces target exists upstream (REQ-SEC-001..036, DBF-SEC-001..104 all defined in srs/db-script)
 BINDING (§2A)     ⚠ no placeholder table/column/key object; every column cites a DBF (Field Registry + per-entity FIELDS tables); every RULE message present in ar+en; business code: none applicable (stated, not silently skipped). Two things this row did not catch: a real column-name mismatch (ENT-SEC-007's `grant_at` vs db-script's `granted_at`, DBF-SEC-064 — api_doc_gaps #2, since corrected), and the generation object it certifies is NOT what is built — the module ships 13 `SEQ_SEC_*` sequences + `GenerationType.SEQUENCE` per GOVERNANCE-RULES.md §Convention Precedence 1, while 13 BINDINGS lines and the Phase 1 type table still name `GENERATED ALWAYS AS IDENTITY`
 MANIFEST (§4)     ✓ only the 4 mandated columns beyond DBF/ENT (property, type — status/XM added per engine format); all 104 DBF of every bound table listed; 0 ⏸ rows (0 XM)
-QRC (§5)          ⚠ every API with a DB operation has ≥1 QR — re-verified, all 27 API atoms cite one; every QR entry carries the "logical spec, not code" framing (catalog header); no join for a lookup label. But the exact generation object named (`GENERATED ALWAYS AS IDENTITY`, Phase 1 CORE type table) is superseded as above. Separately, QR-SEC-025's declared query was dead code: `ActiveSessionRepository.findNonTerminated(Pageable)` had no caller after API-SEC-025 moved to a SpecBuilder-driven POST /search (A.2.9). CLOSED 2026-09-11: the plan declares `join NONE` for QR-SEC-025 (plan:792) and this catalog already registers it as FIND_BY_CRITERIA (plan:376), so the plan never required the JOIN FETCH — the orphan method was deleted and A.2.9 now holds across all 37 methods the module's 13 repositories declare
+QRC (§5)          ⚠ every API with a DB operation has ≥1 QR — re-verified, all 28 API atoms cite one (API-SEC-028 cites QR-SEC-040 + QR-SEC-026); every QR entry carries the "logical spec, not code" framing (catalog header); no join for a lookup label. But the exact generation object named (`GENERATED ALWAYS AS IDENTITY`, Phase 1 CORE type table) is superseded as above. Separately, QR-SEC-025's declared query was dead code: `ActiveSessionRepository.findNonTerminated(Pageable)` had no caller after API-SEC-025 moved to a SpecBuilder-driven POST /search (A.2.9). CLOSED 2026-09-11: the plan declares `join NONE` for QR-SEC-025 (plan:792) and this catalog already registers it as FIND_BY_CRITERIA (plan:376), so the plan never required the JOIN FETCH — the orphan method was deleted and A.2.9 now holds across all 37 methods the module's 13 repositories declare
 API (R3)          ⚠ every RULE in a Validations line has a catalog row (28 catalog rows = 27 module-owned rows, one per SecErrorCodes constant, all present in messages.properties AND messages_ar.properties, plus the 1 platform row INTERNAL_ERROR the shared GlobalExceptionHandler owns and SEC does not declare); platform errors carry RULE=PLATFORM-STD + ADR-SEC-002; create/update requests exclude PK/audit/system fields (DTO MEMBERSHIP, Phase 2; Request lines, Phase 3) — verified in code. But the check only tests field EXCLUSION, never whether a field an API NAMES is DEFINED, which is why it passed API-SEC-011 with the approved account's credential unspecified (api_doc_gaps #4) and API-SEC-022 with three Response figures undefined (api_doc_gaps #6). Separately `SEC-500`, named by 8 API blocks (not 9) as their only error, was never emitted — the shared GlobalExceptionHandler answers `INTERNAL_ERROR` and SecErrorCodes.SEC_500 had zero references. CLOSED 2026-09-11: those 8 Errors lines and the catalog row now name `INTERNAL_ERROR`, and `SecErrorCodes.SEC_500` plus both `SEC-500=` bundle keys were removed
 CROSS-MODULE      ⚠ 0 XM rows from db-script, 0 placed, 0 mismatched — still exact, but only for the CONSUME direction and only at the SCHEMA level (db-script §2 XM REGISTER, as amended 2026-09-11: "None in the CONSUME direction"; no consumed entity, table or FK); inbound stub uses XM-INBOUND-STUB-1 notation, not TODO. At the API level SEC is not isolated in EITHER direction. CONSUMES: PasswordResetService injects `com.erp.notif.crossmodule.NotificationDispatchApi` (INT-C — srs-sec.md §A8's one declared SOFT integration, the module's only non-sec/non-common import). EXPOSES, new 2026-09-11: `com.erp.sec.crossmodule.SecUserDirectoryApi` — `findContact` (REQ-SEC-034) and `findUserIdsHoldingPermission` (REQ-SEC-035, QR-SEC-039) — implemented by `SecUserDirectoryApiImpl` delegating to `UserService`, injecting no repository, returning only the `UserContact` read-model and a list of ids; it registers no entity, table or column, so the XM row count legitimately stays 0 and the CONSUMING module's own P2 assigns any XM id for that direction. Both inbound gaps INT-R recorded are therefore CLOSED (this row previously read "two inbound contracts SEC does not satisfy"): XM-INBOUND-GAP-1 by `findUserIdsHoldingPermission`, XM-INBOUND-GAP-2 on both halves (`email` among the dispatch variables, plus `findContact`). MODULE-LEVEL CYCLE — stated here rather than discovered later: SEC already consumes NOTIF's `NotificationDispatchApi`, so the moment NOTIF adopts `SecUserDirectoryApi` the two modules point at each other at the MODULE level. That is NOT the circular dependency build-create-service forbids — neither crossmodule interface calls the other, and the two paths are independent (SEC→NOTIF at reset-token issuance; NOTIF→SEC at delivery, to resolve a bare recipientId) — but it is real, and must be weighed before any further surface is added in either direction
 SECURITY (R7)     ⚠ every secured screen has a Phase 7 seed row — now checkable and true: all 9 page codes and all 13 permission codes the Phase 7 matrix names are seeded by V17__sec_security_seed.sql. Every secured API declares its PERM_* with two stated exceptions: API-SEC-027 has no page code of its own (SRS B4) and is gated `isAuthenticated()`, and API-SEC-001..004 are public by contract — 22 of 27 Security lines name a PERM_*, matching exactly 22 PERM_-based @PreAuthorize in com.erp.sec.service. profile.review.extra_checks ERP-4 ("every mutation endpoint declares its PERM_*") is FALSE as written: API-SEC-002, API-SEC-003 and API-SEC-004 are POST mutations writing SEC_SIGNUP_REQUEST / SEC_PWD_RESET_TOKEN / SEC_USER rows and state "public — no permission required". One seeded code, PERM_SEC_ROLES_DELETE, has no PermissionConstants constant (Phase 7 marks it reserved)
@@ -1390,6 +1408,7 @@ CORE interceptor at runtime → SEC-403-FORBIDDEN).
 **QR-SEC-037** — EXISTS screen exists + uniqueness permission code [ENT-SEC-005, ENT-SEC-006, API-SEC-020]
 **QR-SEC-038** — EXISTS reset token unexpired and unused (RULE-SEC-006) [ENT-SEC-012, API-SEC-004]
 **QR-SEC-039** — FIND_ALL DISTINCT user ids holding a permission code through an active role (REQ-SEC-035) [ENT-SEC-001, ENT-SEC-003, ENT-SEC-006, ENT-SEC-009, no API — `SecUserDirectoryApi`]
+**QR-SEC-040** — FIND_ONE the caller's own session by tokenRef (REQ-SEC-036) [ENT-SEC-010, API-SEC-028]
 
 ## Registry content
 See `registry-exec-be-sec.md`.

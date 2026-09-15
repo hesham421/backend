@@ -706,6 +706,20 @@ Given two permission codes that a consumer module declares as conflicting
 When that module asks SEC which users hold each of them
 Then the system returns, for each code, the set of user ids computed across every active role assignment, and returns nothing else about those users
 
+### REQ-SEC-036 — تسجيل الخروج من الجلسة الحالية / Sign out of one's own session
+Pattern    : event
+Statement  : When a signed-in user signs out, the system shall end that user's own current session and stop accepting its access token for any subsequent request.
+Traces     : US-SEC-001
+Entities   : ENT-SEC-010, ENT-SEC-011
+Rationale  : REQ-SEC-001 opens the session and REQ-SEC-028 lets an administrator close someone else's; nothing let the signed-in user close their own, leaving the seeded AUDIT_EVENT_TYPE value `LOGOUT` unreachable
+Source     : AMENDMENT 2026-09-12 — API-SEC-028
+Priority   : MEDIUM
+Note       : The session is resolved from the caller's own access token (DBF-SEC-077 `tokenRef`), never from a client-supplied session id — a request body carrying one would let any caller end another user's session, which is REQ-SEC-028's administrator-only power. Ending an already-ended session is a no-op, not an error: unlike REQ-SEC-028 this is the caller acting on themselves, so there is no second party to report a conflict to.
+#### AC-SEC-036 — [REQ-SEC-036]
+Given a signed-in user holding a valid access token for an active session
+When that user signs out
+Then the system sets terminatedAt/terminatedBy on that one session, appends a `LOGOUT` audit entry naming the user and the request's IP address, and the same token is no longer accepted for any subsequent request
+
 ## A5 — Business rules
 
 ### RULE-SEC-001 — منع منح شاشة دون منح الوحدة / No screen grant without its module grant
@@ -1090,7 +1104,7 @@ per-user by the same module/screen grants each target page already enforces (REQ
 ## Traceability matrix
 | P0.5 | REQ | AC | RULE | ENT | SCR-REQ |
 |---|---|---|---|---|---|
-| US-SEC-001 | REQ-SEC-001, REQ-SEC-002 | AC-SEC-001, AC-SEC-002 | — | ENT-SEC-001, ENT-SEC-010, ENT-SEC-011 | SCR-REQ-SEC-001 |
+| US-SEC-001 | REQ-SEC-001, REQ-SEC-002, REQ-SEC-036 | AC-SEC-001, AC-SEC-002, AC-SEC-036 | — | ENT-SEC-001, ENT-SEC-010, ENT-SEC-011 | SCR-REQ-SEC-001 |
 | US-SEC-002 | REQ-SEC-003, REQ-SEC-004, REQ-SEC-005 | AC-SEC-003…005 | — | ENT-SEC-013, ENT-SEC-001 | SCR-REQ-SEC-002, SCR-REQ-SEC-004 |
 | US-SEC-003 | REQ-SEC-006, REQ-SEC-007, REQ-SEC-008 | AC-SEC-006…008 | RULE-SEC-006 | ENT-SEC-012, ENT-SEC-001 | SCR-REQ-SEC-003 |
 | US-SEC-004 | REQ-SEC-009, REQ-SEC-010, REQ-SEC-011, REQ-SEC-031 | AC-SEC-009…011, AC-SEC-031 | — | ENT-SEC-001, ENT-SEC-002, ENT-SEC-003, ENT-SEC-010 | SCR-REQ-SEC-004 |

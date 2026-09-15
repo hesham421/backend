@@ -1,0 +1,6 @@
+# Root docker-compose entrypoint
+# Delegates directly to docker/docker-compose.yml while enabling seamless root-level execution:
+#   docker compose up -d
+#   docker compose down
+include:
+  - path: docker/docker-compose.yml

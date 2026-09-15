@@ -77,15 +77,6 @@ _(partial — only fields with a documented example are shown)_
 }
 ```
 
-### Other Possible Responses
-
-Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
-
-| HTTP Status | Code | Why |
-|---|---|---|
-| 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |
-| 400 BAD_REQUEST | VALIDATION_ERROR | Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status. |
-
 ## GET /api/v1/sec/audit-log/export
 
 **Export the audit log**
@@ -110,11 +101,3 @@ Not determined from the OpenAPI document.
 | occurredTo | string | No |  |
 
 ### Response `200` — OK
-
-### Other Possible Responses
-
-Structurally guaranteed by this endpoint's own shape (auth requirement, permission check, request body) combined with the shared framework's exception handling — not specific business errors.
-
-| HTTP Status | Code | Why |
-|---|---|---|
-| 403 FORBIDDEN | ACCESS_DENIED | An authorization check was found for this endpoint (@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status. |

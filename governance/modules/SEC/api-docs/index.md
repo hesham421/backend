@@ -34,9 +34,9 @@ Schema: `Page<T>`
 |---|---|---|---|---|
 | totalPages | integer (int32) | No |  |  |
 | totalElements | integer (int64) | No |  |  |
+| numberOfElements | integer (int32) | No |  |  |
 | first | boolean | No |  |  |
 | last | boolean | No |  |  |
-| numberOfElements | integer (int32) | No |  |  |
 | pageable | Pageable | No |  |  |
 | sort | Sort | No |  |  |
 | size | integer (int32) | No |  |  |
@@ -84,10 +84,6 @@ Source: `com/erp/common/search/PageableBuilder.java`
 | SEC_409_ALREADY_TERMINATED | `SEC-409-ALREADY-TERMINATED` | exception/SecErrorCodes.java | CONFLICT | 409 CONFLICT |
 | SEC_403_FORBIDDEN | `SEC-403-FORBIDDEN` | exception/SecErrorCodes.java | FORBIDDEN | 403 FORBIDDEN |
 | SEC_400_INVALID_SORT | `SEC-400-INVALID-SORT` | exception/SecErrorCodes.java | VALIDATION_ERROR | 400 BAD_REQUEST |
-| VALIDATION_ERROR | `VALIDATION_ERROR` | com/erp/common/web/GlobalExceptionHandler.java |  | 400 BAD_REQUEST |
-| DATA_INTEGRITY_VIOLATION | `DATA_INTEGRITY_VIOLATION` | com/erp/common/web/GlobalExceptionHandler.java |  | 409 CONFLICT |
-| ACCESS_DENIED | `ACCESS_DENIED` | com/erp/common/web/GlobalExceptionHandler.java |  | 403 FORBIDDEN |
-| INTERNAL_ERROR | `INTERNAL_ERROR` | com/erp/common/web/GlobalExceptionHandler.java |  | 500 INTERNAL_SERVER_ERROR |
 
 ## Status -> HTTP Status Reference
 
@@ -161,6 +157,7 @@ Shared, module-independent mapping every business error code's `Status` resolves
 | POST | `/api/v1/sec/auth/signup` | Submit a sign-up request | [signup](endpoints/authentication.md#post-apiv1secauthsignup) |
 | POST | `/api/v1/sec/auth/password-reset/request` | Request a password reset | [requestReset](endpoints/authentication.md#post-apiv1secauthpassword-resetrequest) |
 | POST | `/api/v1/sec/auth/password-reset/complete` | Complete a password reset | [completeReset](endpoints/authentication.md#post-apiv1secauthpassword-resetcomplete) |
+| POST | `/api/v1/sec/auth/logout` | Logout | [logout](endpoints/authentication.md#post-apiv1secauthlogout) |
 | POST | `/api/v1/sec/auth/login` | Login | [login](endpoints/authentication.md#post-apiv1secauthlogin) |
 
 ### Audit Log

@@ -34,10 +34,9 @@ services:
     image: postgres:17
     container_name: erp-backend-postgres
     restart: unless-stopped
+    env_file:
+      - ../.env
     environment:
-      # Matches application-dev.properties' own fallbacks
-      # (DB_URL=jdbc:postgresql://localhost:5432/erp_db, DB_USERNAME/DB_PASSWORD
-      # default to postgres/postgres) so this works with zero .env changes.
       POSTGRES_USER: ${DB_USERNAME:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
       POSTGRES_DB: ${DB_NAME:-erp_db}
@@ -57,6 +56,8 @@ services:
     container_name: erp-backend-redis
     restart: unless-stopped
     command: redis-server --appendonly yes --appendfsync everysec
+    env_file:
+      - ../.env
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
@@ -67,6 +68,29 @@ services:
       timeout: 5s
       retries: 5
       start_period: 5s
+
+  backend:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: erp-backend-app
+    restart: unless-stopped
+    ports:
+      - "7272:7272"
+    env_file:
+      - ../.env
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
+      - DB_URL=jdbc:postgresql://postgres:5432/${DB_NAME:-erp_db}
+      - DB_USERNAME=${DB_USERNAME:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
 # Named, not anonymous — see the header note. Explicit "name:" keeps a
 # stable, predictable volume name regardless of which directory

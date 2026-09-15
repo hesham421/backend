@@ -17,6 +17,7 @@ interceptor (Phase 1) before its controller method body runs.
 | SEC_DASHBOARD | PERM_SEC_DASHBOARD_VIEW (API-SEC-022) + per-widget source VIEW | — | — | — |
 | SEC_AUDIT_LOG | PERM_SEC_AUDIT_LOG_VIEW (API-SEC-023, 024) | — | — | — |
 | SEC_SESSIONS | PERM_SEC_SESSIONS_VIEW (API-SEC-025) | — | — | PERM_SEC_SESSIONS_DELETE (API-SEC-026) |
+| (logout) | no page code of its own — API-SEC-028 is authenticated but permission-free, the same shape as API-SEC-027: a caller ends their OWN session, so there is no grant to hold and none to withhold. Ending another user's session stays API-SEC-026/PERM_SEC_SESSIONS_DELETE. | — | — | — |
 
 **Seed data** (one SEC_PAGES row per composite screen, one action row per action per §7.1):
 9 page rows (SEC_LOGIN, SEC_SIGNUP, SEC_PWD_RESET, SEC_USERS, SEC_ROLES,

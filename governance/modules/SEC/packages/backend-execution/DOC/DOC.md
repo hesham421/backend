@@ -36,6 +36,7 @@ implementation — `index.md` plus `endpoints/<group-slug>.md` — never to this
 | API-SEC-025 | /sessions/search | POST | ActiveSessionSearchRequest | Page\<ActiveSessionResponse\> | v1 |
 | API-SEC-026 | /sessions/{id} | DELETE | — | SessionTerminationResponse | v1 |
 | API-SEC-027 | /menu | GET | — | List\<ModuleMenuResponse\> | v1 |
+| API-SEC-028 | /auth/logout | POST | — | SessionTerminationResponse | v1 |
 (paths relative to `/api/v1/sec`)
 
 **DTO typing constraints**: `statusCode`/`eventTypeCode`/`actionCode` are `String` holding
