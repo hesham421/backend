@@ -86,6 +86,40 @@ name the likely cause — never treat empty as normal:
 ## Notes
 
 - Output always lands in `governance/shared/backend/modules/[MODULE]/api-docs/`
+
+## STEP 4 — Publish them (they are NOT published until you do)
+
+`governance/shared` is a **submodule**: a separate repository mounted here.
+Files the generator wrote there are untracked in *that* repository and invisible
+to everyone else — the factory's `fetch-inputs` and the frontend both read the
+pushed commit, not your working tree. Regenerating and stopping looks like
+success and delivers nothing.
+
+```bash
+cd governance/shared
+git checkout main                        # see below — a submodule is detached by default
+git status --short                       # the regenerated files
+git add backend/modules/$MODULE/api-docs
+git commit -m "api-docs($MODULE): regenerated from the running app"
+git push
+cd ../..
+git add governance/shared                # this repo's pointer to that commit
+git commit -m "bump shared: $MODULE api-docs"
+git push
+```
+
+Two failure modes worth naming, because neither announces itself:
+
+- **Detached HEAD.** `git submodule update --init` checks out a *commit*, so
+  the submodule normally sits on no branch at all and a plain `git push` has
+  nothing to push to. `git checkout main` first, as above: while the pinned
+  commit is the branch tip this changes no file and leaves the superproject
+  pointer untouched, so it is safe to do every time. (Both consumer repos were
+  found detached on 2026-09-17 — this is the normal state, not a mishap.) If
+  you have already committed while detached, `git push HEAD:main` publishes it.
+- **Pointer not bumped.** Pushing the submodule without committing the pointer
+  here leaves this repo claiming the previous api-docs. `gov.py sync` in the
+  factory reports it, but only if someone runs it.
   (`index.md` + `endpoints/<group-slug>.md`). The path derives from the tool's
   own location, so the command works from any working directory.
 - `review` is safe to run any time, including in CI, to answer "have the API

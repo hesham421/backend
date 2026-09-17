@@ -5,6 +5,17 @@ Lives at   : backend/.claude/commands/generate-module-setup.md, so it
              auto-loads as a Claude Code slash command
 ```
 
+## Precondition — the shared submodule is mounted (mechanical, not a judgement)
+
+```bash
+test -d governance/shared/backend || echo "MISSING"
+```
+
+If MISSING: `git submodule update --init governance/shared`, then start over.
+api-docs live only in that submodule now. A checkout cloned without
+`--recursive` has none, every path here still reads plausibly, and the failure
+surfaces phases later as a contract that cannot be resolved. Stop here instead.
+
 ## Your Task
 
 Scan this repo for the specified module and generate three files:
@@ -398,6 +409,24 @@ python3 generate.py --module [MODULE] --function generate
 `governance/shared/backend/modules/[MODULE]/api-docs/index.md` was written/updated before
 proceeding to STEP 0.4 — do not invoke `api-verify` against missing or
 unrefreshed api-docs.
+
+**Then publish them, or they reach nobody.** That directory is inside the
+`governance/shared` submodule — a separate repository. Files written there are
+untracked in *that* repo, so `api-verify` here reads them while the factory and
+the frontend still read the previously pushed commit. Regenerating and stopping
+is indistinguishable from success until something downstream contradicts it:
+
+```bash
+cd governance/shared && git checkout main && git add -A \
+  && git commit -m "api-docs([MODULE]): regenerated" && git push && cd ../..
+git add governance/shared && git commit -m "bump shared" && git push
+```
+
+`git checkout main` is not optional housekeeping: a submodule is checked out on
+a *commit*, not a branch, so without it `git push` has no branch to push to and
+the commit never leaves this machine. While the pinned commit is the branch tip
+it changes no file and leaves the superproject pointer untouched, so it is safe
+every time. Full sequence and both failure modes: `/generate-api-docs`.
 
 ### 0.4 — Confirm the app is reachable
 `http://localhost:7272/actuator/health` (start it with `mvn spring-boot:run`
