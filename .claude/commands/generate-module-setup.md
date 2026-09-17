@@ -88,7 +88,14 @@ the steps below means `$MBASE/…`. In particular, for a vN module:
   that split output depended on governance-tools splitter tooling this
   project no longer relies on)
 - write `execution-state.json` to `$MBASE/execution-state.json`
-- `api_docs_path` = `$MBASE/api-docs/`
+- `api_docs_path` = `governance/shared/backend/modules/$MODULE/api-docs/`
+  — NOT `$MBASE/api-docs/`. api-docs are the ONE artifact this repo does
+  not keep: they live in the shared repo, which is their single copy, and
+  the frontend reads that same copy. They are also NOT version-suffixed —
+  they are derived from the running application, so there is one current
+  set per module, not one per plan version. STEP 0.3 of the test phase and
+  the `Writes to` line of `/generate-api-docs` already name this exact path;
+  this line is what must agree with them.
 - write the generated commands to `.claude/commands/[MODULE]/v$N/` (so the v1
   commands, still valid history, are never overwritten). For v1 keep the flat
   `.claude/commands/[MODULE]/`.
@@ -187,7 +194,7 @@ Location: `$MBASE/execution-state.json`  (resolved in Step 0.5 — v1 = no suffi
   "generated_at": "[today's date]",
   "current_phase": "[FIRST_PHASE]",
   "current_sub": "[FIRST_SUB or null]",
-  "api_docs_path": "[MBASE]/api-docs/",
+  "api_docs_path": "governance/shared/backend/modules/[MODULE]/api-docs/",
   "phases": [
     {
       "id": "[PHASE_NAME]",
