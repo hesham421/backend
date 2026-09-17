@@ -31,8 +31,10 @@ exception_extractor.py) already do. Callers (generate.py) turn a "not found"
 into a clear message naming the explicit override flag to pass instead.
 """
 
+import json
 import re
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
@@ -80,25 +82,40 @@ def default_backend_root() -> Path:
     return BACKEND_ROOT
 
 
+@lru_cache(maxsize=1)
+def _shared_modules_root() -> Path:
+    """Resolves the shared submodule's modules directory the same way every
+    other consumer does: via governance/shared/platform/profile-summary.json's
+    paths.modules, never a hard-coded profile name. That file is what lets a
+    second profile need no edit anywhere -- including here.
+
+    Modules do NOT live at a fixed "governance/shared/backend/modules" path;
+    they live at "governance/shared/<profile>/modules" (today's profile is
+    "erp", giving governance/shared/erp/modules), and the profile folder is
+    the factory's to name, not this tool's to guess."""
+    shared = GOVERNANCE_ROOT / "shared"
+    summary_path = shared / "platform" / "profile-summary.json"
+    if not summary_path.is_file():
+        raise SystemExit(
+            f"governance/shared is not initialised at {shared}\n"
+            f"  run: git submodule update --init governance/shared")
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    modules_rel = summary["paths"]["modules"]
+    return shared / modules_rel
+
+
 def default_output_dir(module: str) -> Path:
     """Where generated api-docs land.
 
     They live in the shared repo, not in this one: the factory and the frontend
     read the SAME copy, so there is no second copy to drift from. This repo still
     authors them — the generator reads the running app — and the shared repo's
-    CODEOWNERS grants this repo write access to exactly this path and no other.
-    A checkout without the submodule initialised has nowhere to write, and saying
-    so is better than silently writing a copy nobody reads."""
-    shared = GOVERNANCE_ROOT / "shared"
-    if not (shared / "backend").is_dir():
-        raise SystemExit(
-            f"governance/shared is not initialised at {shared}\n"
-            f"  run: git submodule update --init governance/shared")
-    return shared / "backend" / "modules" / module / "api-docs"
+    CODEOWNERS grants this repo write access to exactly this path and no other."""
+    return _shared_modules_root() / module / "api-docs"
 
 
 def default_module_dir(module: str) -> Path:
-    return GOVERNANCE_ROOT / "modules" / module
+    return _shared_modules_root() / module
 
 
 def find_execution_plan(module: str) -> Optional[Path]:
