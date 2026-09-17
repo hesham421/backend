@@ -1,0 +1,57 @@
+name: governance-shared
+
+# api-docs no longer exist in this repository — they live in the shared submodule
+# and every governance command reads them through `api_docs_path`. A checkout
+# without `submodules: recursive` therefore has NO api-docs at all, and almost
+# nothing says so out loud. This job is what says so.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  shared:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: The shared submodule is initialised
+        run: |
+          test -d governance/shared/backend || {
+            echo "::error::governance/shared is empty. Clone with --recursive, or run:"
+            echo "::error::  git submodule update --init governance/shared"
+            exit 1
+          }
+
+      - name: Every module's api_docs_path resolves to something real
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, sys
+          bad = []
+          for es in sorted(pathlib.Path("governance/modules").glob("*/execution-state.json")):
+              p = (json.loads(es.read_text(encoding="utf-8")).get("api_docs_path") or "").strip()
+              mod = es.parent.name
+              if not p:
+                  bad.append(f"{mod}: api_docs_path is empty")
+              elif not pathlib.Path(p).is_dir():
+                  bad.append(f"{mod}: api_docs_path -> {p} does not exist")
+          for b in bad:
+              print(f"::error::{b}")
+          # A pointer naming nothing is how the previous arrangement failed
+          # quietly for months: the path was declared, nobody resolved it.
+          sys.exit(1 if bad else 0)
+          PY
+
+      - name: The retired local copies have not come back
+        # `find`, not a glob test: a shell builtin that is absent (or silently
+        # false) turns this guard into one that always passes, which is worse
+        # than not having it.
+        run: |
+          found=$(find governance/modules -mindepth 2 -maxdepth 2 -type d -name api-docs)
+          if [ -n "$found" ]; then
+            echo "::error::a local api-docs copy reappeared: $found"
+            echo "::error::There is one copy, in the shared repo. Two copies drift."
+            exit 1
+          fi
