@@ -1,61 +1,45 @@
-# Backend Governance
+# `governance/` — the mount, and the repo's own tools
 
-This is the **backend** repository's own copy of AI governance content —
-skills, context, commands, registries, and execution state for backend work,
-plus the single-source-of-truth routing rules that frontend also reads from
-this repo (see [Sanctioned cross-repo reads](#sanctioned-cross-repo-reads)).
+This repository holds **no governance artifacts**. They live in one place that
+all three repositories mount, and this directory is where that place is
+attached plus the backend's own tooling.
 
-> Read the repository's top-level [`CLAUDE.md`](../CLAUDE.md) for the actual
-> execution protocol — this file is a map of what lives where, not a
-> restatement of the rules. Unlike `frontend/governance/CLAUDE.md`, this
-> repo's execution protocol lives in the repo-root `CLAUDE.md`, not in a
-> `governance/CLAUDE.md` — see the note at the bottom of this file.
+```
+governance/
+  shared/            ← the shared governance repository (git submodule)
+  governance-tools/  ← this repo's own tools (api-doc-generator)
+  mcp-servers/       ← reference copies of MCP servers wired in .mcp.json
+  project-artifacts/ ← this repo's reports and notes (not governance)
+  testsprite/        ← TestSprite mechanism, prompts and dated run bundles
+```
 
----
+**After a clone:** `git submodule update --init --recursive`. Without it,
+`governance/shared/` is empty and nothing that reads a plan, a package or an
+api-doc will find anything.
 
-## What lives here
+## Where to read, where to write
 
-| Content | Path |
-|---|---|
-| Single source of truth for skill routing (both backend and frontend tasks) | [`GOVERNANCE-RULES.md`](GOVERNANCE-RULES.md) |
-| Backend skills | repo-root `.claude/skills/` (not under `governance/` — moved 2026-08-31 so they auto-load via the Skill tool every session) |
-| DevOps / deploy skill | the `deploy` repo — not present here |
-| Frontend skills (frontend code, but skills are frontend-repo-owned) | `frontend/governance/.github/skills/frontend/` — not here |
-| Architecture context (backend, domain layer, API contract) | ❌ `governance/.github/context/` no longer exists — these rules now live inside the skills themselves, see `GOVERNANCE-RULES.md`'s "Context Reference" |
-| Modules registry | `modules-registry.json` |
-| Module planning + execution artifacts | `modules/<MOD>/` |
-| `api-verify` run requirements (stack conventions, input/output paths — the skill itself has none hard-coded) | [`api-verify-config.md`](api-verify-config.md) |
-| Governance automation tooling (independent, backend-only — NOT synced with frontend's copy) | `governance-tools/` |
-| AI commands (generated setup, launcher prompts) | repo-root `.claude/commands/` (not under `governance/` — moved 2026-09-05 so they auto-load as Claude Code slash commands, same reason skills moved) |
-| Postgres MCP server | wired in `../.mcp.json` (`postgres` = `postgres-mcp`, read-only); self-hosted reference copy in `mcp-servers/postgres/` |
-| Reporting / non-impacting markdown (audits, investigation notes) | `project-artifacts/` |
-| Reserved for a future cross-repo shared-content submodule (do not populate) | `governance-shared/` |
+`CLAUDE.md` §"Where governance lives" carries the full table. In short:
 
-`vision.md` also lives at this level, backend-owned per STRUCTURAL LAW in the
-root `CLAUDE.md`.
+- **read** `governance/shared/platform/rules/` and
+  `governance/shared/erp/modules/<MOD>/`
+- **write** only `governance/shared/erp/modules/<MOD>/api-docs/` and
+  `governance/shared/erp/modules/<MOD>/backend/`
 
----
+Anything else under `governance/shared/` belongs to the factory or to the
+frontend, and a write there is refused at review by that repo's `CODEOWNERS`.
 
-## Sanctioned cross-repo reads
+## What used to be here
 
-`frontend/governance/README.md` documents that the frontend repo reads exactly
-two things out of here directly from disk, never writing to either and never
-keeping its own copy: `modules-registry.json`, and each module's
-`modules/<MOD>/api-docs/`. This repo does not read anything out of
-`frontend/governance/` in return — the dependency is one-directional, per the
-root `CLAUDE.md`'s STRUCTURAL LAW.
+Until this migration the backend kept its own copy of every plan, package and
+registry the factory produced, delivered by `gov.py deliver`. Three copies of
+the same artifact drifted: the backend amended its copy during implementation
+— a whole requirement, `REQ-SEC-034`, was added there and the factory never
+saw it. The copies were reconciled into the shared repo before being removed;
+their history remains in this repository, readable with
+`git log -- governance/modules/<MOD>`.
 
----
-
-## About `governance/CLAUDE.md`
-
-`frontend/governance/CLAUDE.md` exists because the frontend repo has no
-repo-root `CLAUDE.md` of its own. This repo already has a comprehensive
-repo-root `CLAUDE.md` covering the same ground (Internal Governance, Phase
-Execution Protocol, Constraints, STRUCTURAL LAW). Adding a second, separate
-`governance/CLAUDE.md` here would duplicate that content and create a new
-two-file drift risk within a single repo, so this pass deliberately did not
-create one — see `project-artifacts/` for the governance-drift report that
-made this call explicit. If a future change makes the split genuinely
-necessary, that is itself a structural decision requiring the same explicit
-human confirmation STRUCTURAL LAW demands for any other new duplication.
+The frontend used to reach into this repo to read `GOVERNANCE-RULES.md`, under
+a heading that had to call it a "sanctioned cross-repo read". That file is now
+`governance/shared/platform/rules/GOVERNANCE-RULES.md` and there is no boundary
+to cross.

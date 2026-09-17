@@ -1,9 +1,9 @@
 name: governance-shared
 
-# api-docs no longer exist in this repository — they live in the shared submodule
-# and every governance command reads them through `api_docs_path`. A checkout
-# without `submodules: recursive` therefore has NO api-docs at all, and almost
-# nothing says so out loud. This job is what says so.
+# This repository holds NO governance artifacts. They live in the shared repo,
+# mounted here as a submodule, and every command reads and writes them there.
+# A checkout without `submodules: recursive` therefore has none of them, and
+# almost nothing says so out loud. This job is what says so.
 on:
   push:
   pull_request:
@@ -19,39 +19,47 @@ jobs:
 
       - name: The shared submodule is initialised
         run: |
-          test -d governance/shared/backend || {
+          test -d governance/shared/erp/modules || {
             echo "::error::governance/shared is empty. Clone with --recursive, or run:"
             echo "::error::  git submodule update --init governance/shared"
             exit 1
           }
 
-      - name: Every module's api_docs_path resolves to something real
+      - name: Every path this repo's execution state names resolves
         run: |
           python3 - <<'PY'
           import json, pathlib, sys
-          bad = []
-          for es in sorted(pathlib.Path("governance/modules").glob("*/execution-state.json")):
-              p = (json.loads(es.read_text(encoding="utf-8")).get("api_docs_path") or "").strip()
-              mod = es.parent.name
-              if not p:
-                  bad.append(f"{mod}: api_docs_path is empty")
-              elif not pathlib.Path(p).is_dir():
-                  bad.append(f"{mod}: api_docs_path -> {p} does not exist")
+          track = "backend"
+          bad, seen = [], 0
+          for es in sorted(pathlib.Path("governance/shared/erp/modules").glob(f"*/{track}/execution-state.json")):
+              seen += 1
+              mod = es.parent.parent.name
+              for key, value in json.loads(es.read_text(encoding="utf-8")).items():
+                  if not key.endswith("_path") or not isinstance(value, str) or not value.strip():
+                      if key.endswith("_path"):
+                          bad.append(f"{mod}: {key} is empty")
+                      continue
+                  if not pathlib.Path(value.strip()).exists():
+                      bad.append(f"{mod}: {key} -> {value} does not exist")
+          if not seen:
+              # A check that examined nothing must say so, not pass quietly.
+              print("::error::no execution state found for track 'backend' — either the submodule is stale or this repo writes nowhere")
+              sys.exit(1)
           for b in bad:
               print(f"::error::{b}")
-          # A pointer naming nothing is how the previous arrangement failed
-          # quietly for months: the path was declared, nobody resolved it.
+          print(f"checked {seen} module(s)")
           sys.exit(1 if bad else 0)
           PY
 
-      - name: The retired local copies have not come back
-        # `find`, not a glob test: a shell builtin that is absent (or silently
-        # false) turns this guard into one that always passes, which is worse
-        # than not having it.
+      - name: No governance artifact has reappeared outside the submodule
+        # `find`, not a shell glob test: a builtin that is absent, or silently
+        # false, turns a guard into one that always passes — worse than none.
         run: |
-          found=$(find governance/modules -mindepth 2 -maxdepth 2 -type d -name api-docs)
+          found=$(find governance -mindepth 1 -maxdepth 1 \
+                    \( -name modules -o -name modules-registry.json \
+                       -o -name 'GOVERNANCE-RULES.md' -o -name 'api-verify-config.md' \) )
           if [ -n "$found" ]; then
-            echo "::error::a local api-docs copy reappeared: $found"
-            echo "::error::There is one copy, in the shared repo. Two copies drift."
+            echo "::error::governance came back into this repo: $found"
+            echo "::error::There is one copy, in governance/shared. Two copies drift."
             exit 1
           fi

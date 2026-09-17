@@ -36,18 +36,18 @@ Proceed? [waits for confirmation]
 
 ### 1.0 — Read shared context once (before the per-sub loop)
 - The phase's `[PHASE]-HEADER.md` under
-  `governance/modules/FIN/packages/backend-execution/[PHASE]/` if present —
+  `governance/shared/erp/modules/FIN/packages/backend-execution/[PHASE]/` if present —
   phase-level strategy, tables, and intro that the SUB files reference but
   don't repeat. Only `DATA-DOM` (`DATA-DOM-HEADER.md`) and `SVC-API`
   (`SVC-API-HEADER.md`) have one; CORE, DOC, INT-C, INT-R, SEC-BE, ALIGN-BE
   have no HEADER — each is a single undivided sub.
-- `governance/modules/FIN/packages/backend-execution/_SECTIONS.md` if
+- `governance/shared/erp/modules/FIN/packages/backend-execution/_SECTIONS.md` if
   present — plan-level content that lives OUTSIDE every phase (Plan Index,
   DB Alignment Manifest, Error Catalog, Agent Handoff Summary). Read once for
   orientation; it is context, not a sub.
 
 ### Per sub:
-1. Read `governance/modules/FIN/packages/backend-execution/[PHASE]/[SUB].md`
+1. Read `governance/shared/erp/modules/FIN/packages/backend-execution/[PHASE]/[SUB].md`
    completely (the SUB file is named by its phase-qualified label, e.g.
    `SVC-API-CRUD.md`)
 2. Identify all tasks

@@ -8,7 +8,7 @@ Lives at   : backend/.claude/commands/generate-module-setup.md, so it
 ## Precondition — the shared submodule is mounted (mechanical, not a judgement)
 
 ```bash
-test -d governance/shared/backend || echo "MISSING"
+test -d governance/shared/erp/modules || echo "MISSING"
 ```
 
 If MISSING: `git submodule update --init governance/shared`, then start over.
@@ -39,8 +39,8 @@ when present — into one runnable script and a problems report, producing one
 coverage report — not regenerated per module.
 The generated command is **fully self-contained**: it depends only on
 `governance/governance-tools/api-doc-generator`, the `api-verify` skill,
-`governance/api-verify-config.md`, and this module's own artifacts under
-`governance/modules/[MODULE]/` — never on an external governance/mechanism
+`governance/shared/platform/rules/api-verify-config.md`, and this module's own artifacts under
+`governance/shared/erp/modules/[MODULE]/` — never on an external governance/mechanism
 doc, and never on TestSprite (retired as this project's backend test
 mechanism — do not reintroduce a `TestSprite` MCP dependency here). Every rule
 it needs (api-doc regeneration, module scoping, failure taxonomy) is written
@@ -56,7 +56,7 @@ $ARGUMENTS = MODULE
 
 If missing, ask for it — do not guess.
 
-**Module validation:** confirm a `governance/modules/[MODULE]/` folder
+**Module validation:** confirm a `governance/shared/erp/modules/[MODULE]/` folder
 (or its version-suffixed variant, resolved in Step 0.5) exists on disk.
 If it doesn't, stop with a plain "unknown module" message — do not guess
 or fabricate a structure. This is the only validation this command
@@ -73,14 +73,14 @@ commands) live under a version-suffixed base — never over v1. Resolve the base
 BEFORE scanning, directly from the filesystem:
 
 ```bash
-ls -d governance/modules/$MODULE/v*/ 2>/dev/null | sort -t v -k2 -n | tail -1
+ls -d governance/shared/erp/modules/$MODULE/v*/ 2>/dev/null | sort -t v -k2 -n | tail -1
 ```
 
 Rule:
-- No `vN` folder found → base = `governance/modules/$MODULE/`        (no suffix, v1)
-- Highest `vN` folder found → base = `governance/modules/$MODULE/v$N/`
+- No `vN` folder found → base = `governance/shared/erp/modules/$MODULE/`        (no suffix, v1)
+- Highest `vN` folder found → base = `governance/shared/erp/modules/$MODULE/v$N/`
 
-Call this resolved path `$MBASE`. Every `governance/modules/$MODULE/…` path in
+Call this resolved path `$MBASE`. Every `governance/shared/erp/modules/$MODULE/…` path in
 the steps below means `$MBASE/…`. In particular, for a vN module:
 - scan `$MBASE/packages/backend-execution` and `$MBASE/backend-test`
   (fallback `$MBASE/test_gen` — see Step 1's Test phase(s) section; NOT
@@ -88,7 +88,7 @@ the steps below means `$MBASE/…`. In particular, for a vN module:
   that split output depended on governance-tools splitter tooling this
   project no longer relies on)
 - write `execution-state.json` to `$MBASE/execution-state.json`
-- `api_docs_path` = `governance/shared/backend/modules/$MODULE/api-docs/`
+- `api_docs_path` = `governance/shared/erp/modules/$MODULE/api-docs/`
   — NOT `$MBASE/api-docs/`. api-docs are the ONE artifact this repo does
   not keep: they live in the shared repo, which is their single copy, and
   the frontend reads that same copy. They are also NOT version-suffixed —
@@ -194,7 +194,7 @@ Location: `$MBASE/execution-state.json`  (resolved in Step 0.5 — v1 = no suffi
   "generated_at": "[today's date]",
   "current_phase": "[FIRST_PHASE]",
   "current_sub": "[FIRST_SUB or null]",
-  "api_docs_path": "governance/shared/backend/modules/[MODULE]/api-docs/",
+  "api_docs_path": "governance/shared/erp/modules/[MODULE]/api-docs/",
   "phases": [
     {
       "id": "[PHASE_NAME]",
@@ -357,8 +357,8 @@ api-docs or output.
 Execute API verification for [MODULE] — only for what's actually complete.
 
 > **Self-contained.** This command needs `governance/governance-tools/api-doc-generator`,
-> the `api-verify` skill (`.claude/skills/api-verify/SKILL.md`), `governance/api-verify-config.md`,
-> and this module's own artifacts under `governance/modules/[MODULE]/`. Every rule it relies
+> the `api-verify` skill (`.claude/skills/api-verify/SKILL.md`), `governance/shared/platform/rules/api-verify-config.md`,
+> and this module's own artifacts under `governance/shared/erp/modules/[MODULE]/`. Every rule it relies
 > on is written below or in those two files — it reads no other external mechanism/governance
 > doc, never stops waiting on one, and never calls TestSprite (retired as this project's
 > backend test mechanism).
@@ -372,8 +372,8 @@ Execute API verification for [MODULE] — only for what's actually complete.
 
 ### 0.1 — Load the delivered test-gen plan (the REQUIRED COVERAGE)
 Read every `TC-[MODULE]-<seq>` block out of this module's flat test-gen plan
-file — `governance/modules/[MODULE]/test_gen/backend-test-plan-<mod-lowercase>.md`
-(current location), falling back to `governance/modules/[MODULE]/backend-test/backend-test-plan-<mod-lowercase>.md`
+file — `governance/shared/erp/modules/[MODULE]/test_gen/backend-test-plan-<mod-lowercase>.md`
+(current location), falling back to `governance/shared/erp/modules/[MODULE]/backend-test/backend-test-plan-<mod-lowercase>.md`
 if the former doesn't exist. This command does not read `packages/backend-test/`
 — that split-folder shape depended on governance-tools splitter tooling this
 project no longer relies on; the flat file is the sole source of truth. Across
@@ -412,8 +412,8 @@ python3 generate.py --module [MODULE] --function generate
 ```
 (consult that tool's own `README.md` for `--function generate` vs `update` vs
 `review` semantics before assuming — use whichever actually (re)writes
-`governance/shared/backend/modules/[MODULE]/api-docs/` in full for this run). Confirm
-`governance/shared/backend/modules/[MODULE]/api-docs/index.md` was written/updated before
+`governance/shared/erp/modules/[MODULE]/api-docs/` in full for this run). Confirm
+`governance/shared/erp/modules/[MODULE]/api-docs/index.md` was written/updated before
 proceeding to STEP 0.4 — do not invoke `api-verify` against missing or
 unrefreshed api-docs.
 
@@ -452,16 +452,16 @@ than assuming.)
 
 Invoke the `api-verify` skill (`.claude/skills/api-verify/SKILL.md`) for
 `<MOD>` = `[MODULE]`. Per the skill's own procedure it reads:
-- `governance/shared/backend/modules/[MODULE]/api-docs/` — regenerated in STEP 0.3, mandatory;
-- `governance/modules/[MODULE]/test_gen/test-execution-manifest-<mod-lowercase>.md`
+- `governance/shared/erp/modules/[MODULE]/api-docs/` — regenerated in STEP 0.3, mandatory;
+- `governance/shared/erp/modules/[MODULE]/test_gen/test-execution-manifest-<mod-lowercase>.md`
   when present (Full tier: happy-path CRUD + negative RULE checks, dependency
   order read verbatim from the manifest) — otherwise Minimal tier (happy-path
   CRUD only, FK order inferred, negatives stated as skipped and why);
-- `governance/api-verify-config.md` for every stack convention (base path,
+- `governance/shared/platform/rules/api-verify-config.md` for every stack convention (base path,
   envelope shapes, error-code format, permission pattern) — never re-derived
   here.
 
-It produces, under `governance/modules/[MODULE]/test-api/`:
+It produces, under `governance/shared/erp/modules/[MODULE]/test-api/`:
 - `test_[mod-lowercase]_apis.py` — one runnable script, one `test_<entity>()`
   per entity in dependency order, each create/update/negative call tagged with
   a traceability comment (`Covers: API-… ; Negative: RULE-… / <code> / TC-…`),
@@ -469,7 +469,7 @@ It produces, under `governance/modules/[MODULE]/test-api/`:
 - `[mod-lowercase]_problems_report.md` — failures bucketed likely-real-bug /
   test-assumption-mismatch / infrastructure.
 
-Run the generated script (`python3 governance/modules/[MODULE]/test-api/test_[mod-lowercase]_apis.py`)
+Run the generated script (`python3 governance/shared/erp/modules/[MODULE]/test-api/test_[mod-lowercase]_apis.py`)
 against the app confirmed reachable in STEP 0.4, and record its pass/fail per
 `test_<entity>()` suite. This command never hand-writes verification code
 itself and never calls a TestSprite tool.
@@ -534,7 +534,7 @@ if nothing fits, use `ENVIRONMENT_FAILURE` and explain why in the detail.
 Write `reports/TEST-REPORT-[MODULE]-backend-[YYYY-MM-DD].md` — a
 module-scoped digest, distinct from `api-verify`'s own raw output
 (`[mod-lowercase]_problems_report.md`, left under
-`governance/modules/[MODULE]/test-api/`, untouched). It MUST include the
+`governance/shared/erp/modules/[MODULE]/test-api/`, untouched). It MUST include the
 STEP 1.9 coverage table (governed plan ↔ api-verify) and the coverage ratio,
 ABOVE the failure taxonomy — a green taxonomy over an incomplete plan is not
 a pass. This report is complete once the test/coverage section above is

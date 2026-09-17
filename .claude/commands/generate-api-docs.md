@@ -4,7 +4,7 @@
 Lives at   : backend/.claude/commands/generate-api-docs.md, so it
              auto-loads as a Claude Code slash command
 Runs       : governance/governance-tools/api-doc-generator/generate.py
-Writes to  : governance/shared/backend/modules/[MODULE]/api-docs/
+Writes to  : governance/shared/erp/modules/[MODULE]/api-docs/
 ```
 
 (Re)generates a module's API documentation from the **running backend**, so
@@ -21,9 +21,9 @@ and names the flag to pass.
 
 ## Preconditions
 
-**Module validation:** confirm `governance/modules/$MODULE/` exists before
-running anything. Resolve the code from `governance/modules-registry.json` or
-`governance/modules/project-registry.md` — never invent one.
+**Module validation:** confirm `governance/shared/erp/modules/$MODULE/` exists before
+running anything. Resolve the code from `governance/shared/platform/modules-registry.json` or
+`governance/shared/erp/project-registry.md` — never invent one.
 
 **Backend running:** the Spring Boot app must be up and `/v3/api-docs/<group>`
 must answer for this module. The generator reads the real port from
@@ -85,7 +85,7 @@ name the likely cause — never treat empty as normal:
 
 ## Notes
 
-- Output always lands in `governance/shared/backend/modules/[MODULE]/api-docs/`
+- Output always lands in `governance/shared/erp/modules/[MODULE]/api-docs/`
 
 ## STEP 4 — Publish them (they are NOT published until you do)
 
@@ -126,5 +126,5 @@ Two failure modes worth naming, because neither announces itself:
   docs drifted from the backend?" without touching a file.
 - Consumers of this output: the frontend repo's own independent
   `modules/[MODULE]/api-docs/` copy, and the `api-verify` skill — see
-  `governance/api-verify-config.md` §1, which lists api-docs as its
+  `governance/shared/platform/rules/api-verify-config.md` §1, which lists api-docs as its
   **mandatory** input and says to regenerate rather than trust a stale copy.

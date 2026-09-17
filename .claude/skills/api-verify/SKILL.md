@@ -17,14 +17,14 @@ This skill is **translation, not derivation**, and it is **module-agnostic** —
 identically for any `<MOD>` (SEC, FIN, MDL, FILE, CU, NOTIF, or any module registered later).
 Nothing about a specific module is hard-coded here; every fact that can change — base path,
 envelope shape, error format, languages, permission pattern, output location — is read from
-[`governance/api-verify-config.md`](../../../governance/api-verify-config.md), never typed
+[`governance/shared/platform/rules/api-verify-config.md`](../../../governance/shared/platform/rules/api-verify-config.md), never typed
 into this file. If that file and this one ever disagree, `api-verify-config.md` wins — update
 it, not this skill.
 
 ## When to Use
 
 - A backend module's endpoints are implemented and its api-docs are current
-  (`governance/shared/backend/modules/<MOD>/api-docs/`)
+  (`governance/shared/erp/modules/<MOD>/api-docs/`)
 - Post-implementation verification against the real running API — not a code-review, not a
   substitute for `gov-validate-backend-feature`
 - On demand, invoked explicitly for a given `<MOD>` — never automatically, never as a gate
@@ -71,14 +71,14 @@ it, not this skill.
 
 ## Output
 
-- `governance/modules/<MOD>/test-api/test_<mod>_apis.py` (or the language the run targets)
-- `governance/modules/<MOD>/test-api/<mod>_problems_report.md`
+- `governance/shared/erp/modules/<MOD>/test-api/test_<mod>_apis.py` (or the language the run targets)
+- `governance/shared/erp/modules/<MOD>/test-api/<mod>_problems_report.md`
 
 ---
 
 ## 1. Inputs and tiers
 
-Read `governance/api-verify-config.md` §1 for exact paths. Two tiers, decided by what
+Read `governance/shared/platform/rules/api-verify-config.md` §1 for exact paths. Two tiers, decided by what
 `<MOD>`'s own governance folder actually contains — state which one at the start of the run:
 
 | Tier | Present | Generates |
@@ -94,7 +94,7 @@ later batch append without a rewrite.
 
 ## 2. Stack conventions
 
-All read from `governance/api-verify-config.md` §3 — base path, verb→operation mapping,
+All read from `governance/shared/platform/rules/api-verify-config.md` §3 — base path, verb→operation mapping,
 response/paging/error envelopes, error-code format, `DELETE` semantics, permission pattern,
 languages. Do not restate or override those values here or in the generated script; if a
 module's actual behavior disagrees with that file, that is either a documentation gap (flag
@@ -257,7 +257,7 @@ docs; FK ids threaded, never literal.
 
 | Consumes (read-only) | Produces | Never |
 |---|---|---|
-| api-docs, the test-execution-manifest (when present), run arguments, `api-verify-config.md` | `test_<mod>_apis.py`, `<mod>_problems_report.md` under `governance/modules/<MOD>/test-api/`, the stage-I grant journal | a governance ID of any kind, a change to any line artifact, a gate verdict, a data fix against records it did not create — **one exception, and only one**: the bounded, journalled, self-revoked permission grant of stage I |
+| api-docs, the test-execution-manifest (when present), run arguments, `api-verify-config.md` | `test_<mod>_apis.py`, `<mod>_problems_report.md` under `governance/shared/erp/modules/<MOD>/test-api/`, the stage-I grant journal | a governance ID of any kind, a change to any line artifact, a gate verdict, a data fix against records it did not create — **one exception, and only one**: the bounded, journalled, self-revoked permission grant of stage I |
 
 ## Related Skills
 
