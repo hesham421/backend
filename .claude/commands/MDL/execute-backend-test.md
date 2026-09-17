@@ -62,8 +62,8 @@ python3 generate.py --module MDL --function generate
 ```
 (consult that tool's own `README.md` for `--function generate` vs `update` vs
 `review` semantics before assuming — use whichever actually (re)writes
-`governance/modules/MDL/api-docs/` in full for this run). Confirm
-`governance/modules/MDL/api-docs/index.md` was written/updated before
+the `api_docs_path` this module's `execution-state.json` declares in full for this run). Confirm
+`governance/shared/backend/modules/MDL/api-docs/index.md` was written/updated before
 proceeding to STEP 0.4 — do not invoke `api-verify` against missing or
 unrefreshed api-docs.
 
@@ -84,7 +84,7 @@ than assuming.)
 
 Invoke the `api-verify` skill (`.claude/skills/api-verify/SKILL.md`) for
 `<MOD>` = `MDL`. Per the skill's own procedure it reads:
-- `governance/modules/MDL/api-docs/` — regenerated in STEP 0.3, mandatory;
+- the `api_docs_path` this module's `execution-state.json` declares — regenerated in STEP 0.3, mandatory;
 - `governance/modules/MDL/test_gen/test-execution-manifest-mdl.md` when present
   (Full tier: happy-path CRUD + negative RULE checks, dependency order read
   verbatim from the manifest — note the module's two-entity FK order,

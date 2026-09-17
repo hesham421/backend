@@ -24,7 +24,7 @@ it, not this skill.
 ## When to Use
 
 - A backend module's endpoints are implemented and its api-docs are current
-  (`governance/modules/<MOD>/api-docs/`)
+  (`governance/shared/backend/modules/<MOD>/api-docs/`)
 - Post-implementation verification against the real running API — not a code-review, not a
   substitute for `gov-validate-backend-feature`
 - On demand, invoked explicitly for a given `<MOD>` — never automatically, never as a gate

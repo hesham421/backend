@@ -3,73 +3,112 @@
   "generated_at": "2026-09-04",
   "current_phase": "backend-test",
   "current_sub": "RULE-SCENARIOS",
-  "api_docs_path": "governance/modules/NOTIF/api-docs/",
+  "api_docs_path": "governance/shared/backend/modules/NOTIF/api-docs/",
   "phases": [
     {
       "id": "CORE",
       "status": "COMPLETE",
       "subs": [
-        { "id": "CORE", "status": "COMPLETE" }
+        {
+          "id": "CORE",
+          "status": "COMPLETE"
+        }
       ]
     },
     {
       "id": "DATA-DOM",
       "status": "COMPLETE",
       "subs": [
-        { "id": "DATA-DOM", "status": "COMPLETE" }
+        {
+          "id": "DATA-DOM",
+          "status": "COMPLETE"
+        }
       ]
     },
     {
       "id": "SVC-API",
       "status": "COMPLETE",
       "subs": [
-        { "id": "SVC-API", "status": "COMPLETE" }
+        {
+          "id": "SVC-API",
+          "status": "COMPLETE"
+        }
       ]
     },
     {
       "id": "DOC",
       "status": "COMPLETE",
       "subs": [
-        { "id": "DOC", "status": "COMPLETE" }
+        {
+          "id": "DOC",
+          "status": "COMPLETE"
+        }
       ]
     },
     {
       "id": "INT-C",
       "status": "COMPLETE",
       "subs": [
-        { "id": "INT-C", "status": "COMPLETE" }
+        {
+          "id": "INT-C",
+          "status": "COMPLETE"
+        }
       ]
     },
     {
       "id": "INT-R",
       "status": "COMPLETE",
       "subs": [
-        { "id": "INT-R", "status": "COMPLETE" }
+        {
+          "id": "INT-R",
+          "status": "COMPLETE"
+        }
       ]
     },
     {
       "id": "SEC-BE",
       "status": "COMPLETE",
       "subs": [
-        { "id": "SEC-BE", "status": "COMPLETE" }
+        {
+          "id": "SEC-BE",
+          "status": "COMPLETE"
+        }
       ]
     },
     {
       "id": "ALIGN-BE",
       "status": "COMPLETE",
       "subs": [
-        { "id": "ALIGN-BE", "status": "COMPLETE" }
+        {
+          "id": "ALIGN-BE",
+          "status": "COMPLETE"
+        }
       ]
     }
   ],
   "test_phase": {
     "id": "backend-test",
     "status": "PENDING",
-    "gated_by_phases": ["CORE", "DATA-DOM", "SVC-API", "DOC", "INT-C", "INT-R", "SEC-BE", "ALIGN-BE"],
+    "gated_by_phases": [
+      "CORE",
+      "DATA-DOM",
+      "SVC-API",
+      "DOC",
+      "INT-C",
+      "INT-R",
+      "SEC-BE",
+      "ALIGN-BE"
+    ],
     "header_file": null,
     "subs": [
-      { "id": "RULE-SCENARIOS", "status": "PENDING" },
-      { "id": "API-SCENARIOS", "status": "PENDING" }
+      {
+        "id": "RULE-SCENARIOS",
+        "status": "PENDING"
+      },
+      {
+        "id": "API-SCENARIOS",
+        "status": "PENDING"
+      }
     ]
   },
   "blocked": [],

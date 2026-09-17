@@ -3,7 +3,7 @@
   "generated_at": "2026-09-11",
   "current_phase": "ALIGN-BE",
   "current_sub": "ALIGN-BE",
-  "api_docs_path": "governance/modules/MDL/api-docs/",
+  "api_docs_path": "governance/shared/backend/modules/MDL/api-docs/",
   "phases": [
     {
       "id": "CORE",

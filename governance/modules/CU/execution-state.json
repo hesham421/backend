@@ -3,79 +3,126 @@
   "generated_at": "2026-09-03",
   "current_phase": "backend-test",
   "current_sub": "RULE-SCENARIOS",
-  "api_docs_path": "governance/modules/CU/api-docs/",
+  "api_docs_path": "governance/shared/backend/modules/CU/api-docs/",
   "phases": [
     {
       "id": "CORE",
       "status": "COMPLETE",
       "subs": [
-        { "id": "CORE", "status": "COMPLETE" }
+        {
+          "id": "CORE",
+          "status": "COMPLETE"
+        }
       ]
     },
     {
       "id": "DATA-DOM",
       "status": "COMPLETE",
       "subs": [
-        { "id": "DATA-DOM", "status": "COMPLETE" }
+        {
+          "id": "DATA-DOM",
+          "status": "COMPLETE"
+        }
       ]
     },
     {
       "id": "SVC-API",
       "status": "COMPLETE",
       "subs": [
-        { "id": "SVC-API", "status": "COMPLETE" }
+        {
+          "id": "SVC-API",
+          "status": "COMPLETE"
+        }
       ]
     },
     {
       "id": "DOC",
       "status": "COMPLETE",
       "subs": [
-        { "id": "DOC", "status": "COMPLETE" }
+        {
+          "id": "DOC",
+          "status": "COMPLETE"
+        }
       ]
     },
     {
       "id": "INT-C",
       "status": "COMPLETE",
       "subs": [
-        { "id": "INT-C", "status": "COMPLETE" }
+        {
+          "id": "INT-C",
+          "status": "COMPLETE"
+        }
       ]
     },
     {
       "id": "INT-R",
       "status": "COMPLETE",
       "subs": [
-        { "id": "INT-R", "status": "COMPLETE" }
+        {
+          "id": "INT-R",
+          "status": "COMPLETE"
+        }
       ]
     },
     {
       "id": "SEC-BE",
       "status": "COMPLETE",
       "subs": [
-        { "id": "SEC-BE", "status": "COMPLETE" }
+        {
+          "id": "SEC-BE",
+          "status": "COMPLETE"
+        }
       ]
     },
     {
       "id": "ALIGN-BE",
       "status": "COMPLETE",
       "subs": [
-        { "id": "ALIGN-BE", "status": "COMPLETE" }
+        {
+          "id": "ALIGN-BE",
+          "status": "COMPLETE"
+        }
       ]
     }
   ],
   "test_phase": {
     "id": "backend-test",
     "status": "PENDING",
-    "gated_by_phases": ["CORE", "DATA-DOM", "SVC-API", "DOC", "INT-C", "INT-R", "SEC-BE", "ALIGN-BE"],
+    "gated_by_phases": [
+      "CORE",
+      "DATA-DOM",
+      "SVC-API",
+      "DOC",
+      "INT-C",
+      "INT-R",
+      "SEC-BE",
+      "ALIGN-BE"
+    ],
     "header_file": null,
     "subs": [
-      { "id": "RULE-SCENARIOS", "status": "PENDING" },
-      { "id": "API-SCENARIOS", "status": "PENDING" }
+      {
+        "id": "RULE-SCENARIOS",
+        "status": "PENDING"
+      },
+      {
+        "id": "API-SCENARIOS",
+        "status": "PENDING"
+      }
     ]
   },
   "blocked": [],
   "deferred_xm": [],
   "api_doc_gaps": [
-    {"type": "NAMING_MISMATCH", "phase": "SVC-API", "sub": "SVC-API", "endpoint": "GET /api/v1/common/configurations (API-CU-002, per SVC-API.md prose)", "detail": "Plan prose described Search as GET with query params; build-create-controller A.6.6 requires POST /search with @RequestBody for dynamic filter criteria. No derivation/rationale was given in the plan for deviating from the skill's hard rule.", "resolution": "Resolved before dispatch, per explicit human confirmation: implemented as POST /api/v1/common/configurations/search per the skill. Plan prose treated as stale/non-binding on this point.", "recorded_at": "2026-09-03T20:17:57Z"},
+    {
+      "type": "NAMING_MISMATCH",
+      "phase": "SVC-API",
+      "sub": "SVC-API",
+      "endpoint": "GET /api/v1/common/configurations (API-CU-002, per SVC-API.md prose)",
+      "detail": "Plan prose described Search as GET with query params; build-create-controller A.6.6 requires POST /search with @RequestBody for dynamic filter criteria. No derivation/rationale was given in the plan for deviating from the skill's hard rule.",
+      "resolution": "Resolved before dispatch, per explicit human confirmation: implemented as POST /api/v1/common/configurations/search per the skill. Plan prose treated as stale/non-binding on this point.",
+      "recorded_at": "2026-09-03T20:17:57Z"
+    },
     {
       "type": "UNREACHABLE_ERROR_CODE",
       "phase": "SVC-API",
