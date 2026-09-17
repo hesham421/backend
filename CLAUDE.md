@@ -105,6 +105,47 @@ A write anywhere else under `governance/shared/` is refused at review by that
 repo's `CODEOWNERS`. The frontend's partition and the factory's are not this
 repo's to touch, and this repo's are not theirs.
 
+
+### Two commands, and the gap channel
+
+```bash
+./scripts/governance pull    # start of work — take the factory's latest, pin it
+./scripts/governance push    # end of work  — publish what this repo wrote, pin it
+./scripts/governance status  # where this repo stands
+```
+
+Use them instead of raw `git submodule` calls. `git submodule update` leaves the
+shared checkout on a **detached HEAD**, and a commit made there is referenced by
+nothing: the next update walks away from it and the push that should publish it
+succeeds publishing nothing. The script checks for that and says so.
+
+### When the plan is wrong — record it, do not patch it
+
+The plan is the factory's to write; `CODEOWNERS` refuses a change to it from
+here. That is not a wall, it is a channel: what you discover while implementing
+goes into **this repo's own partition**, and the factory reads it.
+
+```jsonc
+// $GOV/modules/[MODULE]/backend/execution-state.json
+"api_doc_gaps": [{
+  "type": "ABSENT",              // or NAMING_MISMATCH, …
+  "phase": "SVC-API", "sub": "SVC-API-CRUD",
+  "endpoint": "what the plan names that is not there",
+  "detail": "what you found, and what you did instead",
+  "resolution": "OPEN"           // OPEN | RESOLVED | HUMAN — one of these words, first
+}],
+"blocked": [], "deferred_xm": []
+```
+
+`resolution` must **start with a declared word** (`factory.yaml → feedback.status`:
+OPEN / DEFERRED / PENDING · RESOLVED / CLOSED / IMPLEMENTED · HUMAN / ADR).
+Anything else is reported to the factory as UNRECOGNISED rather than guessed
+into a bucket — a gap silently filed as closed is worse than one filed nowhere.
+
+The factory reads them with `gov.py feedback`. Before this channel existed they
+reached nobody: a whole requirement was added to SEC inside a delivered copy
+and the factory never saw it.
+
 ### What stays here (tools and reports, not governance)
 
 | What | Where |
