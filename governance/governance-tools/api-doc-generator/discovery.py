@@ -81,7 +81,20 @@ def default_backend_root() -> Path:
 
 
 def default_output_dir(module: str) -> Path:
-    return GOVERNANCE_ROOT / "modules" / module / "api-docs"
+    """Where generated api-docs land.
+
+    They live in the shared repo, not in this one: the factory and the frontend
+    read the SAME copy, so there is no second copy to drift from. This repo still
+    authors them — the generator reads the running app — and the shared repo's
+    CODEOWNERS grants this repo write access to exactly this path and no other.
+    A checkout without the submodule initialised has nowhere to write, and saying
+    so is better than silently writing a copy nobody reads."""
+    shared = GOVERNANCE_ROOT / "shared"
+    if not (shared / "backend").is_dir():
+        raise SystemExit(
+            f"governance/shared is not initialised at {shared}\n"
+            f"  run: git submodule update --init governance/shared")
+    return shared / "backend" / "modules" / module / "api-docs"
 
 
 def default_module_dir(module: str) -> Path:

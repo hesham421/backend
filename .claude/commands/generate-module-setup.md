@@ -394,8 +394,8 @@ python3 generate.py --module [MODULE] --function generate
 ```
 (consult that tool's own `README.md` for `--function generate` vs `update` vs
 `review` semantics before assuming — use whichever actually (re)writes
-`governance/modules/[MODULE]/api-docs/` in full for this run). Confirm
-`governance/modules/[MODULE]/api-docs/index.md` was written/updated before
+`governance/shared/backend/modules/[MODULE]/api-docs/` in full for this run). Confirm
+`governance/shared/backend/modules/[MODULE]/api-docs/index.md` was written/updated before
 proceeding to STEP 0.4 — do not invoke `api-verify` against missing or
 unrefreshed api-docs.
 
@@ -416,7 +416,7 @@ than assuming.)
 
 Invoke the `api-verify` skill (`.claude/skills/api-verify/SKILL.md`) for
 `<MOD>` = `[MODULE]`. Per the skill's own procedure it reads:
-- `governance/modules/[MODULE]/api-docs/` — regenerated in STEP 0.3, mandatory;
+- `governance/shared/backend/modules/[MODULE]/api-docs/` — regenerated in STEP 0.3, mandatory;
 - `governance/modules/[MODULE]/test_gen/test-execution-manifest-<mod-lowercase>.md`
   when present (Full tier: happy-path CRUD + negative RULE checks, dependency
   order read verbatim from the manifest) — otherwise Minimal tier (happy-path

@@ -4,7 +4,7 @@
 Lives at   : backend/.claude/commands/generate-api-docs.md, so it
              auto-loads as a Claude Code slash command
 Runs       : governance/governance-tools/api-doc-generator/generate.py
-Writes to  : governance/modules/[MODULE]/api-docs/
+Writes to  : governance/shared/backend/modules/[MODULE]/api-docs/
 ```
 
 (Re)generates a module's API documentation from the **running backend**, so
@@ -85,7 +85,7 @@ name the likely cause — never treat empty as normal:
 
 ## Notes
 
-- Output always lands in `governance/modules/[MODULE]/api-docs/`
+- Output always lands in `governance/shared/backend/modules/[MODULE]/api-docs/`
   (`index.md` + `endpoints/<group-slug>.md`). The path derives from the tool's
   own location, so the command works from any working directory.
 - `review` is safe to run any time, including in CI, to answer "have the API
