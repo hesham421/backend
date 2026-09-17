@@ -142,7 +142,11 @@ OPEN / DEFERRED / PENDING · RESOLVED / CLOSED / IMPLEMENTED · HUMAN / ADR).
 Anything else is reported to the factory as UNRECOGNISED rather than guessed
 into a bucket — a gap silently filed as closed is worse than one filed nowhere.
 
-The factory reads them with `gov.py feedback`. Before this channel existed they
+The factory reads them with `gov.py feedback`. **The next version's gate will not
+open while one is unanswered** — that is what makes recording it worth your
+time. A human can waive it (`gov.py waive-feedback --by --why`), and the waiver
+is pinned to the items it saw, so a gap you record afterwards still closes the
+gate. Before this channel existed they
 reached nobody: a whole requirement was added to SEC inside a delivered copy
 and the factory never saw it.
 
