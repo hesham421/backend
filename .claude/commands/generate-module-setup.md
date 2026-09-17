@@ -373,7 +373,7 @@ Execute API verification for [MODULE] — only for what's actually complete.
 ### 0.1 — Load the delivered test-gen plan (the REQUIRED COVERAGE)
 Read every `TC-[MODULE]-<seq>` block out of this module's flat test-gen plan
 file — `governance/shared/erp/modules/[MODULE]/test_gen/backend-test-plan-<mod-lowercase>.md`
-(current location), falling back to `governance/shared/erp/modules/[MODULE]/backend-test/backend-test-plan-<mod-lowercase>.md`
+(current location), falling back to `governance/shared/erp/modules/[MODULE]/test_gen/backend-test-plan-<mod-lowercase>.md`
 if the former doesn't exist. This command does not read `packages/backend-test/`
 — that split-folder shape depended on governance-tools splitter tooling this
 project no longer relies on; the flat file is the sole source of truth. Across
@@ -461,7 +461,7 @@ Invoke the `api-verify` skill (`.claude/skills/api-verify/SKILL.md`) for
   envelope shapes, error-code format, permission pattern) — never re-derived
   here.
 
-It produces, under `governance/shared/erp/modules/[MODULE]/test-api/`:
+It produces, under `governance/shared/erp/modules/[MODULE]/backend/test-api/`:
 - `test_[mod-lowercase]_apis.py` — one runnable script, one `test_<entity>()`
   per entity in dependency order, each create/update/negative call tagged with
   a traceability comment (`Covers: API-… ; Negative: RULE-… / <code> / TC-…`),
@@ -469,7 +469,7 @@ It produces, under `governance/shared/erp/modules/[MODULE]/test-api/`:
 - `[mod-lowercase]_problems_report.md` — failures bucketed likely-real-bug /
   test-assumption-mismatch / infrastructure.
 
-Run the generated script (`python3 governance/shared/erp/modules/[MODULE]/test-api/test_[mod-lowercase]_apis.py`)
+Run the generated script (`python3 governance/shared/erp/modules/[MODULE]/backend/test-api/test_[mod-lowercase]_apis.py`)
 against the app confirmed reachable in STEP 0.4, and record its pass/fail per
 `test_<entity>()` suite. This command never hand-writes verification code
 itself and never calls a TestSprite tool.
@@ -534,7 +534,7 @@ if nothing fits, use `ENVIRONMENT_FAILURE` and explain why in the detail.
 Write `reports/TEST-REPORT-[MODULE]-backend-[YYYY-MM-DD].md` — a
 module-scoped digest, distinct from `api-verify`'s own raw output
 (`[mod-lowercase]_problems_report.md`, left under
-`governance/shared/erp/modules/[MODULE]/test-api/`, untouched). It MUST include the
+`governance/shared/erp/modules/[MODULE]/backend/test-api/`, untouched). It MUST include the
 STEP 1.9 coverage table (governed plan ↔ api-verify) and the coverage ratio,
 ABOVE the failure taxonomy — a green taxonomy over an incomplete plan is not
 a pass. This report is complete once the test/coverage section above is

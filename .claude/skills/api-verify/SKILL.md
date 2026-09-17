@@ -71,8 +71,8 @@ it, not this skill.
 
 ## Output
 
-- `governance/shared/erp/modules/<MOD>/test-api/test_<mod>_apis.py` (or the language the run targets)
-- `governance/shared/erp/modules/<MOD>/test-api/<mod>_problems_report.md`
+- `governance/shared/erp/modules/<MOD>/backend/test-api/test_<mod>_apis.py` (or the language the run targets)
+- `governance/shared/erp/modules/<MOD>/backend/test-api/<mod>_problems_report.md`
 
 ---
 
@@ -257,7 +257,7 @@ docs; FK ids threaded, never literal.
 
 | Consumes (read-only) | Produces | Never |
 |---|---|---|
-| api-docs, the test-execution-manifest (when present), run arguments, `api-verify-config.md` | `test_<mod>_apis.py`, `<mod>_problems_report.md` under `governance/shared/erp/modules/<MOD>/test-api/`, the stage-I grant journal | a governance ID of any kind, a change to any line artifact, a gate verdict, a data fix against records it did not create — **one exception, and only one**: the bounded, journalled, self-revoked permission grant of stage I |
+| api-docs, the test-execution-manifest (when present), run arguments, `api-verify-config.md` | `test_<mod>_apis.py`, `<mod>_problems_report.md` under `governance/shared/erp/modules/<MOD>/backend/test-api/`, the stage-I grant journal | a governance ID of any kind, a change to any line artifact, a gate verdict, a data fix against records it did not create — **one exception, and only one**: the bounded, journalled, self-revoked permission grant of stage I |
 
 ## Related Skills
 
