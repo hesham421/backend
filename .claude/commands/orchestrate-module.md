@@ -9,6 +9,18 @@ cross-repo reach into `frontend/`. (The frontend repo has its own separate
 orchestrator; this one never touches it.) Every path below is relative to the
 backend repo root unless said otherwise.
 
+## Step 0 — resolve where governance lives (never type it)
+
+```bash
+SUMMARY=governance/shared/platform/profile-summary.json
+test -f "$SUMMARY" || { echo "MISSING — git submodule update --init governance/shared"; exit 1; }
+MODULES=governance/shared/$(jq -r .paths.modules "$SUMMARY")   # e.g. governance/shared/erp/modules
+GOVROOT=$(dirname "$MODULES")                                  # e.g. governance/shared/erp
+```
+
+`$MODULES` and `$GOVROOT` below are those values. The profile folder is the
+factory's to name; spelling it here makes a second profile an edit to this file.
+
 ## Usage
 
 ```
@@ -16,7 +28,7 @@ backend repo root unless said otherwise.
 ```
 
 - `MODULE` (required): e.g. `ORG`, `SECURITY`, `MASTERDATA`. Must have a
-  `governance/shared/erp/modules/{MODULE}/` folder with `execution-state.json`,
+  `$MODULES/{MODULE}/` folder with `execution-state.json`,
   `packages/backend-execution/`, and a per-module command
   `.claude/commands/{MODULE}/execute-backend.md`. If any of this is missing or
   shaped differently than expected, STOP and ask — never guess a module's
@@ -28,13 +40,13 @@ backend repo root unless said otherwise.
   the filesystem:
 
   ```bash
-  ls -d governance/shared/erp/modules/{MODULE}/v*/ 2>/dev/null | sort -t v -k2 -n | tail -1
+  ls -d $MODULES/{MODULE}/v*/ 2>/dev/null | sort -t v -k2 -n | tail -1
   ```
 
-  - No `vN` folder found → base `governance/shared/erp/modules/{MODULE}/`      (no suffix, v1)
-  - Highest `vN` folder found → base `governance/shared/erp/modules/{MODULE}/v{N}/`
+  - No `vN` folder found → base `$MODULES/{MODULE}/`      (no suffix, v1)
+  - Highest `vN` folder found → base `$MODULES/{MODULE}/v{N}/`
 
-  Call it `{MBASE}`. Every `governance/shared/erp/modules/{MODULE}/…` and bare
+  Call it `{MBASE}`. Every `$MODULES/{MODULE}/…` and bare
   `packages/…` / `execution-state.json` path below resolves under `{MBASE}`,
   and the per-module command for a vN module is
   `.claude/commands/{MODULE}/v{N}/execute-backend.md`. By default orchestrate
@@ -123,7 +135,7 @@ and never touches the module's source files directly.** Its only jobs are:
 
 ## STEP 0 — Locate module & resume point
 
-1. Read `governance/shared/erp/modules/{MODULE}/backend/execution-state.json`. Note
+1. Read `$MODULES/{MODULE}/backend/execution-state.json`. Note
    `current_phase`, `current_sub`, and every phase's/sub's `status`.
 2. If a `PHASE` argument was given, use it (but still resume from whatever subs
    in it are not yet `COMPLETE` — never re-run a `COMPLETE` sub). Otherwise use

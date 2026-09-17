@@ -2,6 +2,9 @@
 name: api-verify
 description: "API VERIFICATION (post-implementation). Generates one runnable script that exercises a module's real API in dependency order, plus a problems report — from that module's own api-docs (+ test-execution-manifest when present). Standalone, on demand, never a gate. Use after a backend module's endpoints are implemented and its api-docs are current."
 ---
+`$GOV` below is the governance root the factory publishes — read it, never type it:
+`governance/shared/$(jq -r '.paths.modules' governance/shared/platform/profile-summary.json | cut -d/ -f1)`.
+
 
 # Skill: api-verify
 
@@ -24,7 +27,7 @@ it, not this skill.
 ## When to Use
 
 - A backend module's endpoints are implemented and its api-docs are current
-  (`governance/shared/erp/modules/<MOD>/api-docs/`)
+  (`$GOV/modules/<MOD>/api-docs/`)
 - Post-implementation verification against the real running API — not a code-review, not a
   substitute for `gov-validate-backend-feature`
 - On demand, invoked explicitly for a given `<MOD>` — never automatically, never as a gate
@@ -71,8 +74,8 @@ it, not this skill.
 
 ## Output
 
-- `governance/shared/erp/modules/<MOD>/backend/test-api/test_<mod>_apis.py` (or the language the run targets)
-- `governance/shared/erp/modules/<MOD>/backend/test-api/<mod>_problems_report.md`
+- `$GOV/modules/<MOD>/backend/test-api/test_<mod>_apis.py` (or the language the run targets)
+- `$GOV/modules/<MOD>/backend/test-api/<mod>_problems_report.md`
 
 ---
 
@@ -257,7 +260,7 @@ docs; FK ids threaded, never literal.
 
 | Consumes (read-only) | Produces | Never |
 |---|---|---|
-| api-docs, the test-execution-manifest (when present), run arguments, `api-verify-config.md` | `test_<mod>_apis.py`, `<mod>_problems_report.md` under `governance/shared/erp/modules/<MOD>/backend/test-api/`, the stage-I grant journal | a governance ID of any kind, a change to any line artifact, a gate verdict, a data fix against records it did not create — **one exception, and only one**: the bounded, journalled, self-revoked permission grant of stage I |
+| api-docs, the test-execution-manifest (when present), run arguments, `api-verify-config.md` | `test_<mod>_apis.py`, `<mod>_problems_report.md` under `$GOV/modules/<MOD>/backend/test-api/`, the stage-I grant journal | a governance ID of any kind, a change to any line artifact, a gate verdict, a data fix against records it did not create — **one exception, and only one**: the bounded, journalled, self-revoked permission grant of stage I |
 
 ## Related Skills
 

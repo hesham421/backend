@@ -8,13 +8,46 @@ Lives at   : backend/.claude/commands/generate-module-setup.md, so it
 ## Precondition — the shared submodule is mounted (mechanical, not a judgement)
 
 ```bash
-test -d governance/shared/erp/modules || echo "MISSING"
+test -d $MODULES || echo "MISSING"
 ```
 
 If MISSING: `git submodule update --init governance/shared`, then start over.
 api-docs live only in that submodule now. A checkout cloned without
 `--recursive` has none, every path here still reads plausibly, and the failure
 surfaces phases later as a contract that cannot be resolved. Stop here instead.
+
+## Step 0 — resolve the factory's facts (mechanical, never typed)
+
+Every factory fact this command needs — the active profile, where governance
+sits, and this track's ordered phase list — is published by the factory to one
+file. Read it; do not restate anything it carries. A phase list typed here goes
+stale the moment the profile gains a phase, and the symptom is a test phase
+that runs before the phase it was supposed to wait for.
+
+```bash
+SUMMARY=governance/shared/platform/profile-summary.json
+test -f "$SUMMARY" || { echo "MISSING — run 'gov.py publish profile-summary' in the factory"; exit 1; }
+
+PROFILE=$(jq -r .profile            "$SUMMARY")
+MODULES=governance/shared/$(jq -r .paths.modules "$SUMMARY")
+PART=governance/shared/$(jq -r '.tracks.backend.partition' "$SUMMARY")   # {MOD} still unexpanded
+EXEC_PHASES=$(jq -r '.tracks.backend.plans.exec.phases[].key' "$SUMMARY")
+```
+
+Then, for the module being set up:
+
+```bash
+MBASE=$MODULES/$MODULE                      # the module's governance root
+MINE=$(echo "$PART" | sed "s/{MOD}/$MODULE/")   # this repo's own partition inside it
+```
+
+`$MBASE` is **read-only** to this repo apart from `$MINE` and
+`$MBASE/api-docs/`. A write anywhere else under `governance/shared/` is refused
+at review by that repo's `CODEOWNERS`.
+
+**`$EXEC_PHASES` is the authority for `gated_by_phases`.** Intersect it with the
+phases actually found on disk — never type the list, and never let a phase the
+profile declares go missing from the gate.
 
 ## Your Task
 
@@ -40,7 +73,7 @@ coverage report — not regenerated per module.
 The generated command is **fully self-contained**: it depends only on
 `governance/governance-tools/api-doc-generator`, the `api-verify` skill,
 `governance/shared/platform/rules/api-verify-config.md`, and this module's own artifacts under
-`governance/shared/erp/modules/[MODULE]/` — never on an external governance/mechanism
+`$MBASE/` — never on an external governance/mechanism
 doc, and never on TestSprite (retired as this project's backend test
 mechanism — do not reintroduce a `TestSprite` MCP dependency here). Every rule
 it needs (api-doc regeneration, module scoping, failure taxonomy) is written
@@ -56,7 +89,7 @@ $ARGUMENTS = MODULE
 
 If missing, ask for it — do not guess.
 
-**Module validation:** confirm a `governance/shared/erp/modules/[MODULE]/` folder
+**Module validation:** confirm a `$MBASE/` folder
 (or its version-suffixed variant, resolved in Step 0.5) exists on disk.
 If it doesn't, stop with a plain "unknown module" message — do not guess
 or fabricate a structure. This is the only validation this command
@@ -73,14 +106,14 @@ commands) live under a version-suffixed base — never over v1. Resolve the base
 BEFORE scanning, directly from the filesystem:
 
 ```bash
-ls -d governance/shared/erp/modules/$MODULE/v*/ 2>/dev/null | sort -t v -k2 -n | tail -1
+ls -d $MBASE/v*/ 2>/dev/null | sort -t v -k2 -n | tail -1
 ```
 
 Rule:
-- No `vN` folder found → base = `governance/shared/erp/modules/$MODULE/`        (no suffix, v1)
-- Highest `vN` folder found → base = `governance/shared/erp/modules/$MODULE/v$N/`
+- No `vN` folder found → base = `$MBASE/`        (no suffix, v1)
+- Highest `vN` folder found → base = `$MBASE/v$N/`
 
-Call this resolved path `$MBASE`. Every `governance/shared/erp/modules/$MODULE/…` path in
+Call this resolved path `$MBASE`. Every `$MBASE/…` path in
 the steps below means `$MBASE/…`. In particular, for a vN module:
 - scan `$MBASE/packages/backend-execution` and `$MBASE/backend-test`
   (fallback `$MBASE/test_gen` — see Step 1's Test phase(s) section; NOT
@@ -88,7 +121,7 @@ the steps below means `$MBASE/…`. In particular, for a vN module:
   that split output depended on governance-tools splitter tooling this
   project no longer relies on)
 - write `execution-state.json` to `$MBASE/execution-state.json`
-- `api_docs_path` = `governance/shared/erp/modules/$MODULE/api-docs/`
+- `api_docs_path` = `$MBASE/api-docs/`
   — NOT `$MBASE/api-docs/`. api-docs are the ONE artifact this repo does
   not keep: they live in the shared repo, which is their single copy, and
   the frontend reads that same copy. They are also NOT version-suffixed —
@@ -124,10 +157,10 @@ From the scan results:
 - Preserve the exact filesystem sort order
 - For each SUB file, read the first 40 lines and count the tasks
 
-Expected phases, in strict order (only include ones actually present):
-```
-CORE → DATA-DOM → SVC-API → DOC → INT-C → INT-R → SEC-BE → ALIGN-BE
-```
+Expected phases, in strict order: **`$EXEC_PHASES` from Step 0**, which is the
+profile's own ordered list. Include only the ones actually present on disk, and
+keep that order. Do not type the list here — it went stale twice before, and a
+phase missing from the gate is invisible until the test phase runs without it.
 
 ### Test phase(s) — scan generically, from the flat test-gen delivery — never assume a fixed shape
 
@@ -162,7 +195,8 @@ from markers INSIDE that one file:
   do not fabricate an empty placeholder entry for it.
 - Preserve marker order as found in the file for both phases and subs.
 - Each test phase is gated by every backend EXECUTION phase that exists for
-  this module (CORE … ALIGN-BE), unless the file's own header narrows it.
+  this module — `$EXEC_PHASES` from Step 0, intersected with what is on disk —
+  unless the file's own header narrows it.
 - `header_file` in `execution-state.json` (Step 2) is the path to this one
   flat file itself — there is no separate `*-HEADER.md` for a flat-file-sourced
   test phase.
@@ -194,7 +228,7 @@ Location: `$MBASE/execution-state.json`  (resolved in Step 0.5 — v1 = no suffi
   "generated_at": "[today's date]",
   "current_phase": "[FIRST_PHASE]",
   "current_sub": "[FIRST_SUB or null]",
-  "api_docs_path": "governance/shared/erp/modules/[MODULE]/api-docs/",
+  "api_docs_path": "$MBASE/api-docs/",
   "phases": [
     {
       "id": "[PHASE_NAME]",
@@ -208,7 +242,7 @@ Location: `$MBASE/execution-state.json`  (resolved in Step 0.5 — v1 = no suffi
     {
       "id": "[TEST_PHASE_NAME]",
       "status": "PENDING",
-      "gated_by_phases": ["CORE", "DATA-DOM", "SVC-API", "DOC", "INT-C", "INT-R", "SEC-BE", "ALIGN-BE"],
+      "gated_by_phases": [ …$EXEC_PHASES, in its own order, intersected with the phases found on disk… ],
       "header_file": "[MBASE]/test_gen/backend-test-plan-<mod-lowercase>.md (or the backend-test/ fallback path actually used) — the flat file itself, since there is no separate *-HEADER.md",
       "subs": [
         { "id": "[SUB_NAME]", "status": "PENDING" }
@@ -228,8 +262,13 @@ Rules:
   spans cross-module dependencies gets the base phase plus its integration
   phase(s) (e.g. `INT-XM`) as additional array elements.
 - List only phases/subs actually found in Step 1 — never a fixed name.
-- Each element's `gated_by_phases` lists only backend EXECUTION phases that
-  exist for this module; `header_file` is that phase's `*-HEADER.md` if the scan
+- Each element's `gated_by_phases` is `$EXEC_PHASES` (Step 0) filtered to the
+  phases that exist for this module, in the profile's order — derived, never
+  typed. If a phase the profile declares is missing from disk, say so rather
+  than dropping it silently: a gate that waits for nothing passes for the wrong
+  reason.
+  `header_file` is that phase's `*-HEADER.md` if the scan
+  found one, else `null`. `header_file` is that phase's `*-HEADER.md` if the scan
   found one, else `null`.
 - `blocked`, `deferred_xm`, `api_doc_gaps` start empty.
 
@@ -358,7 +397,7 @@ Execute API verification for [MODULE] — only for what's actually complete.
 
 > **Self-contained.** This command needs `governance/governance-tools/api-doc-generator`,
 > the `api-verify` skill (`.claude/skills/api-verify/SKILL.md`), `governance/shared/platform/rules/api-verify-config.md`,
-> and this module's own artifacts under `governance/shared/erp/modules/[MODULE]/`. Every rule it relies
+> and this module's own artifacts under `$MBASE/`. Every rule it relies
 > on is written below or in those two files — it reads no other external mechanism/governance
 > doc, never stops waiting on one, and never calls TestSprite (retired as this project's
 > backend test mechanism).
@@ -372,8 +411,8 @@ Execute API verification for [MODULE] — only for what's actually complete.
 
 ### 0.1 — Load the delivered test-gen plan (the REQUIRED COVERAGE)
 Read every `TC-[MODULE]-<seq>` block out of this module's flat test-gen plan
-file — `governance/shared/erp/modules/[MODULE]/test_gen/backend-test-plan-<mod-lowercase>.md`
-(current location), falling back to `governance/shared/erp/modules/[MODULE]/test_gen/backend-test-plan-<mod-lowercase>.md`
+file — `$MBASE/test_gen/backend-test-plan-<mod-lowercase>.md`
+(current location), falling back to `$MBASE/test_gen/backend-test-plan-<mod-lowercase>.md`
 if the former doesn't exist. This command does not read `packages/backend-test/`
 — that split-folder shape depended on governance-tools splitter tooling this
 project no longer relies on; the flat file is the sole source of truth. Across
@@ -389,7 +428,7 @@ block, STOP and report it — there is nothing governed to verify.
 
 ### 0.2 — Gate Check (MANDATORY)
 Read `execution-state.json` → for each entry in `test_phases[]`, its
-`gated_by_phases[]`. Confirm every listed backend execution phase has
+`gated_by_phases[]` (derived from `$EXEC_PHASES`). Confirm every listed backend execution phase has
 `status == COMPLETE`. Empty list → that phase's gate passes automatically.
 
 If not all complete:
@@ -412,8 +451,8 @@ python3 generate.py --module [MODULE] --function generate
 ```
 (consult that tool's own `README.md` for `--function generate` vs `update` vs
 `review` semantics before assuming — use whichever actually (re)writes
-`governance/shared/erp/modules/[MODULE]/api-docs/` in full for this run). Confirm
-`governance/shared/erp/modules/[MODULE]/api-docs/index.md` was written/updated before
+`$MBASE/api-docs/` in full for this run). Confirm
+`$MBASE/api-docs/index.md` was written/updated before
 proceeding to STEP 0.4 — do not invoke `api-verify` against missing or
 unrefreshed api-docs.
 
@@ -452,8 +491,8 @@ than assuming.)
 
 Invoke the `api-verify` skill (`.claude/skills/api-verify/SKILL.md`) for
 `<MOD>` = `[MODULE]`. Per the skill's own procedure it reads:
-- `governance/shared/erp/modules/[MODULE]/api-docs/` — regenerated in STEP 0.3, mandatory;
-- `governance/shared/erp/modules/[MODULE]/test_gen/test-execution-manifest-<mod-lowercase>.md`
+- `$MBASE/api-docs/` — regenerated in STEP 0.3, mandatory;
+- `$MBASE/test_gen/test-execution-manifest-<mod-lowercase>.md`
   when present (Full tier: happy-path CRUD + negative RULE checks, dependency
   order read verbatim from the manifest) — otherwise Minimal tier (happy-path
   CRUD only, FK order inferred, negatives stated as skipped and why);
@@ -461,7 +500,7 @@ Invoke the `api-verify` skill (`.claude/skills/api-verify/SKILL.md`) for
   envelope shapes, error-code format, permission pattern) — never re-derived
   here.
 
-It produces, under `governance/shared/erp/modules/[MODULE]/backend/test-api/`:
+It produces, under `$MBASE/backend/test-api/`:
 - `test_[mod-lowercase]_apis.py` — one runnable script, one `test_<entity>()`
   per entity in dependency order, each create/update/negative call tagged with
   a traceability comment (`Covers: API-… ; Negative: RULE-… / <code> / TC-…`),
@@ -469,7 +508,7 @@ It produces, under `governance/shared/erp/modules/[MODULE]/backend/test-api/`:
 - `[mod-lowercase]_problems_report.md` — failures bucketed likely-real-bug /
   test-assumption-mismatch / infrastructure.
 
-Run the generated script (`python3 governance/shared/erp/modules/[MODULE]/backend/test-api/test_[mod-lowercase]_apis.py`)
+Run the generated script (`python3 $MBASE/backend/test-api/test_[mod-lowercase]_apis.py`)
 against the app confirmed reachable in STEP 0.4, and record its pass/fail per
 `test_<entity>()` suite. This command never hand-writes verification code
 itself and never calls a TestSprite tool.
@@ -501,8 +540,9 @@ TC-[MODULE]-0NN    │ XM-… / UXD-…       │ …               │ ✗ none
 
 - A delivered `TC-*` with no matching `test_<entity>()` reference is a
   **coverage gap** — list it prominently; it is never dropped silently.
-- Integration `TC-*` (those tracing `XM-*` or `UXD-*`, from an `INT-XM` phase
-  or the like) are checked here exactly like any other — a cross-module
+- Integration `TC-*` — those tracing `XM-*` or `UXD-*`, which come from a phase
+  the profile marks `integration` (Step 0's summary carries the flag; the name
+  is the profile's to choose) — are checked here exactly like any other: a cross-module
   dependency with no exercising test is a gap, same as an uncovered `AC-*`.
 - Record the coverage ratio: `<covered>/<total>` REQUIRED-COVERAGE TCs.
 
@@ -534,7 +574,7 @@ if nothing fits, use `ENVIRONMENT_FAILURE` and explain why in the detail.
 Write `reports/TEST-REPORT-[MODULE]-backend-[YYYY-MM-DD].md` — a
 module-scoped digest, distinct from `api-verify`'s own raw output
 (`[mod-lowercase]_problems_report.md`, left under
-`governance/shared/erp/modules/[MODULE]/backend/test-api/`, untouched). It MUST include the
+`$MBASE/backend/test-api/`, untouched). It MUST include the
 STEP 1.9 coverage table (governed plan ↔ api-verify) and the coverage ratio,
 ABOVE the failure taxonomy — a green taxonomy over an incomplete plan is not
 a pass. This report is complete once the test/coverage section above is

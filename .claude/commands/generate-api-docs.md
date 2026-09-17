@@ -4,7 +4,7 @@
 Lives at   : backend/.claude/commands/generate-api-docs.md, so it
              auto-loads as a Claude Code slash command
 Runs       : governance/governance-tools/api-doc-generator/generate.py
-Writes to  : governance/shared/erp/modules/[MODULE]/api-docs/
+Writes to  : $MODULES/[MODULE]/api-docs/
 ```
 
 (Re)generates a module's API documentation from the **running backend**, so
@@ -19,11 +19,23 @@ module is, the OpenAPI URL, the module's source root, the shared
 repository itself. Do NOT pass override flags unless discovery actually fails
 and names the flag to pass.
 
+## Step 0 — resolve where governance lives (never type it)
+
+```bash
+SUMMARY=governance/shared/platform/profile-summary.json
+test -f "$SUMMARY" || { echo "MISSING — git submodule update --init governance/shared"; exit 1; }
+MODULES=governance/shared/$(jq -r .paths.modules "$SUMMARY")   # e.g. governance/shared/erp/modules
+GOVROOT=$(dirname "$MODULES")                                  # e.g. governance/shared/erp
+```
+
+`$MODULES` and `$GOVROOT` below are those values. The profile folder is the
+factory's to name; spelling it here makes a second profile an edit to this file.
+
 ## Preconditions
 
-**Module validation:** confirm `governance/shared/erp/modules/$MODULE/` exists before
+**Module validation:** confirm `$MODULES/$MODULE/` exists before
 running anything. Resolve the code from `governance/shared/platform/modules-registry.json` or
-`governance/shared/erp/project-registry.md` — never invent one.
+`$GOVROOT/project-registry.md` — never invent one.
 
 **Backend running:** the Spring Boot app must be up and `/v3/api-docs/<group>`
 must answer for this module. The generator reads the real port from
@@ -85,7 +97,7 @@ name the likely cause — never treat empty as normal:
 
 ## Notes
 
-- Output always lands in `governance/shared/erp/modules/[MODULE]/api-docs/`
+- Output always lands in `$MODULES/[MODULE]/api-docs/`
 
 ## STEP 4 — Publish them (they are NOT published until you do)
 

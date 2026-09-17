@@ -17,21 +17,32 @@ jobs:
         with:
           submodules: recursive
 
-      - name: The shared submodule is initialised
+      - name: The shared submodule is initialised, and says which profile is live
+        # The profile folder name is NOT spelled here: it is whatever the factory
+        # published. Spelling it would make a second profile a CI edit.
         run: |
-          test -d governance/shared/erp/modules || {
-            echo "::error::governance/shared is empty. Clone with --recursive, or run:"
+          SUMMARY=governance/shared/platform/profile-summary.json
+          test -f "$SUMMARY" || {
+            echo "::error::governance/shared is empty or stale — no $SUMMARY."
+            echo "::error::Clone with --recursive, or run:"
             echo "::error::  git submodule update --init governance/shared"
             exit 1
           }
+          PROFILE=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['profile'])" "$SUMMARY")
+          MODULES=governance/shared/$(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['paths']['modules'])" "$SUMMARY")
+          test -d "$MODULES" || { echo "::error::the summary names $MODULES, which does not exist"; exit 1; }
+          echo "profile=$PROFILE"   >> "$GITHUB_ENV"
+          echo "modules=$MODULES"   >> "$GITHUB_ENV"
+          echo "live profile: $PROFILE · modules at $MODULES"
 
       - name: Every path this repo's execution state names resolves
         run: |
           python3 - <<'PY'
-          import json, pathlib, sys
+          import json, os, pathlib, sys
           track = "backend"
           bad, seen = [], 0
-          for es in sorted(pathlib.Path("governance/shared/erp/modules").glob(f"*/{track}/execution-state.json")):
+          root = pathlib.Path(os.environ["modules"])
+          for es in sorted(root.glob(f"*/{track}/execution-state.json")):
               seen += 1
               mod = es.parent.parent.name
               for key, value in json.loads(es.read_text(encoding="utf-8")).items():
