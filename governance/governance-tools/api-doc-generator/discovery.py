@@ -147,10 +147,23 @@ def default_output_dir(module: str) -> Path:
     beside the real ones. That happened on 2026-09-19 in both directions: first
     because this function assumed the module root while the checkout was v7,
     then, after the naive repair, because it assumed the partition while the
-    checkout was "erp". So it now asks the checkout instead of assuming: the
-    candidate that already exists wins. Only when neither exists is a choice
-    made, and it falls to the module root, which is the layout CLAUDE.md
-    documents.
+    checkout was "erp". So it asks the checkout instead of assuming, and where
+    the checkout cannot answer it refuses to guess.
+
+    **This is a workaround, not the fix.** The profile publishes paths.modules,
+    tracks.backend.partition and module_dirs, but NOTHING that declares where a
+    module's api-docs belong — so the one consumer that writes them has to infer
+    it. The three places that do state the path disagree, and one of them names
+    a directory that does not exist on this profile at all:
+
+      * platform/rules/api-verify-config.md:14 -> governance/shared/backend/modules/<MOD>/api-docs/
+      * the backend repo's CLAUDE.md ownership table -> $GOV/modules/<MOD>/api-docs/
+      * the tree as delivered -> erp/modules/<MOD>/api-docs/
+
+    The real repair is a declared key in profile-summary.json that this function
+    reads and fails on when absent, the way it already fails on a missing
+    tracks.backend.partition. That is the factory's to publish, and is recorded
+    for it in the backend's execution-state.json rather than guessed at here.
     """
     candidates = [
         _shared_modules_root() / module / "api-docs",
@@ -165,7 +178,15 @@ def default_output_dir(module: str) -> Path:
             "  {}\n  {}\n"
             "delete the stale one before regenerating -- writing to either would "
             "leave the other silently out of date".format(module, *existing))
-    return candidates[0]
+    raise SystemExit(
+        "cannot tell where {mod}'s api-docs belong: neither candidate exists yet, and the\n"
+        "profile declares no api-docs path to settle it.\n"
+        "  module root      : {a}\n"
+        "  track partition  : {b}\n"
+        "Pass --output with the correct one (and ask the factory to publish the path in\n"
+        "profile-summary.json, so the next module does not hit this). Guessing here is what\n"
+        "produced two empty-history copies of FIN's docs on 2026-09-19.".format(
+            mod=module, a=candidates[0], b=candidates[1]))
 
 
 def default_module_dir(module: str) -> Path:
