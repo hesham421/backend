@@ -8,6 +8,7 @@ import com.erp.sec.dto.LoginResponse;
 import com.erp.sec.dto.PasswordResetCompleteRequest;
 import com.erp.sec.dto.PasswordResetRequest;
 import com.erp.sec.dto.SignupRequestResponse;
+import com.erp.sec.dto.SessionTerminationResponse;
 import com.erp.sec.dto.SignupSubmitRequest;
 import com.erp.sec.service.AuthService;
 import com.erp.sec.service.PasswordResetService;
@@ -17,6 +18,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -24,8 +26,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Thin controller for API-SEC-001/002/003/004 (SCR-REQ-SEC-001/002/003). Every endpoint here is
- * pre-authentication; the REQ-SEC-033 gateway explicitly exempts them (CORE.md).
+ * Thin controller for API-SEC-001/002/003/004 (SCR-REQ-SEC-001/002/003), which are
+ * pre-authentication — the REQ-SEC-033 gateway explicitly exempts them (CORE.md) — plus
+ * API-SEC-028 (logout), the one endpoint here that a caller must already be authenticated to
+ * reach. SecurityConfig's permitAll list names the other four by exact path, so logout needs no
+ * entry there and simply falls through to {@code anyRequest().authenticated()}.
  */
 @RestController
 @RequestMapping("/api/v1/sec/auth")
@@ -45,6 +50,17 @@ public class AuthController {
             @Valid @RequestBody LoginRequest request,
             HttpServletRequest httpRequest) {
         return operationCode.craftResponse(service.login(request, httpRequest.getRemoteAddr()));
+    }
+
+    /**
+     * API-SEC-028. The session is taken from the caller's own bearer token, never from a body —
+     * a client-supplied session id would make this API-SEC-026 without its administrator gate.
+     */
+    @PostMapping("/logout")
+    @Operation(summary = "Logout", description = "إنهاء جلسة المستخدم الحالية")
+    public ResponseEntity<ApiResponse<SessionTerminationResponse>> logout(HttpServletRequest httpRequest) {
+        return operationCode.craftResponse(service.logout(
+            httpRequest.getHeader(HttpHeaders.AUTHORIZATION), httpRequest.getRemoteAddr()));
     }
 
     @PostMapping("/signup")
