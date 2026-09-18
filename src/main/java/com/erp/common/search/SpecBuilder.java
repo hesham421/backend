@@ -1,5 +1,9 @@
 package com.erp.common.search;
 
+import com.erp.common.domain.status.Status;
+import com.erp.common.exception.CommonErrorCodes;
+import com.erp.common.exception.ErrorDetail;
+import com.erp.common.exception.LocalizedException;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
@@ -21,6 +25,7 @@ public final class SpecBuilder {
                 return criteriaBuilder.conjunction();
             }
             List<Predicate> predicates = new ArrayList<>();
+            assertFieldsAllowed(searchRequest, allowedFields);
             for (SearchFilter filter : searchRequest.getFilters()) {
                 if (!allowedFields.isAllowed(filter.getField())) {
                     continue;
@@ -33,6 +38,29 @@ public final class SpecBuilder {
             }
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
         };
+    }
+
+    /**
+     * A filter naming a field this search does not support is a client error, reported as a 400
+     * naming every offending field.
+     *
+     * <p>Until 2026-09-19 such a filter was silently skipped, which made "the filter matched
+     * everything" and "the filter was discarded" indistinguishable on the wire: the SEC frontend
+     * E2E run found two searches (API-SEC-025 {@code username}, API-SEC-012 {@code name}) rendering
+     * an unfiltered list that looked filtered, with no way for any client to detect it. Fields a
+     * request handles outside the generic set must be lifted out before they reach here — that is
+     * what {@code BaseSearchContractRequest.toCommonSearchRequest(Set)}'s exclude set is for.
+     */
+    private static void assertFieldsAllowed(SearchRequest searchRequest, SetAllowedFields allowedFields) {
+        List<ErrorDetail> unsupported = searchRequest.getFilters().stream()
+            .filter(f -> f != null && !allowedFields.isAllowed(f.getField()))
+            .map(f -> ErrorDetail.ofField(f.getField(),
+                CommonErrorCodes.UNSUPPORTED_FILTER_FIELD, f.getField()))
+            .toList();
+        if (!unsupported.isEmpty()) {
+            throw LocalizedException.withDetails(
+                Status.VALIDATION_ERROR, CommonErrorCodes.VALIDATION_ERROR, unsupported);
+        }
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})

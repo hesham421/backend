@@ -42,10 +42,12 @@ public class GlobalExceptionHandler {
         // Additive (REQ-FIN-015): a multi-error exception also lists every failure, itself
         // included, in the fieldErrors slot ApiError already exposes. A single-code exception
         // carries an empty list and therefore serializes byte-identically to before.
+        // A detail that names a request field reports that field; one that does not keeps
+        // reporting its error code there, which is what every pre-existing throw relies on.
         if (!ex.getErrors().isEmpty()) {
             builder.fieldErrors(ex.getErrors().stream()
                 .map(detail -> FieldErrorItem.builder()
-                    .field(detail.errorCode())
+                    .field(detail.field() != null ? detail.field() : detail.errorCode())
                     .message(resolveMessage(detail.errorCode(), detail.args()))
                     .build())
                 .toList());

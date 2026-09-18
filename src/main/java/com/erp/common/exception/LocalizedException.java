@@ -52,4 +52,33 @@ public class LocalizedException extends RuntimeException {
         this.args = errors.get(0).args();
         this.errors = List.copyOf(errors);
     }
+
+    /**
+     * The multi-error form with an explicit top-level code (additive). Used when the aggregate
+     * itself has a name the client matches on — {@code SEC-409-USER-DUP} covering a username and
+     * an email collision, say — so the envelope's {@code code} must NOT be borrowed from the first
+     * detail. The details still populate {@code fieldErrors}.
+     *
+     * <p>A static factory rather than a constructor: {@code (Status, String, List)} would be
+     * ambiguous at the call site with the {@code (Status, String, Object...)} single-code form.
+     *
+     * @param status    the shared status for the aggregate
+     * @param errorCode the top-level wire code and message key
+     * @param errors    at least one failure, each rendered into {@code fieldErrors}
+     */
+    public static LocalizedException withDetails(Status status, String errorCode,
+                                                 List<ErrorDetail> errors) {
+        return new LocalizedException(status, errorCode,
+            Objects.requireNonNull(errors, "errors"), null);
+    }
+
+    /** Private disambiguating constructor behind {@link #withDetails}. */
+    private LocalizedException(Status status, String errorCode, List<ErrorDetail> errors,
+                               Void ignored) {
+        super(errorCode);
+        this.status = status;
+        this.errorCode = errorCode;
+        this.args = new Object[0];
+        this.errors = List.copyOf(errors);
+    }
 }

@@ -20,7 +20,8 @@ A third, per-module piece -- which business Status a specific module's own
 error code (e.g. a name-duplicate or cycle-detection code) was thrown with --
 is NOT centralized; it only exists at each module's own throw sites
 (`new BusinessException(Status.X, SomeErrorCodes.Y, ...)` /
-`new LocalizedException(Status.X, SomeErrorCodes.Y, ...)`). That part is
+`new LocalizedException(Status.X, SomeErrorCodes.Y, ...)` /
+`LocalizedException.withDetails(Status.X, SomeErrorCodes.Y, ...)`). That part is
 read from the module's own --source, one module at a time, and only recorded
 when a throw site literally names both together -- never guessed from a
 code's name or value.
@@ -90,7 +91,13 @@ def http_status_label(constant: Optional[str]) -> Optional[str]:
         return constant
     code = HTTP_STATUS_CODES.get(constant)
     return f"{code} {constant}" if code else constant
-THROW_RE = re.compile(r"new\s+(?:BusinessException|LocalizedException)\(\s*Status\.(\w+)\s*,\s*\w+\.(\w+)")
+# Both throw forms carrying a (Status, ErrorCode) pair: the plain constructor, and
+# LocalizedException.withDetails(Status, code, List<ErrorDetail>) -- the multi-error form
+# used where one code is attributed to the request field(s) it concerns. Missing the second
+# form silently blanks that code's Status/HTTP columns in index.md rather than failing.
+THROW_RE = re.compile(
+    r"(?:new\s+(?:BusinessException|LocalizedException)|LocalizedException\.withDetails)"
+    r"\(\s*Status\.(\w+)\s*,\s*\w+\.(\w+)")
 
 
 def find_status_http_mapping(common_source_roots: list[Path]) -> dict[str, str]:

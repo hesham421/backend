@@ -58,6 +58,22 @@ public class BaseSearchContractRequest {
             .build();
     }
 
+    /**
+     * The whole filter a request lifted out of the generic set, so the service can honour its
+     * operator — not only its value. Needed by any field the shared {@code SpecBuilder} cannot
+     * express (an association's column, an OR across two columns); see
+     * {@code ActiveSessionSearchRequest}.
+     */
+    protected SearchFilter extractFilter(String field) {
+        if (filters == null) {
+            return null;
+        }
+        return filters.stream()
+            .filter(f -> f != null && field.equals(f.getField()) && f.getValue() != null)
+            .findFirst()
+            .orElse(null);
+    }
+
     protected Long extractLongFilter(String field) {
         if (filters == null) {
             return null;

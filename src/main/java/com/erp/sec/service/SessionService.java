@@ -2,9 +2,13 @@ package com.erp.sec.service;
 
 import com.erp.common.domain.status.ServiceResult;
 import com.erp.common.domain.status.Status;
+import com.erp.common.exception.CommonErrorCodes;
+import com.erp.common.exception.ErrorDetail;
 import com.erp.common.exception.LocalizedException;
 import com.erp.common.search.DefaultFieldValueConverter;
 import com.erp.common.search.PageableBuilder;
+import com.erp.common.search.SearchFilter;
+import com.erp.common.search.SearchOperator;
 import com.erp.common.search.SearchRequest;
 import com.erp.common.search.SetAllowedFields;
 import com.erp.common.search.SpecBuilder;
@@ -21,7 +25,12 @@ import com.erp.sec.mapper.ActiveSessionMapper;
 import com.erp.sec.repository.ActiveSessionRepository;
 import com.erp.sec.repository.AuditLogEntryRepository;
 import com.erp.sec.repository.UserRepository;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.Root;
 import java.time.Instant;
+import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -70,6 +79,10 @@ public class SessionService {
         if (userId != null) {
             spec = spec.and(belongsTo(userId));
         }
+        SearchFilter usernameFilter = searchRequest.getUsernameFilter();
+        if (usernameFilter != null) {
+            spec = spec.and(usernameMatches(usernameFilter));
+        }
         spec = spec.and(notTerminated());
 
         Page<ActiveSession> result =
@@ -84,6 +97,38 @@ public class SessionService {
      */
     private Specification<ActiveSession> notTerminated() {
         return (root, query, cb) -> cb.isNull(root.get("terminatedAt"));
+    }
+
+    /**
+     * {@code username} is a published column of {@code ActiveSessionResponse} and the Active
+     * Sessions screen offers a box for it, but it lives on the associated User (DBF-SEC-076), so
+     * the shared {@code SpecBuilder} — which resolves a field against the root entity only —
+     * cannot express it. Added 2026-09-19: before this it was accepted and silently discarded, so
+     * an administrator searching by login got the whole list back with no way to tell.
+     *
+     * <p>Path navigation, not an explicit join, so the derived count query stays a plain count
+     * over a to-one association. EQUALS and LIKE are both case-insensitive, matching how every
+     * other LIKE in the shared builder behaves; any other operator is a client error rather than
+     * a silently different match.
+     */
+    private Specification<ActiveSession> usernameMatches(SearchFilter filter) {
+        SearchOperator operator = filter.getOperator() == null
+            ? SearchOperator.LIKE
+            : filter.getOperator();
+        String value = String.valueOf(filter.getValue()).trim().toLowerCase(Locale.ROOT);
+        return switch (operator) {
+            case EQUALS -> (root, query, cb) -> cb.equal(usernamePath(root, cb), value);
+            case NOT_EQUALS -> (root, query, cb) -> cb.notEqual(usernamePath(root, cb), value);
+            case LIKE -> (root, query, cb) -> cb.like(usernamePath(root, cb), "%" + value + "%");
+            default -> throw LocalizedException.withDetails(
+                Status.VALIDATION_ERROR, CommonErrorCodes.VALIDATION_ERROR,
+                List.of(ErrorDetail.ofField("username",
+                    CommonErrorCodes.UNSUPPORTED_FILTER_OPERATOR, operator, "username")));
+        };
+    }
+
+    private static Expression<String> usernamePath(Root<ActiveSession> root, CriteriaBuilder cb) {
+        return cb.lower(root.get("user").get("username"));
     }
 
     /** DBF-SEC-076 is an association, so the predicate compares a reference, never a raw id. */
