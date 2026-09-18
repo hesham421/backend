@@ -175,6 +175,21 @@ public class UserService {
         return ServiceResult.success(mapper.toStatusResponse(saved), Status.UPDATED);
     }
 
+    /**
+     * The ordinary single-resource read behind {@code GET /api/v1/sec/users/{id}}. Returns exactly
+     * the {@code UserResponse} the API-SEC-005 search returns for the same row, {@code roles}
+     * included, so a client can resolve a user it holds only an id for without having listed it.
+     */
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants).PERM_SEC_USERS_VIEW)")
+    public ServiceResult<UserResponse> getById(Long id) {
+        log.debug("Fetching User ID: {}", id);
+
+        User entity = loadUser(id);
+
+        return ServiceResult.success(mapper.toResponse(entity, userRoleService.rolesOf(id)));
+    }
+
     /** API-SEC-005 — an empty match is success with empty content, never a 404 (CORE search contract). */
     @Transactional(readOnly = true)
     @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants).PERM_SEC_USERS_VIEW)")

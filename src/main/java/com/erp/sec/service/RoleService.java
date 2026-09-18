@@ -85,6 +85,23 @@ public class RoleService {
         return ServiceResult.success(mapper.toResponse(saved), Status.UPDATED);
     }
 
+    /**
+     * The ordinary single-resource read behind {@code GET /api/v1/sec/roles/{id}}. Returns exactly
+     * the {@code RoleResponse} the API-SEC-012 search returns for the same row, so a client can
+     * resolve a role it holds only an id for — a deep link — without having listed it first.
+     */
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants).PERM_SEC_ROLES_VIEW)")
+    public ServiceResult<RoleResponse> getById(Long id) {
+        log.debug("Fetching Role ID: {}", id);
+
+        Role entity = repository.findById(id)
+            .orElseThrow(() -> new LocalizedException(
+                Status.NOT_FOUND, SecErrorCodes.SEC_404_ROLE, id));
+
+        return ServiceResult.success(mapper.toResponse(entity));
+    }
+
     /** API-SEC-012 — an empty match is success with empty content, never a 404. */
     @Transactional(readOnly = true)
     @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants).PERM_SEC_ROLES_VIEW)")

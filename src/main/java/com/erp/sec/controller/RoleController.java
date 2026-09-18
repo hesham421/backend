@@ -13,6 +13,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -35,6 +36,12 @@ public class RoleController {
     public ResponseEntity<ApiResponse<Page<RoleResponse>>> search(
             @Valid @RequestBody RoleSearchRequest searchRequest) {
         return operationCode.craftResponse(service.search(searchRequest));
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Get role by ID", description = "جلب دور بالمعرّف")
+    public ResponseEntity<ApiResponse<RoleResponse>> getById(@PathVariable Long id) {
+        return operationCode.craftResponse(service.getById(id));
     }
 
     @PostMapping
