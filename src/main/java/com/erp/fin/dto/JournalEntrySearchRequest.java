@@ -68,20 +68,20 @@ public class JournalEntrySearchRequest extends BaseSearchContractRequest {
 
     @Override
     @Schema(description = "Filter criteria. Supported fields: docNo (LIKE), docDate (EQUALS, "
-        + "GREATER_THAN_OR_EQUAL, LESS_THAN_OR_EQUAL - ISO yyyy-MM-dd, send both bounds "
-        + "for a range), periodId (EQUALS), fiscalYearId (EQUALS), statusCode (EQUALS, IN "
-        + "- JOURNAL_STATUS), journalTypeCode (EQUALS, IN - JOURNAL_TYPE), eventReference "
-        + "(EQUALS), journalEntryPk (EQUALS, IN), postedAt / createdAt (comparison "
-        + "operators). Any other field is rejected as 400 VALIDATION_ERROR naming it - "
-        + "معايير التصفية")
+        + "GREATER_THAN_OR_EQUAL, LESS_THAN_OR_EQUAL - ISO yyyy-MM-dd, send both bounds for a "
+        + "range), periodId (EQUALS), fiscalYearId (EQUALS), statusCode (EQUALS, IN - "
+        + "JOURNAL_STATUS), journalTypeCode (EQUALS, IN - JOURNAL_TYPE), eventReference (EQUALS), "
+        + "journalEntryPk (EQUALS, IN), postedAt / createdAt (comparison operators). Any other "
+        + "field, or an operator a field does not list, is rejected as 400 VALIDATION_ERROR naming "
+        + "it - معايير التصفية")
     public List<SearchFilter> getFilters() {
         return super.getFilters();
     }
 
     @Override
     @Schema(description = "Sort field. Supported: journalEntryPk, docNo, docDate, journalTypeCode, "
-        + "statusCode, eventReference, postedAt, createdAt. Any other value is rejected "
-        + "as 400 FIN-400-INVALID-SORT - حقل الترتيب")
+        + "statusCode, eventReference, postedAt, createdAt. Any other value is rejected as 400 "
+        + "FIN-400-INVALID-SORT - حقل الترتيب")
     public String getSortField() {
         return super.getSortField();
     }

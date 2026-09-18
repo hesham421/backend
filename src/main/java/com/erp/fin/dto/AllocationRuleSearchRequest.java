@@ -54,18 +54,16 @@ public class AllocationRuleSearchRequest extends BaseSearchContractRequest {
 
     @Override
     @Schema(description = "Filter criteria. Supported fields: nameAr / nameEn (LIKE), "
-        + "sourceAccountId "
-        + "(EQUALS), isActiveFl (EQUALS), allocationRulePk (EQUALS, IN), createdAt "
-        + "(comparison operators). Any other field is rejected as 400 VALIDATION_ERROR "
-        + "naming it - معايير التصفية")
+        + "sourceAccountId (EQUALS), isActiveFl (EQUALS), allocationRulePk (EQUALS, IN), createdAt "
+        + "(comparison operators). Any other field, or an operator a field does not list, is "
+        + "rejected as 400 VALIDATION_ERROR naming it - معايير التصفية")
     public List<SearchFilter> getFilters() {
         return super.getFilters();
     }
 
     @Override
     @Schema(description = "Sort field. Supported: allocationRulePk, nameAr, nameEn, isActiveFl, "
-        + "createdAt. Any other value is rejected as 400 FIN-400-INVALID-SORT - حقل "
-        + "الترتيب")
+        + "createdAt. Any other value is rejected as 400 FIN-400-INVALID-SORT - حقل الترتيب")
     public String getSortField() {
         return super.getSortField();
     }

@@ -5,12 +5,13 @@ import com.erp.common.exception.CommonErrorCodes;
 import com.erp.common.exception.LocalizedException;
 import com.erp.common.search.FieldValueConverter;
 import com.erp.fin.exception.FinErrorCodes;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.Set;
 
 /**
- * The two things FIN's seven searches (SVC-API-SEARCH) need that the shared search layer does not
+ * The two things FIN's searches (SVC-API-SEARCH) need that the shared search layer does not
  * give them. Both are deliberately thin helpers over the shared plumbing, never a replacement for
  * it: {@code SpecBuilder} and {@code PageableBuilder} still build every specification and every
  * pageable.
@@ -45,23 +46,67 @@ final class FinSearchSupport {
         }
     }
 
+
     /**
-     * API-FIN-018's {@code docDate} filter is a DATE_RANGE over a {@code DATE} column
-     * (DBF-FIN-036), but a JSON body carries the bound as a string; without this the criteria build
-     * would compare a String to a {@link LocalDate} path. A malformed bound is client input, so it
-     * surfaces as a 400 rather than an unhandled 500 escaping the specification build.
+     * The audit timestamps every FIN entity inherits from {@code AuditableEntity}. They are
+     * {@code Instant}, not {@code LocalDate}, and they are on every FIN search's
+     * {@code ALLOWED_SORT_FIELDS} — so every FIN search admits them as filters too.
      */
-    static FieldValueConverter localDateFieldConverter(Set<String> dateFields) {
+    static final Set<String> AUDIT_INSTANT_FIELDS = Set.of("createdAt", "updatedAt");
+
+    /**
+     * One converter for both temporal shapes a FIN search can carry.
+     *
+     * <p>Added 2026-09-19, replacing a {@code localDateFieldConverter} that coerced the
+     * {@code DATE} columns and nothing else. API-FIN-018's {@code docDate} (DBF-FIN-036) is the
+     * filter that first needed one: a JSON body carries the bound as a string, and without the
+     * coercion the criteria build compared a String to a {@code LocalDate} path. The same was
+     * true of every {@code Instant} column and went unnoticed, so those reached the build as a
+     * String and the comparison threw — a 500, not a 400, on a perfectly ordinary
+     * {@code createdAt >= "..."} filter. The fault predates this method: {@code createdAt} has
+     * been on every FIN whitelist since SVC-API-SEARCH, so the 500 was always reachable; it became
+     * worth fixing rather than merely latent when each search started publishing the field as
+     * filterable in its own api-docs. An api-doc that advertises a filter must not name one that
+     * answers 500.
+     *
+     * @param dateFields    columns mapped as {@code LocalDate} (ISO {@code yyyy-MM-dd})
+     * @param instantFields columns mapped as {@code Instant} (ISO-8601 instant, e.g.
+     *                      {@code 2026-01-01T00:00:00Z})
+     */
+    static FieldValueConverter temporalFieldConverter(Set<String> dateFields,
+                                                      Set<String> instantFields) {
         return (field, rawValue) -> {
-            if (rawValue == null || rawValue instanceof LocalDate || !dateFields.contains(field)) {
+            if (rawValue == null) {
                 return rawValue;
             }
-            try {
-                return LocalDate.parse(String.valueOf(rawValue).trim());
-            } catch (DateTimeParseException e) {
-                throw new LocalizedException(
-                    Status.VALIDATION_ERROR, CommonErrorCodes.VALIDATION_ERROR);
+            if (dateFields.contains(field)) {
+                return rawValue instanceof LocalDate ? rawValue : parseLocalDate(rawValue);
             }
+            if (instantFields.contains(field)) {
+                return rawValue instanceof Instant ? rawValue : parseInstant(rawValue);
+            }
+            return rawValue;
         };
+    }
+
+    /** The common case: a search whose only {@code Instant} columns are the audit pair. */
+    static FieldValueConverter temporalFieldConverter(Set<String> dateFields) {
+        return temporalFieldConverter(dateFields, AUDIT_INSTANT_FIELDS);
+    }
+
+    private static LocalDate parseLocalDate(Object rawValue) {
+        try {
+            return LocalDate.parse(String.valueOf(rawValue).trim());
+        } catch (DateTimeParseException e) {
+            throw new LocalizedException(Status.VALIDATION_ERROR, CommonErrorCodes.VALIDATION_ERROR);
+        }
+    }
+
+    private static Instant parseInstant(Object rawValue) {
+        try {
+            return Instant.parse(String.valueOf(rawValue).trim());
+        } catch (DateTimeParseException e) {
+            throw new LocalizedException(Status.VALIDATION_ERROR, CommonErrorCodes.VALIDATION_ERROR);
+        }
     }
 }

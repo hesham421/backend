@@ -412,7 +412,7 @@ public class JournalEntryService {
      * <p>{@code periodId} (DBF-FIN-038) is the association {@code period}, a nested path
      * {@code SpecBuilder} cannot resolve, so it becomes an explicit {@code Specification} join
      * when supplied (A.5.17's mechanism). {@code docDate} bounds arrive as JSON strings and are
-     * coerced to {@code LocalDate} by {@code FinSearchSupport.localDateFieldConverter}.
+     * coerced by {@code FinSearchSupport.temporalFieldConverter}.
      *
      * <p>Rows map through {@code toSummaryResponse}: header detail plus the {@code @Formula} line
      * count, no nested line sets. API-FIN-022 is the endpoint that returns those.
@@ -429,7 +429,8 @@ public class JournalEntryService {
         SearchRequest commonRequest = searchRequest.toCommonSearchRequest();
         SetAllowedFields allowedFields = new SetAllowedFields(ALLOWED_SORT_FIELDS);
         Specification<JournalEntry> spec = SpecBuilder.build(commonRequest, allowedFields,
-            FinSearchSupport.localDateFieldConverter(DATE_FILTER_FIELDS));
+            FinSearchSupport.temporalFieldConverter(
+                DATE_FILTER_FIELDS, Set.of("createdAt", "updatedAt", "postedAt")));
 
         Long periodId = searchRequest.getPeriodId();
         if (periodId != null) {

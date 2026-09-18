@@ -3,7 +3,6 @@ package com.erp.fin.service;
 import com.erp.common.domain.status.ServiceResult;
 import com.erp.common.domain.status.Status;
 import com.erp.common.exception.LocalizedException;
-import com.erp.common.search.DefaultFieldValueConverter;
 import com.erp.common.search.PageableBuilder;
 import com.erp.common.search.SearchRequest;
 import com.erp.common.search.SetAllowedFields;
@@ -144,8 +143,8 @@ public class EventTypeRuleService {
 
         SearchRequest commonRequest = searchRequest.toCommonSearchRequest();
         SetAllowedFields allowedFields = new SetAllowedFields(ALLOWED_SORT_FIELDS);
-        Specification<EventTypeRule> spec = SpecBuilder.build(
-            commonRequest, allowedFields, DefaultFieldValueConverter.INSTANCE);
+        Specification<EventTypeRule> spec = SpecBuilder.build(commonRequest, allowedFields,
+            FinSearchSupport.temporalFieldConverter(Set.of()));
         Pageable pageable = PageableBuilder.from(commonRequest, ALLOWED_SORT_FIELDS);
 
         Page<EventTypeRule> page = repository.findAll(spec, pageable);

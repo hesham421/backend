@@ -159,10 +159,17 @@ rather than skipping the filter:
 FIN's eight searches — now nine — are covered by that, as is SEC. "Filter matched everything" and
 "filter was discarded" are no longer indistinguishable on the wire.
 
-**One residue, stated rather than hidden.** A field the endpoint lifts out of the generic set
+**Lifted fields are `EQUALS`-only, and say so.** A field the endpoint lifts out of the generic set
 (`parentAccountId`, `fiscalYearId`, `periodId`, `dimensionId`, `sourceAccountId`) is read for its
-*value* only. Sending one with an operator other than `EQUALS` is treated as `EQUALS` rather than
-rejected. Send `EQUALS`.
+*value* and the service supplies its own equality predicate. Sending one with any other operator,
+or with an `IN` list, is a `400` carrying `UNSUPPORTED_FILTER_OPERATOR` on that field.
+
+An earlier draft of this document said such a request was silently treated as `EQUALS`. That was
+true when it was written and is worth correcting rather than quietly fixing, because the old
+behaviour was worse than "treated as EQUALS" in two cases a review caught the same day:
+`NOT_EQUALS parentAccountId=1` returned the rows whose parent *is* 1 — the exact inverse of the
+request — and `IN [1,4]` dropped the filter altogether, so a node's children pane would have
+rendered the entire chart of accounts. Both now answer 400.
 
 ### The table you asked for
 

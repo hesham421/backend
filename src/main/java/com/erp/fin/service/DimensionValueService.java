@@ -3,7 +3,6 @@ package com.erp.fin.service;
 import com.erp.common.domain.status.ServiceResult;
 import com.erp.common.domain.status.Status;
 import com.erp.common.exception.LocalizedException;
-import com.erp.common.search.DefaultFieldValueConverter;
 import com.erp.common.search.PageableBuilder;
 import com.erp.common.search.SearchRequest;
 import com.erp.common.search.SetAllowedFields;
@@ -146,8 +145,8 @@ public class DimensionValueService {
 
         Specification<DimensionValue> parentSpec = (root, query, cb) ->
             cb.equal(root.get("dimension").get("dimensionPk"), dimensionId);
-        Specification<DimensionValue> spec = parentSpec.and(SpecBuilder.build(
-            commonRequest, allowedFields, DefaultFieldValueConverter.INSTANCE));
+        Specification<DimensionValue> spec = parentSpec.and(SpecBuilder.build(commonRequest, allowedFields,
+            FinSearchSupport.temporalFieldConverter(Set.of())));
         Pageable pageable = PageableBuilder.from(commonRequest, ALLOWED_SORT_FIELDS);
 
         return ServiceResult.success(repository.findAll(spec, pageable).map(mapper::toResponse));

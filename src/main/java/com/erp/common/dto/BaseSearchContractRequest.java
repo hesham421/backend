@@ -3,7 +3,9 @@ package com.erp.common.dto;
 import com.erp.common.domain.status.Status;
 import com.erp.common.exception.CommonErrorCodes;
 import com.erp.common.exception.LocalizedException;
+import com.erp.common.exception.ErrorDetail;
 import com.erp.common.search.SearchFilter;
+import com.erp.common.search.SearchOperator;
 import com.erp.common.search.SearchRequest;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
@@ -78,16 +80,51 @@ public class BaseSearchContractRequest {
         if (filters == null) {
             return null;
         }
-        return filters.stream()
-            .filter(f -> f != null && field.equals(f.getField()))
-            .map(SearchFilter::getValue)
-            // Only scalar values yield a single Long — an IN-list (Iterable/array) value is not a
-            // scalar id filter, so skip it rather than blow up parsing "[1, 2]".
-            .filter(v -> v != null && !(v instanceof Iterable<?>) && !v.getClass().isArray())
-            .map(BaseSearchContractRequest::toLong)
-            .filter(v -> v != null)
+        SearchFilter match = filters.stream()
+            .filter(f -> f != null && field.equals(f.getField()) && f.getValue() != null)
             .findFirst()
             .orElse(null);
+        if (match == null) {
+            return null;
+        }
+        assertScalarEqualsFilter(match);
+        return toLong(match.getValue());
+    }
+
+    /**
+     * A lifted id filter is scalar EQUALS and nothing else, and saying so out loud is the whole
+     * point of this method.
+     *
+     * <p>Every field a request lifts out of the generic set — a parent scope, a foreign key — is
+     * read by {@link #extractLongFilter(String)} for its VALUE, and the service then ANDs in its
+     * own {@code cb.equal(...)} predicate. The operator the caller sent never reaches that
+     * predicate. Until 2026-09-19 it was simply ignored, with two results that a client could not
+     * tell apart from success: {@code NOT_EQUALS} produced the EQUALS result set — the exact
+     * inverse of what was asked — and an {@code IN} list was skipped by the old scalar filter, so
+     * the request came back unscoped, which on {@code parentAccountId} means the entire chart of
+     * accounts rendered as one node's children. That is precisely the silent-drop class
+     * {@code SpecBuilder.assertFieldsAllowed} was added to eliminate, so it is rejected the same
+     * way and with the same registered code.
+     *
+     * <p>A null operator is EQUALS, matching {@code SpecBuilder}'s own default. Honouring more
+     * operators here is possible — {@code SessionService.usernameMatches} does exactly that for
+     * its lifted field — but it belongs in the service that owns the predicate, not in a value
+     * extractor, and no FIN or SEC screen asks for a non-EXACT id filter today.
+     */
+    private static void assertScalarEqualsFilter(SearchFilter filter) {
+        Object value = filter.getValue();
+        boolean listValue = value instanceof Iterable<?> || value.getClass().isArray();
+        SearchOperator operator = filter.getOperator() == null
+            ? SearchOperator.EQUALS
+            : filter.getOperator();
+        if (!listValue && operator == SearchOperator.EQUALS) {
+            return;
+        }
+        throw LocalizedException.withDetails(
+            Status.VALIDATION_ERROR, CommonErrorCodes.VALIDATION_ERROR,
+            List.of(ErrorDetail.ofField(filter.getField(),
+                CommonErrorCodes.UNSUPPORTED_FILTER_OPERATOR,
+                listValue ? SearchOperator.IN : operator, filter.getField())));
     }
 
     /**

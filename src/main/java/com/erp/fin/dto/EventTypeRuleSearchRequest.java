@@ -30,17 +30,17 @@ public class EventTypeRuleSearchRequest extends BaseSearchContractRequest {
 
     @Override
     @Schema(description = "Filter criteria. Supported fields: eventTypeCode (EQUALS, IN - "
-        + "ACCOUNTING_EVENT_TYPE), nameAr / nameEn (LIKE), isActiveFl (EQUALS), "
-        + "eventTypeRulePk (EQUALS, IN), createdAt (comparison operators). Any other "
-        + "field is rejected as 400 VALIDATION_ERROR naming it - معايير التصفية")
+        + "ACCOUNTING_EVENT_TYPE), nameAr / nameEn (LIKE), isActiveFl (EQUALS), eventTypeRulePk "
+        + "(EQUALS, IN), createdAt (comparison operators). Any other field, or an operator a field "
+        + "does not list, is rejected as 400 VALIDATION_ERROR naming it - معايير التصفية")
     public List<SearchFilter> getFilters() {
         return super.getFilters();
     }
 
     @Override
     @Schema(description = "Sort field. Supported: eventTypeRulePk, eventTypeCode, nameAr, nameEn, "
-        + "isActiveFl, createdAt. Any other value is rejected as 400 FIN-400-INVALID-SORT "
-        + "- حقل الترتيب")
+        + "isActiveFl, createdAt. Any other value is rejected as 400 FIN-400-INVALID-SORT - حقل "
+        + "الترتيب")
     public String getSortField() {
         return super.getSortField();
     }

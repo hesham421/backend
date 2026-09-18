@@ -240,9 +240,10 @@ fields the endpoint publishes. Every FIN search now names its own set in the api
 column for `filters[].field` and `sortField`, so the list is citable rather than guessable.
 
 **One caveat, because it will bite otherwise:** a field the endpoint lifts out of the generic set —
-`parentAccountId`, `fiscalYearId`, `periodId`, `dimensionId`, `sourceAccountId` — is read for its
-*value* only. Sending it with an operator other than `EQUALS` is silently treated as `EQUALS`,
-not rejected. Send `EQUALS`.
+`parentAccountId`, `fiscalYearId`, `periodId`, `dimensionId`, `sourceAccountId` — is `EQUALS`-only.
+Any other operator, or an `IN` list, is a `400` carrying `UNSUPPORTED_FILTER_OPERATOR` on that
+field. Build those filters with `EQUALS` and treat the 400 as a bug in your request, not a server
+fault.
 
 **What does not change anywhere:** no route, no page code, no permission, no existing request shape,
 no existing response field, no status code, no error code. Your route guard, your twelve page codes

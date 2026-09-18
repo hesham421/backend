@@ -157,7 +157,7 @@ public class FiscalPeriodService {
      * {@code fiscalYear.fiscalYearPk} path {@code SpecBuilder} cannot resolve, so it becomes an
      * explicit {@code Specification} join ANDed with the generic specification built from the
      * remaining filters. {@code startDate}/{@code endDate} bounds arrive as JSON strings and are
-     * coerced to {@code LocalDate} by {@code FinSearchSupport.localDateFieldConverter}.
+     * coerced by {@code FinSearchSupport.temporalFieldConverter}.
      *
      * <p><b>The parent id is OPTIONAL here — a deliberate divergence from
      * {@code DimensionValueService.search}, which rejects a null parent id with
@@ -180,7 +180,7 @@ public class FiscalPeriodService {
         SearchRequest commonRequest = searchRequest.toCommonSearchRequest();
         SetAllowedFields allowedFields = new SetAllowedFields(ALLOWED_SORT_FIELDS);
         Specification<FiscalPeriod> spec = SpecBuilder.build(commonRequest, allowedFields,
-            FinSearchSupport.localDateFieldConverter(DATE_FILTER_FIELDS));
+            FinSearchSupport.temporalFieldConverter(DATE_FILTER_FIELDS));
 
         Long fiscalYearId = searchRequest.getFiscalYearId();
         if (fiscalYearId != null) {

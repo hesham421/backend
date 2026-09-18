@@ -58,21 +58,19 @@ public class DimensionValueSearchRequest extends BaseSearchContractRequest {
     }
 
     @Override
-    @Schema(description = "Filter criteria. Supported fields: dimensionId (EQUALS - "
-        + "the parent scope), "
-        + "code (LIKE), nameAr / nameEn (LIKE), sortOrder (EQUALS, comparison operators), "
-        + "isActiveFl (EQUALS), dimensionValuePk (EQUALS, IN), createdAt (comparison "
-        + "operators). Any other field is rejected as 400 VALIDATION_ERROR naming it - "
-        + "معايير التصفية")
+    @Schema(description = "Filter criteria. Supported fields: dimensionId (EQUALS - the parent "
+        + "scope), code (LIKE), nameAr / nameEn (LIKE), sortOrder (EQUALS, comparison operators), "
+        + "isActiveFl (EQUALS), dimensionValuePk (EQUALS, IN), createdAt (comparison operators). "
+        + "Any other field, or an operator a field does not list, is rejected as 400 "
+        + "VALIDATION_ERROR naming it - معايير التصفية")
     public List<SearchFilter> getFilters() {
         return super.getFilters();
     }
 
     @Override
-    @Schema(description = "Sort field. Supported: dimensionValuePk, code, nameAr, "
-        + "nameEn, sortOrder, "
-        + "isActiveFl, createdAt. Any other value is rejected as 400 FIN-400-INVALID-SORT "
-        + "- حقل الترتيب")
+    @Schema(description = "Sort field. Supported: dimensionValuePk, code, nameAr, nameEn, "
+        + "sortOrder, isActiveFl, createdAt. Any other value is rejected as 400 "
+        + "FIN-400-INVALID-SORT - حقل الترتيب")
     public String getSortField() {
         return super.getSortField();
     }

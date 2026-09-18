@@ -415,7 +415,7 @@ public class RecurringTemplateService {
         SearchRequest commonRequest = searchRequest.toCommonSearchRequest();
         SetAllowedFields allowedFields = new SetAllowedFields(ALLOWED_SORT_FIELDS);
         Specification<RecurringTemplate> spec = SpecBuilder.build(commonRequest, allowedFields,
-            FinSearchSupport.localDateFieldConverter(DATE_FILTER_FIELDS));
+            FinSearchSupport.temporalFieldConverter(DATE_FILTER_FIELDS));
         Pageable pageable = PageableBuilder.from(commonRequest, ALLOWED_SORT_FIELDS);
 
         Page<RecurringTemplate> page = repository.findAll(spec, pageable);

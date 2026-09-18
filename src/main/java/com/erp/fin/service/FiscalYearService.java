@@ -426,7 +426,7 @@ public class FiscalYearService {
         SearchRequest commonRequest = searchRequest.toCommonSearchRequest();
         SetAllowedFields allowedFields = new SetAllowedFields(ALLOWED_SORT_FIELDS);
         Specification<FiscalYear> spec = SpecBuilder.build(commonRequest, allowedFields,
-            FinSearchSupport.localDateFieldConverter(DATE_FILTER_FIELDS));
+            FinSearchSupport.temporalFieldConverter(DATE_FILTER_FIELDS));
         Pageable pageable = PageableBuilder.from(commonRequest, ALLOWED_SORT_FIELDS);
 
         return ServiceResult.success(

@@ -45,8 +45,9 @@ public class FiscalYearSearchRequest extends BaseSearchContractRequest {
     @Schema(description = "Filter criteria. Supported fields: code (LIKE), statusCode (EQUALS, IN "
         + "- FISCAL_YEAR_STATUS), startDate / endDate (EQUALS, GREATER_THAN_OR_EQUAL, "
         + "LESS_THAN_OR_EQUAL - ISO yyyy-MM-dd), isActiveFl (EQUALS), fiscalYearPk (EQUALS, IN), "
-        + "createdAt (EQUALS, GREATER_THAN_OR_EQUAL, LESS_THAN_OR_EQUAL). Any other field is "
-        + "rejected as 400 VALIDATION_ERROR naming it - معايير التصفية")
+        + "createdAt (EQUALS, GREATER_THAN_OR_EQUAL, LESS_THAN_OR_EQUAL). Any other field, or an "
+        + "operator a field does not list, is rejected as 400 VALIDATION_ERROR naming it - معايير "
+        + "التصفية")
     public List<SearchFilter> getFilters() {
         return super.getFilters();
     }
