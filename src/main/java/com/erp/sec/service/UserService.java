@@ -12,6 +12,7 @@ import com.erp.common.util.SecurityContextHelper;
 import com.erp.sec.crossmodule.UserContact;
 import com.erp.sec.domain.ActiveSessionDomain;
 import com.erp.sec.domain.UserDomain;
+import com.erp.sec.dto.RoleSummaryResponse;
 import com.erp.sec.dto.UserCreateRequest;
 import com.erp.sec.dto.UserResponse;
 import com.erp.sec.dto.UserSearchRequest;
@@ -22,6 +23,7 @@ import com.erp.sec.entity.AuditLogEntry;
 import com.erp.sec.entity.User;
 import com.erp.sec.exception.SecErrorCodes;
 import com.erp.sec.mapper.UserMapper;
+import com.erp.sec.permission.PermissionConstants;
 import com.erp.sec.repository.ActiveSessionRepository;
 import com.erp.sec.repository.AuditLogEntryRepository;
 import com.erp.sec.repository.RoleActionGrantRepository;
@@ -29,6 +31,7 @@ import com.erp.sec.repository.UserRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
@@ -62,16 +65,30 @@ public class UserService {
     private final AuditLogEntryRepository auditLogEntryRepository;
     private final RoleActionGrantRepository roleActionGrantRepository;
     private final UserMapper mapper;
+    private final UserRoleService userRoleService;
     private final PasswordEncoder passwordEncoder;
 
     /**
      * API-SEC-006. SRS A6 defines no AUDIT_EVENT_TYPE for plain user creation, so no audit row is
-     * appended here.
+     * appended here — the role assignment {@code roleIds} may carry does audit itself (ROLE_ASSIGNED),
+     * through the same path API-SEC-008 uses.
+     *
+     * <p>Authorization is split: PERM_SEC_USERS_CREATE always (the {@code @PreAuthorize} below), and
+     * PERM_SEC_USERS_UPDATE additionally when {@code roleIds} is non-empty, because that is what
+     * API-SEC-008 demands of the identical write. Without the second check, creating a user would be
+     * a side door around the assignment gate. The check is in the body, not in SpEL, because it
+     * depends on the request body.
      */
     @Transactional
     @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants).PERM_SEC_USERS_CREATE)")
     public ServiceResult<UserResponse> create(UserCreateRequest request) {
         log.info("Creating User with username: {}", request.getUsername());
+
+        List<Long> roleIds = request.getRoleIds();
+        boolean assigningRoles = roleIds != null && !roleIds.isEmpty();
+        if (assigningRoles) {
+            assertMayAssignRoles();      // before the insert — a denial must write nothing at all
+        }
 
         boolean usernameTaken = repository.existsByUsername(request.getUsername());
         boolean emailTaken = repository.existsByEmail(request.getEmail());
@@ -82,7 +99,12 @@ public class UserService {
             mapper.toEntity(request, passwordEncoder.encode(request.getPassword())));
         log.info("Created User ID: {}", saved.getUserPk());
 
-        return ServiceResult.success(mapper.toResponse(saved), Status.CREATED);
+        // Same transaction as the insert above: an unknown role id rolls the user back too,
+        // so a half-configured account cannot survive a failed assignment.
+        List<RoleSummaryResponse> roles =
+            assigningRoles ? userRoleService.replaceAssignments(saved, roleIds) : List.of();
+
+        return ServiceResult.success(mapper.toResponse(saved, roles), Status.CREATED);
     }
 
     /** API-SEC-007 — username is immutable, so only email uniqueness is re-checked (QR-SEC-033). */
@@ -100,7 +122,8 @@ public class UserService {
         User saved = repository.save(entity);
         log.info("Updated User ID: {}", saved.getUserPk());
 
-        return ServiceResult.success(mapper.toResponse(saved), Status.UPDATED);
+        return ServiceResult.success(
+            mapper.toResponse(saved, userRoleService.rolesOf(id)), Status.UPDATED);
     }
 
     /**
@@ -171,7 +194,12 @@ public class UserService {
         Page<User> result =
             repository.findAll(spec, PageableBuilder.from(commonRequest, ALLOWED_SORT_FIELDS));
 
-        return ServiceResult.success(result.map(mapper::toResponse));
+        // One query for the whole page — never one per row (A.2.6).
+        Map<Long, List<RoleSummaryResponse>> rolesByUser = userRoleService.rolesByUser(
+            result.getContent().stream().map(User::getUserPk).toList());
+
+        return ServiceResult.success(result.map(user -> mapper.toResponse(
+            user, rolesByUser.getOrDefault(user.getUserPk(), List.of()))));
     }
 
     /**
@@ -212,6 +240,13 @@ public class UserService {
         return (root, query, cb) -> cb.or(
             cb.like(cb.lower(root.get("fullNameAr")), pattern),
             cb.like(cb.lower(root.get("fullNameEn")), pattern));
+    }
+
+    /** The body-dependent half of API-SEC-006's gate; SEC-403-FORBIDDEN is the module's denial. */
+    private void assertMayAssignRoles() {
+        if (!SecurityContextHelper.hasAuthority(PermissionConstants.PERM_SEC_USERS_UPDATE)) {
+            throw new LocalizedException(Status.FORBIDDEN, SecErrorCodes.SEC_403_FORBIDDEN);
+        }
     }
 
     private User loadUser(Long id) {

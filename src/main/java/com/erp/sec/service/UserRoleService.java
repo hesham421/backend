@@ -23,6 +23,7 @@ import com.erp.sec.repository.UserRepository;
 import com.erp.sec.repository.UserRoleAssignmentRepository;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -66,7 +67,24 @@ public class UserRoleService {
             .orElseThrow(() -> new LocalizedException(
                 Status.NOT_FOUND, SecErrorCodes.SEC_404_USER, userId));
 
-        Map<Long, Role> requestedRoles = loadRequestedRoles(request.getRoleIds());
+        List<RoleSummaryResponse> roles = replaceAssignments(user, request.getRoleIds());
+
+        return ServiceResult.success(userMapper.toResponse(user, roles), Status.UPDATED);
+    }
+
+    /**
+     * The assignment itself, without a gate of its own: the submitted set REPLACES the stored one,
+     * RULE-SEC-005 is checked per requested role, and every add and removal is audited. Shared by
+     * API-SEC-008 (gated by {@link #assign} above) and API-SEC-006's create-with-roles (gated by
+     * {@code UserService.create}, which additionally demands PERM_SEC_USERS_UPDATE before it calls
+     * here) — package-private precisely so no path outside {@code com.erp.sec.service} can reach an
+     * ungated assignment, and so it always runs inside its caller's transaction.
+     *
+     * @return the resulting role set, in submitted order, ready for {@code UserResponse.roles}
+     */
+    List<RoleSummaryResponse> replaceAssignments(User user, List<Long> roleIds) {
+        Long userId = user.getUserPk();
+        Map<Long, Role> requestedRoles = loadRequestedRoles(roleIds);
 
         for (Role role : requestedRoles.values()) {
             UserRoleAssignmentDomain.create(userId, role.getRolePk(),
@@ -110,11 +128,36 @@ public class UserRoleService {
         log.info("Assigned roles to User ID: {}, added: {}, removed: {}",
             userId, added.size(), removed.size());
 
-        List<RoleSummaryResponse> roles = requestedRoles.values().stream()
+        return requestedRoles.values().stream()
             .map(roleMapper::toSummaryResponse)
             .toList();
+    }
 
-        return ServiceResult.success(userMapper.toResponse(user, roles), Status.UPDATED);
+    /**
+     * The roles one user holds, for the {@code roles} member of a single-user response
+     * (API-SEC-006 without roleIds, API-SEC-007). Package-private, same reasoning as above.
+     */
+    List<RoleSummaryResponse> rolesOf(Long userPk) {
+        return repository.findByUser(userPk).stream()
+            .map(assignment -> roleMapper.toSummaryResponse(assignment.getRole()))
+            .toList();
+    }
+
+    /**
+     * The same, for a whole page of users (API-SEC-005) — ONE query for the page, never one per
+     * row. A user with no assignments is simply absent from the map; the caller substitutes an
+     * empty list, so "holds no roles" stays distinguishable from a missing key on the wire.
+     */
+    Map<Long, List<RoleSummaryResponse>> rolesByUser(Collection<Long> userPks) {
+        if (userPks == null || userPks.isEmpty()) {
+            return Map.of();                       // IN () is a syntax error — never issue it
+        }
+        Map<Long, List<RoleSummaryResponse>> byUser = new LinkedHashMap<>();
+        for (UserRoleAssignment assignment : repository.findByUserIn(userPks)) {
+            byUser.computeIfAbsent(assignment.getUser().getUserPk(), key -> new ArrayList<>())
+                .add(roleMapper.toSummaryResponse(assignment.getRole()));
+        }
+        return byUser;
     }
 
     private Map<Long, Role> loadRequestedRoles(List<Long> roleIds) {

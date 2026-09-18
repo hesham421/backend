@@ -12,7 +12,8 @@ import lombok.NoArgsConstructor;
 
 /**
  * ENT-SEC-001 response — every field except {@code passwordHash}, which is never serialized
- * (POL-SEC-004). {@code roles} is populated by API-SEC-008 only and omitted otherwise.
+ * (POL-SEC-004). {@code roles} is populated on every user-shaped response; a user holding no
+ * roles carries an empty array, never a missing key.
  */
 @Data
 @Builder
@@ -47,7 +48,7 @@ public class UserResponse {
     private Boolean isActiveFl;
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    @Schema(description = "Assigned roles, returned by the role-assignment API - الأدوار المُسندة")
+    @Schema(description = "Assigned roles; empty when the user holds none - الأدوار المُسندة، ومصفوفة فارغة إن لم يحمل المستخدم أي دور")
     private List<RoleSummaryResponse> roles;
 
     @Schema(description = "Created timestamp - تاريخ الإنشاء")

@@ -1,6 +1,7 @@
 package com.erp.sec.repository;
 
 import com.erp.sec.entity.UserRoleAssignment;
+import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -27,4 +28,14 @@ public interface UserRoleAssignmentRepository
     @Query("SELECT ura FROM UserRoleAssignment ura JOIN FETCH ura.role "
         + "WHERE ura.user.userPk = :userPk")
     List<UserRoleAssignment> findByUser(@Param("userPk") Long userPk);
+
+    /**
+     * The same set for a whole page of users in ONE select — API-SEC-005 renders {@code roles} for
+     * every row, and asking per row would be a query per row (A.2.6). {@code JOIN FETCH} loads each
+     * assignment's Role alongside it, exactly as {@link #findByUser} does. The caller must not pass
+     * an empty collection: {@code IN ()} is a syntax error on Postgres.
+     */
+    @Query("SELECT ura FROM UserRoleAssignment ura JOIN FETCH ura.role "
+        + "WHERE ura.user.userPk IN :userPks")
+    List<UserRoleAssignment> findByUserIn(@Param("userPks") Collection<Long> userPks);
 }

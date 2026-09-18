@@ -18,4 +18,18 @@ public final class SecurityContextHelper {
         }
         return authentication.getName();
     }
+
+    /**
+     * Whether the current principal holds {@code authority}. For the rare gate a single
+     * {@code @PreAuthorize} cannot express — a method whose required permission depends on what
+     * the request body carries. A method with one fixed permission still uses {@code @PreAuthorize}.
+     */
+    public static boolean hasAuthority(String authority) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return false;
+        }
+        return authentication.getAuthorities().stream()
+            .anyMatch(granted -> granted.getAuthority().equals(authority));
+    }
 }

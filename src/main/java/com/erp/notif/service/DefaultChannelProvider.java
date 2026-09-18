@@ -93,19 +93,36 @@ public class DefaultChannelProvider implements ChannelProvider {
         }
         Map<String, String> htmlVars = new HashMap<>(variables);
         String url = variables.get("actionLink");
-        String label = variables.getOrDefault(rtl ? "ctaLabelAr" : "ctaLabelEn", url);
-        htmlVars.put("actionLink", "</p><div style=\"text-align:center;margin:24px 0\">"
-            + "<a href=\"" + url + "\" style=\"display:inline-block;padding:12px 32px;background:#1a1a2e;"
-            + "color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;font-size:14px\">"
+        String safeUrl = escape(url);
+        String label = escape(variables.getOrDefault(rtl ? "ctaLabelAr" : "ctaLabelEn", url));
+        String fallbackIntro = rtl
+            ? "\u0623\u0648 \u0627\u0646\u0633\u062e \u0647\u0630\u0627 \u0627\u0644\u0631\u0627\u0628\u0637 \u0625\u0644\u0649 \u0645\u062a\u0635\u0641\u062d\u0643:"
+            : "Or copy and paste this link into your browser:";
+        htmlVars.put("actionLink", "</p><div style=\"text-align:center;margin:28px 0\">"
+            + "<a href=\"" + safeUrl + "\" style=\"display:inline-block;padding:14px 36px;background:#1a1a2e;"
+            + "color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;font-size:15px\">"
             + label + "</a></div>"
-            + "<p style=\"font-size:12px;color:#8a8a98;word-break:break-all\">" + url + "</p><p>");
+            + "<p style=\"font-size:12px;color:#8a8a98;margin:0 0 4px\">" + fallbackIntro + "</p>"
+            + "<p style=\"font-size:12px;color:#8a8a98;word-break:break-all;margin:0 0 20px\">"
+            + "<a href=\"" + safeUrl + "\" style=\"color:#8a8a98\">" + safeUrl + "</a></p><p>");
         return htmlVars;
+    }
+
+    /** Template bodies and substituted values are data, not markup — never let either close a tag. */
+    private static String escape(String value) {
+        return value == null ? "" : value.replace("&", "&amp;").replace("<", "&lt;")
+            .replace(">", "&gt;").replace("\"", "&quot;");
     }
 
     private static String renderHtml(String subject, String bodyWithHighlight, boolean rtl) {
         String dir = rtl ? "rtl" : "ltr";
         String align = rtl ? "right" : "left";
-        String paragraphs = "<p>" + bodyWithHighlight.replace("\n", "<br>") + "</p>";
+        // The button block closes and reopens the surrounding <p>; the template's own newlines around
+        // {actionLink} would otherwise survive as <br>s hanging off an empty paragraph.
+        String paragraphs = ("<p>" + bodyWithHighlight.replace("\n", "<br>") + "</p>")
+            .replaceAll("(?:<br>)+(</p>)", "$1")
+            .replaceAll("(<p[^>]*>)(?:<br>)+", "$1")
+            .replaceAll("<p>\\s*</p>", "");
         return "<!DOCTYPE html><html dir=\"" + dir + "\" lang=\"" + (rtl ? "ar" : "en") + "\">"
             + "<body style=\"margin:0;padding:0;background:#f4f4f7;font-family:Arial,Helvetica,sans-serif\">"
             + "<div style=\"max-width:480px;margin:24px auto;background:#ffffff;border-radius:8px;"

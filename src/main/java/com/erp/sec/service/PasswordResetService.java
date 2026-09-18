@@ -21,12 +21,18 @@ import com.erp.sec.repository.AuditLogEntryRepository;
 import com.erp.sec.repository.PasswordResetTokenRepository;
 import com.erp.sec.repository.UserRepository;
 import com.erp.sec.security.InternalCallerContext;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,6 +59,14 @@ public class PasswordResetService {
     private static final String MODULE_CODE = "SEC";
     private static final String REFERENCE_TYPE = "SEC_PWD_RESET_TOKEN";
 
+    /** Button wording for the one-click reset link rendered by {@code DefaultChannelProvider}. */
+    private static final String CTA_LABEL_EN = "Reset Password";
+    private static final String CTA_LABEL_AR = "\u0625\u0639\u0627\u062f\u0629 \u062a\u0639\u064a\u064a\u0646 \u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631";
+
+    /** {@code 2026-09-18T15:36:19.829117Z} is not a date a recipient should be shown. */
+    private static final DateTimeFormatter EXPIRY_FORMAT =
+        DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm 'UTC'", Locale.ENGLISH).withZone(ZoneOffset.UTC);
+
     private static final String REQUEST_CONFIRMATION_AR =
         "إذا كان البريد الإلكتروني مسجلًا فسيتم إرسال رابط إعادة التعيين";
     private static final String REQUEST_CONFIRMATION_EN =
@@ -66,6 +80,19 @@ public class PasswordResetService {
     private final ActiveSessionRepository activeSessionRepository;
     private final PasswordEncoder passwordEncoder;
     private final NotificationDispatchApi notificationDispatchApi;
+
+    /**
+     * Base of the UI that hosts the reset screen, and the route the mailed button opens on it.
+     * Both are configuration rather than constants because api_doc_gaps #13 records that no SEC
+     * artifact specifies a frontend password-reset URL — the route below is the human decision that
+     * closed that gap (2026-09-18), and a deployment with a different route changes the property,
+     * not this class.
+     */
+    @Value("${app.frontend-url:}")
+    private String frontendUrl;
+
+    @Value("${app.password-reset-path:/reset-password}")
+    private String passwordResetPath;
 
     /**
      * API-SEC-003 — the same generic confirmation is returned whether or not the email resolves to
@@ -197,11 +224,36 @@ public class PasswordResetService {
                     token.getPwdResetTokenPk(),
                     REFERENCE_TYPE,
                     Map.of("token", rawToken,
-                        "expiresAt", String.valueOf(token.getExpiresAt()),
-                        "email", user.getEmail()))));
+                        "expiresAt", EXPIRY_FORMAT.format(token.getExpiresAt()),
+                        "email", user.getEmail(),
+                        "actionLink", buildActionLink(rawToken),
+                        "ctaLabelEn", CTA_LABEL_EN,
+                        "ctaLabelAr", CTA_LABEL_AR))));
         } catch (RuntimeException e) {
             log.warn("Password-reset notification dispatch failed for User ID {} — the reset "
                 + "request itself still succeeds (REQ-SEC-029 is optional)", user.getUserPk(), e);
         }
+    }
+
+    /**
+     * The one-click URL the mailed button opens: the reset screen, carrying the raw token as a query
+     * param. NOTIF renders it as a CTA button for the HTML body and keeps the bare URL in the
+     * plain-text alternative, so the recipient never types a token by hand.
+     */
+    private String buildActionLink(String rawToken) {
+        String base = frontendUrl == null ? "" : frontendUrl.trim();
+        if (base.isBlank()) {
+            log.warn("app.frontend-url is not set — the password-reset mail will carry a relative "
+                + "link that no mail client can open. Set FRONTEND_URL for this environment.");
+        }
+        while (base.endsWith("/")) {
+            base = base.substring(0, base.length() - 1);
+        }
+        String path = passwordResetPath == null || passwordResetPath.isBlank()
+            ? "/reset-password" : passwordResetPath.trim();
+        if (!path.startsWith("/")) {
+            path = "/" + path;
+        }
+        return base + path + "?token=" + URLEncoder.encode(rawToken, StandardCharsets.UTF_8);
     }
 }

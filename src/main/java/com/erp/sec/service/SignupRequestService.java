@@ -15,6 +15,7 @@ import com.erp.sec.mapper.SignupRequestMapper;
 import com.erp.sec.mapper.UserMapper;
 import com.erp.sec.repository.SignupRequestRepository;
 import com.erp.sec.repository.UserRepository;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -88,7 +89,9 @@ public class SignupRequestService {
             repository.save(entity);
             log.info("Approved SignupRequest ID: {}, created User ID: {}", id, created.getUserPk());
 
-            return ServiceResult.success(userMapper.toResponse(created), Status.UPDATED);
+            // A just-approved sign-up holds no roles yet — an empty array, not a missing key.
+            return ServiceResult.success(
+                userMapper.toResponse(created, List.of()), Status.UPDATED);
         }
 
         entity.reject(principal);

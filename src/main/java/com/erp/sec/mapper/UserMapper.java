@@ -61,11 +61,11 @@ public class UserMapper {
         entity.setFullNameEn(request.getFullNameEn());
     }
 
-    public UserResponse toResponse(User entity) {
-        return toResponse(entity, null);
-    }
-
-    /** {@code roles} is non-null only on the API-SEC-008 path. */
+    /**
+     * {@code roles} is a required argument, and there is deliberately no one-argument overload: a
+     * caller that has not looked the roles up cannot accidentally emit a user without them. Pass
+     * {@link List#of()} where the user provably holds none.
+     */
     public UserResponse toResponse(User entity, List<RoleSummaryResponse> roles) {
         if (entity == null) {
             return null;
@@ -79,7 +79,7 @@ public class UserMapper {
             .statusCode(entity.getStatusCode())
             .lastLoginAt(entity.getLastLoginAt())
             .isActiveFl(Boolean.TRUE.equals(entity.getIsActiveFl()))
-            .roles(roles)
+            .roles(roles == null ? List.of() : roles)
             .createdAt(entity.getCreatedAt())
             .createdBy(entity.getCreatedBy())
             .updatedAt(entity.getUpdatedAt())
