@@ -133,16 +133,39 @@ def default_output_dir(module: str) -> Path:
     authors them — the generator reads the running app — and the shared repo's
     CODEOWNERS grants this repo write access to exactly this path and no other.
 
-    That path is this track's PARTITION (tracks.backend.partition), not the
-    module's analysis folder (paths.modules). The two were the same folder until
-    the v7 project-repo layout split them; this function kept resolving against
-    paths.modules afterwards, so on 2026-09-19 a FIN regeneration reported all 38
-    endpoints as "added" -- it was about to write a second, empty-history copy
-    under analysis/modules/FIN/api-docs/ while every module's real api-docs sat
-    in backend/modules/<MOD>/api-docs/. Read-only inputs (the execution plan,
-    the module's stage artifacts) still resolve against paths.modules, which is
-    correct: this repo reads there and writes here."""
-    return _backend_partition_root(module) / "api-docs"
+    WHICH path that is depends on the profile's layout, and the two layouts in
+    use disagree, so neither is hard-coded:
+
+      * module-root layout   -> <paths.modules>/<MOD>/api-docs
+        (profile "erp": erp/modules/FIN/api-docs — what CLAUDE.md's ownership
+        table documents)
+      * track-partition layout -> <tracks.backend.partition>/api-docs
+        (the v7 project-repo layout: backend/modules/FIN/api-docs)
+
+    Resolving against the wrong one does not fail loudly — it reports every
+    endpoint as "added" and writes a second, empty-history copy of the docs
+    beside the real ones. That happened on 2026-09-19 in both directions: first
+    because this function assumed the module root while the checkout was v7,
+    then, after the naive repair, because it assumed the partition while the
+    checkout was "erp". So it now asks the checkout instead of assuming: the
+    candidate that already exists wins. Only when neither exists is a choice
+    made, and it falls to the module root, which is the layout CLAUDE.md
+    documents.
+    """
+    candidates = [
+        _shared_modules_root() / module / "api-docs",
+        _backend_partition_root(module) / "api-docs",
+    ]
+    existing = [c for c in candidates if c.is_dir()]
+    if len(existing) == 1:
+        return existing[0]
+    if len(existing) > 1:
+        raise SystemExit(
+            "two api-docs directories exist for {} and only one can be authoritative:\n"
+            "  {}\n  {}\n"
+            "delete the stale one before regenerating -- writing to either would "
+            "leave the other silently out of date".format(module, *existing))
+    return candidates[0]
 
 
 def default_module_dir(module: str) -> Path:
