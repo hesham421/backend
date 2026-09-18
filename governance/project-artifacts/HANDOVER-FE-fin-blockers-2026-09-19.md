@@ -5,6 +5,9 @@
 **Contracts touched:** no existing endpoint, request shape, response field, status code or error
 code was changed. One new endpoint and one widened response, both additive. Two new filter fields
 on existing searches, both optional.
+**Companion:** `HANDOVER-FE-fin-plan-edits-2026-09-19.md` — the same changes expressed as an edit
+list against `srs-fin.md`, `ADR-FIN-006`, the ADR-FIN-002 binding annex and your execution plan.
+Read this document for what the backend does; read that one for what to change in the plan.
 
 ---
 
