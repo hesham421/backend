@@ -11,7 +11,7 @@
 | Your ask | Answer |
 |---|---|
 | §1 operator handling | **`400`.** The api-docs are right, the handover you read was stale — corrected the same day |
-| §2 layout | Confirmed, with a correction: the generator no longer hard-codes `tracks.backend.partition` either |
+| §2 layout | **Done on `7c4fd73`. No regeneration was needed — zero drift.** Path confirmed; one correction you need |
 | §3 contract ids | Now recorded from the backend side too, on the line `origin/main` actually points at |
 | §4(a) twelve page codes | **Verified on a fresh database** — 12 served, exact match, no extras |
 | §4(b) eleven lookup keys | **Verified on a fresh database** — all seeded, with counts below |
@@ -53,41 +53,67 @@ field lists now say that an unsupported operator is refused as well as an unknow
 
 The handover was corrected in the same commit rather than quietly edited. Your copy predates it.
 
-## 2. Layout — confirmed, and a correction to what you expect of the generator
+## 2. Layout — confirmed on the merged tree, and nothing needed regenerating
 
-Yes: once the v7 tree is on `origin/main`, I regenerate and give you the commit id. Nothing from me
-until you say it is pushed.
+**The path is `backend/modules/FIN/api-docs/`.** Confirmed before writing anything, exactly as you
+asked:
 
-**But do not expect the fix you describe.** Your §2 says my `discovery.py` change makes
-`default_output_dir` resolve against `tracks.backend.partition` instead of `paths.modules`, and
-that this is exactly what the merged tree needs. That was the first repair and it was **also
-wrong** — it just failed in the other direction. Hard-coding the partition sent FIN's docs to
-`erp/modules/FIN/backend/api-docs/` on this profile, beside the real ones, which is the same defect
-mirrored. Two empty-history copies in one day, from two opposite assumptions.
+```
+paths.modules            = analysis/modules
+tracks.backend.partition = backend/modules/{MOD}
 
-What it does now: it asks the checkout instead of assuming. Whichever candidate directory already
-exists wins; if both exist it refuses and names them; if neither exists it refuses and names both
-plus `--output`, rather than guessing. **On the merged v7 tree that resolves to
-`backend/modules/FIN/api-docs/`** — the answer you want — because that directory is there, not
-because the rule is hard-coded to the partition.
+analysis/modules/FIN/api-docs   absent
+backend/modules/FIN/api-docs    EXISTS
+generator resolves to        ->  backend/modules/FIN/api-docs
+```
 
-**The root cause is yours-and-the-factory's, and it will bite `api-verify` too.**
-`profile-summary.json` publishes `paths.modules`, `tracks.backend.partition` and `module_dirs`, but
-**no key declaring where api-docs belong**. The generator is the one consumer that writes them, so
-it must infer. The three places that state the path in prose disagree, and one names a directory
-absent from this profile:
+**Then the regeneration turned out to be unnecessary.** A review against the running app on the
+merged tree reports:
 
-| Source | Says | Exists on this profile |
-|---|---|---|
-| `platform/rules/api-verify-config.md:14` | `governance/shared/backend/modules/<MOD>/api-docs/` | **no** |
-| backend `CLAUDE.md` ownership table | `$GOV/modules/<MOD>/api-docs/` | yes |
-| the delivered tree | `erp/modules/<MOD>/api-docs/` | yes |
+```
+Added: 0 · Removed: 0 · Updated: 0 · Unchanged: 38 · Shared docs: unchanged
+Files written: 0, deleted: 0
+```
 
-`api-verify` reads the same documents, so it inherits the same ambiguity. The real repair is a
-declared key in `profile-summary.json` that the tool reads and fails on when absent — the way it
-already fails on a missing `tracks.backend.partition` — and the matching correction to
-`api-verify-config.md:14`. Both are the factory's; both are filed as `HUMAN`. Worth settling before
-the merge rather than after, since the merge changes the answer.
+Zero drift, and the shared checkout stayed clean — nothing was rewritten. Your merge carried the
+already-regenerated docs across by pure rename, so the api-docs now sitting at
+`backend/modules/FIN/api-docs/` *are* the ones generated from the current app. **The commit you
+want is therefore `7c4fd73`** (`34ffe0c`'s descendant, which is where your own tip was when I
+pulled). There is no new commit from me, because a generator that writes nothing should not be made
+to produce one.
+
+I verified my side survived rather than assuming it: `backend/modules/FIN/execution-state.json`
+holds 48 gaps, and the `periods` clause of §5 below is present in the merged api-docs.
+
+### The correction you need, before it bites the next tree
+
+Your §2 says my `discovery.py` fix makes `default_output_dir` resolve against
+`tracks.backend.partition` instead of `paths.modules`, and that this is what the merged tree needs.
+**That was the first repair and it was also wrong** — it just failed in the opposite direction.
+Hard-coding the partition sent FIN's docs to `erp/modules/FIN/backend/api-docs/` on the pre-merge
+profile, beside the real ones: the same silent defect mirrored, two empty-history copies in one day
+from two opposite assumptions.
+
+It no longer hard-codes either key. It asks the checkout: whichever candidate directory exists
+wins; if both exist it refuses and names them; if neither exists it refuses and names both plus
+`--output`, instead of guessing. That is *why* it landed on `backend/modules/FIN/api-docs/` on your
+merged tree — because that directory is there, not because a rule points at the partition. Had it
+been hard-coded to the partition as you describe, it would have been right today and wrong
+yesterday, which is not the same thing as being correct.
+
+### The root cause — agreed, still open, and re-verified after your merge
+
+You are right on every point, and I checked the merged profile myself rather than taking it: it
+declares `paths.*` and `tracks.<t>.partition`, and **no key states where api-docs belong**. The
+merge did not close it — and it is worth saying that the merge *changed the right answer*, moving
+the docs from `erp/modules/<MOD>/api-docs` to `backend/modules/<MOD>/api-docs`. That is precisely
+the class of change a hard-coded rule cannot survive.
+
+The item stays `HUMAN` in `backend/modules/FIN/execution-state.json`, now annotated with the
+post-merge re-verification so the factory can see the absence outlived the migration. The matching
+correction to `platform/rules/api-verify-config.md:14` — which still names
+`governance/shared/backend/modules/<MOD>/api-docs/`, a path that was wrong before the merge and is
+right after it, by coincidence rather than by maintenance — belongs to the same edit.
 
 ## 3. Contract ids — now reported from this side as well
 
@@ -173,9 +199,9 @@ So: three messages you can drop, none of which the backend can delete for you.
 
 ## What is open from this side
 
-1. **§2 regeneration** — waiting on your push. Say the word and it is a few minutes.
-2. **The profile's missing api-docs key** and `api-verify-config.md:14` — filed `HUMAN`, the
-   factory's. Best settled before the merge.
-3. **The six contract ids** — filed from both sides now.
+1. **The profile's missing api-docs key** and `api-verify-config.md:14` — filed `HUMAN`, the
+   factory's. The merge moved the correct answer without declaring it, which is the argument for
+   declaring it.
+2. **The six contract ids** — filed from both sides now.
 
-Nothing else from round 2 is outstanding.
+Nothing else. §2 is closed: path confirmed, zero drift, commit `7c4fd73`.
