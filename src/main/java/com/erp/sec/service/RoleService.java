@@ -2,6 +2,7 @@ package com.erp.sec.service;
 
 import com.erp.common.domain.status.ServiceResult;
 import com.erp.common.domain.status.Status;
+import com.erp.common.exception.LocalizedException;
 import com.erp.common.search.BooleanFieldValueConverter;
 import com.erp.common.search.FieldValueConverter;
 import com.erp.common.search.PageableBuilder;
@@ -12,7 +13,9 @@ import com.erp.sec.domain.RoleDomain;
 import com.erp.sec.dto.RoleCreateRequest;
 import com.erp.sec.dto.RoleResponse;
 import com.erp.sec.dto.RoleSearchRequest;
+import com.erp.sec.dto.RoleUpdateRequest;
 import com.erp.sec.entity.Role;
+import com.erp.sec.exception.SecErrorCodes;
 import com.erp.sec.mapper.RoleMapper;
 import com.erp.sec.repository.RoleRepository;
 import java.util.Locale;
@@ -59,6 +62,27 @@ public class RoleService {
         log.info("Created Role ID: {}, code: {}", saved.getRolePk(), saved.getCode());
 
         return ServiceResult.success(mapper.toResponse(saved), Status.CREATED);
+    }
+
+    /**
+     * Update a role's identity fields. {@code code} is the immutable natural key, so no
+     * uniqueness re-check is needed — the same reason {@code RoleDomain} declares no update-time
+     * guard. Gated on PERM_SEC_ROLES_UPDATE, the permission the grant writes already use.
+     */
+    @Transactional
+    @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants).PERM_SEC_ROLES_UPDATE)")
+    public ServiceResult<RoleResponse> update(Long id, RoleUpdateRequest request) {
+        log.info("Updating Role ID: {}", id);
+
+        Role entity = repository.findById(id)
+            .orElseThrow(() -> new LocalizedException(
+                Status.NOT_FOUND, SecErrorCodes.SEC_404_ROLE, id));
+
+        mapper.updateEntityFromRequest(entity, request);
+        Role saved = repository.save(entity);
+        log.info("Updated Role ID: {}", saved.getRolePk());
+
+        return ServiceResult.success(mapper.toResponse(saved), Status.UPDATED);
     }
 
     /** API-SEC-012 — an empty match is success with empty content, never a 404. */

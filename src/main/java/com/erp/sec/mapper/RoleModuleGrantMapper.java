@@ -1,10 +1,13 @@
 package com.erp.sec.mapper;
 
 import com.erp.sec.dto.ModuleGrantRevokeResponse;
+import com.erp.sec.dto.RoleModuleGrantNodeResponse;
 import com.erp.sec.dto.RoleModuleGrantResponse;
+import com.erp.sec.dto.RoleScreenGrantNodeResponse;
 import com.erp.sec.entity.ModuleRegistry;
 import com.erp.sec.entity.Role;
 import com.erp.sec.entity.RoleModuleGrant;
+import java.util.List;
 import org.springframework.stereotype.Component;
 
 /**
@@ -42,6 +45,28 @@ public class RoleModuleGrantMapper {
         return ModuleGrantRevokeResponse.builder()
             .revokedScreenGrants(revokedScreenGrants)
             .revokedActionGrants(revokedActionGrants)
+            .build();
+    }
+
+    /**
+     * Grant-tree module node. Same reason as the screen node for taking the registry row as a
+     * parameter: a module reached only through a screen or action grant has no module grant to
+     * read it from, and is emitted with {@code granted = false}.
+     */
+    public RoleModuleGrantNodeResponse toNodeResponse(ModuleRegistry module,
+                                                      RoleModuleGrant grant,
+                                                      List<RoleScreenGrantNodeResponse> screens) {
+        if (module == null) {
+            return null;
+        }
+        return RoleModuleGrantNodeResponse.builder()
+            .moduleRegPk(module.getModuleRegPk())
+            .code(module.getCode())
+            .nameAr(module.getNameAr())
+            .nameEn(module.getNameEn())
+            .granted(grant != null)
+            .grantedAt(grant == null ? null : grant.getGrantedAt())
+            .screens(screens == null ? List.of() : screens)
             .build();
     }
 }

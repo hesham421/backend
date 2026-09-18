@@ -122,4 +122,14 @@ public interface RoleActionGrantRepository
         + "  AND a.isActiveFl = TRUE AND g.role.isActiveFl = TRUE "
         + "  AND s.isActiveFl = TRUE AND m.isActiveFl = TRUE)")
     List<Long> findUserIdsHoldingPermission(@Param("permissionCode") String permissionCode);
+
+    /**
+     * Every action grant one role holds — the action half of the grant-tree read. The action's
+     * screen and that screen's module come with it because the tree nests each action under them.
+     * No active-flag predicate: this is an audit of what the role holds, not an effective-access
+     * resolution, so a grant on a deactivated registry row must still be visible.
+     */
+    @Query("SELECT g FROM RoleActionGrant g JOIN FETCH g.action a JOIN FETCH a.screen s "
+        + "JOIN FETCH s.module WHERE g.role.rolePk = :rolePk")
+    List<RoleActionGrant> findAllByRoleWithAction(@Param("rolePk") Long rolePk);
 }

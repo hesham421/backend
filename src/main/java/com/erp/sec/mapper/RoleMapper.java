@@ -1,14 +1,18 @@
 package com.erp.sec.mapper;
 
 import com.erp.sec.dto.RoleCreateRequest;
+import com.erp.sec.dto.RoleGrantTreeResponse;
+import com.erp.sec.dto.RoleModuleGrantNodeResponse;
 import com.erp.sec.dto.RoleResponse;
 import com.erp.sec.dto.RoleSummaryResponse;
+import com.erp.sec.dto.RoleUpdateRequest;
 import com.erp.sec.dto.RoleUserCountResponse;
 import com.erp.sec.entity.Role;
 import com.erp.sec.repository.RoleUserCountProjection;
+import java.util.List;
 import org.springframework.stereotype.Component;
 
-/** Manual entity/DTO mapper for ENT-SEC-002 (Role). SEC v1 exposes no role-update API. */
+/** Manual entity/DTO mapper for ENT-SEC-002 (Role). */
 @Component
 public class RoleMapper {
 
@@ -24,6 +28,17 @@ public class RoleMapper {
             .descriptionEn(request.getDescriptionEn())
             .isActiveFl(Boolean.TRUE)
             .build();
+    }
+
+    /** {@code code} is immutable and therefore never written here — see {@link RoleUpdateRequest}. */
+    public void updateEntityFromRequest(Role entity, RoleUpdateRequest request) {
+        if (entity == null || request == null) {
+            return;
+        }
+        entity.setNameAr(request.getNameAr());
+        entity.setNameEn(request.getNameEn());
+        entity.setDescriptionAr(request.getDescriptionAr());
+        entity.setDescriptionEn(request.getDescriptionEn());
     }
 
     public RoleResponse toResponse(Role entity) {
@@ -69,6 +84,21 @@ public class RoleMapper {
             .code(entity.getCode())
             .nameAr(entity.getNameAr())
             .nameEn(entity.getNameEn())
+            .build();
+    }
+
+    /** Grant-tree root — the role's identity; the modules are assembled by the service. */
+    public RoleGrantTreeResponse toGrantTreeResponse(Role entity,
+                                                     List<RoleModuleGrantNodeResponse> modules) {
+        if (entity == null) {
+            return null;
+        }
+        return RoleGrantTreeResponse.builder()
+            .rolePk(entity.getRolePk())
+            .code(entity.getCode())
+            .nameAr(entity.getNameAr())
+            .nameEn(entity.getNameEn())
+            .modules(modules == null ? List.of() : modules)
             .build();
     }
 }

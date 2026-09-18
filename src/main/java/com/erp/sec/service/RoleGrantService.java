@@ -10,10 +10,14 @@ import com.erp.sec.domain.RoleDomain;
 import com.erp.sec.domain.RoleModuleGrantDomain;
 import com.erp.sec.domain.RoleScreenGrantDomain;
 import com.erp.sec.dto.ModuleGrantRevokeResponse;
+import com.erp.sec.dto.RoleActionGrantNodeResponse;
 import com.erp.sec.dto.RoleActionGrantRequest;
 import com.erp.sec.dto.RoleActionGrantResponse;
+import com.erp.sec.dto.RoleGrantTreeResponse;
+import com.erp.sec.dto.RoleModuleGrantNodeResponse;
 import com.erp.sec.dto.RoleModuleGrantRequest;
 import com.erp.sec.dto.RoleModuleGrantResponse;
+import com.erp.sec.dto.RoleScreenGrantNodeResponse;
 import com.erp.sec.dto.RoleScreenGrantRequest;
 import com.erp.sec.dto.RoleScreenGrantResponse;
 import com.erp.sec.entity.ActionRegistry;
@@ -26,6 +30,7 @@ import com.erp.sec.entity.RoleScreenGrant;
 import com.erp.sec.entity.ScreenRegistry;
 import com.erp.sec.exception.SecErrorCodes;
 import com.erp.sec.mapper.RoleActionGrantMapper;
+import com.erp.sec.mapper.RoleMapper;
 import com.erp.sec.mapper.RoleModuleGrantMapper;
 import com.erp.sec.mapper.RoleScreenGrantMapper;
 import com.erp.sec.repository.ActionRegistryRepository;
@@ -38,8 +43,14 @@ import com.erp.sec.repository.RoleScreenGrantRepository;
 import com.erp.sec.repository.ScreenRegistryRepository;
 import com.erp.sec.repository.UserRepository;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -73,9 +84,78 @@ public class RoleGrantService {
     private final ActionRegistryRepository actionRegistryRepository;
     private final AuditLogEntryRepository auditLogEntryRepository;
     private final UserRepository userRepository;
+    private final RoleMapper roleMapper;
     private final RoleModuleGrantMapper moduleGrantMapper;
     private final RoleScreenGrantMapper screenGrantMapper;
     private final RoleActionGrantMapper actionGrantMapper;
+
+    /**
+     * Everything the role currently holds, nested module → screen → action. Three flat reads,
+     * grouped in memory — never a query per row, the same shape API-SEC-021's tree is assembled
+     * with. Gated on PERM_SEC_ROLES_VIEW: this is a read of the SEC_ROLES screen, and the writes
+     * above keep their own UPDATE gate.
+     *
+     * <p>The tree is built from the union of what the three grant levels reach, not from the
+     * module grants alone, so a screen or action grant whose parent grant is missing still
+     * appears — under a node flagged {@code granted = false}. RULE-SEC-001/002 forbid creating
+     * that state through the API, but an audit read that silently dropped it would hide the one
+     * thing worth finding.
+     */
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants).PERM_SEC_ROLES_VIEW)")
+    public ServiceResult<RoleGrantTreeResponse> grantsOf(Long roleId) {
+        log.debug("Reading the grant tree of Role ID: {}", roleId);
+
+        Role role = roleRepository.findById(roleId)
+            .orElseThrow(() -> new LocalizedException(
+                Status.NOT_FOUND, SecErrorCodes.SEC_404_ROLE, roleId));
+
+        List<RoleModuleGrant> moduleGrants = roleModuleGrantRepository.findAllByRoleWithModule(roleId);
+        List<RoleScreenGrant> screenGrants = roleScreenGrantRepository.findAllByRoleWithScreen(roleId);
+        List<RoleActionGrant> actionGrants = roleActionGrantRepository.findAllByRoleWithAction(roleId);
+
+        Map<Long, RoleModuleGrant> moduleGrantsByModule = moduleGrants.stream().collect(
+            Collectors.toMap(g -> g.getModule().getModuleRegPk(), Function.identity()));
+        Map<Long, RoleScreenGrant> screenGrantsByScreen = screenGrants.stream().collect(
+            Collectors.toMap(g -> g.getScreen().getScreenRegPk(), Function.identity()));
+        Map<Long, List<RoleActionGrantNodeResponse>> actionNodesByScreen = actionGrants.stream()
+            .sorted(Comparator.comparing(g -> g.getAction().getActionCode()))
+            .collect(Collectors.groupingBy(g -> g.getAction().getScreen().getScreenRegPk(),
+                LinkedHashMap::new,
+                Collectors.mapping(actionGrantMapper::toNodeResponse, Collectors.toList())));
+
+        // Every screen the role reaches, whether through its own grant or only through an action.
+        Map<Long, ScreenRegistry> screens = new LinkedHashMap<>();
+        screenGrants.forEach(g -> screens.putIfAbsent(g.getScreen().getScreenRegPk(), g.getScreen()));
+        actionGrants.forEach(g -> {
+            ScreenRegistry screen = g.getAction().getScreen();
+            screens.putIfAbsent(screen.getScreenRegPk(), screen);
+        });
+
+        Map<Long, List<RoleScreenGrantNodeResponse>> screenNodesByModule = new LinkedHashMap<>();
+        Map<Long, ModuleRegistry> modules = new LinkedHashMap<>();
+        moduleGrants.forEach(g -> modules.putIfAbsent(g.getModule().getModuleRegPk(), g.getModule()));
+        screens.values().stream()
+            .sorted(Comparator.comparing(ScreenRegistry::getPageCode))
+            .forEach(screen -> {
+                ModuleRegistry module = screen.getModule();
+                modules.putIfAbsent(module.getModuleRegPk(), module);
+                screenNodesByModule
+                    .computeIfAbsent(module.getModuleRegPk(), key -> new ArrayList<>())
+                    .add(screenGrantMapper.toNodeResponse(screen,
+                        screenGrantsByScreen.get(screen.getScreenRegPk()),
+                        actionNodesByScreen.getOrDefault(screen.getScreenRegPk(), List.of())));
+            });
+
+        List<RoleModuleGrantNodeResponse> moduleNodes = modules.values().stream()
+            .sorted(Comparator.comparing(ModuleRegistry::getCode))
+            .map(module -> moduleGrantMapper.toNodeResponse(module,
+                moduleGrantsByModule.get(module.getModuleRegPk()),
+                screenNodesByModule.getOrDefault(module.getModuleRegPk(), List.of())))
+            .toList();
+
+        return ServiceResult.success(roleMapper.toGrantTreeResponse(role, moduleNodes));
+    }
 
     /** API-SEC-014 — an inactive role or module resolves as a load-time not-found (no code of its own). */
     @Transactional

@@ -50,6 +50,15 @@ public class AuditLogService {
     private static final String CSV_HEADER = "auditLogPk,eventTypeCode,actorUserId,occurredAt,"
         + "targetRef,detailsAr,detailsEn,ipAddress";
 
+    /**
+     * UTF-8 byte-order mark. Excel reads a {@code .csv} with no BOM as ANSI regardless of the
+     * HTTP {@code charset}, which renders the Arabic {@code detailsAr} column as mojibake; the
+     * bilingual mandate covers exported artifacts, so the document carries it. It is part of the
+     * rendered document rather than the controller's headers, so every consumer of
+     * {@link #export} gets it.
+     */
+    private static final String UTF8_BOM = "\uFEFF";
+
     /** Leading characters a spreadsheet treats as the start of a formula — see {@link #cell}. */
     private static final String FORMULA_TRIGGERS = "=+-@\t\r";
 
@@ -129,7 +138,7 @@ public class AuditLogService {
     }
 
     private String toCsv(List<AuditLogEntry> rows) {
-        StringBuilder csv = new StringBuilder(CSV_HEADER);
+        StringBuilder csv = new StringBuilder(UTF8_BOM).append(CSV_HEADER);
         for (AuditLogEntry row : rows) {
             User actor = row.getActor();
             csv.append('\n')

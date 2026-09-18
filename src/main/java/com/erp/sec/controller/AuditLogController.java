@@ -8,6 +8,7 @@ import com.erp.sec.service.AuditLogService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -54,7 +55,10 @@ public class AuditLogController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant occurredTo) {
         return ResponseEntity
             .ok()
-            .contentType(new MediaType("text", "csv"))
+            // The charset is declared explicitly: without it Excel opens the document as ANSI and
+            // renders the Arabic detailsAr column as mojibake. The service prepends the matching
+            // UTF-8 BOM, which is what Excel actually reads.
+            .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
             .header(HttpHeaders.CONTENT_DISPOSITION, EXPORT_FILENAME)
             .body(service.export(eventTypeCode, actorUserId, occurredFrom, occurredTo).getData());
     }

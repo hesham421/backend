@@ -5,6 +5,7 @@ import com.erp.common.web.OperationCode;
 import com.erp.sec.dto.ModuleGrantRevokeResponse;
 import com.erp.sec.dto.RoleActionGrantRequest;
 import com.erp.sec.dto.RoleActionGrantResponse;
+import com.erp.sec.dto.RoleGrantTreeResponse;
 import com.erp.sec.dto.RoleModuleGrantRequest;
 import com.erp.sec.dto.RoleModuleGrantResponse;
 import com.erp.sec.dto.RoleScreenGrantRequest;
@@ -16,6 +17,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -35,6 +37,17 @@ public class RoleGrantController {
 
     private final RoleGrantService service;
     private final OperationCode operationCode;
+
+    /**
+     * The grant editor's read: what this role holds today, nested so the tree can be diffed
+     * against the registry and a module revoke can name what its cascade will remove.
+     */
+    @GetMapping("/{id}/grants")
+    @Operation(summary = "Get the grants a role holds",
+        description = "عرض المنح التي يحملها الدور — وحدات وشاشات وإجراءات")
+    public ResponseEntity<ApiResponse<RoleGrantTreeResponse>> grants(@PathVariable Long id) {
+        return operationCode.craftResponse(service.grantsOf(id));
+    }
 
     @PostMapping("/{id}/modules")
     @Operation(summary = "Grant module to role", description = "منح وحدة لدور")

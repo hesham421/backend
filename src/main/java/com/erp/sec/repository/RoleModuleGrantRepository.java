@@ -1,6 +1,7 @@
 package com.erp.sec.repository;
 
 import com.erp.sec.entity.RoleModuleGrant;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -34,4 +35,12 @@ public interface RoleModuleGrantRepository
         + "WHERE g.role.rolePk = :rolePk AND g.module.moduleRegPk = :moduleRegPk")
     Optional<RoleModuleGrant> findByRoleAndModule(@Param("rolePk") Long rolePk,
                                                   @Param("moduleRegPk") Long moduleRegPk);
+
+    /**
+     * Every module grant one role holds — the module half of the grant-tree read. {@code JOIN
+     * FETCH} loads the registry row each node is rendered from, so the tree costs one query per
+     * level and never one per row.
+     */
+    @Query("SELECT g FROM RoleModuleGrant g JOIN FETCH g.module WHERE g.role.rolePk = :rolePk")
+    List<RoleModuleGrant> findAllByRoleWithModule(@Param("rolePk") Long rolePk);
 }

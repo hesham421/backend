@@ -33,4 +33,12 @@ public interface RoleScreenGrantRepository
         + "WHERE g.role.rolePk = :rolePk AND s.module.moduleRegPk = :moduleRegPk")
     List<RoleScreenGrant> findCascadeTargets(@Param("rolePk") Long rolePk,
                                              @Param("moduleRegPk") Long moduleRegPk);
+
+    /**
+     * Every screen grant one role holds — the screen half of the grant-tree read. The screen's
+     * module comes with it because the tree nests each screen under it.
+     */
+    @Query("SELECT g FROM RoleScreenGrant g JOIN FETCH g.screen s JOIN FETCH s.module "
+        + "WHERE g.role.rolePk = :rolePk")
+    List<RoleScreenGrant> findAllByRoleWithScreen(@Param("rolePk") Long rolePk);
 }

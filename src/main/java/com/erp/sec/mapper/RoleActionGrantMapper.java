@@ -1,5 +1,6 @@
 package com.erp.sec.mapper;
 
+import com.erp.sec.dto.RoleActionGrantNodeResponse;
 import com.erp.sec.dto.RoleActionGrantResponse;
 import com.erp.sec.entity.ActionRegistry;
 import com.erp.sec.entity.Role;
@@ -32,6 +33,22 @@ public class RoleActionGrantMapper {
             .roleId(entity.getRole() == null ? null : entity.getRole().getRolePk())
             .actionId(entity.getAction() == null ? null : entity.getAction().getActionRegPk())
             .grantedBy(entity.getGrantedBy())
+            .grantedAt(entity.getGrantedAt())
+            .build();
+    }
+
+    /** Grant-tree leaf — the registry action behind the grant, plus when it was granted. */
+    public RoleActionGrantNodeResponse toNodeResponse(RoleActionGrant entity) {
+        if (entity == null || entity.getAction() == null) {
+            return null;
+        }
+        ActionRegistry action = entity.getAction();
+        return RoleActionGrantNodeResponse.builder()
+            .actionRegPk(action.getActionRegPk())
+            .actionCode(action.getActionCode())
+            .permissionCode(action.getPermissionCode())
+            .nameAr(action.getNameAr())
+            .nameEn(action.getNameEn())
             .grantedAt(entity.getGrantedAt())
             .build();
     }
