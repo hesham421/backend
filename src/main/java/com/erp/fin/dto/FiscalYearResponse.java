@@ -44,7 +44,10 @@ public class FiscalYearResponse {
     @Schema(description = "Number of periods - عدد الفترات", example = "12")
     private Integer periodCount;
 
-    @Schema(description = "Generated periods - الفترات المولَّدة")
+    @Schema(description = "Generated periods. Populated by the create response only; ALWAYS EMPTY "
+        + "on a search row, where the period set is read through the fiscal-period search scoped "
+        + "by fiscalYearId - الفترات المولَّدة، تُملأ في استجابة الإنشاء فقط وتكون فارغة دائمًا في "
+        + "صف البحث")
     private List<FiscalPeriodResponse> periods;
 
     @Schema(description = "Created timestamp - تاريخ الإنشاء")
