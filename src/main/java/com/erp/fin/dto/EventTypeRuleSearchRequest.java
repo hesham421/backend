@@ -1,7 +1,9 @@
 package com.erp.fin.dto;
 
 import com.erp.common.dto.BaseSearchContractRequest;
+import com.erp.common.search.SearchFilter;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.util.List;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -25,4 +27,21 @@ import lombok.experimental.SuperBuilder;
 @EqualsAndHashCode(callSuper = true)
 @Schema(description = "Search request for event-type posting rules - طلب بحث في قواعد أنواع الأحداث")
 public class EventTypeRuleSearchRequest extends BaseSearchContractRequest {
+
+    @Override
+    @Schema(description = "Filter criteria. Supported fields: eventTypeCode (EQUALS, IN - "
+        + "ACCOUNTING_EVENT_TYPE), nameAr / nameEn (LIKE), isActiveFl (EQUALS), "
+        + "eventTypeRulePk (EQUALS, IN), createdAt (comparison operators). Any other "
+        + "field is rejected as 400 VALIDATION_ERROR naming it - معايير التصفية")
+    public List<SearchFilter> getFilters() {
+        return super.getFilters();
+    }
+
+    @Override
+    @Schema(description = "Sort field. Supported: eventTypeRulePk, eventTypeCode, nameAr, nameEn, "
+        + "isActiveFl, createdAt. Any other value is rejected as 400 FIN-400-INVALID-SORT "
+        + "- حقل الترتيب")
+    public String getSortField() {
+        return super.getSortField();
+    }
 }

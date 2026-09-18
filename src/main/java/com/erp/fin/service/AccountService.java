@@ -169,10 +169,15 @@ public class AccountService {
     }
 
     /**
-     * API-FIN-001 — QR-FIN-001, a plain criteria search over ENT-FIN-001 with no join
-     * (SVC-API-SEARCH.md: "join NONE · READ_ONLY"). Read-only, so it carries no business rule and
-     * nothing to delegate: load → map → return. An empty result is a success, per CORE.md's search
-     * contract.
+     * API-FIN-001 — QR-FIN-001, a criteria search over ENT-FIN-001. Read-only, so it carries no
+     * business rule and nothing to delegate: load → map → return. An empty result is a success,
+     * per CORE.md's search contract.
+     *
+     * <p>SVC-API-SEARCH.md says "join NONE", and that held until the {@code parentAccountId}
+     * filter was added 2026-09-19: scoping a level of SCR-FIN-001's tree to its parent is a
+     * predicate over the self-reference {@code parentAccount}, so the one join below is ANDed in
+     * when — and only when — the caller sends that filter. Sending none leaves the query exactly
+     * as it was.
      */
     @Transactional(readOnly = true)
     @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants)"
@@ -186,6 +191,14 @@ public class AccountService {
         SetAllowedFields allowedFields = new SetAllowedFields(ALLOWED_SORT_FIELDS);
         Specification<Account> spec = SpecBuilder.build(
             commonRequest, allowedFields, DefaultFieldValueConverter.INSTANCE);
+
+        Long parentAccountId = searchRequest.getParentAccountId();
+        if (parentAccountId != null) {
+            Specification<Account> parentSpec = (root, query, cb) ->
+                cb.equal(root.get("parentAccount").get("accountPk"), parentAccountId);
+            spec = parentSpec.and(spec);
+        }
+
         Pageable pageable = PageableBuilder.from(commonRequest, ALLOWED_SORT_FIELDS);
 
         return ServiceResult.success(repository.findAll(spec, pageable).map(mapper::toResponse));

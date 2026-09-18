@@ -438,6 +438,13 @@ public class JournalEntryService {
             spec = periodSpec.and(spec);
         }
 
+        Long fiscalYearId = searchRequest.getFiscalYearId();
+        if (fiscalYearId != null) {
+            Specification<JournalEntry> yearSpec = (root, query, cb) ->
+                cb.equal(root.get("fiscalYear").get("fiscalYearPk"), fiscalYearId);
+            spec = yearSpec.and(spec);
+        }
+
         Pageable pageable = PageableBuilder.from(commonRequest, ALLOWED_SORT_FIELDS);
 
         return ServiceResult.success(

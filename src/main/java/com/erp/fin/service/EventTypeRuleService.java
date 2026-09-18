@@ -12,11 +12,17 @@ import com.erp.fin.domain.EventTypeRuleDomain;
 import com.erp.fin.dto.EventTypeRuleCreateRequest;
 import com.erp.fin.dto.EventTypeRuleSearchRequest;
 import com.erp.fin.dto.EventTypeRuleResponse;
+import com.erp.fin.dto.RuleLineResponse;
 import com.erp.fin.entity.EventTypeRule;
 import com.erp.fin.exception.FinErrorCodes;
 import com.erp.fin.mapper.EventTypeRuleMapper;
+import com.erp.fin.mapper.RuleLineMapper;
 import com.erp.fin.repository.EventTypeRuleRepository;
+import com.erp.fin.repository.RuleLineRepository;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -50,7 +56,9 @@ public class EventTypeRuleService {
         "eventTypeRulePk", "eventTypeCode", "nameAr", "nameEn", "isActiveFl", "createdAt");
 
     private final EventTypeRuleRepository repository;
+    private final RuleLineRepository lineRepository;
     private final EventTypeRuleMapper mapper;
+    private final RuleLineMapper lineMapper;
     private final FinLookupValidationService lookupValidation;
 
     /**
@@ -75,7 +83,9 @@ public class EventTypeRuleService {
         EventTypeRule saved = repository.save(mapper.toEntity(request));
         log.info("Created EventTypeRule ID: {}", saved.getEventTypeRulePk());
 
-        return ServiceResult.success(mapper.toResponse(saved), Status.CREATED);
+        // A rule is created before any of its lines (API-FIN-011 adds those), so the set is
+        // empty here by construction rather than by a read that would always return nothing.
+        return ServiceResult.success(mapper.toResponse(saved, List.of()), Status.CREATED);
     }
 
     /**
@@ -110,11 +120,18 @@ public class EventTypeRuleService {
         EventTypeRule saved = repository.save(entity);
         log.info("Deactivated EventTypeRule ID: {}", saved.getEventTypeRulePk());
 
-        return ServiceResult.success(mapper.toResponse(saved), Status.UPDATED);
+        return ServiceResult.success(
+            mapper.toResponse(saved, linesOf(saved.getEventTypeRulePk())), Status.UPDATED);
     }
 
     /**
-     * API-FIN-009 — QR-FIN-012, criteria search over ENT-FIN-009, no join, read-only.
+     * API-FIN-009 — QR-FIN-012, criteria search over ENT-FIN-009, read-only.
+     *
+     * <p>Each row carries its ENT-FIN-010 line set: SCR-FIN-003 is a Master/Detail screen and this
+     * is the only endpoint that lists rules, so without the lines the Detail pane has no source at
+     * all. They are fetched in ONE batch read keyed by the page's ids
+     * ({@code findByEventTypeRulePkIn}) and grouped in memory — not one child query per row, the
+     * same arrangement API-FIN-012 uses.
      */
     @Transactional(readOnly = true)
     @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants)"
@@ -131,6 +148,26 @@ public class EventTypeRuleService {
             commonRequest, allowedFields, DefaultFieldValueConverter.INSTANCE);
         Pageable pageable = PageableBuilder.from(commonRequest, ALLOWED_SORT_FIELDS);
 
-        return ServiceResult.success(repository.findAll(spec, pageable).map(mapper::toResponse));
+        Page<EventTypeRule> page = repository.findAll(spec, pageable);
+        List<Long> rulePks = page.getContent().stream()
+            .map(EventTypeRule::getEventTypeRulePk)
+            .toList();
+
+        Map<Long, List<RuleLineResponse>> linesByRule = rulePks.isEmpty()
+            ? Map.of()
+            : lineRepository.findByEventTypeRulePkIn(rulePks).stream()
+                .collect(Collectors.groupingBy(
+                    line -> line.getEventTypeRule().getEventTypeRulePk(),
+                    Collectors.mapping(lineMapper::toResponse, Collectors.toList())));
+
+        return ServiceResult.success(page.map(rule -> mapper.toResponse(rule,
+            linesByRule.getOrDefault(rule.getEventTypeRulePk(), List.of()))));
+    }
+
+    /** ENT-FIN-010's rows for one rule, ordered by {@code lineNo}, already mapped (QR-FIN-016). */
+    private List<RuleLineResponse> linesOf(Long eventTypeRulePk) {
+        return lineRepository.findByEventTypeRulePk(eventTypeRulePk).stream()
+            .map(lineMapper::toResponse)
+            .toList();
     }
 }

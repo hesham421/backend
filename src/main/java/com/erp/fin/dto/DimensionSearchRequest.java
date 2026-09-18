@@ -1,7 +1,9 @@
 package com.erp.fin.dto;
 
 import com.erp.common.dto.BaseSearchContractRequest;
+import com.erp.common.search.SearchFilter;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.util.List;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -25,4 +27,21 @@ import lombok.experimental.SuperBuilder;
 @EqualsAndHashCode(callSuper = true)
 @Schema(description = "Search request for analysis dimensions - طلب بحث في الأبعاد التحليلية")
 public class DimensionSearchRequest extends BaseSearchContractRequest {
+
+    @Override
+    @Schema(description = "Filter criteria. Supported fields: code (LIKE), nameAr / nameEn (LIKE), "
+        + "isActiveFl (EQUALS), dimensionPk (EQUALS, IN), createdAt (comparison "
+        + "operators). Any other field is rejected as 400 VALIDATION_ERROR naming it - "
+        + "معايير التصفية")
+    public List<SearchFilter> getFilters() {
+        return super.getFilters();
+    }
+
+    @Override
+    @Schema(description = "Sort field. Supported: dimensionPk, code, nameAr, nameEn, isActiveFl, "
+        + "createdAt. Any other value is rejected as 400 FIN-400-INVALID-SORT - حقل "
+        + "الترتيب")
+    public String getSortField() {
+        return super.getSortField();
+    }
 }

@@ -3,7 +3,6 @@ package com.erp.fin.service;
 import com.erp.common.domain.status.ServiceResult;
 import com.erp.common.domain.status.Status;
 import com.erp.common.exception.LocalizedException;
-import com.erp.common.search.DefaultFieldValueConverter;
 import com.erp.common.search.PageableBuilder;
 import com.erp.common.search.SearchRequest;
 import com.erp.common.search.SetAllowedFields;
@@ -80,6 +79,15 @@ public class RecurringTemplateService {
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
         "recurringTemplatePk", "nameAr", "nameEn", "scheduleTypeCode", "frequencyCode",
         "startDate", "nextRunDate", "endDate", "isActiveFl", "createdAt");
+
+    /**
+     * DBF-FIN-114/115/116 — {@code DATE} columns. Three of the fields above are dates, and a JSON
+     * body carries a bound as a string; without the coercion the criteria build would compare a
+     * String to a {@code LocalDate} path. Added 2026-09-19 alongside publishing this search's
+     * filterable field set, so what the api-docs now advertise is what the endpoint accepts.
+     */
+    private static final Set<String> DATE_FILTER_FIELDS =
+        Set.of("startDate", "nextRunDate", "endDate");
 
     private final RecurringTemplateRepository repository;
     private final RecurringTemplateLineRepository lineRepository;
@@ -406,8 +414,8 @@ public class RecurringTemplateService {
 
         SearchRequest commonRequest = searchRequest.toCommonSearchRequest();
         SetAllowedFields allowedFields = new SetAllowedFields(ALLOWED_SORT_FIELDS);
-        Specification<RecurringTemplate> spec = SpecBuilder.build(
-            commonRequest, allowedFields, DefaultFieldValueConverter.INSTANCE);
+        Specification<RecurringTemplate> spec = SpecBuilder.build(commonRequest, allowedFields,
+            FinSearchSupport.localDateFieldConverter(DATE_FILTER_FIELDS));
         Pageable pageable = PageableBuilder.from(commonRequest, ALLOWED_SORT_FIELDS);
 
         Page<RecurringTemplate> page = repository.findAll(spec, pageable);

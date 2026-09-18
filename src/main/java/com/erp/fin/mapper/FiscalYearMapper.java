@@ -88,4 +88,24 @@ public class FiscalYearMapper {
             .updatedBy(entity.getUpdatedBy())
             .build();
     }
+
+    /**
+     * The search row: the year's own columns and its {@code @Formula} period count, with no nested
+     * period set. {@link #toResponse(FiscalYear, List)}'s count is the size of the list it was
+     * handed, which is correct straight after a create and wrong for a row read back later; here
+     * the entity's own formula is authoritative and no lazy collection is walked (A.1.19).
+     *
+     * <p>{@code periods} is left empty rather than populated per row: the period set of every year
+     * on the page is a second, unbounded read, and SCR-FIN-007's Detail pane already fetches it
+     * through the fiscal-period search scoped by {@code fiscalYearId} — the same division
+     * {@code JournalEntryMapper.toSummaryResponse} makes between a list row and API-FIN-022.
+     */
+    public FiscalYearResponse toSummaryResponse(FiscalYear entity) {
+        if (entity == null) {
+            return null;
+        }
+        FiscalYearResponse response = toResponse(entity, List.of());
+        response.setPeriodCount(entity.getPeriodCount() != null ? entity.getPeriodCount() : 0);
+        return response;
+    }
 }

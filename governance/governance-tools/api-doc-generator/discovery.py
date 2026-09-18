@@ -104,14 +104,45 @@ def _shared_modules_root() -> Path:
     return shared / modules_rel
 
 
+def _backend_partition_root(module: str) -> Path:
+    """This track's own writable partition inside the shared repo, as the factory
+    publishes it (profile-summary.json -> tracks.backend.partition, e.g.
+    "backend/modules/{MOD}"). Never spelled literally here: a second profile, or
+    a renamed track folder, is then the factory's edit and not this tool's."""
+    shared = GOVERNANCE_ROOT / "shared"
+    summary_path = shared / "platform" / "profile-summary.json"
+    if not summary_path.is_file():
+        raise SystemExit(
+            f"governance/shared is not initialised at {shared}\n"
+            f"  run: git submodule update --init governance/shared")
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    try:
+        partition = summary["tracks"]["backend"]["partition"]
+    except KeyError as exc:
+        raise SystemExit(
+            f"profile-summary.json declares no tracks.backend.partition ({exc}) -- "
+            f"cannot resolve where this repo may write api-docs") from exc
+    return shared / partition.replace("{MOD}", module)
+
+
 def default_output_dir(module: str) -> Path:
     """Where generated api-docs land.
 
     They live in the shared repo, not in this one: the factory and the frontend
     read the SAME copy, so there is no second copy to drift from. This repo still
     authors them — the generator reads the running app — and the shared repo's
-    CODEOWNERS grants this repo write access to exactly this path and no other."""
-    return _shared_modules_root() / module / "api-docs"
+    CODEOWNERS grants this repo write access to exactly this path and no other.
+
+    That path is this track's PARTITION (tracks.backend.partition), not the
+    module's analysis folder (paths.modules). The two were the same folder until
+    the v7 project-repo layout split them; this function kept resolving against
+    paths.modules afterwards, so on 2026-09-19 a FIN regeneration reported all 38
+    endpoints as "added" -- it was about to write a second, empty-history copy
+    under analysis/modules/FIN/api-docs/ while every module's real api-docs sat
+    in backend/modules/<MOD>/api-docs/. Read-only inputs (the execution plan,
+    the module's stage artifacts) still resolve against paths.modules, which is
+    correct: this repo reads there and writes here."""
+    return _backend_partition_root(module) / "api-docs"
 
 
 def default_module_dir(module: str) -> Path:

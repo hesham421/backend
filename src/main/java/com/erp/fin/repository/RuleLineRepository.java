@@ -29,4 +29,17 @@ public interface RuleLineRepository
     @Query("SELECT l FROM RuleLine l JOIN FETCH l.eventTypeRule "
         + "WHERE l.eventTypeRule.eventTypeRulePk = :eventTypeRulePk ORDER BY l.lineNo ASC")
     List<RuleLine> findByEventTypeRulePk(@Param("eventTypeRulePk") Long eventTypeRulePk);
+
+    /**
+     * The same read widened to a whole page of parents, so API-FIN-009 can carry each rule's lines
+     * without one child query per row — the batch shape
+     * {@code RecurringTemplateLineRepository.findByRecurringTemplatePkIn} already uses for
+     * API-FIN-012. {@code JOIN FETCH} on the parent avoids N+1 when the caller groups by it
+     * (A.2.6).
+     */
+    @Query("SELECT l FROM RuleLine l JOIN FETCH l.eventTypeRule "
+        + "WHERE l.eventTypeRule.eventTypeRulePk IN :eventTypeRulePks "
+        + "ORDER BY l.eventTypeRule.eventTypeRulePk ASC, l.lineNo ASC")
+    List<RuleLine> findByEventTypeRulePkIn(
+        @Param("eventTypeRulePks") List<Long> eventTypeRulePks);
 }

@@ -10,6 +10,7 @@ import com.erp.fin.domain.JournalEntryDomain;
 import com.erp.fin.dto.FiscalPeriodResponse;
 import com.erp.fin.dto.FiscalYearCreateRequest;
 import com.erp.fin.dto.FiscalYearResponse;
+import com.erp.fin.dto.FiscalYearSearchRequest;
 import com.erp.fin.dto.JournalEntryResponse;
 import com.erp.fin.dto.JournalLineResponse;
 import com.erp.fin.dto.YearEndCloseResponse;
@@ -27,6 +28,10 @@ import com.erp.fin.repository.AccountRepository;
 import com.erp.fin.repository.FiscalPeriodRepository;
 import com.erp.fin.repository.FiscalYearRepository;
 import com.erp.fin.repository.JournalLineRepository;
+import com.erp.common.search.PageableBuilder;
+import com.erp.common.search.SearchRequest;
+import com.erp.common.search.SetAllowedFields;
+import com.erp.common.search.SpecBuilder;
 import com.erp.fin.service.JournalPostingService.PostingRequest;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -34,8 +39,11 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -58,13 +66,27 @@ import org.springframework.transaction.annotation.Transactional;
  * {@code DimensionService} places {@code FIN-409-DIMENSION-DUP}.
  *
  * <p>No caching annotations — FIN's approved cache register is empty, and an accounting record is
- * never cacheable regardless. No {@code ALLOWED_SORT_FIELDS}: fiscal-year search belongs to
- * SVC-API-SEARCH.
+ * never cacheable regardless.
+ *
+ * <p>{@code ALLOWED_SORT_FIELDS} arrived with the fiscal-year search added 2026-09-19 — see
+ * {@link #search(FiscalYearSearchRequest)} for why a year that could be created but never listed
+ * blocked three approved screens.
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class FiscalYearService {
+
+    /**
+     * A.5.6 — the fiscal-year search's filter/sort whitelist: ENT-FIN-007's flat columns. The
+     * generated period set is not among them; a period is filtered through the fiscal-period
+     * search, scoped by its own {@code fiscalYearId} filter.
+     */
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
+        "fiscalYearPk", "code", "startDate", "endDate", "statusCode", "isActiveFl", "createdAt");
+
+    /** DBF-FIN-068/069 — {@code DATE} columns, so a JSON string bound needs coercing. */
+    private static final Set<String> DATE_FILTER_FIELDS = Set.of("startDate", "endDate");
 
     private final FiscalYearRepository repository;
     private final FiscalPeriodRepository fiscalPeriodRepository;
@@ -377,5 +399,37 @@ public class FiscalYearService {
 
     /** One account and its derived signed net over a fiscal year's POSTED lines. */
     private record AccountBalance(Account account, BigDecimal net) {
+    }
+
+    /**
+     * Criteria search over ENT-FIN-007 — no join, read-only, and no contract id yet (the factory
+     * assigns those). Rows map through {@code toSummaryResponse}: the year's own columns plus its
+     * {@code @Formula} period count, no nested period set.
+     *
+     * <p>Gated on {@code PERM_FIN_PERIODS_VIEW}, the FIN_PERIODS screen's VIEW action — the same
+     * permission the fiscal-period search already carries, because this exposes no field that
+     * search's rows do not already reach through their {@code fiscalYearId}. V24's header calls
+     * that permission the one ✓ cell in SEC-BE.md's matrix with no API-FIN beside it and notes
+     * that "either the matrix's FIN_PERIODS/VIEW ✓ is spurious, or a FIN_PERIODS read endpoint is
+     * missing"; this is that read endpoint, so the row is no longer a gateway-only grant.
+     *
+     * <p>An empty result is a success, per CORE.md's search contract.
+     */
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants)"
+        + ".PERM_FIN_PERIODS_VIEW)")
+    public ServiceResult<Page<FiscalYearResponse>> search(FiscalYearSearchRequest searchRequest) {
+        log.debug("Searching FiscalYear");
+
+        FinSearchSupport.assertSortAllowed(searchRequest.getSortField(), ALLOWED_SORT_FIELDS);
+
+        SearchRequest commonRequest = searchRequest.toCommonSearchRequest();
+        SetAllowedFields allowedFields = new SetAllowedFields(ALLOWED_SORT_FIELDS);
+        Specification<FiscalYear> spec = SpecBuilder.build(commonRequest, allowedFields,
+            FinSearchSupport.localDateFieldConverter(DATE_FILTER_FIELDS));
+        Pageable pageable = PageableBuilder.from(commonRequest, ALLOWED_SORT_FIELDS);
+
+        return ServiceResult.success(
+            repository.findAll(spec, pageable).map(mapper::toSummaryResponse));
     }
 }

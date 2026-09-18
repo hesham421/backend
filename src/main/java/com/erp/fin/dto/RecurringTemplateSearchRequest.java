@@ -1,7 +1,9 @@
 package com.erp.fin.dto;
 
 import com.erp.common.dto.BaseSearchContractRequest;
+import com.erp.common.search.SearchFilter;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.util.List;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -26,4 +28,25 @@ import lombok.experimental.SuperBuilder;
 @EqualsAndHashCode(callSuper = true)
 @Schema(description = "Search request for recurring templates - طلب بحث في القوالب المتكررة")
 public class RecurringTemplateSearchRequest extends BaseSearchContractRequest {
+
+    @Override
+    @Schema(description = "Filter criteria. Supported fields: nameAr / nameEn (LIKE), "
+        + "scheduleTypeCode "
+        + "(EQUALS - RECURRING_SCHEDULE_TYPE), frequencyCode (EQUALS - "
+        + "RECURRING_FREQUENCY), startDate / nextRunDate / endDate (EQUALS, "
+        + "GREATER_THAN_OR_EQUAL, LESS_THAN_OR_EQUAL - ISO yyyy-MM-dd), isActiveFl "
+        + "(EQUALS), recurringTemplatePk (EQUALS, IN), createdAt (comparison operators). "
+        + "Any other field is rejected as 400 VALIDATION_ERROR naming it - معايير التصفية")
+    public List<SearchFilter> getFilters() {
+        return super.getFilters();
+    }
+
+    @Override
+    @Schema(description = "Sort field. Supported: recurringTemplatePk, nameAr, nameEn, "
+        + "scheduleTypeCode, "
+        + "frequencyCode, startDate, nextRunDate, endDate, isActiveFl, createdAt. Any "
+        + "other value is rejected as 400 FIN-400-INVALID-SORT - حقل الترتيب")
+    public String getSortField() {
+        return super.getSortField();
+    }
 }

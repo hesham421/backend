@@ -1,8 +1,10 @@
 package com.erp.fin.dto;
 
 import com.erp.common.dto.BaseSearchContractRequest;
+import com.erp.common.search.SearchFilter;
 import com.erp.common.search.SearchRequest;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.util.List;
 import java.util.Set;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -48,5 +50,23 @@ public class AllocationRuleSearchRequest extends BaseSearchContractRequest {
     @Schema(hidden = true)
     public Long getSourceAccountId() {
         return extractLongFilter(SOURCE_ACCOUNT_ID_FILTER);
+    }
+
+    @Override
+    @Schema(description = "Filter criteria. Supported fields: nameAr / nameEn (LIKE), "
+        + "sourceAccountId "
+        + "(EQUALS), isActiveFl (EQUALS), allocationRulePk (EQUALS, IN), createdAt "
+        + "(comparison operators). Any other field is rejected as 400 VALIDATION_ERROR "
+        + "naming it - معايير التصفية")
+    public List<SearchFilter> getFilters() {
+        return super.getFilters();
+    }
+
+    @Override
+    @Schema(description = "Sort field. Supported: allocationRulePk, nameAr, nameEn, isActiveFl, "
+        + "createdAt. Any other value is rejected as 400 FIN-400-INVALID-SORT - حقل "
+        + "الترتيب")
+    public String getSortField() {
+        return super.getSortField();
     }
 }
