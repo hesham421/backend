@@ -22,9 +22,9 @@ api-doc will find anything.
 `CLAUDE.md` §"Where governance lives" carries the full table. In short:
 
 - **read** `governance/shared/platform/rules/` and
-  `governance/shared/erp/modules/<MOD>/`
-- **write** only `governance/shared/erp/modules/<MOD>/api-docs/` and
-  `governance/shared/erp/modules/<MOD>/backend/`
+  `governance/shared/analysis/modules/<MOD>/` (the analysis), `governance/shared/backend/modules/<MOD>/packages/` (the delivered packages)
+- **write** only `governance/shared/backend/modules/<MOD>/api-docs/` and
+  the rest of `governance/shared/backend/modules/<MOD>/` (execution-state.json, test-api/) — never its `packages/`
 
 Anything else under `governance/shared/` belongs to the factory or to the
 frontend, and a write there is refused at review by that repo's `CODEOWNERS`.

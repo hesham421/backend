@@ -14,9 +14,15 @@ backend repo root unless said otherwise.
 ```bash
 SUMMARY=governance/shared/platform/profile-summary.json
 test -f "$SUMMARY" || { echo "MISSING — git submodule update --init governance/shared"; exit 1; }
-MODULES=governance/shared/$(jq -r .paths.modules "$SUMMARY")   # e.g. governance/shared/erp/modules
-GOVROOT=$(dirname "$MODULES")                                  # e.g. governance/shared/erp
+MODULES=governance/shared/$(jq -r .paths.modules "$SUMMARY")            # every module's analysis — read-only here
+GOVROOT=governance/shared/$(jq -r .paths.platform "$SUMMARY")           # project-registry.md and the platform artifacts
+PART=governance/shared/$(jq -r .tracks.backend.partition "$SUMMARY")    # this track's own partition ({MOD} unexpanded): execution-state.json, api-docs/, test-api/
+PKGS=governance/shared/$(jq -r .tracks.backend.delivery "$SUMMARY")     # the delivered packages ({MOD} unexpanded) — written by the factory, read here
 ```
+
+Bare `packages/…` paths below resolve under `$PKGS` with `{MOD}` expanded; `execution-state.json`
+and `api-docs/` under `$PART` with `{MOD}` expanded; stage artifacts and `manifest.json` under
+`$MODULES/{MODULE}/`. A version-suffixed base (`vN/`) applies to each of the three the same way.
 
 `$MODULES` and `$GOVROOT` below are those values. The profile folder is the
 factory's to name; spelling it here makes a second profile an edit to this file.
@@ -47,7 +53,7 @@ factory's to name; spelling it here makes a second profile an edit to this file.
   - Highest `vN` folder found → base `$MODULES/{MODULE}/v{N}/`
 
   Call it `{MBASE}`. Every `$MODULES/{MODULE}/…` and bare
-  `packages/…` / `execution-state.json` path below resolves under `{MBASE}`,
+  `packages/…` / `execution-state.json` path below resolves under `{MBASE}` — `packages/…` under `$PKGS` and `execution-state.json` under `$PART` (each with `{MOD}` expanded, the same `vN/` suffix applied),
   and the per-module command for a vN module is
   `.claude/commands/{MODULE}/v{N}/execute-backend.md`. By default orchestrate
   the CURRENT version; to drive an older frozen version, ask — never assume.

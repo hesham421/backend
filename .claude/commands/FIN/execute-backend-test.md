@@ -4,7 +4,7 @@ Execute API verification for FIN — only for what's actually complete.
 
 > **Self-contained.** This command needs `governance/governance-tools/api-doc-generator`,
 > the `api-verify` skill (`.claude/skills/api-verify/SKILL.md`), `governance/shared/platform/rules/api-verify-config.md`,
-> and this module's own artifacts under `governance/shared/erp/modules/FIN/`. Every rule it relies
+> and this module's own artifacts under `governance/shared/analysis/modules/FIN/`. Every rule it relies
 > on is written below or in those two files — it reads no other external mechanism/governance
 > doc, never stops waiting on one, and never calls TestSprite (retired as this project's
 > backend test mechanism).
@@ -17,7 +17,7 @@ Execute API verification for FIN — only for what's actually complete.
 ## STEP 0 — Plan Load, Gate Check, API-Doc Regeneration + Assessment
 
 ### 0.1 — Load the delivered test-gen plan (the REQUIRED COVERAGE)
-Read every `TC-FIN-<seq>` block out of `governance/shared/erp/modules/FIN/test_gen/backend-test-plan-fin.md`
+Read every `TC-FIN-<seq>` block out of `governance/shared/analysis/modules/FIN/test_gen/backend-test-plan-fin.md`
 (this is the module's flat test-gen plan file; there is no `backend-test/` fallback copy on
 disk for FIN — do not assume one). This command does not read `packages/backend-test/` —
 that split-folder shape depended on governance-tools splitter tooling this project no
@@ -49,7 +49,7 @@ whose body is marked RETIRED. As of 2026-09-12 exactly one is: TC-FIN-091. That 
 line / a `RETIRED` title), never from this list.
 
 ### 0.2 — Gate Check (MANDATORY)
-Read `governance/shared/erp/modules/FIN/backend/execution-state.json` → for each entry in `test_phases[]`
+Read `governance/shared/backend/modules/FIN/execution-state.json` → for each entry in `test_phases[]`
 (`TEST-PLAN-BE` and `INT-XM`), confirm every phase listed in its `gated_by_phases[]`
 (`CORE, DATA-DOM, SVC-API, DOC, INT-C, INT-R, SEC-BE, ALIGN-BE` — all 8, for both entries)
 has `status == COMPLETE`.
@@ -75,7 +75,7 @@ python3 generate.py --module FIN --function generate
 (consult that tool's own `README.md` for `--function generate` vs `update` vs
 `review` semantics before assuming — use whichever actually (re)writes
 the `api_docs_path` this module's `execution-state.json` declares in full for this run). Confirm
-`governance/shared/erp/modules/FIN/api-docs/index.md` was written/updated before
+`governance/shared/backend/modules/FIN/api-docs/index.md` was written/updated before
 proceeding to STEP 0.4 — do not invoke `api-verify` against missing or
 unrefreshed api-docs.
 
@@ -97,7 +97,7 @@ than assuming.)
 Invoke the `api-verify` skill (`.claude/skills/api-verify/SKILL.md`) for
 `<MOD>` = `FIN`. Per the skill's own procedure it reads:
 - the `api_docs_path` this module's `execution-state.json` declares — regenerated in STEP 0.3, mandatory;
-- `governance/shared/erp/modules/FIN/test_gen/test-execution-manifest-fin.md` when present
+- `governance/shared/analysis/modules/FIN/test_gen/test-execution-manifest-fin.md` when present
   (Full tier: happy-path CRUD + negative RULE checks, dependency order read
   verbatim from the manifest — note this module's dependency chain: lookup/config
   entities (Dimension, EventTypeRule, RuleLine, RecurringTemplate, AllocationRule)
@@ -109,7 +109,7 @@ Invoke the `api-verify` skill (`.claude/skills/api-verify/SKILL.md`) for
   `/api/v1/fin`, envelope shapes, error-code format `FIN-{http}[-{SLUG}]`,
   permission pattern) — never re-derived here.
 
-It produces, under `governance/shared/erp/modules/FIN/backend/test-api/`:
+It produces, under `governance/shared/backend/modules/FIN/test-api/`:
 - `test_fin_apis.py` — one runnable script, one `test_<entity>()` per entity
   in dependency order, each create/update/negative call tagged with a
   traceability comment (`Covers: API-… ; Negative: RULE-… / <code> / TC-…`),
@@ -117,7 +117,7 @@ It produces, under `governance/shared/erp/modules/FIN/backend/test-api/`:
 - `fin_problems_report.md` — failures bucketed likely-real-bug /
   test-assumption-mismatch / infrastructure.
 
-Run the generated script (`python3 governance/shared/erp/modules/FIN/backend/test-api/test_fin_apis.py`)
+Run the generated script (`python3 governance/shared/backend/modules/FIN/test-api/test_fin_apis.py`)
 against the app confirmed reachable in STEP 0.4, and record its pass/fail per
 `test_<entity>()` suite. This command never hand-writes verification code
 itself and never calls a TestSprite tool.
@@ -185,7 +185,7 @@ if nothing fits, use `ENVIRONMENT_FAILURE` and explain why in the detail.
 
 Write `reports/TEST-REPORT-FIN-backend-[YYYY-MM-DD].md` — a module-scoped
 digest, distinct from `api-verify`'s own raw output (`fin_problems_report.md`,
-left under `governance/shared/erp/modules/FIN/backend/test-api/`, untouched). It MUST include
+left under `governance/shared/backend/modules/FIN/test-api/`, untouched). It MUST include
 the STEP 1.9 coverage table (governed plan ↔ api-verify) and the coverage
 ratio, ABOVE the failure taxonomy — a green taxonomy over an incomplete plan
 is not a pass. This report is complete once the test/coverage section above

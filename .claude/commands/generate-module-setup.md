@@ -30,20 +30,22 @@ test -f "$SUMMARY" || { echo "MISSING — run 'gov.py publish profile-summary' i
 
 PROFILE=$(jq -r .profile            "$SUMMARY")
 MODULES=governance/shared/$(jq -r .paths.modules "$SUMMARY")
-PART=governance/shared/$(jq -r '.tracks.backend.partition' "$SUMMARY")   # {MOD} still unexpanded
+PART=governance/shared/$(jq -r '.tracks.backend.partition' "$SUMMARY")   # {MOD} still unexpanded — this track's own partition
+DELIVERY=governance/shared/$(jq -r '.tracks.backend.delivery' "$SUMMARY") # {MOD} still unexpanded — the delivered packages
 EXEC_PHASES=$(jq -r '.tracks.backend.plans.exec.phases[].key' "$SUMMARY")
 ```
 
 Then, for the module being set up:
 
 ```bash
-MBASE=$MODULES/$MODULE                      # the module's governance root
-MINE=$(echo "$PART" | sed "s/{MOD}/$MODULE/")   # this repo's own partition inside it
+MBASE=$MODULES/$MODULE                          # the module's analysis (stages, _state, manifest) — read-only
+MINE=$(echo "$PART" | sed "s/{MOD}/$MODULE/")       # this repo's own partition: execution-state.json, api-docs/, test-api/
+PKGS=$(echo "$DELIVERY" | sed "s/{MOD}/$MODULE/")   # the factory's delivered packages for this module — read-only
 ```
 
-`$MBASE` is **read-only** to this repo apart from `$MINE` and
-`$MBASE/api-docs/`. A write anywhere else under `governance/shared/` is refused
-at review by that repo's `CODEOWNERS`.
+`$MBASE` and `$PKGS` are **read-only** to this repo; it writes only under `$MINE`
+(`$MINE/api-docs/` included — never `$MINE/packages/`, that is the factory's). A write
+anywhere else under `governance/shared/` is refused at review by that repo's `CODEOWNERS`.
 
 **`$EXEC_PHASES` is the authority for `gated_by_phases`.** Intersect it with the
 phases actually found on disk — never type the list, and never let a phase the
@@ -115,13 +117,13 @@ Rule:
 
 Call this resolved path `$MBASE`. Every `$MBASE/…` path in
 the steps below means `$MBASE/…`. In particular, for a vN module:
-- scan `$MBASE/packages/backend-execution` and `$MBASE/backend-test`
+- scan `$PKGS/backend-execution` and `$PKGS/backend-test`
   (fallback `$MBASE/test_gen` — see Step 1's Test phase(s) section; NOT
-  `$MBASE/packages/backend-test`, which this command no longer reads —
+  `$PKGS/backend-test`, which this command no longer reads —
   that split output depended on governance-tools splitter tooling this
   project no longer relies on)
-- write `execution-state.json` to `$MBASE/execution-state.json`
-- `api_docs_path` = `$MBASE/api-docs/`
+- write `execution-state.json` to `$MINE/execution-state.json`
+- `api_docs_path` = `$MINE/api-docs/`
   — NOT `$MBASE/api-docs/`. api-docs are the ONE artifact this repo does
   not keep: they live in the shared repo, which is their single copy, and
   the frontend reads that same copy. They are also NOT version-suffixed —
@@ -142,9 +144,9 @@ v1 command for a v2 delta.
 ## Step 1 — Scan the repo structure
 
 ```bash
-find $MBASE/packages/backend-execution -type f -name "*.md" | sort
+find $PKGS/backend-execution -type f -name "*.md" | sort
 ls $MBASE/test_gen/backend-test-plan-*.md 2>/dev/null
-ls $MBASE/backend-test/backend-test-plan-*.md 2>/dev/null
+ls $PKGS/backend-test/backend-test-plan-*.md 2>/dev/null
 ```
 
 From the scan results:
@@ -200,7 +202,7 @@ from markers INSIDE that one file:
 - `header_file` in `execution-state.json` (Step 2) is the path to this one
   flat file itself — there is no separate `*-HEADER.md` for a flat-file-sourced
   test phase.
-- If neither `$MBASE/backend-test/` nor `$MBASE/test_gen/` yields a
+- If neither `$PKGS/backend-test/` nor `$MBASE/test_gen/` yields a
   `backend-test-plan-*.md` file, `test_phases` is an empty array — there is
   nothing to record yet, and that is the correct, honest result (not a bug
   to work around).
