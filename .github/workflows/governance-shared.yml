@@ -12,6 +12,8 @@ on:
 jobs:
   shared:
     runs-on: ubuntu-latest
+    env:
+      TRACK: backend   # this repo's track — the ONE place it is named
     steps:
       - uses: actions/checkout@v4
         with:
@@ -31,20 +33,33 @@ jobs:
           PROFILE=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['profile'])" "$SUMMARY")
           MODULES=governance/shared/$(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['paths']['modules'])" "$SUMMARY")
           test -d "$MODULES" || { echo "::error::the summary names $MODULES, which does not exist"; exit 1; }
-          echo "profile=$PROFILE"   >> "$GITHUB_ENV"
-          echo "modules=$MODULES"   >> "$GITHUB_ENV"
-          echo "live profile: $PROFILE · modules at $MODULES"
+          # WHERE THIS TRACK'S EXECUTION STATE LIVES IS `tracks.<track>.partition`,
+          # NOT `paths.modules`. The v7 layout moved it out of the analysis tree
+          # (analysis/modules/{MOD}/) into a per-track partition
+          # (backend/modules/{MOD}/), and the check below went on globbing the
+          # old shape. It matched nothing, and "nothing" is the one case it
+          # treats as a hard error — so this job failed on every push for a
+          # reason that had nothing to do with the push.
+          PARTITION=governance/shared/$(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['tracks'][sys.argv[2]]['partition'])" "$SUMMARY" "$TRACK")
+          echo "profile=$PROFILE"       >> "$GITHUB_ENV"
+          echo "modules=$MODULES"       >> "$GITHUB_ENV"
+          echo "partition=$PARTITION"   >> "$GITHUB_ENV"
+          echo "live profile: $PROFILE · modules at $MODULES · $TRACK partition at $PARTITION"
 
       - name: Every path this repo's execution state names resolves
         run: |
           python3 - <<'PY'
           import json, os, pathlib, sys
-          track = "backend"
+          track = os.environ["TRACK"]
           bad, seen = [], 0
-          root = pathlib.Path(os.environ["modules"])
-          for es in sorted(root.glob(f"*/{track}/execution-state.json")):
+          # `tracks.<track>.partition` with {MOD} as the wildcard — the same
+          # template every command in this repo resolves, so a future layout
+          # move is picked up here instead of silently un-checked.
+          template = os.environ["partition"]
+          depth = template.split("/").index("{MOD}")
+          for es in sorted(pathlib.Path().glob(template.replace("{MOD}", "*") + "/execution-state.json")):
               seen += 1
-              mod = es.parent.parent.name
+              mod = es.parts[depth]
               for key, value in json.loads(es.read_text(encoding="utf-8")).items():
                   if not key.endswith("_path") or not isinstance(value, str) or not value.strip():
                       if key.endswith("_path"):
@@ -54,7 +69,7 @@ jobs:
                       bad.append(f"{mod}: {key} -> {value} does not exist")
           if not seen:
               # A check that examined nothing must say so, not pass quietly.
-              print("::error::no execution state found for track 'backend' — either the submodule is stale or this repo writes nowhere")
+              print(f"::error::no execution state found for track {track!r} at {template} — either the submodule is stale or this repo writes nowhere")
               sys.exit(1)
           for b in bad:
               print(f"::error::{b}")

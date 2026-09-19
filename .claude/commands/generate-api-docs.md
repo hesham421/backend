@@ -41,7 +41,8 @@ application, so there is one current set per module, not one per plan version.
 folder is the factory's to name; spelling it here makes a second profile an edit
 to this file. **`$MODULES` is the read-only analysis tree; api-docs are written
 under `$PART`, never under `$MODULES`** — the two differ (`analysis/modules/<MOD>`
-vs `backend/modules/<MOD>`) and confusing them is a write `CODEOWNERS` refuses.
+vs `backend/modules/<MOD>`) and confusing them writes into the factory's
+analysis tree, which the next publish overwrites. Nothing refuses it for you.
 
 ## Preconditions
 

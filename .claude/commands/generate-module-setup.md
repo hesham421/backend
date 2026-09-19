@@ -48,7 +48,13 @@ PKGS=$(echo "$DELIVERY" | sed "s/{MOD}/$MODULE/")   # the factory's delivered pa
 
 `$MBASE` and `$PKGS` are **read-only** to this repo; it writes only under `$MINE`
 (`$MINE/api-docs/` included — never `$MINE/packages/`, that is the factory's). A write
-anywhere else under `governance/shared/` is refused at review by that repo's `CODEOWNERS`.
+anywhere else under `governance/shared/` is out of this track's partition.
+What actually STOPS it is `.governance-scope`: `./scripts/governance scope`
+sparse-checks the submodule down to the partitions this track may read, so the
+other track's tree is not on disk to be written. (`CODEOWNERS` in the shared
+repo does NOT stop it — it names one owner for every path, draws no
+backend/frontend line, can only request a review, and is bypassed entirely by
+the direct push `./scripts/governance push` makes. Do not rely on it.)
 
 **Path resolution — every governance path lives inside `governance/shared/`.**
 The analysis, the plans and this repo's partition are all in that submodule;
@@ -78,7 +84,7 @@ collides with every other module's setup, and silently overwrites whatever
 module was generated last).
 
 **Write every governance path into the generated commands FULLY EXPANDED** —
-`governance/shared/backend/modules/FIN/packages/backend-execution/…`, not
+`governance/shared/backend/modules/<MODULE>/packages/backend-execution/…`, not
 `packages/backend-execution/…` and not `$PKGS/…`. A generated command is run
 standalone by a session that never read this file, so it carries no variable
 bindings and no bare-path convention; a bare path there is a path that session
@@ -202,19 +208,19 @@ phase missing from the gate is invisible until the test phase runs without it.
 ### Test phase(s) — two delivered shapes, both real; check the filesystem, never assume
 
 The test plan reaches this repo in one of two shapes, and **which one is a
-per-module fact on disk, not a project-wide rule**. As of 2026-09-19 the split
-shape is the common one — `test_gen/` is empty for CU, FILE, FIN and NOTIF,
-while every module's plan sits under `$PKGS/backend-test/`. Check both, in
-this order, and use whichever actually holds files:
+per-module fact on disk, not a project-wide rule**. Do not carry a list of
+which module is in which shape: such a list is wrong for the next module
+generated and for every module whose plan is re-split. Check both, in this
+order, and use whichever actually holds files:
 
 **Shape A — split folder (`$PKGS/backend-test/`, check FIRST).** One `.md` per
 unit, e.g. `API-SCENARIOS.md`, `RULE-SCENARIOS.md`, `INT-XM.md`, alongside
 `index.md` / `_SECTIONS.md` / `state.json` / `verification.json`.
 
 The folder is flat, so **it cannot tell you by itself which `.md` is a test
-PHASE and which is a SUB of one** — and the answer differs per module (FIN and
-MDL separate `INT-XM` as its own phase; SEC has none at all). Do not guess it
-from the file list. The profile already declares it, exactly as it declares
+PHASE and which is a SUB of one** — and the answer differs per module. Do not
+guess it from the file list, and do not carry a table of which module does
+what. The profile already declares it, exactly as it declares
 `$EXEC_PHASES`:
 
 ```bash
@@ -229,17 +235,17 @@ jq -r '.tracks.backend.plans.test.phases[]
   (each existing label becomes a SUB, in the profile's order); a phase without
   them (the `integration: true` one) → its own `<key>.md` exists, and it is
   recorded as a phase entry with `"subs": []`.
-- Declared but absent on disk → omit it. Do NOT fabricate a placeholder. (SEC
-  is ROOT: no `INT-XM.md`, so no `INT-XM` entry — and that is correct, not a
-  gap.)
+- Declared but absent on disk → omit it. Do NOT fabricate a placeholder. A
+  ROOT module has no cross-module integration unit, so no `INT-XM.md` and no
+  `INT-XM` entry — that is correct, not a gap.
 - On disk but not declared → do not silently fold it in; report it as an
   unrecognised unit and ask, the same as for an unrecognised exec phase.
 - **Corroborate when you can.** When `$PKGS/backend-test/state.json` exists it
   carries `units[]` — e.g. `["SUB:RULE-SCENARIOS","SUB:API-SCENARIOS","PHASE:INT-XM"]`
   — the splitter's own record of the SUB/PHASE split. Read it and confirm it
   agrees with the profile-derived answer; if the two disagree, STOP and report
-  the disagreement rather than picking one. (It is absent for CU, FILE and
-  NOTIF, which is why it corroborates rather than decides.)
+  the disagreement rather than picking one. It is absent for some modules,
+  which is why it corroborates rather than decides.
 - `header_file` is that folder's `*-HEADER.md` if one exists, else its
   `index.md`, else `null`.
 
@@ -256,7 +262,7 @@ per-sub file — detect phases and subs from markers INSIDE that one file:
 - A separate cross-module/integration phase (historically named `INT-XM`) is
   detected the same way — as its own `<!-- PHASE:*:START -->` block — if the
   file contains one. If the file instead states outright that no such phase
-  applies (e.g. "No `INT-XM` phase — SEC is ROOT"), there is none to add —
+  applies (a ROOT module has no cross-module unit), there is none to add —
   do not fabricate an empty placeholder entry for it.
 - Preserve marker order as found in the file for both phases and subs.
 - `header_file` is the path to this one flat file itself — there is no
@@ -293,8 +299,9 @@ Record weight and task count for every sub found.
 ## Step 2 — Generate `execution-state.json`
 
 Location: `$MINE/execution-state.json`  (resolved in Step 0.5 — v1 = no suffix, vN = /vN).
-**Not** `$MBASE/…`: that is the factory's analysis tree, read-only here, and a
-write there is refused at review by the shared repo's `CODEOWNERS`.
+**Not** `$MBASE/…`: that is the factory's analysis tree, read-only here. The
+factory overwrites it on the next publish, so a write there is lost, not
+merged — and nothing in the shared repo refuses it for you.
 
 ```json
 {
@@ -330,10 +337,11 @@ write there is refused at review by the shared repo's `CODEOWNERS`.
 ```
 
 Every `$VAR` above is written into the file **expanded** — a real repo-relative
-path such as `governance/shared/backend/modules/FIN/api-docs/`, never the
-literal `$MINE`. (FIN's own state file carried
-`governance/shared/erp/modules/FIN/api-docs/` for a while — a path that exists
-nowhere; that is what an unexpanded-then-guessed value looks like later.)
+path such as `governance/shared/backend/modules/<MODULE>/api-docs/`, never the
+literal `$MINE`. (Every state file in this repo carried a
+`governance/shared/erp/modules/<MODULE>/api-docs/` for a while — a path that
+exists nowhere; that is what an unexpanded-then-guessed value looks like
+later.)
 
 Rules:
 - `test_phases` is an ARRAY — one object per real test phase found in

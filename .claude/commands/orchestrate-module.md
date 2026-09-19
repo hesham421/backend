@@ -42,10 +42,13 @@ factory's to name; spelling it here makes a second profile an edit to this file.
 /orchestrate-module [MODULE] [PHASE?] [--auto]
 ```
 
-- `MODULE` (required): a live module code — today `CU`, `FILE`, `FIN`, `MDL`,
-  `NOTE`, `NOTIF`, `SEC` (read `governance/shared/platform/modules-registry.json`
-  rather than trusting this list; the pre-split names `ORG`, `SECURITY`,
-  `MASTERDATA` resolve to nothing). Three things must exist, each in its OWN
+- `MODULE` (required): a live module code. **The live set is read, never
+  typed** — `jq -r '.modules[].code' governance/shared/platform/modules-registry.json`
+  (that file also carries each module's `current_version` — the IFA check below).
+  A module list written into a command is wrong the day a module is added,
+  split or retired, and the symptom is a run that refuses a real module or
+  accepts a dead one. If the argument is not in that file, STOP and say so;
+  do not guess a near-match. Three things must exist, each in its OWN
   tree — they are not siblings:
   - `$MODULES/{MODULE}/` — the analysis (P0…P3_2, `test_gen/`, `manifest.json`)
   - `$PART/execution-state.json` and `$PKGS/backend-execution/` ({MOD} expanded)
@@ -170,7 +173,7 @@ and never touches the module's source files directly.** Its only jobs are:
 ## STEP 0 — Locate module & resume point
 
 1. Read `$PART/execution-state.json` ({MOD} expanded — this repo's own
-   writable partition, e.g. `governance/shared/backend/modules/FIN/`). It is
+   writable partition, e.g. `governance/shared/backend/modules/<MODULE>/`). It is
    NOT under `$MODULES/` and there is no `backend/` segment inside `$PART`.
    Note `current_phase`, `current_sub`, and every phase's/sub's `status`.
 2. If a `PHASE` argument was given, use it (but still resume from whatever subs
@@ -279,8 +282,8 @@ of this conversation. It MUST include:
 - **The exact files to read first, in full** (the ones identified in 1.1:
   HEADER, sub spec, the db-script, SRS slice, the named skills, the precedent)
   — **each as a fully expanded path**, e.g.
-  `governance/shared/backend/modules/FIN/packages/backend-execution/SVC-API/SVC-API-CRUD.md`
-  and `governance/shared/analysis/modules/FIN/P2/db-script-fin.md`. The
+  `governance/shared/backend/modules/<MODULE>/packages/backend-execution/SVC-API/SVC-API-CRUD.md`
+  and `governance/shared/analysis/modules/<MODULE>/P2/db-script-<module>.md`. The
   dispatched agent has none of this session's variable bindings and no
   bare-path convention, so `$PKGS/…` or a bare `packages/…` in its prompt is a
   path it has to guess at — and the tree it would guess (the repo root) has no
