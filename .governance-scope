@@ -17,4 +17,4 @@ backend/modules/*/**
 backend/modules/*/api-docs/**
 backend/modules/*/packages/**
 platform/**
-project.yaml
+/project.yaml

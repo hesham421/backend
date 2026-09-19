@@ -4,7 +4,8 @@
 Lives at   : backend/.claude/commands/generate-api-docs.md, so it
              auto-loads as a Claude Code slash command
 Runs       : governance/governance-tools/api-doc-generator/generate.py
-Writes to  : $MODULES/[MODULE]/api-docs/
+Writes to  : $PART/api-docs/  ({MOD} expanded — this track's own writable
+             partition, today governance/shared/backend/modules/<MOD>/)
 ```
 
 (Re)generates a module's API documentation from the **running backend**, so
@@ -32,10 +33,15 @@ PKGS=governance/shared/$(jq -r .tracks.backend.delivery "$SUMMARY")     # the de
 
 Bare `packages/…` paths below resolve under `$PKGS` with `{MOD}` expanded; `execution-state.json`
 and `api-docs/` under `$PART` with `{MOD}` expanded; stage artifacts and `manifest.json` under
-`$MODULES/{MODULE}/`. A version-suffixed base (`vN/`) applies to each of the three the same way.
+`$MODULES/{MODULE}/`. A version-suffixed base (`vN/`) applies to each of the three the same way —
+with ONE exception: `api-docs/` is never version-suffixed. It is derived from the running
+application, so there is one current set per module, not one per plan version.
 
-`$MODULES` and `$GOVROOT` below are those values. The profile folder is the
-factory's to name; spelling it here makes a second profile an edit to this file.
+`$MODULES`, `$GOVROOT`, `$PART` and `$PKGS` below are those values. The profile
+folder is the factory's to name; spelling it here makes a second profile an edit
+to this file. **`$MODULES` is the read-only analysis tree; api-docs are written
+under `$PART`, never under `$MODULES`** — the two differ (`analysis/modules/<MOD>`
+vs `backend/modules/<MOD>`) and confusing them is a write `CODEOWNERS` refuses.
 
 ## Preconditions
 
@@ -85,6 +91,44 @@ name the likely cause — never treat empty as normal:
 | No "Required permission(s)" anywhere | `@PreAuthorize` constants not resolved from source |
 | Every endpoint says "Authentication: Not determined" | backend declares no `SecurityScheme` in `OpenApiConfig` — a known backend gap, not a generator failure |
 
+### STEP 4 — Publish them (they are NOT published until you do)
+
+`governance/shared` is a **submodule**: a separate repository mounted here.
+Files the generator wrote there are untracked in *that* repository and invisible
+to everyone else — the factory's `fetch-inputs` and the frontend both read the
+pushed commit, not your working tree. Regenerating and stopping looks like
+success and delivers nothing.
+
+```bash
+cd governance/shared
+git fetch origin main
+git merge-base --is-ancestor HEAD origin/main \
+  && git checkout main \
+  || echo "HEAD is NOT on origin/main — skip the checkout, use 'git push HEAD:main' below"
+git status --short                       # the regenerated files
+git add "${PART/\{MOD\}/$MODULE}/api-docs"   # $PART from Step 0 — never a typed path
+git commit -m "api-docs($MODULE): regenerated from the running app"
+git push                                 # or: git push HEAD:main, if the guard said so
+cd ../..
+git add governance/shared                # this repo's pointer to that commit
+git commit -m "bump shared: $MODULE api-docs"
+git push
+```
+
+Two failure modes worth naming, because neither announces itself:
+
+- **Detached HEAD.** `git submodule update --init` checks out a *commit*, so
+  the submodule normally sits on no branch at all and a plain `git push` has
+  nothing to push to. (Both consumer repos were found detached on 2026-09-17 —
+  this is the normal state, not a mishap.) Getting onto `main` fixes that, but
+  only when the checked-out commit is an **ancestor of `origin/main`** — hence
+  the guard above. When it is not, `git checkout main` would silently move you
+  off the tree you just generated against; commit where you are and
+  `git push HEAD:main` instead.
+- **Pointer not bumped.** Pushing the submodule without committing the pointer
+  here leaves this repo claiming the previous api-docs. `gov.py sync` in the
+  factory reports it, but only if someone runs it.
+
 ## Constraints (NON-NEGOTIABLE)
 
 - **NEVER hand-edit a generated file under `api-docs/`.** It is regenerated
@@ -103,46 +147,18 @@ name the likely cause — never treat empty as normal:
 
 ## Notes
 
-- Output always lands in `$MODULES/[MODULE]/api-docs/`
-
-## STEP 4 — Publish them (they are NOT published until you do)
-
-`governance/shared` is a **submodule**: a separate repository mounted here.
-Files the generator wrote there are untracked in *that* repository and invisible
-to everyone else — the factory's `fetch-inputs` and the frontend both read the
-pushed commit, not your working tree. Regenerating and stopping looks like
-success and delivers nothing.
-
-```bash
-cd governance/shared
-git checkout main                        # see below — a submodule is detached by default
-git status --short                       # the regenerated files
-git add backend/modules/$MODULE/api-docs
-git commit -m "api-docs($MODULE): regenerated from the running app"
-git push
-cd ../..
-git add governance/shared                # this repo's pointer to that commit
-git commit -m "bump shared: $MODULE api-docs"
-git push
-```
-
-Two failure modes worth naming, because neither announces itself:
-
-- **Detached HEAD.** `git submodule update --init` checks out a *commit*, so
-  the submodule normally sits on no branch at all and a plain `git push` has
-  nothing to push to. `git checkout main` first, as above: while the pinned
-  commit is the branch tip this changes no file and leaves the superproject
-  pointer untouched, so it is safe to do every time. (Both consumer repos were
-  found detached on 2026-09-17 — this is the normal state, not a mishap.) If
-  you have already committed while detached, `git push HEAD:main` publishes it.
-- **Pointer not bumped.** Pushing the submodule without committing the pointer
-  here leaves this repo claiming the previous api-docs. `gov.py sync` in the
-  factory reports it, but only if someone runs it.
+- Output always lands in this track's own partition — `$PART` with `{MOD}`
+  expanded, i.e. `governance/shared/backend/modules/[MODULE]/api-docs/`
   (`index.md` + `endpoints/<group-slug>.md`). The path derives from the tool's
-  own location, so the command works from any working directory.
+  own location and `profile-summary.json`, so the command works from any
+  working directory. The generator resolves the layout itself and **refuses**
+  rather than guessing when two candidate directories exist — if it says so,
+  report that; do not pick one for it.
 - `review` is safe to run any time, including in CI, to answer "have the API
   docs drifted from the backend?" without touching a file.
-- Consumers of this output: the frontend repo's own independent
-  `modules/[MODULE]/api-docs/` copy, and the `api-verify` skill — see
+- Consumers of this output: the frontend repo and the governance factory, both
+  of which read **this same single copy** through their own `governance/shared`
+  submodule (there is no second copy to keep in step — superseded 2026-09-17),
+  and the `api-verify` skill — see
   `governance/shared/platform/rules/api-verify-config.md` §1, which lists api-docs as its
   **mandatory** input and says to regenerate rather than trust a stale copy.

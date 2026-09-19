@@ -7,8 +7,11 @@ Lives at   : backend/.claude/commands/generate-module-setup.md, so it
 
 ## Precondition — the shared submodule is mounted (mechanical, not a judgement)
 
+This runs BEFORE Step 0, so it can name no derived variable — it tests the one
+path that is fixed by the `.gitmodules` entry, not by the profile:
+
 ```bash
-test -d $MODULES || echo "MISSING"
+test -f governance/shared/platform/profile-summary.json || echo "MISSING"
 ```
 
 If MISSING: `git submodule update --init governance/shared`, then start over.
@@ -47,6 +50,16 @@ PKGS=$(echo "$DELIVERY" | sed "s/{MOD}/$MODULE/")   # the factory's delivered pa
 (`$MINE/api-docs/` included — never `$MINE/packages/`, that is the factory's). A write
 anywhere else under `governance/shared/` is refused at review by that repo's `CODEOWNERS`.
 
+**Path resolution — every governance path lives inside `governance/shared/`.**
+The analysis, the plans and this repo's partition are all in that submodule;
+this repo's own tree holds only tools, skills and commands. So in this file and
+in everything it generates, a bare `packages/…` resolves under `$PKGS`,
+a bare `execution-state.json` / `api-docs/` / `test-api/` under `$MINE`, and a
+bare stage folder (`P0`…`P3_2`, `test_gen/`, `manifest.json`) under `$MBASE` —
+each with `{MOD}` expanded. Nothing here ever reads a module artifact from the
+backend repo root, from a `governance/modules/…` path (that tree does not
+exist), or from `frontend/`.
+
 **`$EXEC_PHASES` is the authority for `gated_by_phases`.** Intersect it with the
 phases actually found on disk — never type the list, and never let a phase the
 profile declares go missing from the gate.
@@ -64,18 +77,26 @@ back to the flat `.claude/commands/execute-backend.md` (no module name,
 collides with every other module's setup, and silently overwrites whatever
 module was generated last).
 
+**Write every governance path into the generated commands FULLY EXPANDED** —
+`governance/shared/backend/modules/FIN/packages/backend-execution/…`, not
+`packages/backend-execution/…` and not `$PKGS/…`. A generated command is run
+standalone by a session that never read this file, so it carries no variable
+bindings and no bare-path convention; a bare path there is a path that session
+has to guess. The templates below use `$MBASE` / `$MINE` / `$PKGS` **as
+placeholders to substitute**, never as text to copy through.
+
 `execute-backend-test.md` is this module's test-verification command — it
 regenerates this module's api-docs via `governance/governance-tools/api-doc-generator`
 (so verification always runs against the real, current implementation, never a
 stale snapshot) and then drives the `api-verify` skill
 (`.claude/skills/api-verify/SKILL.md`, this repo's sole adopted backend API
 verification mechanism) to turn those api-docs — plus the test-execution-manifest
-when present — into one runnable script and a problems report, producing one
-coverage report — not regenerated per module.
+when present — into one runnable script, a problems report, and one coverage
+table, all scoped to this module alone.
 The generated command is **fully self-contained**: it depends only on
 `governance/governance-tools/api-doc-generator`, the `api-verify` skill,
 `governance/shared/platform/rules/api-verify-config.md`, and this module's own artifacts under
-`$MBASE/` — never on an external governance/mechanism
+`$MBASE/` (analysis) and `$MINE/` (this repo's partition) — never on an external governance/mechanism
 doc, and never on TestSprite (retired as this project's backend test
 mechanism — do not reintroduce a `TestSprite` MCP dependency here). Every rule
 it needs (api-doc regeneration, module scoping, failure taxonomy) is written
@@ -108,20 +129,32 @@ commands) live under a version-suffixed base — never over v1. Resolve the base
 BEFORE scanning, directly from the filesystem:
 
 ```bash
-ls -d $MBASE/v*/ 2>/dev/null | sort -t v -k2 -n | tail -1
+# find, not a glob: under zsh an unmatched `$MBASE/v*/` aborts the command
+# with "no matches found" and 2>/dev/null does not suppress it.
+find $MBASE -mindepth 1 -maxdepth 1 -type d -name 'v[0-9]*' | sort -t v -k2 -n | tail -1
 ```
 
 Rule:
-- No `vN` folder found → base = `$MBASE/`        (no suffix, v1)
-- Highest `vN` folder found → base = `$MBASE/v$N/`
+- No `vN` folder found → v1; leave `$MBASE`, `$MINE` and `$PKGS` exactly as
+  Step 0 built them.
+- Highest `vN` folder found → append `/v$N` to **each of the three** before
+  anything below reads or writes through them:
+  `MBASE=$MBASE/v$N`, `MINE=$MINE/v$N`, `PKGS=$MINE/v$N/packages`
+  (the delivery path is the partition's own `packages/` subtree, so it takes
+  the same suffix — re-derive it, never leave it pointing at v1).
 
-Call this resolved path `$MBASE`. Every `$MBASE/…` path in
-the steps below means `$MBASE/…`. In particular, for a vN module:
+The three keep their Step 0 meanings, and nothing below may swap them:
+
+| Variable | Points at | This repo may |
+|---|---|---|
+| `$MBASE` | `analysis/modules/<MOD>` — P0…P3_2, `test_gen/`, `manifest.json` | **read only** |
+| `$PKGS`  | `<partition>/packages` — `backend-execution/`, `backend-test/` | **read only** |
+| `$MINE`  | `backend/modules/<MOD>` — `execution-state.json`, `api-docs/`, `test-api/` | **read and write** |
+
+In particular, for a vN module:
 - scan `$PKGS/backend-execution` and `$PKGS/backend-test`
-  (fallback `$MBASE/test_gen` — see Step 1's Test phase(s) section; NOT
-  `$PKGS/backend-test`, which this command no longer reads —
-  that split output depended on governance-tools splitter tooling this
-  project no longer relies on)
+  (with `$MBASE/test_gen` as the flat-file fallback — see Step 1's
+  Test phase(s) section)
 - write `execution-state.json` to `$MINE/execution-state.json`
 - `api_docs_path` = `$MINE/api-docs/`
   — NOT `$MBASE/api-docs/`. api-docs are the ONE artifact this repo does
@@ -145,8 +178,8 @@ v1 command for a v2 delta.
 
 ```bash
 find $PKGS/backend-execution -type f -name "*.md" | sort
-ls $MBASE/test_gen/backend-test-plan-*.md 2>/dev/null
-ls $PKGS/backend-test/backend-test-plan-*.md 2>/dev/null
+find $PKGS/backend-test      -type f -name "*.md" | sort
+find $MBASE/test_gen -type f -name 'backend-test-plan-*.md' 2>/dev/null   # Shape B; normally empty
 ```
 
 From the scan results:
@@ -156,7 +189,9 @@ From the scan results:
   phase-level shared context — read once in execution STEP 1.0, never a sub)
 - Ignore `packages/backend-execution/_SECTIONS.md` for phase/sub detection — it
   is a top-level FILE (plan content outside every phase), not a phase folder
-- Preserve the exact filesystem sort order
+- Preserve the exact filesystem sort order **for SUBs within a phase**. Phase
+  ORDER is `$EXEC_PHASES`, never the filesystem's — a plain `ls` sorts
+  `ALIGN-BE` first, which is the last phase to run.
 - For each SUB file, read the first 40 lines and count the tasks
 
 Expected phases, in strict order: **`$EXEC_PHASES` from Step 0**, which is the
@@ -164,21 +199,53 @@ profile's own ordered list. Include only the ones actually present on disk, and
 keep that order. Do not type the list here — it went stale twice before, and a
 phase missing from the gate is invisible until the test phase runs without it.
 
-### Test phase(s) — scan generically, from the flat test-gen delivery — never assume a fixed shape
+### Test phase(s) — two delivered shapes, both real; check the filesystem, never assume
 
-The test-gen stage delivers ONE flat, per-module plan file directly under
-`$MBASE/` — `test_gen/backend-test-plan-<mod-lowercase>.md` (current
-folder name) or, for a module on the other naming, `backend-test/backend-test-plan-<mod-lowercase>.md`
-(fallback — check both on the filesystem, never assume one without checking;
-this folder name has changed before and may change again, so always verify
-on disk rather than trusting a remembered name).
-This command does **not** read `packages/backend-test/` — that split-folder
-shape was produced by the governance-tools splitter (`agent3_splitter.py`),
-which this project no longer relies on; the flat file is the sole source of
-truth for test coverage now.
+The test plan reaches this repo in one of two shapes, and **which one is a
+per-module fact on disk, not a project-wide rule**. As of 2026-09-19 the split
+shape is the common one — `test_gen/` is empty for CU, FILE, FIN and NOTIF,
+while every module's plan sits under `$PKGS/backend-test/`. Check both, in
+this order, and use whichever actually holds files:
 
-There is no per-phase subfolder and no per-sub file — detect phases and subs
-from markers INSIDE that one file:
+**Shape A — split folder (`$PKGS/backend-test/`, check FIRST).** One `.md` per
+unit, e.g. `API-SCENARIOS.md`, `RULE-SCENARIOS.md`, `INT-XM.md`, alongside
+`index.md` / `_SECTIONS.md` / `state.json` / `verification.json`.
+
+The folder is flat, so **it cannot tell you by itself which `.md` is a test
+PHASE and which is a SUB of one** — and the answer differs per module (FIN and
+MDL separate `INT-XM` as its own phase; SEC has none at all). Do not guess it
+from the file list. The profile already declares it, exactly as it declares
+`$EXEC_PHASES`:
+
+```bash
+TEST_PHASES=$(jq -r '.tracks.backend.plans.test.phases[].key' "$SUMMARY")
+# per phase: .sub_labels[] are its subs; .integration marks the cross-module one
+jq -r '.tracks.backend.plans.test.phases[]
+       | "\(.key)\tintegration=\(.integration)\tsubs=\((.sub_labels // [])|join(","))"' "$SUMMARY"
+```
+
+- A declared phase is **present** for this module when its evidence is on disk:
+  a phase with `sub_labels` → at least one `<label>.md` exists in the folder
+  (each existing label becomes a SUB, in the profile's order); a phase without
+  them (the `integration: true` one) → its own `<key>.md` exists, and it is
+  recorded as a phase entry with `"subs": []`.
+- Declared but absent on disk → omit it. Do NOT fabricate a placeholder. (SEC
+  is ROOT: no `INT-XM.md`, so no `INT-XM` entry — and that is correct, not a
+  gap.)
+- On disk but not declared → do not silently fold it in; report it as an
+  unrecognised unit and ask, the same as for an unrecognised exec phase.
+- **Corroborate when you can.** When `$PKGS/backend-test/state.json` exists it
+  carries `units[]` — e.g. `["SUB:RULE-SCENARIOS","SUB:API-SCENARIOS","PHASE:INT-XM"]`
+  — the splitter's own record of the SUB/PHASE split. Read it and confirm it
+  agrees with the profile-derived answer; if the two disagree, STOP and report
+  the disagreement rather than picking one. (It is absent for CU, FILE and
+  NOTIF, which is why it corroborates rather than decides.)
+- `header_file` is that folder's `*-HEADER.md` if one exists, else its
+  `index.md`, else `null`.
+
+**Shape B — one flat file (`$MBASE/test_gen/backend-test-plan-<mod-lowercase>.md`).**
+Used only when Shape A yields nothing. There is no per-phase subfolder and no
+per-sub file — detect phases and subs from markers INSIDE that one file:
 
 - PHASES = every `<!-- PHASE:<id>:START -->` … `<!-- PHASE:<id>:END -->`
   block found in the file (in practice, one: `TEST-PLAN-BE`) — its id is the
@@ -186,26 +253,29 @@ from markers INSIDE that one file:
 - For each PHASE block, SUBs = every `<!-- SUB:<id>:START -->` …
   `<!-- SUB:<id>:END -->` block nested inside it (e.g. `RULE-SCENARIOS`,
   `API-SCENARIOS`) — its id is the `<id>` in the marker.
-- Each TC belongs to whichever SUB block contains its own
-  `<!-- TC:TC-[MODULE]-<seq>:START -->` marker; this is also how STEP 0.1 of
-  the generated `execute-backend-test.md` will later load the REQUIRED
-  COVERAGE list.
 - A separate cross-module/integration phase (historically named `INT-XM`) is
   detected the same way — as its own `<!-- PHASE:*:START -->` block — if the
   file contains one. If the file instead states outright that no such phase
   applies (e.g. "No `INT-XM` phase — SEC is ROOT"), there is none to add —
   do not fabricate an empty placeholder entry for it.
 - Preserve marker order as found in the file for both phases and subs.
+- `header_file` is the path to this one flat file itself — there is no
+  separate `*-HEADER.md` for a flat-file-sourced test phase.
+
+**Both shapes:**
+- Each TC is identified by its `TC-[MODULE]-<seq>` id and belongs to whichever
+  sub (Shape A: file; Shape B: `<!-- SUB:*:START -->` block) contains it; this
+  is also how STEP 0.1 of the generated `execute-backend-test.md` will later
+  load the REQUIRED COVERAGE list.
 - Each test phase is gated by every backend EXECUTION phase that exists for
   this module — `$EXEC_PHASES` from Step 0, intersected with what is on disk —
-  unless the file's own header narrows it.
-- `header_file` in `execution-state.json` (Step 2) is the path to this one
-  flat file itself — there is no separate `*-HEADER.md` for a flat-file-sourced
-  test phase.
-- If neither `$PKGS/backend-test/` nor `$MBASE/test_gen/` yields a
-  `backend-test-plan-*.md` file, `test_phases` is an empty array — there is
+  unless the plan's own header narrows it.
+- **Record which shape was found**, and write the resolved path into
+  `header_file` — the generated `execute-backend-test.md` must name the shape
+  that actually exists for THIS module, not both.
+- If neither shape yields anything, `test_phases` is an empty array — there is
   nothing to record yet, and that is the correct, honest result (not a bug
-  to work around).
+  to work around). Say which two paths you checked.
 
 ### Weight classification
 
@@ -222,7 +292,9 @@ Record weight and task count for every sub found.
 
 ## Step 2 — Generate `execution-state.json`
 
-Location: `$MBASE/execution-state.json`  (resolved in Step 0.5 — v1 = no suffix, vN = /vN)
+Location: `$MINE/execution-state.json`  (resolved in Step 0.5 — v1 = no suffix, vN = /vN).
+**Not** `$MBASE/…`: that is the factory's analysis tree, read-only here, and a
+write there is refused at review by the shared repo's `CODEOWNERS`.
 
 ```json
 {
@@ -230,7 +302,7 @@ Location: `$MBASE/execution-state.json`  (resolved in Step 0.5 — v1 = no suffi
   "generated_at": "[today's date]",
   "current_phase": "[FIRST_PHASE]",
   "current_sub": "[FIRST_SUB or null]",
-  "api_docs_path": "$MBASE/api-docs/",
+  "api_docs_path": "$MINE/api-docs/",
   "phases": [
     {
       "id": "[PHASE_NAME]",
@@ -245,7 +317,7 @@ Location: `$MBASE/execution-state.json`  (resolved in Step 0.5 — v1 = no suffi
       "id": "[TEST_PHASE_NAME]",
       "status": "PENDING",
       "gated_by_phases": [ …$EXEC_PHASES, in its own order, intersected with the phases found on disk… ],
-      "header_file": "[MBASE]/test_gen/backend-test-plan-<mod-lowercase>.md (or the backend-test/ fallback path actually used) — the flat file itself, since there is no separate *-HEADER.md",
+      "header_file": "the path resolved in Step 1 for the shape actually found — Shape A: $PKGS/backend-test/<*-HEADER.md | index.md>; Shape B: $MBASE/test_gen/backend-test-plan-<mod-lowercase>.md (the flat file itself); null if neither exists",
       "subs": [
         { "id": "[SUB_NAME]", "status": "PENDING" }
       ]
@@ -257,9 +329,15 @@ Location: `$MBASE/execution-state.json`  (resolved in Step 0.5 — v1 = no suffi
 }
 ```
 
+Every `$VAR` above is written into the file **expanded** — a real repo-relative
+path such as `governance/shared/backend/modules/FIN/api-docs/`, never the
+literal `$MINE`. (FIN's own state file carried
+`governance/shared/erp/modules/FIN/api-docs/` for a while — a path that exists
+nowhere; that is what an unexpanded-then-guessed value looks like later.)
+
 Rules:
-- `test_phases` is an ARRAY — one object per real test-phase folder found in
-  Step 1's generic scan (mirrors the main `phases[]` array's shape). A module
+- `test_phases` is an ARRAY — one object per real test phase found in
+  Step 1's scan (mirrors the main `phases[]` array's shape). A module
   with only a base test phase gets a one-element array; a module whose plan
   spans cross-module dependencies gets the base phase plus its integration
   phase(s) (e.g. `INT-XM`) as additional array elements.
@@ -269,10 +347,15 @@ Rules:
   typed. If a phase the profile declares is missing from disk, say so rather
   than dropping it silently: a gate that waits for nothing passes for the wrong
   reason.
-  `header_file` is that phase's `*-HEADER.md` if the scan
-  found one, else `null`. `header_file` is that phase's `*-HEADER.md` if the scan
-  found one, else `null`.
+- `header_file` is the path resolved for that phase in Step 1 (Shape A:
+  `*-HEADER.md`, else `index.md`; Shape B: the flat plan file), else `null`.
 - `blocked`, `deferred_xm`, `api_doc_gaps` start empty.
+- The shape above is the MINIMUM, not the whole file. Execution and
+  verification add keys of their own to a `test_phases[]` entry
+  (`api_verify_run`, `coverage`, `failed_tcs`, `gap_tcs`, `mechanisms`,
+  `note`) — those are the record of what actually happened. **Regenerating
+  setup for a module that has already run must preserve them**; never
+  overwrite a populated state file back down to this skeleton.
 
 ### `api_doc_gaps[]` entry format (populated during execution)
 ```json
@@ -329,16 +412,16 @@ Proceed? [waits for confirmation]
 ## STEP 1 — Execution (after confirmation)
 
 ### 1.0 — Read shared context once (before the per-sub loop)
-- The phase's `[PHASE]-HEADER.md` under `packages/backend-execution/[PHASE]/`
+- The phase's `[PHASE]-HEADER.md` under `$PKGS/backend-execution/[PHASE]/`
   if present — phase-level strategy, tables, and intro that the SUB files
   reference but don't repeat.
-- `packages/backend-execution/_SECTIONS.md` if present — plan-level content
+- `$PKGS/backend-execution/_SECTIONS.md` if present — plan-level content
   that lives OUTSIDE every phase (Plan Index, DB Alignment Manifest, Error
   Catalog, Agent Handoff Summary). Read once for orientation; it is context,
   not a sub.
 
 ### Per sub:
-1. Read `packages/backend-execution/[PHASE]/[SUB].md` completely
+1. Read `$PKGS/backend-execution/[PHASE]/[SUB].md` completely
    (the SUB file is named by its phase-qualified label, e.g. `SVC-API-CRUD.md`)
 2. Identify all tasks
 3. Match each task to the applicable skill(s) in `.claude/skills/`
@@ -347,7 +430,7 @@ Proceed? [waits for confirmation]
 4. Read those skills from `.claude/skills/<skill>/SKILL.md` before writing
 5. Execute all tasks in order
 6. Run the phase's validation skill after the last task
-7. Mark sub COMPLETE in `execution-state.json`
+7. Mark sub COMPLETE in `$MINE/execution-state.json`
 
 ### Blocked items — OQ
 OQ-blocked task → skip, add to `blocked[]`, mark in code:
@@ -374,10 +457,11 @@ api_doc_gaps entries added.
 
 - NEVER skip STEP 0
 - NEVER execute without confirmation after assessment
-- NEVER invent field/column/route names — always look up db-script.md
+- NEVER invent field/column/route names — always look up
+  `$MBASE/P2/db-script-<mod-lowercase>.md` (the file is module-suffixed)
 - NEVER implement a blocked OQ item — mark and skip only
 - NEVER advance phase without explicit instruction
-- ALWAYS update execution-state.json after every sub
+- ALWAYS update `$MINE/execution-state.json` after every sub
 ```
 
 ---
@@ -399,7 +483,7 @@ Execute API verification for [MODULE] — only for what's actually complete.
 
 > **Self-contained.** This command needs `governance/governance-tools/api-doc-generator`,
 > the `api-verify` skill (`.claude/skills/api-verify/SKILL.md`), `governance/shared/platform/rules/api-verify-config.md`,
-> and this module's own artifacts under `$MBASE/`. Every rule it relies
+> and this module's own artifacts under `$MBASE/` and `$MINE/`. Every rule it relies
 > on is written below or in those two files — it reads no other external mechanism/governance
 > doc, never stops waiting on one, and never calls TestSprite (retired as this project's
 > backend test mechanism).
@@ -411,25 +495,30 @@ Execute API verification for [MODULE] — only for what's actually complete.
 
 ## STEP 0 — Plan Load, Gate Check, API-Doc Regeneration + Assessment
 
-### 0.1 — Load the delivered test-gen plan (the REQUIRED COVERAGE)
-Read every `TC-[MODULE]-<seq>` block out of this module's flat test-gen plan
-file — `$MBASE/test_gen/backend-test-plan-<mod-lowercase>.md`
-(current location), falling back to `$MBASE/test_gen/backend-test-plan-<mod-lowercase>.md`
-if the former doesn't exist. This command does not read `packages/backend-test/`
-— that split-folder shape depended on governance-tools splitter tooling this
-project no longer relies on; the flat file is the sole source of truth. Across
-every `<!-- PHASE:*:START -->` block the file contains (the base test phase
-and any integration phase such as `INT-XM`, each nested `<!-- SUB:*:START -->`
-block), extract per TC: its `TC-[MODULE]-<seq>` id, the `AC-*` / `XM-*` /
+### 0.1 — Load the delivered test plan (the REQUIRED COVERAGE)
+Read every `TC-[MODULE]-<seq>` block out of this module's delivered test plan.
+**Write the ONE shape Step 1 actually found on disk for this module into the
+generated command** — not both, and not a shape you remember:
+- **Shape A (split folder):** every `.md` under
+  `$PKGS/backend-test/` except `index.md`, `_SECTIONS.md` and `*-HEADER.md`
+  — each file is one sub (`API-SCENARIOS`, `RULE-SCENARIOS`, `INT-XM`, …).
+- **Shape B (flat file):** `$MBASE/test_gen/backend-test-plan-<mod-lowercase>.md`,
+  reading across every `<!-- PHASE:*:START -->` block it contains (the base
+  test phase and any integration phase such as `INT-XM`, each nested
+  `<!-- SUB:*:START -->` block).
+
+Extract per TC: its `TC-[MODULE]-<seq>` id, the `AC-*` / `XM-*` /
 `UXD-*` it traces (from its `traces=` marker attribute / `Derived from` line),
 and its one-line scenario. This list is the **REQUIRED COVERAGE** for this
 run — it is what the system's own analysis says must be tested, independent
-of whatever `api-verify` later discovers from the api-docs. If neither
-location yields a `backend-test-plan-*.md` file, or the file holds no `TC-*`
-block, STOP and report it — there is nothing governed to verify.
+of whatever `api-verify` later discovers from the api-docs. If the recorded
+path no longer holds a plan, or it holds no `TC-*` block, re-check the OTHER
+shape before concluding anything — the delivery shape can change between
+factory publishes. Only if both are genuinely empty, STOP and report it:
+there is nothing governed to verify.
 
 ### 0.2 — Gate Check (MANDATORY)
-Read `execution-state.json` → for each entry in `test_phases[]`, its
+Read `$MINE/execution-state.json` → for each entry in `test_phases[]`, its
 `gated_by_phases[]` (derived from `$EXEC_PHASES`). Confirm every listed backend execution phase has
 `status == COMPLETE`. Empty list → that phase's gate passes automatically.
 
@@ -453,8 +542,8 @@ python3 generate.py --module [MODULE] --function generate
 ```
 (consult that tool's own `README.md` for `--function generate` vs `update` vs
 `review` semantics before assuming — use whichever actually (re)writes
-`$MBASE/api-docs/` in full for this run). Confirm
-`$MBASE/api-docs/index.md` was written/updated before
+`$MINE/api-docs/` in full for this run). Confirm
+`$MINE/api-docs/index.md` was written/updated before
 proceeding to STEP 0.4 — do not invoke `api-verify` against missing or
 unrefreshed api-docs.
 
@@ -465,16 +554,23 @@ the frontend still read the previously pushed commit. Regenerating and stopping
 is indistinguishable from success until something downstream contradicts it:
 
 ```bash
-cd governance/shared && git checkout main && git add -A \
-  && git commit -m "api-docs([MODULE]): regenerated" && git push && cd ../..
-git add governance/shared && git commit -m "bump shared" && git push
+cd governance/shared
+git fetch origin main
+git merge-base --is-ancestor HEAD origin/main \
+  && git checkout main \
+  || echo "HEAD is NOT on origin/main — do not checkout; commit here and push HEAD:main"
+git add -A && git commit -m "api-docs([MODULE]): regenerated" && git push
+cd ../.. && git add governance/shared && git commit -m "bump shared" && git push
 ```
 
-`git checkout main` is not optional housekeeping: a submodule is checked out on
-a *commit*, not a branch, so without it `git push` has no branch to push to and
-the commit never leaves this machine. While the pinned commit is the branch tip
-it changes no file and leaves the superproject pointer untouched, so it is safe
-every time. Full sequence and both failure modes: `/generate-api-docs`.
+Getting onto a branch is not optional housekeeping: a submodule is checked out
+on a *commit*, not a branch, so a plain `git push` has no branch to push to and
+the commit never leaves this machine. But `git checkout main` is only harmless
+**while the checked-out commit is an ancestor of `origin/main`** — hence the
+guard above. If it is not (this checkout has been pinned off-branch before),
+checking out `main` silently moves you off the tree you just generated against;
+commit where you are and `git push HEAD:main` instead. Full sequence and both
+failure modes: `/generate-api-docs`.
 
 ### 0.4 — Confirm the app is reachable
 `http://localhost:7272/actuator/health` (start it with `mvn spring-boot:run`
@@ -493,7 +589,7 @@ than assuming.)
 
 Invoke the `api-verify` skill (`.claude/skills/api-verify/SKILL.md`) for
 `<MOD>` = `[MODULE]`. Per the skill's own procedure it reads:
-- `$MBASE/api-docs/` — regenerated in STEP 0.3, mandatory;
+- `$MINE/api-docs/` — regenerated in STEP 0.3, mandatory;
 - `$MBASE/test_gen/test-execution-manifest-<mod-lowercase>.md`
   when present (Full tier: happy-path CRUD + negative RULE checks, dependency
   order read verbatim from the manifest) — otherwise Minimal tier (happy-path
@@ -502,7 +598,7 @@ Invoke the `api-verify` skill (`.claude/skills/api-verify/SKILL.md`) for
   envelope shapes, error-code format, permission pattern) — never re-derived
   here.
 
-It produces, under `$MBASE/backend/test-api/`:
+It produces, under `$MINE/test-api/`:
 - `test_[mod-lowercase]_apis.py` — one runnable script, one `test_<entity>()`
   per entity in dependency order, each create/update/negative call tagged with
   a traceability comment (`Covers: API-… ; Negative: RULE-… / <code> / TC-…`),
@@ -510,7 +606,7 @@ It produces, under `$MBASE/backend/test-api/`:
 - `[mod-lowercase]_problems_report.md` — failures bucketed likely-real-bug /
   test-assumption-mismatch / infrastructure.
 
-Run the generated script (`python3 $MBASE/backend/test-api/test_[mod-lowercase]_apis.py`)
+Run the generated script (`python3 $MINE/test-api/test_[mod-lowercase]_apis.py`)
 against the app confirmed reachable in STEP 0.4, and record its pass/fail per
 `test_<entity>()` suite. This command never hand-writes verification code
 itself and never calls a TestSprite tool.
@@ -576,7 +672,7 @@ if nothing fits, use `ENVIRONMENT_FAILURE` and explain why in the detail.
 Write `reports/TEST-REPORT-[MODULE]-backend-[YYYY-MM-DD].md` — a
 module-scoped digest, distinct from `api-verify`'s own raw output
 (`[mod-lowercase]_problems_report.md`, left under
-`$MBASE/backend/test-api/`, untouched). It MUST include the
+`$MINE/test-api/`, untouched). It MUST include the
 STEP 1.9 coverage table (governed plan ↔ api-verify) and the coverage ratio,
 ABOVE the failure taxonomy — a green taxonomy over an incomplete plan is not
 a pass. This report is complete once the test/coverage section above is
@@ -586,7 +682,7 @@ Any `FAIL` or coverage GAP → report it here with its taxonomy code and STOP;
 this command never fixes source itself. Fixing is a separate, deliberate step
 the user runs afterward — do not auto-invoke any fixing agent from here.
 
-### 2.1 — Update `execution-state.json` `test_phases[]` (MANDATORY)
+### 2.1 — Update `$MINE/execution-state.json` `test_phases[]` (MANDATORY)
 For each entry in `test_phases[]`, set its status from the STEP 1.9 result:
 - `COMPLETE` only when EVERY `TC-*` under that phase (STEP 0.1) has a passing
   `api-verify` counterpart (STEP 1.9).
@@ -613,7 +709,7 @@ Scope the edit to `test_phases[]` (and, if a real doc gap surfaced, one
 - ALWAYS classify every failure/skip
 - ALWAYS load the governed `TC-*` plan (STEP 0.1) and emit the STEP 1.9
   coverage table before considering any test phase complete
-- ALWAYS update `execution-state.json` `test_phases[]` status per STEP 2.1
+- ALWAYS update `$MINE/execution-state.json` `test_phases[]` status per STEP 2.1
 ```
 
 ---
@@ -624,7 +720,7 @@ Scope the edit to `test_phases[]` (and, if a real doc gap surfaced, one
 ══════════════════════════════════════════════════════
 BACKEND MODULE SETUP COMPLETE: [MODULE]
 ══════════════════════════════════════════════════════
-execution-state.json      ✓  [MBASE]/  (v1 = modules/[MODULE]/, vN = modules/[MODULE]/vN/)
+execution-state.json      ✓  $MINE/  (v1 = <partition>/[MODULE]/, vN = <partition>/[MODULE]/vN/)
 execute-backend.md        ✓  .claude/commands/[MODULE]/
 execute-backend-test.md   ✓  .claude/commands/[MODULE]/
 

@@ -1,9 +1,9 @@
 # /orchestrate-module (BACKEND)
 
 Master orchestration protocol for executing a BACKEND module's governance
-execution pipeline in THIS backend repo. It runs from
-`backend/governance/`, drives the module's own `execute-backend.md` per-phase
-command, and adds a strict session/safety discipline on top of it. This command
+execution pipeline in THIS backend repo. It lives at
+`backend/.claude/commands/orchestrate-module.md` and runs from the backend repo
+root, drives the module's own `execute-backend.md` per-phase command, and adds a strict session/safety discipline on top of it. This command
 knows ONLY the backend — there is no frontend concept, no `--track`, no
 cross-repo reach into `frontend/`. (The frontend repo has its own separate
 orchestrator; this one never touches it.) Every path below is relative to the
@@ -20,9 +20,18 @@ PART=governance/shared/$(jq -r .tracks.backend.partition "$SUMMARY")    # this t
 PKGS=governance/shared/$(jq -r .tracks.backend.delivery "$SUMMARY")     # the delivered packages ({MOD} unexpanded) — written by the factory, read here
 ```
 
-Bare `packages/…` paths below resolve under `$PKGS` with `{MOD}` expanded; `execution-state.json`
-and `api-docs/` under `$PART` with `{MOD}` expanded; stage artifacts and `manifest.json` under
-`$MODULES/{MODULE}/`. A version-suffixed base (`vN/`) applies to each of the three the same way.
+**Every governance path lives inside the `governance/shared/` submodule.** The
+analysis this command reads (PRD, SRS, db-script, the execution plan), the
+delivered packages, and this repo's own partition are all in there; the backend
+repo's own tree holds only source, tools, skills and commands. So: bare
+`packages/…` paths below resolve under `$PKGS` with `{MOD}` expanded;
+`execution-state.json` and `api-docs/` under `$PART` with `{MOD}` expanded; and
+bare stage folders — `P0`…`P3_2`, `P1` (SRS/PRD), `P2` (db-script), `test_gen/`,
+`manifest.json` — under `$MODULES/{MODULE}/`. A version-suffixed base (`vN/`)
+applies to each of the three the same way. Nothing is read from a
+`governance/modules/…` path (no such tree), from the backend repo root, or from
+`frontend/`. If a path you are about to read does not begin `governance/shared/`
+and is not source/skill/command, you have the wrong path — resolve it again.
 
 `$MODULES` and `$GOVROOT` below are those values. The profile folder is the
 factory's to name; spelling it here makes a second profile an edit to this file.
@@ -33,12 +42,17 @@ factory's to name; spelling it here makes a second profile an edit to this file.
 /orchestrate-module [MODULE] [PHASE?] [--auto]
 ```
 
-- `MODULE` (required): e.g. `ORG`, `SECURITY`, `MASTERDATA`. Must have a
-  `$MODULES/{MODULE}/` folder with `execution-state.json`,
-  `packages/backend-execution/`, and a per-module command
-  `.claude/commands/{MODULE}/execute-backend.md`. If any of this is missing or
-  shaped differently than expected, STOP and ask — never guess a module's
-  structure.
+- `MODULE` (required): a live module code — today `CU`, `FILE`, `FIN`, `MDL`,
+  `NOTE`, `NOTIF`, `SEC` (read `governance/shared/platform/modules-registry.json`
+  rather than trusting this list; the pre-split names `ORG`, `SECURITY`,
+  `MASTERDATA` resolve to nothing). Three things must exist, each in its OWN
+  tree — they are not siblings:
+  - `$MODULES/{MODULE}/` — the analysis (P0…P3_2, `test_gen/`, `manifest.json`)
+  - `$PART/execution-state.json` and `$PKGS/backend-execution/` ({MOD} expanded)
+  - `.claude/commands/{MODULE}/execute-backend.md` — the per-module command
+
+  If any of this is missing or shaped differently than expected, STOP and ask —
+  never guess a module's structure.
 
   **VERSION (IFA-aware) — resolve the base BEFORE anything else.** A module
   that received an incremental feature (IFA) has a current version ≥ 2 and all
@@ -46,7 +60,10 @@ factory's to name; spelling it here makes a second profile an edit to this file.
   the filesystem:
 
   ```bash
-  ls -d $MODULES/{MODULE}/v*/ 2>/dev/null | sort -t v -k2 -n | tail -1
+  # find, not a glob: under zsh an unmatched `v*/` aborts the command with
+  # "no matches found", and 2>/dev/null does not suppress it.
+  find $MODULES/{MODULE} -mindepth 1 -maxdepth 1 -type d -name 'v[0-9]*' \
+    | sort -t v -k2 -n | tail -1
   ```
 
   - No `vN` folder found → base `$MODULES/{MODULE}/`      (no suffix, v1)
@@ -77,8 +94,19 @@ factory's to name; spelling it here makes a second profile an edit to this file.
   per-phase gate applies (recommended for a module's first run or after any spec
   or skill change).
 
-Backend execution phases, in order: `CORE → DATA-DOM → SVC-API → DOC → INT-C →
-INT-R → SEC-BE → ALIGN-BE`. There is no P4/audit phase.
+Backend execution phases and their order are **read, never typed** — from
+`.tracks.backend.plans.exec.phases[].key` in `profile-summary.json` (Step 0),
+intersected with what `$PKGS/backend-execution/` actually holds:
+
+```bash
+EXEC_PHASES=$(jq -r '.tracks.backend.plans.exec.phases[].key' "$SUMMARY")
+```
+
+(As published today that yields `CORE → DATA-DOM → SVC-API → DOC → INT-C →
+INT-R → SEC-BE → ALIGN-BE` — shown to orient you, not to be relied on. A phase
+list typed into a command goes stale the moment the profile gains one.) There
+is no P4/audit phase. Wherever this file says `ALIGN-BE` as the last execution
+phase, read "the LAST key in `$EXEC_PHASES`".
 
 ## Portability — never hardcode an absolute path
 
@@ -141,8 +169,10 @@ and never touches the module's source files directly.** Its only jobs are:
 
 ## STEP 0 — Locate module & resume point
 
-1. Read `$MODULES/{MODULE}/backend/execution-state.json`. Note
-   `current_phase`, `current_sub`, and every phase's/sub's `status`.
+1. Read `$PART/execution-state.json` ({MOD} expanded — this repo's own
+   writable partition, e.g. `governance/shared/backend/modules/FIN/`). It is
+   NOT under `$MODULES/` and there is no `backend/` segment inside `$PART`.
+   Note `current_phase`, `current_sub`, and every phase's/sub's `status`.
 2. If a `PHASE` argument was given, use it (but still resume from whatever subs
    in it are not yet `COMPLETE` — never re-run a `COMPLETE` sub). Otherwise use
    `current_phase`.
@@ -189,11 +219,13 @@ Before writing the dispatch prompt, read:
   `packages/backend-execution/_SECTIONS.md` if present (plan-level content
   outside every phase — Plan Index, DB Alignment Manifest, Error Catalog, Agent
   Handoff Summary).
-- **`db-script.md`** for this module (under its `P2` folder) — the authoritative
-  source for table and column names, PK/FK/flag suffix conventions, and types.
-  A spec block naming a field is a plan; `db-script.md` is schema ground truth.
-  Never invent a column name.
-- **The SRS** (under `P1`) for the business rules (RULE-IDs) this sub must
+- **`db-script-<mod-lowercase>.md`** for this module (under `$MBASE/P2/`, e.g.
+  `P2/db-script-fin.md` — the file is module-suffixed; `ls $MBASE/P2/` rather
+  than assuming a bare `db-script.md`) — the authoritative source for table and
+  column names, PK/FK/flag suffix conventions, and types. A spec block naming a
+  field is a plan; the db-script is schema ground truth. Never invent a column
+  name. Referred to below as **the db-script**.
+- **The SRS** (`$MBASE/P1/srs-<mod-lowercase>.md`) for the business rules (RULE-IDs) this sub must
   implement — authoritative for behavior.
 - **Skill compliance (mandatory — not satisfied by precedent-matching alone).**
   1. Cross-reference this sub's work type against the skills index from STEP 0.4
@@ -245,14 +277,21 @@ of this conversation. It MUST include:
   X"); any controller/route/config not this phase's spec explicitly requires
   wiring into; any legacy module's files.
 - **The exact files to read first, in full** (the ones identified in 1.1:
-  HEADER, sub spec, db-script.md, SRS slice, the named skills, the precedent).
+  HEADER, sub spec, the db-script, SRS slice, the named skills, the precedent)
+  — **each as a fully expanded path**, e.g.
+  `governance/shared/backend/modules/FIN/packages/backend-execution/SVC-API/SVC-API-CRUD.md`
+  and `governance/shared/analysis/modules/FIN/P2/db-script-fin.md`. The
+  dispatched agent has none of this session's variable bindings and no
+  bare-path convention, so `$PKGS/…` or a bare `packages/…` in its prompt is a
+  path it has to guess at — and the tree it would guess (the repo root) has no
+  governance in it at all.
 - **The "don't build a competing implementation" check**: before writing code,
   confirm whether the thing this sub needs already exists (an entity/repository/
   service/controller for this resource). If it exists: integrate/modify it,
   never create a competing new one. If genuinely absent, flag it in the report
   and implement it as a minimal explicit addition.
 - **Contract ground-truth rule (backend)**: the authoritative sources are, in
-  order, `db-script.md` (schema), the SRS (rules), and the sub's own spec block.
+  order, the db-script (schema), the SRS (rules), and the sub's own spec block.
   The backend PRODUCES its API contract (api-docs are generated FROM the code
   after implementation) — the agent NEVER invents a contract detail the
   SRS/spec/db-script doesn't give, and NEVER consults the frontend. If a needed
@@ -319,7 +358,7 @@ Do this yourself, read-only, in this session:
 - a dispatched agent reports it is blocked, or cannot complete its sub cleanly;
 - STEP 1.3 verification reveals a failure the same-agent follow-up could not fix;
 - STEP 2's mechanical gap resolution reaches step 5 (ABSENT — unresolved from
-  `db-script.md`, the SRS, cross-module artifacts, or existing source).
+  the db-script, the SRS, cross-module artifacts, or existing source).
 
 **An impasse is never escalated to the user on one agent's word.** Before any
 escalation, put a SECOND agent on it and let the two converge. This is the same
@@ -329,8 +368,10 @@ interrupt, is the first response to a stall.
 
 1. **Dispatch a SECOND agent** (`Agent` tool, read-heavy — it analyses, it does
    not write code) briefed with ALL of this module's analysis files:
-   - the PRD, and the SRS (`RULE-ID`s / `AC-*`) under `P1`;
-   - `db-script.md` under `P2`;
+   - the PRD (`$MBASE/P0_5/prd-<mod-lowercase>.md`) and the SRS
+     (`$MBASE/P1/srs-<mod-lowercase>.md` — `RULE-ID`s / `AC-*`). The PRD is
+     stage P0_5, NOT P1; `P0/` holds business-policies and the module registry;
+   - the db-script under `$MBASE/P2/`;
    - the execution plan, this sub's own spec file, the phase's
      `[PHASE]-HEADER.md`, and `packages/backend-execution/_SECTIONS.md`;
    - the exact skill files this sub triggers, from `.claude/skills/` (the list
@@ -382,14 +423,14 @@ Resolution stays entirely inside THIS backend repo — the backend is the source
 of truth for its own contracts; there is nothing to ask the frontend. Work the
 gap in this order:
 
-1. **`db-script.md`** (this module's `P2`) — is the field/column actually
+1. **The db-script** (`$MBASE/P2/db-script-<mod-lowercase>.md`) — is the field/column actually
    defined, under a different real name or suffix? If so it's a NAMING_MISMATCH:
    correct this side's understanding (spec/comment wording) and proceed.
-2. **The SRS** (`P1`) — does a RULE-ID specify the behavior the spec left
+2. **The SRS** (`$MBASE/P1/srs-<mod-lowercase>.md`) — does a RULE-ID specify the behavior the spec left
    implicit? If so it's MISSING_IN_DOCS resolved from the SRS; document it.
 3. **A cross-module (INT-C/INT-R) dependency** — if the gap is a contract owned
    by ANOTHER backend module, read that module's own governance artifacts
-   (`db-script.md`, SRS, generated `api-docs/`) in this same repo to confirm the
+   (the db-script, SRS, generated `api-docs/`) in this same repo to confirm the
    real contract. This is a same-repo cross-module read, never a cross-repo one.
 4. **Existing backend source** — an already-built sibling entity's
    entity/mapper/service may already implement the analogous field correctly;
@@ -432,7 +473,7 @@ When the last sub in a phase completes and every gap is resolved:
 
 ## STEP 4 — Test phase (a real gated phase, entered in the same run)
 
-Trigger: STEP 3 just closed `ALIGN-BE` — the LAST backend EXECUTION phase — and
+Trigger: STEP 3 just closed the LAST key in `$EXEC_PHASES` (`ALIGN-BE` as published today) — and
 every gap opened during it is resolved (never escalated-and-still-open).
 
 > **The test phase is a gated phase.** It is entered behind the explicit human
@@ -444,9 +485,11 @@ every gap opened during it is resolved (never escalated-and-still-open).
 Treat the test phase exactly like `CORE … ALIGN-BE`:
 
 1. **Read the test phase(s).** From `execution-state.json` read `test_phases[]`
-   — one entry per real test-phase folder under `packages/backend-test/` (a base
-   test phase and, when the plan has cross-module dependencies, an `INT-XM`
-   phase). Read whatever the array holds; assume no fixed shape.
+   — one entry per real test phase, with its `header_file` naming where that
+   phase's plan actually lives. The delivery comes in two shapes and which one
+   applies is a per-module fact: the split folder `$PKGS/backend-test/` (today
+   the common one) or a single flat `$MBASE/test_gen/backend-test-plan-<mod>.md`.
+   Follow `header_file`; read whatever the array holds; assume no fixed shape.
 
 2. **Print the SAME phase-assessment block** used for every execution phase, and
    wait for explicit confirmation (respect `--auto` identically: print but do
@@ -466,7 +509,8 @@ Treat the test phase exactly like `CORE … ALIGN-BE`:
 3. **On confirmation, dispatch `/[MODULE]/execute-backend-test`** as this run's
    next phase, using the SAME one-dispatch / wait-for-report / verify discipline
    as a sub (STEP 1.2 dispatch, STEP 1.3 verification). That command reads the
-   delivered `TC-[MODULE]-<seq>` plan from `packages/backend-test/`, then —
+   delivered `TC-[MODULE]-<seq>` plan from whichever location its own STEP 0.1
+   records for this module, then —
    BEFORE any verification runs — regenerates this module's api-docs via
    `governance/governance-tools/api-doc-generator` (never verify against a
    possibly-stale copy), then invokes the `api-verify` skill
@@ -481,9 +525,11 @@ Treat the test phase exactly like `CORE … ALIGN-BE`:
    separate from the one that produced the report) whose only job is to review
    this module's ANALYSIS files against the coverage table and challenge the
    verdict:
-   - It reads the analysis sources — the PRD, the SRS (`AC-*`), the execution
-     plan, and the delivered test plan under `packages/backend-test/` (including
-     any `INT-XM` phase and the `XM-*`/`UXD-*` those integration `TC-*` trace).
+   - It reads the analysis sources — the PRD (`$MBASE/P0_5/`), the SRS
+     (`$MBASE/P1/`, `AC-*`), the execution
+     plan, and the delivered test plan at the location `header_file` names
+     (including any `INT-XM` phase and the `XM-*`/`UXD-*` those integration
+     `TC-*` trace).
    - For every claimed GAP it asks: is this genuinely uncovered, or already
      exercised by another `test_<entity>()` traceability comment under a
      different `TC-*`? For every claimed PASS it asks: does the
@@ -555,7 +601,7 @@ Treat the test phase exactly like `CORE … ALIGN-BE`:
   escalates. The debate weakens no stop condition: it is an extra attempt before
   the halt, and the halt still stands when it fails.
 - NEVER invent a route path, entity/field/column name, endpoint, error code, or
-  permission code — trace every value to a real spec block, `db-script.md`, or
+  permission code — trace every value to a real spec block, the db-script, or
   SRS entry; raise a gap or an OQ instead of guessing.
 - NEVER redesign an entity/repository/service/controller that already exists.
 - NEVER write an XM-ID reference in code.

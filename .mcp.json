@@ -1,13 +1,24 @@
 {
+  "_comment": [
+    "The postgres entry is the SAME server the repository root declares — the",
+    "bespoke node server under governance/mcp-servers/postgres. It replaced an",
+    "`uvx postgres-mcp` line that could not start here: uvx is not installed,",
+    "and a second server sharing the name `postgres` meant the tools a session",
+    "got depended on the directory it was launched from.",
+    "Run `npm install` once in governance/mcp-servers/postgres — without it the",
+    "server exits on a missing @modelcontextprotocol/sdk and the client only",
+    "reports a closed connection."
+  ],
   "mcpServers": {
     "postgres": {
-      "command": "uvx",
-      "args": [
-        "postgres-mcp",
-        "--access-mode=unrestricted"
-      ],
+      "command": "node",
+      "args": ["governance/mcp-servers/postgres/index.js"],
       "env": {
-        "DATABASE_URI": "postgresql://${DB_USERNAME:-postgres}:${DB_PASSWORD:-postgres}@localhost:5432/${DB_NAME:-erp_db}"
+        "DB_HOST": "${DB_HOST:-localhost}",
+        "DB_PORT": "${DB_PORT:-5432}",
+        "DB_USER": "${DB_USERNAME:-postgres}",
+        "DB_PASSWORD": "${DB_PASSWORD:-postgres}",
+        "DB_NAME": "${DB_NAME:-erp_db}"
       }
     },
     "TestSprite": {
