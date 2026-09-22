@@ -62,8 +62,8 @@ public interface JournalLineDimensionRepository
         + "FROM JournalLineDimension jld JOIN jld.journalLine l JOIN l.journalEntry e "
         + "JOIN l.account a JOIN jld.dimension d JOIN jld.dimensionValue dv "
         + "WHERE e.statusCode = :postedStatus AND d.dimensionPk = :dimensionId "
-        + "AND (:dimensionValueId IS NULL OR dv.dimensionValuePk = :dimensionValueId) "
-        + "AND (:periodId IS NULL OR e.period.fiscalPeriodPk = :periodId) "
+        + "AND (CAST(:dimensionValueId AS Long) IS NULL OR dv.dimensionValuePk = :dimensionValueId) "
+        + "AND (CAST(:periodId AS Long) IS NULL OR e.period.fiscalPeriodPk = :periodId) "
         + "GROUP BY a.accountPk, a.code, a.nameAr, a.nameEn, a.natureCode, d.dimensionPk, "
         + "dv.dimensionValuePk, dv.code, dv.nameAr, dv.nameEn "
         + "ORDER BY a.code ASC, dv.code ASC")
