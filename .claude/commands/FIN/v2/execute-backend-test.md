@@ -16,35 +16,40 @@ Execute API verification for **FIN v2** — only for what's actually complete.
 
 ---
 
-## ⚠️ PRECONDITION — no v2 test plan has been delivered yet
+## PRECONDITION — the v2 test plan IS delivered (Shape B)
 
-At setup time (2026-09-23) **both delivered shapes were empty for v2**:
+Re-scanned 2026-09-23, after `./scripts/governance pull` brought the factory's
+test-gen publish. The live delivery shape for FIN v2 is **Shape B — one flat file**:
 
-- Shape A — `governance/shared/backend/modules/FIN/packages/v2/backend-test/` → only `.gitkeep`
-- Shape B — `governance/shared/analysis/modules/FIN/v2/test_gen/backend-test-plan-fin.md` → does not exist (folder holds only `.gitkeep`)
+- Shape B — `governance/shared/analysis/modules/FIN/v2/test_gen/backend-test-plan-fin.md`
+  → **present** (141KB). One `<!-- PHASE:TEST-PLAN-BE -->` block, two nested subs:
+  `RULE-SCENARIOS` (45 TCs) and `API-SCENARIOS` (45 TCs) = **90 backend TCs**.
+- Shape A — `governance/shared/backend/modules/FIN/packages/v2/backend-test/`
+  → still only `.gitkeep`; the v2 manifest still reports
+  `status.split["backend/test"] = false`. **Do not read it.**
+- No `INT-XM` phase: the plan states outright that scope = module, so none is
+  emitted and none is owed. Its absence is correct, not a coverage gap.
+- Also delivered, and used by `api-verify` for the **Full** tier:
+  `governance/shared/analysis/modules/FIN/v2/test_gen/test-execution-manifest-fin.md`.
 
-The v2 manifest agrees: `status.split["backend/test"] = false`. Accordingly
-`test_phases` in `governance/shared/backend/modules/FIN/v2/execution-state.json`
-is an empty array — the honest result, not a bug to work around.
+`test_phases[]` in `governance/shared/backend/modules/FIN/v2/execution-state.json`
+carries that one phase with its two subs, gated on all 8 execution phases — all
+`COMPLETE` today, so the STEP 0.2 gate passes.
 
-**Re-check both paths at the top of every run** — the factory publishes the split
-later, and this precondition then clears itself. If both are still empty, STOP and
-report exactly that: there is nothing governed to verify for v2. Do not fall back to
-v1's plan under `governance/shared/backend/modules/FIN/packages/backend-test/` —
-that plan is v1's REQUIRED COVERAGE and was already verified COMPLETE (40/40);
-running it as if it were v2's would report a green pass over an unwritten v2 plan.
-
-Once the v2 split lands, re-run `/generate-module-setup FIN` so `test_phases[]`,
-its `gated_by_phases[]` and its `header_file` are regenerated from the real
-delivery rather than filled in by hand here.
+Still never fall back to v1's plan under
+`governance/shared/backend/modules/FIN/packages/backend-test/` — that plan is v1's
+REQUIRED COVERAGE and was already verified COMPLETE (40/40); running it as if it
+were v2's would report a green pass over the wrong plan.
 
 ---
 
 ## STEP 0 — Plan Load, Gate Check, API-Doc Regeneration + Assessment
 
 ### 0.1 — Load the delivered v2 test plan (the REQUIRED COVERAGE)
-Re-check both shapes named in the precondition above, Shape A first. From whichever
-holds files, read every `TC-FIN-<seq>` block. Extract per TC: its `TC-FIN-<seq>` id,
+Read every `TC-FIN-<seq>` block out of the Shape B file named in the precondition
+above — both `<!-- SUB:RULE-SCENARIOS -->` and `<!-- SUB:API-SCENARIOS -->`, 90 TCs
+in total. (If it has gone missing, re-check Shape A before concluding anything — the
+delivery shape can change between factory publishes.) Extract per TC: its `TC-FIN-<seq>` id,
 the `AC-*` / `XM-*` / `UXD-*` it traces (from its `traces=` marker attribute /
 `Derived from` line), and its one-line scenario. This list is the **REQUIRED
 COVERAGE** for the run — what the system's own analysis says must be tested,
@@ -56,8 +61,9 @@ If both shapes are genuinely empty, STOP and say which two paths you checked.
 Read `governance/shared/backend/modules/FIN/v2/execution-state.json` → for each
 entry in `test_phases[]`, its `gated_by_phases[]`. Confirm every listed backend
 execution phase has `status == COMPLETE`. An empty `gated_by_phases[]` passes
-automatically; an empty `test_phases[]` means there is nothing to gate — that is
-the precondition above, not a pass.
+automatically. An empty `test_phases[]` would mean there is nothing to gate — no
+longer the case for v2; if you find it empty, the state file has been reset, so
+re-run `/generate-module-setup FIN` before going further.
 
 The v2 execution phases, in profile order, are:
 `CORE · DATA-DOM · SVC-API · DOC · INT-C · INT-R · SEC-BE · ALIGN-BE`.
