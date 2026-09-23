@@ -274,7 +274,7 @@ class FinYearEndCoverageIntegrationTest {
     void yearEndClose_resolvesRetainedEarningsFromTheMarkerAndReportsItsAbsence() {
         // Covers: TC-FIN-086 steps 1 and 2 (step 3 is the next test — a constraint violation
         // poisons this transaction, so it cannot share one with assertions that follow it).
-        PostedFixture posted = yearWithPostedActivity(false);
+        PostedFixture posted = yearWithPostedActivity(RetainedEarningsMarker.NONE);
         Long fiscalYearPk = posted.fixture().year().getFiscalYearPk();
 
         // ---- step 1: NO account marked → 404 FIN-404-ACCOUNT and nothing posted ----
@@ -375,6 +375,41 @@ class FinYearEndCoverageIntegrationTest {
         String message = rejection.getMessage().toUpperCase(Locale.ROOT);
         assertThat(message).contains("UQ_FIN_ACCOUNT_RETAINED_EARNINGS");
         assertThat(message).contains("DUPLICATE KEY VALUE VIOLATES UNIQUE CONSTRAINT");
+    }
+
+    // =========================================================================================
+    // V34 seed — the deployed database itself satisfies DBF-FIN-147
+    // =========================================================================================
+
+    @Test
+    void yearEndClose_resolvesTheSeededRetainedEarningsAccountWithNoFixtureMarker() {
+        // Covers V34__fin_account_retained_earnings_seed.sql. Every other case here MARKS an
+        // account first, so all of them would still pass on a database where nothing is marked —
+        // which is what every deployment was until V34, and why API-FIN-027 could only ever answer
+        // FIN-404-ACCOUNT there. This case marks nothing and clears nothing.
+        assertThat(markedAccountCount())
+            .as("V34 must leave exactly one marked account (UQ_FIN_ACCOUNT_RETAINED_EARNINGS)")
+            .isEqualTo(1L);
+
+        Account seeded = accountRepository
+            .findFirstByIsRetainedEarningsFlTrueOrderByAccountPkAsc().orElseThrow();
+        assertThat(seeded.getAccountTypeCode()).isEqualTo("EQUITY");
+        assertThat(seeded.getNatureCode())
+            .isEqualToIgnoringCase(JournalEntryDomain.DIRECTION_CREDIT);
+        assertThat(seeded.getIsLeafFl()).isTrue();
+        assertThat(seeded.getIsActiveFl()).isTrue();
+
+        PostedFixture posted = yearWithPostedActivity(RetainedEarningsMarker.SEEDED);
+        assertThat(posted.retainedEarningsAccount().getAccountPk())
+            .isEqualTo(seeded.getAccountPk());
+
+        setCloseApprover("v34-seed");
+        ServiceResult<YearEndCloseResponse> result =
+            fiscalYearService.yearEndClose(posted.fixture().year().getFiscalYearPk());
+
+        assertThat(result.getStatus()).isEqualTo(Status.CREATED);
+        assertSingleLine(result.getData().getClosingEntry(), seeded,
+            REVENUE_AMOUNT.subtract(EXPENSE_AMOUNT), JournalEntryDomain.DIRECTION_CREDIT);
     }
 
     // =========================================================================================
@@ -503,10 +538,13 @@ class FinYearEndCoverageIntegrationTest {
      * nets to −600 and no line of either generated entry can be zero.
      */
     private PostedFixture yearWithPostedActivity() {
-        return yearWithPostedActivity(true);
+        return yearWithPostedActivity(RetainedEarningsMarker.FIXTURE);
     }
 
-    private PostedFixture yearWithPostedActivity(boolean markRetainedEarnings) {
+    /** Where {@link #yearWithPostedActivity(RetainedEarningsMarker)} gets DBF-FIN-147 from. */
+    private enum RetainedEarningsMarker { SEEDED, FIXTURE, NONE }
+
+    private PostedFixture yearWithPostedActivity(RetainedEarningsMarker marker) {
         YearEndFixture fixture = fixtures.openYearEndFixture(FIXTURE_YEAR_START);
         FiscalPeriod firstPeriod = fixture.periods().get(0);
 
@@ -516,10 +554,16 @@ class FinYearEndCoverageIntegrationTest {
         Account expense = fixtures.persistAccount(
             AccountDomain.ACCOUNT_TYPE_EXPENSE, JournalEntryDomain.DIRECTION_DEBIT);
 
-        fixtures.clearRetainedEarningsMarkers();
-        Account retainedEarnings = markRetainedEarnings
-            ? fixtures.persistAccount("EQUITY", JournalEntryDomain.DIRECTION_CREDIT, true)
-            : null;
+        Account retainedEarnings;
+        if (marker == RetainedEarningsMarker.SEEDED) {
+            retainedEarnings = accountRepository
+                .findFirstByIsRetainedEarningsFlTrueOrderByAccountPkAsc().orElse(null);
+        } else {
+            fixtures.clearRetainedEarningsMarkers();
+            retainedEarnings = marker == RetainedEarningsMarker.FIXTURE
+                ? fixtures.persistAccount("EQUITY", JournalEntryDomain.DIRECTION_CREDIT, true)
+                : null;
+        }
 
         setEntryCreator("tc-fin-fixture");
         postManualEntry(fixture.year(), firstPeriod,
@@ -651,6 +695,11 @@ class FinYearEndCoverageIntegrationTest {
             nets.merge(line.getAccount().getAccountPk(), signed, BigDecimal::add);
         }
         return nets;
+    }
+
+    private long markedAccountCount() {
+        return accountRepository.count((Specification<Account>) (root, query, cb) ->
+            cb.isTrue(root.get("isRetainedEarningsFl")));
     }
 
     private long countEntriesIn(Long fiscalYearPk) {
