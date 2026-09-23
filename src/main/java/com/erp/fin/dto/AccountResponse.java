@@ -48,7 +48,8 @@ public class AccountResponse {
     private Boolean isActiveFl;
 
     @Schema(description = "Marks the single Retained Earnings account used by year-end close; "
-        + "read-only, never settable through the account APIs - "
+        + "set once by the data seed (V34__fin_account_retained_earnings_seed.sql, DBF-FIN-147), "
+        + "never settable through the account APIs by decision - "
         + "يُحدِّد حساب الأرباح المُبقاة الوحيد المستخدم في إقفال نهاية السنة", example = "false")
     private Boolean isRetainedEarningsFl;
 

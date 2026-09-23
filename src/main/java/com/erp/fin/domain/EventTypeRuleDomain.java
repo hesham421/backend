@@ -7,8 +7,10 @@ import com.erp.fin.entity.RuleLine;
 import com.erp.fin.exception.FinErrorCodes;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Domain companion for ENT-FIN-009 (EventTypeRule), covering the two decisions that belong to
@@ -47,13 +49,9 @@ public final class EventTypeRuleDomain {
     /** ACCOUNT_DERIVATION_TYPE (SRS A6) — the derivation value IS the account code. */
     public static final String ACCOUNT_DERIVATION_TYPE_CONSTANT = "CONSTANT";
 
-    /** ACCOUNT_DERIVATION_TYPE (SRS A6) — the value names the event field carrying the code. */
-    public static final String ACCOUNT_DERIVATION_TYPE_DIRECT = "DIRECT";
-
     /**
-     * ACCOUNT_DERIVATION_TYPE (SRS A6) — the value is a mapping-set key. No mapping store exists
-     * anywhere in db-script-fin.md, so this derivation cannot be executed; see
-     * {@link #resolveAccountCode(String, String, Map)}.
+     * ACCOUNT_DERIVATION_TYPE (SRS A6, v2) — the account is the one an active AccountMapping names
+     * for the line's business field and the event's value (RULE-FIN-020, ADR-FIN-027).
      */
     public static final String ACCOUNT_DERIVATION_TYPE_MAPPING = "MAPPING";
 
@@ -179,48 +177,12 @@ public final class EventTypeRuleDomain {
     }
 
     /**
-     * §6.4 / REQ-FIN-010 — the account a rule line targets for a given event, per its
-     * ACCOUNT_DERIVATION_TYPE (SRS A6: {@code CONSTANT, DIRECT, MAPPING}):
-     *
-     * <ul>
-     *   <li>{@code CONSTANT} — {@code accountDerivationValue} (DBF-FIN-102) IS the account
-     *       code;</li>
-     *   <li>{@code DIRECT} — it names the event field carrying the account code;</li>
-     *   <li>{@code MAPPING} — <b>rejected, loudly</b> ({@code FIN-422-MAPPING-UNSUPPORTED}). The
-     *       value is a mapping-set key, and db-script-fin.md declares no mapping store anywhere:
-     *       ENT-FIN-010 carries only the type/value pair (DBF-FIN-101/102) and none of the 14 FIN
-     *       tables is a mapping set. Treating the key as a {@code DIRECT} event-field name — as an
-     *       earlier revision did — silently resolves the line to the wrong account or to none at
-     *       all, which is the one outcome a ledger must never produce. The line therefore fails
-     *       until the mapping store is specified.</li>
-     * </ul>
-     *
-     * <p>Added by SVC-API-INT: the derivation branches on a business code, so it belongs to the
-     * rule aggregate rather than to an {@code if} in the service body (A.5.18). {@code CONSTANT}
-     * and {@code DIRECT} are pure derivations with no catalog code of their own — an unresolvable
-     * account code surfaces as the service's own {@code FIN-404-ACCOUNT}.
-     *
-     * @param accountDerivationTypeCode  DBF-FIN-101
-     * @param accountDerivationValue     DBF-FIN-102
-     * @param eventFields                the event payload's plain string fields, passed in by the
-     *                                   service ({@code null}-tolerant)
-     * @return the account code to post to, or {@code null} when the event carries no such field
-     * @throws LocalizedException {@code FIN-422-MAPPING-UNSUPPORTED} for a {@code MAPPING} line
+     * Does this rule line derive its account through an account mapping (RULE-FIN-020) rather
+     * than by constant code? Which code means which derivation is rule knowledge, so the
+     * predicate lives here, as {@link #isRemainderLine(Boolean)} does for the remainder marker.
      */
-    public static String resolveAccountCode(String accountDerivationTypeCode,
-                                            String accountDerivationValue,
-                                            Map<String, String> eventFields) {
-        if (ACCOUNT_DERIVATION_TYPE_CONSTANT.equalsIgnoreCase(accountDerivationTypeCode)) {
-            return accountDerivationValue;
-        }
-        if (ACCOUNT_DERIVATION_TYPE_MAPPING.equalsIgnoreCase(accountDerivationTypeCode)) {
-            throw new LocalizedException(Status.BUSINESS_RULE_VIOLATION,
-                FinErrorCodes.FIN_422_MAPPING_UNSUPPORTED, accountDerivationValue);
-        }
-        if (eventFields == null || accountDerivationValue == null) {
-            return null;
-        }
-        return eventFields.get(accountDerivationValue);
+    public static boolean isMappingDerivation(String accountDerivationTypeCode) {
+        return ACCOUNT_DERIVATION_TYPE_MAPPING.equalsIgnoreCase(accountDerivationTypeCode);
     }
 
     /**
@@ -314,6 +276,135 @@ public final class EventTypeRuleDomain {
                 FinErrorCodes.FIN_422_REMAINDER_NOT_POSITIVE, safeOpposing, safeOwn);
         }
         return remainder;
+    }
+
+    /** FIN_DIMENSION_VALUE_SOURCE (SRS A6, v2) — the tag carries a fixed dimension value. */
+    public static final String VALUE_SOURCE_CONSTANT = "CONSTANT";
+
+    /** FIN_DIMENSION_VALUE_SOURCE (SRS A6, v2) — the tag's value is read from an event field. */
+    public static final String VALUE_SOURCE_BUSINESS_FIELD = "BUSINESS_FIELD";
+
+    /**
+     * Is this dimension tag's value read from the event's business field (RULE-FIN-021/027)
+     * rather than fixed on the tag (CONSTANT, RULE-FIN-026)?
+     */
+    public static boolean isBusinessFieldSource(String valueSourceCode) {
+        return VALUE_SOURCE_BUSINESS_FIELD.equalsIgnoreCase(valueSourceCode);
+    }
+
+    /**
+     * RULE-FIN-018 (v2) — API-FIN-011: the derivation type must be an active
+     * ACCOUNT_DERIVATION_TYPE value, so CONSTANT and MAPPING are the only accepted derivations;
+     * the membership fact is MDL's, fetched by the service and passed in.
+     *
+     * @throws LocalizedException {@code FIN-422-UNSUPPORTED-DERIVATION}
+     */
+    public static void assertDerivationSupported(String accountDerivationTypeCode,
+                                                 boolean codeIsActiveDerivationType) {
+        if (!codeIsActiveDerivationType) {
+            throw new LocalizedException(Status.BUSINESS_RULE_VIOLATION,
+                FinErrorCodes.FIN_422_UNSUPPORTED_DERIVATION, accountDerivationTypeCode);
+        }
+    }
+
+    /**
+     * RULE-FIN-019 (v2) — API-FIN-011: a CONSTANT line carries an account code and no business
+     * field; a MAPPING line carries a business field and no account code (the application half
+     * of {@code CHK_FIN_RULE_LINE_DERIVATION_SPEC}). Any other type is RULE-FIN-018's rejection.
+     *
+     * @throws LocalizedException {@code FIN-422-DERIVATION-SPEC} or
+     *                            {@code FIN-422-UNSUPPORTED-DERIVATION}
+     */
+    public static void assertDerivationSpec(String accountDerivationTypeCode,
+                                            String accountDerivationValue,
+                                            String accountBusinessFieldCode) {
+        boolean hasValue = hasText(accountDerivationValue);
+        boolean hasField = hasText(accountBusinessFieldCode);
+        boolean specMatches;
+        if (ACCOUNT_DERIVATION_TYPE_CONSTANT.equalsIgnoreCase(accountDerivationTypeCode)) {
+            specMatches = hasValue && !hasField;
+        } else if (ACCOUNT_DERIVATION_TYPE_MAPPING.equalsIgnoreCase(accountDerivationTypeCode)) {
+            specMatches = hasField && !hasValue;
+        } else {
+            throw new LocalizedException(Status.BUSINESS_RULE_VIOLATION,
+                FinErrorCodes.FIN_422_UNSUPPORTED_DERIVATION, accountDerivationTypeCode);
+        }
+        if (!specMatches) {
+            throw new LocalizedException(Status.BUSINESS_RULE_VIOLATION,
+                FinErrorCodes.FIN_422_DERIVATION_SPEC, accountDerivationTypeCode);
+        }
+    }
+
+    /**
+     * RULE-FIN-025 (v2) — API-FIN-011: no two submitted tags of one line name the same dimension
+     * (the application half of {@code UQ_FIN_RULE_LINE_DIM_LINE_DIM}).
+     *
+     * @param dimensionIds the {@code dimensionId} of every submitted tag, in order
+     * @throws LocalizedException {@code FIN-422-DIMENSION-TAG-DUP}
+     */
+    public static void assertTagsDistinct(List<Long> dimensionIds) {
+        if (dimensionIds == null) {
+            return;
+        }
+        Set<Long> seen = new HashSet<>();
+        for (Long dimensionId : dimensionIds) {
+            if (dimensionId != null && !seen.add(dimensionId)) {
+                throw new LocalizedException(Status.BUSINESS_RULE_VIOLATION,
+                    FinErrorCodes.FIN_422_DIMENSION_TAG_DUP, dimensionId);
+            }
+        }
+    }
+
+    /**
+     * RULE-FIN-026 (v2) — API-FIN-011: a CONSTANT tag carries a value of its own dimension and no
+     * business field; a BUSINESS_FIELD tag carries a business field and no value (the application
+     * half of {@code CHK_FIN_RULE_LINE_DIM_VALUE_SPEC}, plus the ownership QR-FIN-061 reads).
+     *
+     * @param valueOwnerDimensionId the dimension the submitted {@code dimensionValueId} belongs
+     *                              to (QR-FIN-061), or {@code null} when no value was submitted
+     * @throws LocalizedException {@code FIN-422-DIMENSION-TAG-SOURCE}
+     */
+    public static void assertTagMatchesSource(String valueSourceCode, Long dimensionId,
+                                              Long dimensionValueId, Long valueOwnerDimensionId,
+                                              String businessFieldCode) {
+        boolean hasField = hasText(businessFieldCode);
+        boolean matches;
+        if (VALUE_SOURCE_CONSTANT.equalsIgnoreCase(valueSourceCode)) {
+            matches = dimensionValueId != null && !hasField
+                && dimensionId != null && dimensionId.equals(valueOwnerDimensionId);
+        } else if (VALUE_SOURCE_BUSINESS_FIELD.equalsIgnoreCase(valueSourceCode)) {
+            matches = hasField && dimensionValueId == null;
+        } else {
+            matches = false;
+        }
+        if (!matches) {
+            throw new LocalizedException(Status.BUSINESS_RULE_VIOLATION,
+                FinErrorCodes.FIN_422_DIMENSION_TAG_SOURCE, dimensionId);
+        }
+    }
+
+    /**
+     * RULE-FIN-021 (v2) — API-FIN-020 build: the event must carry the business field a MAPPING
+     * line ({@code accountBusinessFieldCode}) or a BUSINESS_FIELD tag ({@code businessFieldCode})
+     * names, as a key of its {@code fields} map (ADR-FIN-031). A missing or blank value is
+     * "not carried"; never a default, never a guess.
+     *
+     * @return the event's value for that field, blanks trimmed (ADR-FIN-039)
+     * @throws LocalizedException {@code FIN-422-MISSING-BUSINESS-FIELD}
+     */
+    public static String assertFieldPresent(String businessFieldCode,
+                                            Map<String, String> eventFields) {
+        String value = eventFields == null || businessFieldCode == null
+            ? null : eventFields.get(businessFieldCode);
+        if (!hasText(value)) {
+            throw new LocalizedException(Status.BUSINESS_RULE_VIOLATION,
+                FinErrorCodes.FIN_422_MISSING_BUSINESS_FIELD, businessFieldCode);
+        }
+        return value.trim();
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     public String getEventTypeCode() {

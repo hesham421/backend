@@ -110,13 +110,11 @@ public final class JournalEntryDomain {
     }
 
     /**
-     * API-FIN-019 / API-FIN-020 (build an entry): RULE-FIN-004. A manual entry carries no event
-     * reference and simply passes {@code null} / {@code false}.
-     *
-     * @param eventReference                 the submitted idempotency key, or {@code null}
-     * @param eventReferenceAlreadyProcessed QR-FIN-026's answer, resolved by the service
-     * @throws LocalizedException {@code FIN-409-DUPLICATE-EVENT} when the reference already
-     *                            produced an entry
+     * API-FIN-019 / API-FIN-020: RULE-FIN-004's pre-check (QR-FIN-026), v2's first detection. The
+     * second is the store's refusal on {@code UQ_FIN_JOURNAL_ENTRY_EVENT_REF} for a concurrent
+     * duplicate, translated to the same {@code FIN-409-DUPLICATE-EVENT} by
+     * {@code FinPersistenceRefusalAdvisor} (ADR-FIN-030), so a duplicate is never a generic error.
+     * A manual entry passes {@code null} / {@code false}.
      */
     public static JournalEntryDomain create(String eventReference,
                                             boolean eventReferenceAlreadyProcessed) {

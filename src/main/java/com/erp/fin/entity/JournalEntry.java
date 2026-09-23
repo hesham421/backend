@@ -44,11 +44,10 @@ import org.hibernate.annotations.Formula;
  * one of them "— service", but CORE.md's domain-class mandate and gov-enforce-backend-contract
  * A.5.18 supersede that wording.
  *
- * <p><b>{@code docNo} is a column only in this phase.</b> Its format is decided
- * ({@code JV-{fiscalYearCode}-{NNNNNN}}, CORE.md "Numbering"), but DATA-DOM creates nothing more
- * than the immutable {@code VARCHAR(30)} column — no generator, no counter. The FIN-local
- * generator is SVC-API's work (API-FIN-019). {@code updatable = false} carries the "assigned once
- * on create, immutable thereafter" half of that decision into the mapping.
+ * <p><b>{@code docNo}</b> ({@code JV-{fiscalYearCode}-{NNNNNN}}, CORE.md "Numbering") is assigned
+ * once on create by {@code com.erp.fin.numbering.JournalDocNoGenerator}, under the fiscal-year
+ * row lock ({@code FiscalYearRepository.lockForDocNoAllocation}); {@code updatable = false} keeps
+ * it immutable thereafter.
  *
  * <p><b>{@code postedAt} (DBF-FIN-046) is a plain system-timestamp business column</b>, not an
  * audit field: {@code AuditableEntity} supplies {@code createdBy/createdAt/updatedBy/updatedAt}
@@ -115,8 +114,8 @@ public class JournalEntry extends AuditableEntity {
 
     /**
      * DBF-FIN-035 — the business code, {@code JV-{fiscalYearCode}-{NNNNNN}}; unique per fiscal
-     * year ({@code UQ_FIN_JOURNAL_ENTRY_YEAR_DOCNO}). Column only in this phase — see the class
-     * javadoc; {@code updatable = false} makes it immutable after create.
+     * year ({@code UQ_FIN_JOURNAL_ENTRY_YEAR_DOCNO}). Assigned by {@code JournalDocNoGenerator}
+     * on create; {@code updatable = false} makes it immutable after create.
      */
     @NotBlank(message = "{validation.required}")
     @Size(max = 30, message = "{validation.size}")

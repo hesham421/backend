@@ -14,6 +14,7 @@ import com.erp.sec.service.AuthService;
 import com.erp.sec.service.PasswordResetService;
 import com.erp.sec.service.SignupRequestService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -45,6 +46,7 @@ public class AuthController {
 
     /** The caller's address is read straight off the servlet request — DBF-SEC-080/090 (REQ-SEC-027). */
     @PostMapping("/login")
+    @SecurityRequirements // unauthenticated by SecurityConfig's permitAll list; clears the global bearer requirement
     @Operation(summary = "Login", description = "تسجيل الدخول وإصدار رمز وصول")
     public ResponseEntity<ApiResponse<LoginResponse>> login(
             @Valid @RequestBody LoginRequest request,
@@ -64,6 +66,7 @@ public class AuthController {
     }
 
     @PostMapping("/signup")
+    @SecurityRequirements // unauthenticated by SecurityConfig's permitAll list; clears the global bearer requirement
     @Operation(summary = "Submit a sign-up request", description = "تقديم طلب تسجيل")
     public ResponseEntity<ApiResponse<SignupRequestResponse>> signup(
             @Valid @RequestBody SignupSubmitRequest request) {
@@ -71,6 +74,7 @@ public class AuthController {
     }
 
     @PostMapping("/password-reset/request")
+    @SecurityRequirements // unauthenticated by SecurityConfig's permitAll list; clears the global bearer requirement
     @Operation(summary = "Request a password reset", description = "طلب إعادة تعيين كلمة المرور")
     public ResponseEntity<ApiResponse<ConfirmationResponse>> requestReset(
             @Valid @RequestBody PasswordResetRequest request) {
@@ -78,6 +82,7 @@ public class AuthController {
     }
 
     @PostMapping("/password-reset/complete")
+    @SecurityRequirements // unauthenticated by SecurityConfig's permitAll list; clears the global bearer requirement
     @Operation(summary = "Complete a password reset", description = "إتمام إعادة تعيين كلمة المرور")
     public ResponseEntity<ApiResponse<ConfirmationResponse>> completeReset(
             @Valid @RequestBody PasswordResetCompleteRequest request) {

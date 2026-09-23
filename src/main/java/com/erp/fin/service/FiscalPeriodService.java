@@ -32,9 +32,10 @@ import org.springframework.transaction.annotation.Transactional;
  * SRS A7's PERIOD_STATE machine is a plain guarded transition, never a workflow definition
  * (CORE.md "Workflow engine": forbidden).
  *
- * <p>Every decision belongs to {@link FiscalPeriodDomain}; each method here only loads the row,
- * gathers whatever facts the guard needs, calls it, then calls the entity's own plain mutator and
- * saves — no business-rule {@code if} appears in this class (A.5.18).
+ * <p>Every decision belongs to {@link FiscalPeriodDomain}; each transition here only loads the
+ * row under {@code PESSIMISTIC_WRITE} (ADR-FIN-041), gathers whatever facts the guard needs,
+ * calls it, then calls the entity's own plain mutator and saves — no business-rule {@code if}
+ * appears in this class (A.5.18).
  *
  * <p>No caching annotations — FIN's approved cache register is empty.
  *
@@ -84,7 +85,7 @@ public class FiscalPeriodService {
     public ServiceResult<FiscalPeriodResponse> open(Long id) {
         log.info("Opening FiscalPeriod ID: {}", id);
 
-        FiscalPeriod period = findOrThrow(id);
+        FiscalPeriod period = lockOrThrow(id);
         FiscalPeriodDomain.from(period).assertCanReopen();
         period.open();
 
@@ -104,7 +105,7 @@ public class FiscalPeriodService {
     public ServiceResult<FiscalPeriodResponse> softClose(Long id) {
         log.info("Soft-closing FiscalPeriod ID: {}", id);
 
-        FiscalPeriod period = findOrThrow(id);
+        FiscalPeriod period = lockOrThrow(id);
         FiscalPeriodDomain.from(period).assertCanSoftClose();
         period.softClose();
 
@@ -140,7 +141,7 @@ public class FiscalPeriodService {
     public ServiceResult<FiscalPeriodResponse> hardClose(Long id) {
         log.info("Hard-closing FiscalPeriod ID: {}", id);
 
-        FiscalPeriod period = findOrThrow(id);
+        FiscalPeriod period = lockOrThrow(id);
         FiscalPeriodDomain.from(period).assertCanReopen();
 
         period.hardClose(SecurityContextHelper.getCurrentUsername(), Instant.now());
@@ -194,9 +195,13 @@ public class FiscalPeriodService {
         return ServiceResult.success(repository.findAll(spec, pageable).map(mapper::toResponse));
     }
 
-    /** FK resolution, not a rule: an unknown period id is {@code FIN-404-PERIOD}. */
-    private FiscalPeriod findOrThrow(Long id) {
-        return repository.findById(id)
+    /**
+     * FK resolution under the ADR-FIN-041 row lock, taken before the current-status check so two
+     * concurrent transitions of one period serialize. Not a rule: an unknown id is
+     * {@code FIN-404-PERIOD}.
+     */
+    private FiscalPeriod lockOrThrow(Long id) {
+        return repository.lockForTransition(id)
             .orElseThrow(() -> new LocalizedException(
                 Status.NOT_FOUND, FinErrorCodes.FIN_404_PERIOD, id));
     }

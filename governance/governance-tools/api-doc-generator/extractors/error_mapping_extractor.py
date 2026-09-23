@@ -31,7 +31,7 @@ import re
 from pathlib import Path
 from typing import Optional
 
-from models.api_doc_model import ApiDocument, ErrorCode, FieldErrorSemantics, PossibleError, StatusMapping
+from models.api_doc_model import ApiDocument, AuthEntryPoint, ErrorCode, FieldErrorSemantics, PossibleError, StatusMapping
 
 # Two shapes of the same shared table are recognised, because this platform
 # has used both: an explicit statusMappings.put(...) table in a helper class,
@@ -232,6 +232,55 @@ def enrich_error_codes(
     return module_error_codes + framework_codes, status_mappings
 
 
+ENTRY_POINT_WIRING_RE = re.compile(r"\.authenticationEntryPoint\(\s*(\w+)\s*\)")
+COMMENCE_HEAD_RE = re.compile(r"\bcommence\s*\([^)]*\)\s*(?:throws\s+[\w.,\s]+)?\{")
+UNAUTHORIZED_THEN_CODE_RE = re.compile(
+    r"(?:SC_UNAUTHORIZED|HttpStatus\.UNAUTHORIZED|\b401\b)[\s\S]{0,200}?\b(?:\w*ErrorCodes)\.([A-Z][A-Z0-9_]*)")
+
+
+def find_auth_entry_point(common_source_roots: list[Path]) -> Optional[AuthEntryPoint]:
+    """The class SecurityConfig wires as authenticationEntryPoint, resolved
+    through its field type, and the error-code constant its commence(...)
+    writes next to a 401. An inline entry point (new HttpStatusEntryPoint(...))
+    resolves to nothing, and nothing is claimed."""
+    constants = find_error_code_constants(common_source_roots)
+    for root in common_source_roots:
+        for config in sorted(root.rglob("*.java")):
+            text = config.read_text(encoding="utf-8", errors="ignore")
+            if "SecurityFilterChain" not in text:
+                continue
+            wiring = ENTRY_POINT_WIRING_RE.search(text)
+            if not wiring:
+                continue
+            field_m = re.search(r"private\s+final\s+(\w+)\s+" + re.escape(wiring.group(1)) + r"\s*;", text)
+            if not field_m:
+                continue
+            handler_name = field_m.group(1)
+            for handler in sorted(root.rglob(f"{handler_name}.java")):
+                body_text = handler.read_text(encoding="utf-8", errors="ignore")
+                head = COMMENCE_HEAD_RE.search(body_text)
+                if not head:
+                    continue
+                body = body_text[head.end() - 1:_balanced_block_end(body_text, head.end() - 1)]
+                code_m = UNAUTHORIZED_THEN_CODE_RE.search(body)
+                if code_m:
+                    return AuthEntryPoint(handler=handler_name, code=code_m.group(1),
+                                          value=constants.get(code_m.group(1), code_m.group(1)), config=config.stem)
+    return None
+
+
+def _balanced_block_end(text: str, open_index: int) -> int:
+    depth = 0
+    for i in range(open_index, len(text)):
+        if text[i] == "{":
+            depth += 1
+        elif text[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return i + 1
+    return len(text)
+
+
 def _access_denied_override(ep, overrides, service_package_of):
     """The advisor whose pointcut covers the class carrying this endpoint's
     rule, or None. A scope that could not be read is never assumed to match."""
@@ -294,8 +343,15 @@ def attach_endpoint_error_codes(document: ApiDocument, status_http: Optional[dic
             return
         ep.possible_errors.append(PossibleError(code=code.name, http_status=code.http_status, reason=reason))
 
+    entry = document.auth_entry_point
     for ep in document.endpoints:
-        if ep.requires_auth:
+        if ep.requires_auth and entry:
+            ep.possible_errors.append(PossibleError(
+                code=f"{entry.code} (`{entry.value}`)", http_status=http_status_label("UNAUTHORIZED"),
+                reason=f"Endpoint requires authentication; an unauthenticated call never reaches the controller "
+                       f"— {entry.handler}.commence, wired as {entry.config}'s authenticationEntryPoint, "
+                       f"writes this code."))
+        elif ep.requires_auth:
             _attach(
                 ep, "UNAUTHORIZED",
                 "Endpoint requires authentication (global security requirement); "

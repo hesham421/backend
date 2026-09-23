@@ -196,7 +196,7 @@ public class FiscalYearService {
     public ServiceResult<YearEndCloseResponse> yearEndClose(Long id) {
         log.info("Running year-end close for FiscalYear ID: {}", id);
 
-        FiscalYear fiscalYear = findOrThrow(id);
+        FiscalYear fiscalYear = lockOrThrow(id);
 
         List<FiscalPeriod> periods =
             fiscalPeriodRepository.findByFiscalYearId(fiscalYear.getFiscalYearPk());
@@ -390,9 +390,14 @@ public class FiscalYearService {
                 FinErrorCodes.FIN_404_YEAR, fiscalYear.getEndDate().plusDays(1)));
     }
 
-    /** FK resolution, not a rule: an unknown fiscal year id is {@code FIN-404-YEAR}. */
-    private FiscalYear findOrThrow(Long id) {
-        return repository.findById(id)
+    /**
+     * API-FIN-027 — the year row under {@code PESSIMISTIC_WRITE} at the top of the transaction,
+     * before the OPEN check, so two concurrent year-end closes serialize (ADR-FIN-041). The same
+     * row the docNo allocation locks later, so the existing finder is reused. Not a rule: an
+     * unknown id is {@code FIN-404-YEAR}.
+     */
+    private FiscalYear lockOrThrow(Long id) {
+        return repository.lockForDocNoAllocation(id)
             .orElseThrow(() -> new LocalizedException(
                 Status.NOT_FOUND, FinErrorCodes.FIN_404_YEAR, id));
     }

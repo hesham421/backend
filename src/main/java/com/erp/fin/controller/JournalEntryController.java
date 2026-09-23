@@ -58,7 +58,14 @@ public class JournalEntryController {
      */
     @PostMapping("/from-event")
     @Operation(summary = "Build and post a journal entry from an accounting event",
-        description = "بناء وترحيل قيد يومية من حدث محاسبي")
+        description = "بناء وترحيل قيد يومية من حدث محاسبي. The consumer branches on the full error "
+            + "code, never on the HTTP status alone. FIN-409-DUPLICATE-EVENT: already posted, acknowledge "
+            + "the message. FIN-409-PERIOD-NOT-OPEN: retry later, the rejection clears once the target "
+            + "period is opened (only a SOFT_CLOSE period can return to OPEN, so a retry policy needs an "
+            + "upper bound). Every other code listed below: needs a fix, mark the message failed "
+            + "(FIN-422-UNMAPPED-VALUE add a mapping, FIN-422-MISSING-BUSINESS-FIELD fix the producer, "
+            + "FIN-422-UNRESOLVED-DIMENSION-VALUE define the dimension value, FIN-422-NO-DEFINED-PERIOD "
+            + "define the calendar).")
     public ResponseEntity<ApiResponse<JournalEntryResponse>> buildFromEvent(
             @Valid @RequestBody EventEntryBuildRequest request) {
         return operationCode.craftResponse(eventEntryService.build(request));

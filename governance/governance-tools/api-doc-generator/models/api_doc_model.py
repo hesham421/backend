@@ -216,6 +216,17 @@ class AccessDeniedOverride:
 
 
 @dataclass
+class AuthEntryPoint:
+    """The AuthenticationEntryPoint SecurityConfig wires, and the error code
+    its commence(...) writes: the 401 body an unauthenticated call receives,
+    which never passes through GlobalExceptionHandler."""
+    handler: str
+    code: str
+    value: str
+    config: str
+
+
+@dataclass
 class FieldErrorSemantics:
     """One GlobalExceptionHandler method's contribution to fieldErrors[].field:
     the expression it passes to .field(...), verbatim, and a mechanical reading of it."""
@@ -311,6 +322,8 @@ class ApiDocument:
     field_error_semantics: list[FieldErrorSemantics] = field(default_factory=list)
     # Populated only by business_error_extractor, module source required.
     access_denied_overrides: list[AccessDeniedOverride] = field(default_factory=list)
+    # Populated only by error_mapping_extractor.find_auth_entry_point(), shared source required.
+    auth_entry_point: Optional[AuthEntryPoint] = None
     # Populated only by constraint_extractor, module source and migrations required.
     unique_constraints: list[UniqueConstraint] = field(default_factory=list)
     # Expected-side counts read from source for the check mode's ratios

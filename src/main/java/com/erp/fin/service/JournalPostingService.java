@@ -114,20 +114,11 @@ public class JournalPostingService {
     private final JournalEntryMapper mapper;
 
     /**
-     * QR-FIN-025/034 build → QR-FIN-029..032 validate → QR-FIN-033 post, in that order and in one
-     * transaction. The caller has already resolved every FK and every not-found precondition; this
-     * method owns the four post-time rules, the {@code docNo} and the single write.
-     *
-     * <p><b>Numbering under concurrency (ALIGN-BE).</b> The owning fiscal-year row is locked
-     * ({@code FiscalYearRepository.lockForDocNoAllocation(...)}) before the highest-{@code docNo}
-     * read, so allocation within one fiscal year is serialized and
-     * {@code UQ_FIN_JOURNAL_ENTRY_YEAR_DOCNO} becomes an unreachable backstop rather than the
-     * primary mechanism. The year is already resolved by the caller, so the lock read can only
-     * fail if it vanished mid-transaction — {@code FIN-404-YEAR}, the same code that resolved it.
-     *
-     * @param request the assembled entry — see {@link PostingRequest}
-     * @return the POSTED entry, with its lines and tags written
-     * @throws LocalizedException one {@code Status.CONFLICT} carrying every failed post-time rule
+     * Build → validate (QR-FIN-029..032, every failure returned together) → docNo under the
+     * fiscal-year row lock → post (QR-FIN-033), in one transaction. The write is flushed at once
+     * (QR-FIN-025, ADR-FIN-030) so a store refusal — {@code UQ_FIN_JOURNAL_ENTRY_EVENT_REF} on a
+     * concurrent duplicate event — is raised inside the call, where
+     * {@code FinPersistenceRefusalAdvisor} translates it, never a generic error at commit.
      */
     @Transactional
     @PreAuthorize("isAuthenticated()")
@@ -171,26 +162,18 @@ public class JournalPostingService {
 
         entry.post(Instant.now());
 
-        JournalEntry saved = repository.save(entry);
+        JournalEntry saved = repository.saveAndFlush(entry);
         log.info("Posted JournalEntry ID: {} docNo: {}", saved.getJournalEntryPk(),
             saved.getDocNo());
         return saved;
     }
 
     /**
-     * The fiscal period whose {@code [startDate, endDate]} span contains {@code date} — the target
-     * period for an event-built entry (API-FIN-020), a template run (API-FIN-014) and an
-     * allocation run (API-FIN-017), none of which carries a period id of its own. The period's
-     * state is NOT judged here: RULE-FIN-008 is
-     * {@code JournalEntryDomain.checkTargetPeriodOpen(...)}'s decision, taken inside
-     * {@link #buildValidateAndPost(PostingRequest)} so that a closed period is reported together
-     * with any other failure rather than as a separate fail-fast.
-     *
-     * <p>Read through the existing repository layer with no new query method: an explicit
-     * {@code Specification} expresses the range comparison the shared {@code SpecBuilder}'s flat
-     * equality filters cannot (the same A.5.17-sanctioned technique a child search uses).
-     *
-     * @throws LocalizedException {@code FIN-404-PERIOD} when no period covers the date
+     * The fiscal period whose span contains {@code date} — the target of a template run
+     * (API-FIN-014) and an allocation run (API-FIN-017); none → {@code FIN-404-PERIOD}, v1 as
+     * built (ADR-FIN-030). API-FIN-020 no longer comes here: it resolves its period through
+     * {@code FiscalPeriodRepository.findCoveringDate} and answers {@code FIN-422-NO-DEFINED-PERIOD}.
+     * The period's state is judged at post by RULE-FIN-008, not here.
      */
     @Transactional(readOnly = true)
     @PreAuthorize("isAuthenticated()")

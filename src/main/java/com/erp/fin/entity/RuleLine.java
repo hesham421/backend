@@ -26,7 +26,7 @@ import lombok.experimental.SuperBuilder;
 
 /**
  * ENT-FIN-010 — RuleLine (FIN_RULE_LINE). Source: db-script-fin.md §1 DBF-FIN-098..108 /
- * §3 BLOCK 3, DATA-DOM-LOOKUP.md ENT-FIN-010.
+ * §3 BLOCK 3, DATA-DOM-LOOKUP.md ENT-FIN-010; v2 adds DBF-FIN-148 (V35).
  *
  * <p><b>A.1.1 exemption (declared):</b> this entity deliberately does NOT extend
  * {@code AuditableEntity}. {@code FIN_RULE_LINE} carries a single audit column,
@@ -80,10 +80,21 @@ public class RuleLine {
     @Column(name = "ACCOUNT_DERIVATION_TYPE_CODE", length = 20, nullable = false)
     private String accountDerivationTypeCode;
 
-    /** DBF-FIN-102 — TEXT, NOT NULL. */
-    @NotBlank(message = "{validation.required}")
-    @Column(name = "ACCOUNT_DERIVATION_VALUE", columnDefinition = "TEXT", nullable = false)
+    /**
+     * DBF-FIN-102 — TEXT, nullable since v2 (V35): the constant account code when CONSTANT, NULL
+     * when MAPPING (RULE-FIN-019, CHK_FIN_RULE_LINE_DERIVATION_SPEC).
+     */
+    @Column(name = "ACCOUNT_DERIVATION_VALUE", columnDefinition = "TEXT")
     private String accountDerivationValue;
+
+    /**
+     * DBF-FIN-148 (v2) — lookup FIN_EVENT_BUSINESS_FIELD: the business field whose
+     * event value selects the account through FIN_ACCOUNT_MAPPING when MAPPING; NULL when
+     * CONSTANT (RULE-FIN-019).
+     */
+    @Size(max = 50, message = "{validation.size}")
+    @Column(name = "ACCOUNT_BUSINESS_FIELD_CODE", length = 50)
+    private String accountBusinessFieldCode;
 
     /** DBF-FIN-103 — lookup AMOUNT_SOURCE_TYPE (XM-FIN-001). */
     @NotBlank(message = "{validation.required}")

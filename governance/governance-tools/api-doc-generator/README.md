@@ -430,15 +430,14 @@ modules/ORG/api-docs/
   only from code no endpoint reaches (a cross-module entry point, a job) stays
   in the module catalog marked `unbound`, with its throw sites, and is never
   attributed on a guess; an ambiguous overload is skipped and said so.
-- **No security scheme is declared in the OpenAPI document.** `OpenApiConfig`
-  declares `GroupedOpenApi` beans but no `SecurityScheme`/`OpenAPI` bean, and
-  no operation carries a `security` requirement — so every endpoint's
-  Authentication line reads "Not determined from the OpenAPI document," even
-  though the app really is behind a JWT filter chain. `check` fails
-  `auth-determined` on every module for this reason, deliberately: it is a
-  backend gap with a six-line fix in `OpenApiConfig`, after which this
-  generator documents the scheme and attaches the 401 row with no change of
-  its own. Required permissions are unaffected — those come from source.
+- **The Authentication line is only as good as the OpenAPI `security` data.**
+  Until 2026-09-23 `OpenApiConfig` declared no `SecurityScheme`, so every
+  endpoint read "Not determined from the OpenAPI document" and `check` failed
+  `auth-determined` on every module. `OpenApiConfig.erpOpenApi()` now declares
+  the bearer scheme globally and the four public auth endpoints opt out with
+  `@SecurityRequirements`; if a future backend drops either, `check` fails
+  again rather than the docs going quiet. Required permissions come from
+  source and are unaffected either way.
 - **Permission and error/status discovery are source-text heuristics, not a
   real Java parser.** They rely on conventions actually observed across this
   codebase's modules (one delegate call per controller method under the same
@@ -453,7 +452,10 @@ modules/ORG/api-docs/
   are matched structurally rather than hardcoded, so a rename degrades into
   partial output instead of silently emptying a whole section.
 - **Contract ids need a machine-readable API REGISTRY.** The registry table is
-  read from the module's `backend-execution-plan*.md`, in either spelling in
+  read from the module's `backend-execution-plan*.md` -- the one under its
+  highest `v<N>/` folder that has one (an incremental version, per the IFA
+  convention; read from the filesystem, not the registry), else the module
+  dir's own -- in either spelling in
   use here: a markdown table under `**API REGISTRY**` (SEC, MDL, FIN) or a
   box-drawing (`│`) table under a bare `API REGISTRY` line (CU). NOTIF and
   FILE write their registry as compressed prose — several entries per line,

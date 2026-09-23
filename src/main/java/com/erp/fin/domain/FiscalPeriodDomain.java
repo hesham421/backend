@@ -9,6 +9,7 @@ import java.time.Month;
 import java.time.format.TextStyle;
 import java.time.temporal.ChronoUnit;
 import java.util.Locale;
+import java.util.Optional;
 
 /**
  * Domain companion for ENT-FIN-008 (FiscalPeriod), carrying the SRS rule CORE.md assigns to it:
@@ -16,6 +17,8 @@ import java.util.Locale;
  * <ul>
  *   <li><b>RULE-FIN-014</b> — a Hard Closed (or Year-End Closed) period is never reopened
  *       ({@code FIN-409-NOT-REOPENABLE}, QR-FIN-040, API-FIN-024/026).</li>
+ *   <li><b>RULE-FIN-028</b> (v2) — the event date must fall in a defined period
+ *       ({@code FIN-422-NO-DEFINED-PERIOD}, QR-FIN-059, API-FIN-020) — {@link #assertDateCovered}.</li>
  * </ul>
  *
  * <p><b>RULE-FIN-015 is NOT a rule of this class</b> — it is enforced entirely by the
@@ -152,6 +155,22 @@ public final class FiscalPeriodDomain {
             throw new LocalizedException(Status.CONFLICT,
                 FinErrorCodes.FIN_409_PERIODS_NOT_CLOSED, periodNo);
         }
+    }
+
+    /**
+     * RULE-FIN-028 (v2) — API-FIN-020 build: some period's {@code [startDate, endDate]} must cover
+     * the event's date (QR-FIN-059's answer, passed in by the service). A period that exists but
+     * is not OPEN is RULE-FIN-008's business ({@code JournalEntryDomain},
+     * {@code FIN-409-PERIOD-NOT-OPEN}), never this method's.
+     *
+     * @throws LocalizedException {@code FIN-422-NO-DEFINED-PERIOD}
+     */
+    public static FiscalPeriodDomain assertDateCovered(Optional<FiscalPeriod> covering,
+                                                       LocalDate docDate) {
+        return covering
+            .map(FiscalPeriodDomain::from)
+            .orElseThrow(() -> new LocalizedException(Status.BUSINESS_RULE_VIOLATION,
+                FinErrorCodes.FIN_422_NO_DEFINED_PERIOD, docDate));
     }
 
     /**

@@ -42,7 +42,7 @@
         "ORACLE_SERVICE": "FREEPDB1",
         "ORACLE_USER": "LOAN_SYS",
         "ORACLE_PASSWORD": "LOAN_SYS",
-        "ORACLE_ALLOW_WRITE": "false"
+        "ORACLE_ALLOW_WRITE": "true"
       }
     },
     "TestSprite": {

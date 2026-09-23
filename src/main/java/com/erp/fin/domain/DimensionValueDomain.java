@@ -90,6 +90,24 @@ public final class DimensionValueDomain {
         return Optional.empty();
     }
 
+    /**
+     * RULE-FIN-027 (v2) — API-FIN-020 build, per BUSINESS_FIELD tag: the event's value must equal
+     * the code of a dimension value of the tagged dimension (QR-FIN-058, exact code within the
+     * dimension, ADR-FIN-026). A match that is inactive is RULE-FIN-009's rejection
+     * ({@link #assertUsableOnLine(Long)}), not this one — the service calls that next.
+     *
+     * @param match QR-FIN-058's answer, as returned by the repository
+     * @return the resolved value, for the RULE-FIN-009 check that follows
+     * @throws LocalizedException {@code FIN-422-UNRESOLVED-DIMENSION-VALUE}
+     */
+    public static DimensionValueDomain assertResolvedByCode(Long dimensionPk, String code,
+                                                            Optional<DimensionValue> match) {
+        return match
+            .map(DimensionValueDomain::from)
+            .orElseThrow(() -> new LocalizedException(Status.BUSINESS_RULE_VIOLATION,
+                FinErrorCodes.FIN_422_UNRESOLVED_DIMENSION_VALUE, code, dimensionPk));
+    }
+
     /** Reconstructs a Domain view over a persisted row — no validation. */
     public static DimensionValueDomain from(DimensionValue entity) {
         return new DimensionValueDomain(

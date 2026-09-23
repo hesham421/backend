@@ -91,6 +91,7 @@ def build_document(context: RepositoryContext):
             document.error_codes, source_root, context.common_source_roots
         )
         document.common_headers = common_headers_extractor.find_common_headers(context.common_source_roots)
+        document.auth_entry_point = error_mapping_extractor.find_auth_entry_point(context.common_source_roots)
         error_mapping_extractor.attach_endpoint_error_codes(
             document, status_http,
             service_package_of=lambda name: classes[name].package if name in classes else None,

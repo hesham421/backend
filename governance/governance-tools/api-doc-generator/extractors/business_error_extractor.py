@@ -356,15 +356,17 @@ def attach_business_errors(document: ApiDocument, classes: dict[str, ClassInfo],
         for code in {b.code for b in ep.business_errors}:
             bound_counts[code] = bound_counts.get(code, 0) + 1
 
-    advisor_codes = {o.code: o.advisor for o in document.access_denied_overrides}
+    via_codes = {o.code: o.advisor for o in document.access_denied_overrides}
+    if document.auth_entry_point:
+        via_codes[document.auth_entry_point.code] = document.auth_entry_point.handler
     for code in document.error_codes:
         code.throw_sites = sites.get(code.name, [])
         code.bound_endpoints = bound_counts.get(code.name, 0)
-        if code.name in advisor_codes:
+        if code.name in via_codes:
             via = sum(1 for ep in document.endpoints if any(pe.code.startswith(code.name + " ") or pe.code == code.name
                                                             for pe in ep.possible_errors))
             code.bound_endpoints = via
-            code.bound_via = f"Other Possible Responses, via {advisor_codes[code.name]}"
+            code.bound_via = f"Other Possible Responses, via {via_codes[code.name]}"
 
     document.source_facts["throw_sites"] = sum(len(v) for v in sites.values())
     document.source_facts["endpoints_with_business_errors"] = sum(1 for ep in document.endpoints if ep.business_errors)

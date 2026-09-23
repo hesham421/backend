@@ -88,6 +88,29 @@ class ResolvePermissionOutcomes(unittest.TestCase):
         self.assertEqual(lookup.outcome, se.SERVICE_SOURCE_MISSING)
 
 
+class CommentsAreNotCode(unittest.TestCase):
+
+    def test_comment_with_public_between_mapping_and_method(self):
+        import tempfile, pathlib
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            (root / "PubController.java").write_text(
+                'package x;\n@RestController\n@RequestMapping("/api/v1/x/auth")\npublic class PubController {\n'
+                '    private final XService xService;\n'
+                '    @PostMapping("/login")\n'
+                '    @SecurityRequirements // public: permitAll — the word public must not be read as a declaration\n'
+                '    @Operation(summary = "Login")\n'
+                '    public R login(@RequestBody Req r) { return xService.login(r); }\n}\n')
+            (root / "XService.java").write_text(
+                'package x;\npublic class XService {\n    /* public void login(Req r) — commented out */\n'
+                '    public R login(Req r) { return null; }\n}\n')
+            controller_file, method = se.find_controller_for_endpoint(root, "POST", "/api/v1/x/auth/login")
+            self.assertEqual(method, "login")
+            lookup = se.resolve_permission(controller_file.read_text(), method, root, controller_name="PubController")
+            self.assertEqual(lookup.outcome, se.DECLARED_NONE)
+            self.assertEqual(lookup.checked, ["PubController.login", "XService.login"])
+
+
 class AnnotationCount(unittest.TestCase):
 
     def test_counts_annotations_not_javadoc_mentions(self):

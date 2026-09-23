@@ -196,20 +196,38 @@ def default_module_dir(module: str) -> Path:
     return _shared_modules_root() / module
 
 
+_VERSION_DIR_RE = re.compile(r"^v(\d+)$")
+
+
+def _plan_search_roots(module_dir: Path) -> list[Path]:
+    """Where to look for the current plan, highest version first (IFA
+    convention: an incremental feature adds v<N>/ directly under the module
+    dir; v10 sorts after v2 numerically). The module dir itself is last, for
+    a module with no v<N>/ at all. Read from the filesystem, never from
+    modules-registry.json's current_version: that copy lags a publish behind
+    (it still says FIN 1 while FIN/v2/ exists)."""
+    versions = [d for d in module_dir.iterdir()
+                if d.is_dir() and _VERSION_DIR_RE.match(d.name)]
+    versions.sort(key=lambda d: int(_VERSION_DIR_RE.match(d.name).group(1)), reverse=True)
+    return versions + [module_dir]
+
+
 def find_execution_plan(module: str) -> Optional[Path]:
-    """The module's backend execution plan, wherever the module's own folder
-    keeps it (SEC has it under P3_1/, a module added later may not). Matched
-    by the file's declared role -- backend-execution-plan[-<mod>].md; both
-    spellings are in use across this repo's modules -- not by a hard-coded
-    phase folder, and never guessed: no match means no contract ids, exactly
-    as a missing --source means no permissions."""
+    """The module's current backend execution plan: the one under its highest
+    v<N>/ folder that has one (a v<N>/ still at P0 keeps the previous plan
+    current -- SEC/v2/P3_1 is empty today), else under the module dir itself.
+    Matched by role -- backend-execution-plan[-<mod>].md, both spellings in
+    use -- never by a hard-coded phase folder; no match means no contract ids."""
     module_dir = default_module_dir(module)
     if not module_dir.is_dir():
         return None
-    matches = sorted(module_dir.rglob("backend-execution-plan*.md"))
-    # A split package copy (packages/backend-execution/...) restates parts of
-    # the plan; the shallowest match is the plan proper.
-    return min(matches, key=lambda p: (len(p.parts), str(p))) if matches else None
+    for root in _plan_search_roots(module_dir):
+        matches = sorted(root.rglob("backend-execution-plan*.md"))
+        if matches:
+            # A split package copy (packages/backend-execution/...) restates
+            # parts of the plan; the shallowest match is the plan proper.
+            return min(matches, key=lambda p: (len(p.parts), str(p)))
+    return None
 
 
 def _normalize(s: str) -> str:

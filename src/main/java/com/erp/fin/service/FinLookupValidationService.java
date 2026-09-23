@@ -81,6 +81,12 @@ public class FinLookupValidationService {
 
     public static final String KEY_RECURRING_FREQUENCY = "RECURRING_FREQUENCY";
 
+    /** SRS A6, ADDED v2 — the business field a MAPPING line or a BUSINESS_FIELD tag names. */
+    public static final String KEY_FIN_EVENT_BUSINESS_FIELD = "FIN_EVENT_BUSINESS_FIELD";
+
+    /** SRS A6, ADDED v2 — a dimension tag's value source: CONSTANT or BUSINESS_FIELD. */
+    public static final String KEY_FIN_DIMENSION_VALUE_SOURCE = "FIN_DIMENSION_VALUE_SOURCE";
+
     /**
      * MDL's own error code for "unknown or inactive {@code typeKey}" — the ONE MDL failure
      * XM-FIN-001's contract tells FIN to translate. Held as a local literal, deliberately: the
@@ -97,7 +103,10 @@ public class FinLookupValidationService {
     private final MdlLookupApi mdlLookupApi;
 
     /**
-     * Rejects a submitted code that is not an active value of {@code typeKey}.
+     * Rejects a submitted code that is not an active value of {@code typeKey}. Transaction
+     * intent, here and in the two readers below: default REQUIRED propagation with
+     * {@code readOnly = true}, so the in-process MDL read joins the calling FIN write
+     * transaction and commits nothing of its own (MDL's side is itself a pure read).
      *
      * @param typeKey       one of the 13 FIN-owned keys declared above
      * @param submittedCode the code carried by the request
@@ -143,5 +152,30 @@ public class FinLookupValidationService {
             return;
         }
         assertValidCode(typeKey, submittedCode);
+    }
+
+    /**
+     * Fact reader for the two rules that own their own rejection instead of the generic lookup
+     * check (RULE-FIN-018, RULE-FIN-024; CORE.md "Lookup values"): is {@code code} an active
+     * value of {@code typeKey}? Throws no FIN code itself — the Domain decides; an unknown or
+     * inactive type key simply means "not an active value".
+     */
+    @Transactional(readOnly = true)
+    @PreAuthorize("isAuthenticated()")
+    public boolean isActiveCode(String typeKey, String code) {
+        log.debug("Reading FIN lookup membership for key: {}", typeKey);
+
+        List<LookupOptionView> activeValues;
+        try {
+            activeValues = mdlLookupApi.readActiveValuesByKey(typeKey);
+        } catch (LocalizedException ex) {
+            if (ex.getStatus() == Status.NOT_FOUND
+                && MDL_404_TYPE_KEY.equals(ex.getErrorCode())) {
+                return false;
+            }
+            throw ex;
+        }
+        return code != null && activeValues.stream()
+            .anyMatch(option -> code.equals(option.code()));
     }
 }

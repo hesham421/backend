@@ -194,3 +194,46 @@ files, not committed or pushed). Commit `75d01fa` ("Refactor code structure…",
 this session — captured a mid-task snapshot of the generator work along with unrelated Oracle/seed
 files; the finished state is the working tree on top of it. `sync.py` went CRLF→LF in that snapshot
 because the docstring patch rewrote the file; it was the only CRLF file in the tool.
+
+## Round 2 (same day, on "fix everything") — the remedies applied
+
+Backend, this repo:
+- `OpenApiConfig.erpOpenApi()` declares the `bearerAuth` scheme (HTTP bearer, JWT) and applies it
+  globally; the four public auth endpoints (login, signup, password-reset request/complete — exactly
+  `SecurityConfig`'s `permitAll` POSTs) carry an empty `@SecurityRequirements`. Served document now
+  has `securitySchemes.bearerAuth`, global `security`, and `security: []` on the four. Every endpoint
+  page reads `Authentication: Required (bearerAuth).` or `Not required.`; `check` passes
+  `auth-determined` on all six modules.
+- `FileService.softDelete` (DELETE /api/v1/files/{id}) gained the `@PreAuthorize` its SEC-PENDING TODO
+  described: PERM_FILE_BROWSER_UPDATE when `#action == 'ARCHIVE'`, PERM_FILE_BROWSER_DELETE when
+  `'DELETE'`, any other action passes the gate so the existing 400 still answers it. The two
+  constants were added to `PermissionConstants` (values identical to the V9/V31 rows, which already
+  grant them). Probed live after the restart: admin → 404 FILE_DOCUMENT_NOT_FOUND for both actions,
+  `action=FOO` → 400 FILE_DOCUMENT_INVALID_TRANSITION, no token → 401 SEC-401-INVALID-CREDENTIALS.
+  FILE's execution-state records it (IMPLEMENTED).
+- `EventTypeRuleRepository` Javadoc corrected ("one rule per event type, active or not");
+  `AccountResponse.isRetainedEarningsFl` `@Schema` now says who sets it (V34 seed, no API writer).
+- Jar rebuilt (`mvn -DskipTests package`, ArchUnit boundary test green) and the dev server
+  restarted from `.env`; log at `logs/app-restart-2026-09-23.log`.
+
+Generator, two more derivations:
+- The 401 row: `error_mapping_extractor.find_auth_entry_point` resolves the class `SecurityConfig`
+  wires as `authenticationEntryPoint` through its field type and reads the code its `commence(...)`
+  writes beside a 401 (`SEC_401_INVALID_CREDENTIALS`), so every authenticated endpoint now carries a
+  cited 401 row and SEC's catalog binds the code to 30 endpoints via the handler. Fixture + tests.
+- Comments are masked before any controller/service regex runs: a `// public: …` comment between
+  `@PostMapping` and the method had made the route matcher read `Operation` as the method name.
+  Regression test added. 40 tests, all green.
+
+Governance channel: NOTIF and FILE `execution-state.json` gained an OPEN `api_doc_gaps` entry for
+their prose API REGISTRY (the `contract-ids` FAIL); CU/SEC/FIN drift and the profile api-docs path
+were already recorded there.
+
+`check` after round 2: MDL PASS; CU/SEC/FIN FAIL only `contract-drift`; NOTIF/FILE FAIL only
+`contract-ids`. Every remaining FAIL is the factory's, filed, and left failing on purpose.
+
+Concurrent work noticed, not mine: another session is editing FIN (`FinErrorCodes` gained
+`FIN_409_MAPPING_DUP`, new `FinPersistenceRefusalAdvisor.java`, both i18n bundles) and committed
+snapshots of this session's tree along the way (latest: `bf9dc12 Add FIN v2 configuration delta seed script`); the regenerated docs
+reflect the FIN source as it stood at regeneration time.
+

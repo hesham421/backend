@@ -12,7 +12,9 @@ import org.springframework.stereotype.Repository;
  * <p>QR-FIN-001 (search accounts, API-FIN-001) is satisfied by the inherited
  * {@code findAll(Specification, Pageable)} plus the shared {@code SpecBuilder}/
  * {@code PageableBuilder} layer at the service. QR-FIN-002 (create) and QR-FIN-003/004
- * (update, deactivate) use the inherited {@code save}.
+ * (update, deactivate) use the inherited {@code save}. v2 QR-FIN-060 (RULE-FIN-023's leaf and
+ * active flags by account id, API-FIN-039/040) is the inherited {@code findById} — one row of one
+ * table, so no projection (A.2.8).
  */
 @Repository
 public interface AccountRepository

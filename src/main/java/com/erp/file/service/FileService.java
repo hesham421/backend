@@ -222,10 +222,15 @@ public class FileService {
     /**
      * API-FILE-006 — archive (ARCHIVE→ARCHIVED, UPDATE perm) or soft-delete (DELETE→DELETED, DELETE
      * perm). Bytes are retained (RULE-FILE-006). The lifecycle transition is guarded by
-     * FileDocumentDomain; no physical removal.
+     * FileDocumentDomain; no physical removal. The gate picks the permission by the action
+     * argument; any other action value passes it so resolveTargetStatus still answers 400, never 403.
      */
     @Transactional
-    // TODO: SEC-PENDING — re-add @PreAuthorize gating ARCHIVE on PERM_FILE_BROWSER_UPDATE and DELETE on PERM_FILE_BROWSER_DELETE once the new SEC module ships PermissionConstants
+    @PreAuthorize("(#action == 'ARCHIVE' and hasAuthority(T(com.erp.sec.permission.PermissionConstants)"
+        + ".PERM_FILE_BROWSER_UPDATE))"
+        + " or (#action == 'DELETE' and hasAuthority(T(com.erp.sec.permission.PermissionConstants)"
+        + ".PERM_FILE_BROWSER_DELETE))"
+        + " or (#action != 'ARCHIVE' and #action != 'DELETE')")
     public ServiceResult<FileMetadataResponse> softDelete(Long id, String action) {
         log.info("Soft-deleting file ID: {} with action {}", id, action);
 

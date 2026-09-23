@@ -13,9 +13,8 @@ import org.springframework.stereotype.Repository;
  *
  * <p>QR-FIN-024 / QR-FIN-025 / QR-FIN-034 write these rows through the cascade on
  * {@code JournalLine.dimensions}, in the same single transaction as the header — no save mapping
- * is declared here. QR-FIN-044 (the dimension report, API-FIN-032) is an aggregate owned by a
- * later phase and served through the inherited {@code findAll(Specification, Pageable)} plus the
- * shared {@code SpecBuilder}/{@code PageableBuilder} layer.
+ * is declared here. QR-FIN-044 (the dimension report, API-FIN-032) is
+ * {@link #aggregateByAccountAndDimensionValue}.
  *
  * <p><b>RULE-FIN-016.</b> No UPDATE or DELETE mapping is declared here: a dimension row is locked
  * with the line and header it belongs to.

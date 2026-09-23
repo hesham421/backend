@@ -78,6 +78,7 @@ class PermissionLookup:
 
 
 AUTH_ANNOTATION_RE = re.compile(r"^@(PreAuthorize|Secured)\b")
+_COMMENT_RE = re.compile(r"/\*.*?\*/|//[^\n]*", re.DOTALL)
 _STRING_LITERAL_RE = re.compile(r'"((?:[^"\\]|\\.)*)"')
 # The SpEL form is hasAuthority(T(<fully.qualified.Holder>).CONSTANT). The
 # holder class name is a per-project choice (this platform uses
@@ -102,6 +103,15 @@ MAPPING_VERB = {
 METHOD_NAME_AFTER_ANNOTATION_RE = re.compile(r"\b(?:public|private|protected)\b[^;{]*?\b(\w+)\s*\(")
 
 
+def strip_comments(source: str) -> str:
+    """Comments become spaces (newlines kept), so line indices survive and no
+    regex below can match a keyword that only appears in prose. String
+    literals stay: the annotation values live in them."""
+    def blank(m: re.Match) -> str:
+        return re.sub(r"[^\n]", " ", m.group(0))
+    return _COMMENT_RE.sub(blank, source)
+
+
 def _combine_path(base: str, sub: str) -> str:
     base = (base or "").rstrip("/")
     sub = sub or ""
@@ -117,7 +127,7 @@ def find_controller_for_endpoint(source_root: Path, http_method: str, path: str)
     more reliable than guessing by method name, since method names like
     "create"/"search" repeat across every controller in this codebase."""
     for controller_file in sorted(source_root.rglob("*Controller.java")):
-        text = controller_file.read_text(encoding="utf-8")
+        text = strip_comments(controller_file.read_text(encoding="utf-8"))
         class_match = CLASS_REQUEST_MAPPING_RE.search(text)
         base_path = class_match.group(1) if class_match else ""
 
@@ -290,7 +300,7 @@ def _find_delegate(source: str, lines: list[str], decl_index: int, method_name: 
 
 
 def find_authorization_rule(source: str, method_name: str) -> Optional[AuthorizationRule]:
-    lines = source.splitlines()
+    lines = strip_comments(source).splitlines()
     decl_index = _find_declaration_index(lines, method_name)
     if decl_index is None:
         return None
@@ -307,10 +317,11 @@ def find_preauthorize(source: str, method_name: str) -> Optional[str]:
 
 
 def has_method(source: str, method_name: str) -> bool:
-    return _find_declaration_index(source.splitlines(), method_name) is not None
+    return _find_declaration_index(strip_comments(source).splitlines(), method_name) is not None
 
 
 def find_delegate(source: str, method_name: str) -> tuple[Optional[str], Optional[str]]:
+    source = strip_comments(source)
     lines = source.splitlines()
     decl_index = _find_declaration_index(lines, method_name)
     if decl_index is None:
@@ -354,7 +365,6 @@ def resolve_permission(
     return PermissionLookup(FOUND, rule.constants, f"service:{service_class}", rule.expression, checked)
 
 
-_COMMENT_RE = re.compile(r"/\*.*?\*/|//[^\n]*", re.DOTALL)
 _AUTH_ANNOTATION_COUNT_RE = re.compile(r"@(?:PreAuthorize|Secured)\s*\(")
 
 

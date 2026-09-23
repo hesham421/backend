@@ -14,7 +14,7 @@
 | **Oracle (legacy)** | `LOAN_SYS@localhost:1521/FREEPDB1` — Oracle AI Database 26ai Free 23.26.2.0.0, `compatible=23.6.0`. **Production copy used for test** (user statement 2026-09-23). Credentials `LOAN_SYS`/`LOAN_SYS`, user holds `DBA` | legacy accounting **stopped** (§3); no queue, no emit package, no emit triggers yet |
 | **PostgreSQL (FIN)** | `erp_db@localhost:5432` (Docker `erp-backend-postgres`, PG 17); app jar on `:7272`; Flyway at **v34** (FIN v1) | reset + seeded 2026-09-23 (§3); v2 schema **not** built |
 | **Governance** | `governance/shared` submodule at `cbc6a0e` — FIN v2 analysis + packages delivered; `backend/modules/FIN/v2/execution-state.json` = every phase **PENDING**, current `CORE` | |
-| **MCP** | `.mcp.json` → `oracle` (read-only unless `ORACLE_ALLOW_WRITE=true`), `postgres` | for read checks; writes in this work were done with node-oracledb / container `psql` |
+| **MCP** | `.mcp.json` → `oracle`, `postgres` | for read checks; writes in this work were done with node-oracledb / container `psql`. `ORACLE_ALLOW_WRITE` was flipped to `true` on 2026-09-23 by user instruction — a `/mcp` reconnect is required for a running server to pick it up, and a server started before the literal password landed in `.mcp.json` answers every query with `ORA-01017` until reconnected. |
 
 ---
 
@@ -45,6 +45,36 @@
 | ~18:05 | FIN v2 delta discovered (delivered 18:02) → `fin-seed-v2-delta.sql` written; seed keys aligned (`EXPENSE_TYPE_CODE`) | findings §10 |
 | ~19:00 | Oracle files 1–3 written; sign orientation corrected (D-14: negative is normal for FL 32/55/56/57/58/59/66 — 4 rules re-oriented in seed + live DB); OQ-14 closed (complaint mirrors are the only accounting for FL 50 → not skipped) | findings §11 |
 
+### 3.1 First real execution of files 1–3 (2026-09-23 evening)
+
+Until this point files 1–3 had only been written and read; nothing had ever been compiled or run.
+Running them found four defects that review had not:
+
+| # | What happened | Fix applied to the file |
+|---|---|---|
+| 1 | `DBMS_AQADM.ALTER_QUEUE` → **ORA-24218**, "feature ALTER_QUEUE not supported for transactional event queues". Because `CREATE_TRANSACTIONAL_EVENT_QUEUE` commits on its own, this left the queue **existing but never started** (enqueue NO / dequeue NO) — and the file's "skip if the queue exists" idempotence would have skipped straight past that forever. | `max_retries => 5` moved into the CREATE call; ALTER_QUEUE removed; the ELSE branch now *reasserts* shard count and start state instead of skipping. |
+| 2 | `retry_delay` is **not settable at all** on a TxEventQ. `GET_QUEUE_PARAMETER` accepts only `SHARD_NUM`, `KEY_BASED_ENQUEUE`, `STICKY_DEQUEUE`; `RETRY_DELAY`/`RETRY_INTERVAL`/`MAX_RETRIES` each raise ORA-00904 "Unsupported param". | Documented in the file. The plan's 60 s spacing is now explicitly the **consumer's** responsibility. `retry_delay = 0` in `user_queues` is expected, not a defect. |
+| 3 | The queue came up with **`SHARD_NUM = 5`** (the default). A TxEventQ orders messages only *within* a shard, so global FIFO — which plan §3.5 relies on, since an update is a reversal plus a new entry — was **not** actually in force. | `SET_QUEUE_PARAMETER(..., 'SHARD_NUM', 1)` on both the create and the repair path, plus a verification block that prints it. |
+| 4 | `PKG_ACCOUNTING_EVENT` body → **PLS-00201: identifier 'DBMS_AQ' must be declared**. LOAN_SYS holds DBA but only as a *role* and has no direct object grants (`user_tab_privs`: no rows). Roles are live in an anonymous block and disabled inside a definer-rights stored unit — which is why every `DBMS_AQADM` call in file 1 worked while the package body would not compile. | New **section 0** in `oracle-aq-setup.sql`: `GRANT EXECUTE ON SYS.DBMS_AQ TO LOAN_SYS`. **NOT YET APPLIED — needs approval** (see below). |
+
+**State on the test copy right now:**
+
+| Object | State |
+|---|---|
+| `ACCOUNTING_EVENT_SEQ` | created |
+| `ACCOUNTING_EVENT_LOG` | created, 0 rows |
+| `ACCOUNTING_EVENT_Q` | created, **started** (enq YES / deq YES), `max_retries 5`, `SHARD_NUM 1` |
+| `PKG_ACCOUNTING_EVENT` | spec **VALID**, body **INVALID** — blocked on defect 4 |
+| `TRG_AE_*` (file 3) | **not run** |
+
+Nothing is emitting and nothing is consuming, so an INVALID body is inert: no trigger references
+it yet. The legacy triggers remain disabled from the 14:17 marker regardless.
+
+**The one thing blocking progress:** `GRANT EXECUTE ON SYS.DBMS_AQ TO LOAN_SYS`. It is the
+documented AQ requirement and the minimum that works — the alternative, making the package
+invoker-rights (`AUTHID CURRENT_USER`), is worse here because the triggers that call it run as
+whatever user saved the business row. On production a DBA issues the grant as SYS.
+
 **Consequence in force:** since 14:17 UTC the legacy system records no accounting, and FIN receives nothing (no consumer). Every business row saved after the marker must be replayed (§5 step 6). `SELECT COUNT(*) FROM LOAN_PAYMENT WHERE CREATED_DATE > TIMESTAMP '2026-09-23 14:17:31.635 +00:00'` is the running size of that debt.
 
 ---
@@ -52,12 +82,25 @@
 ## 4. How to run what is here
 
 ```bash
-# Oracle (as LOAN_SYS) — order matters
-sqlplus LOAN_SYS/LOAN_SYS@//localhost:1521/FREEPDB1 @oracle-aq-setup.sql
-sqlplus LOAN_SYS/LOAN_SYS@//localhost:1521/FREEPDB1 @oracle-event-emit-package.sql
-sqlplus LOAN_SYS/LOAN_SYS@//localhost:1521/FREEPDB1 @oracle-event-emit-triggers.sql
-# (no sqlplus on this Mac: the statements were run with node-oracledb from
-#  governance/mcp-servers/oracle/node_modules — see scratch stop.mjs pattern in findings §0.2)
+# Oracle (as LOAN_SYS) — order matters.
+# There is no sqlplus on the Mac host, but the erp-oracle container ships one
+# (SQL*Plus 23.26.2.0.0 at /opt/oracle/product/26ai/dbhomeFree/bin/sqlplus).
+# Use it — these files are written FOR sqlplus (SET ECHO ON, WHENEVER SQLERROR
+# EXIT FAILURE, SHOW ERRORS, "/" terminators) and a hand-rolled splitter gets
+# them wrong: see the warning below.
+for f in oracle-aq-setup.sql oracle-event-emit-package.sql oracle-event-emit-triggers.sql; do
+  docker cp "$f" erp-oracle:/tmp/"$f"
+  docker exec erp-oracle sqlplus -S LOAN_SYS/LOAN_SYS@//localhost:1521/FREEPDB1 @/tmp/"$f" || break
+done
+
+# DO NOT drive these through node-oracledb by splitting the file yourself.
+# That was tried 2026-09-23 and the splitter mis-parsed files 2 and 3: a package
+# body and a trigger body both contain ";" on interior lines, so any rule that
+# ends a statement at ";" cuts a PL/SQL block into fragments that will not
+# compile. Only a lone "/" terminates those, which is exactly what sqlplus does
+# and what an ad-hoc parser has to be told. node-oracledb is fine for single
+# statements (that is how legacy-accounting-stop.sql ran — one ALTER per call),
+# not for whole PL/SQL files.
 
 # PostgreSQL (container psql; no local psql)
 docker exec -i erp-backend-postgres psql -U postgres -d erp_db -v ON_ERROR_STOP=1 -f - < ../seed-scripts/fin-seed-production.sql

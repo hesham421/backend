@@ -62,7 +62,8 @@ public interface FiscalYearRepository
      *
      * <p>Callers: {@code JournalEntryService.createManual} (API-FIN-019) and
      * {@code JournalPostingService.buildValidateAndPost} (every system-generated entry) — the only
-     * two places a {@code docNo} is allocated.
+     * two places a {@code docNo} is allocated — and {@code FiscalYearService.yearEndClose}, which
+     * takes the same row lock at the top of its transaction, before the OPEN check (ADR-FIN-041).
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT y FROM FiscalYear y WHERE y.fiscalYearPk = :fiscalYearPk")

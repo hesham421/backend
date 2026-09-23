@@ -1,5 +1,9 @@
 package com.erp.main.config;
 
+import io.swagger.v3.oas.models.Components;
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
+import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,9 +31,30 @@ import org.springframework.context.annotation.Configuration;
  * substring test over normalised text, and "se<b>cu</b>rity" contains the module code CU, which
  * would make {@code --module CU} ambiguous between two groups and silently drop CU's
  * source-derived sections.
+ *
+ * <p>{@link #erpOpenApi()} declares the one bearer scheme every group inherits and applies it to
+ * every operation, mirroring {@code SecurityConfig}'s {@code anyRequest().authenticated()}. Until it
+ * existed no operation carried a {@code security} requirement, so every generated endpoint page read
+ * "Authentication: Not determined" and the generator's {@code check} failed {@code auth-determined}
+ * on all six modules. The four public auth endpoints opt out per method with an empty
+ * {@code @SecurityRequirements}, exactly the paths {@code SecurityConfig} lists as {@code permitAll}.
  */
 @Configuration
 public class OpenApiConfig {
+
+    public static final String BEARER_SCHEME = "bearerAuth";
+
+    @Bean
+    public OpenAPI erpOpenApi() {
+        return new OpenAPI()
+            .components(new Components().addSecuritySchemes(BEARER_SCHEME, new SecurityScheme()
+                .type(SecurityScheme.Type.HTTP)
+                .scheme("bearer")
+                .bearerFormat("JWT")
+                .description("Access token issued by POST /api/v1/sec/auth/login, sent as "
+                    + "Authorization: Bearer <token>")))
+            .addSecurityItem(new SecurityRequirement().addList(BEARER_SCHEME));
+    }
 
     @Bean
     public GroupedOpenApi secApi() {

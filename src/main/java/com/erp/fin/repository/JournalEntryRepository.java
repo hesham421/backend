@@ -45,7 +45,8 @@ public interface JournalEntryRepository
     /**
      * QR-FIN-026 — RULE-FIN-004's fact: has this event reference already produced an entry? The
      * service passes the answer into {@code JournalEntryDomain.create(...)}, which owns the
-     * decision. {@code UQ_FIN_JOURNAL_ENTRY_EVENT_REF} is the database's own backstop.
+     * decision. v2: this is the friendly pre-check; {@code UQ_FIN_JOURNAL_ENTRY_EVENT_REF} is the
+     * guarantee, its refusal translated by {@code FinPersistenceRefusalAdvisor} (ADR-FIN-030).
      * API: API-FIN-020.
      */
     boolean existsByEventReference(String eventReference);

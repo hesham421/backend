@@ -17,8 +17,8 @@ import lombok.NoArgsConstructor;
  * API-FIN-020 request body (SVC-API-INT.md) — "the canonical accounting event payload (opaque
  * shape, out-of-scope Event consumer, POL-FIN-020)". Because the plan declares the shape opaque
  * and out of scope, this class fixes the minimum FIN itself must read to run the rule engine;
- * nothing here invents a column, a lookup key or a rule. Recorded as a documentation gap on
- * {@code execution-state.json}.
+ * nothing here invents a column, a lookup key or a rule; v2 fixes the {@code fields} contract
+ * (CORE.md "Event business fields", ADR-FIN-031).
  *
  * <p>What each field feeds:
  * <ul>
@@ -31,9 +31,10 @@ import lombok.NoArgsConstructor;
  *       total a {@code REMAINDER} line completes (RULE-FIN-010);</li>
  *   <li>{@code amounts} — the event's named amount fields, read by an {@code AMOUNT_SOURCE_TYPE
  *       = FIELD} rule line through its {@code amountSourceValue} (DBF-FIN-104);</li>
- *   <li>{@code fields} — the event's named string fields, read by an
- *       {@code ACCOUNT_DERIVATION_TYPE = DIRECT} or {@code MAPPING} rule line through its
- *       {@code accountDerivationValue} (DBF-FIN-102).</li>
+ *   <li>{@code fields} — the event's business facts keyed by FIN_EVENT_BUSINESS_FIELD code: a
+ *       MAPPING rule line reads the field its {@code accountBusinessFieldCode} names (DBF-FIN-148)
+ *       and a BUSINESS_FIELD dimension tag the one its {@code businessFieldCode} names
+ *       (DBF-FIN-161); no account code is ever read from the payload (REQ-FIN-047).</li>
  * </ul>
  *
  * <p>{@code docNo}, {@code statusCode}, {@code postedAt} and every audit field are system-assigned
@@ -73,7 +74,10 @@ public class EventEntryBuildRequest {
     @Schema(description = "Named amount fields of the event - حقول المبالغ المسماة للحدث")
     private Map<String, BigDecimal> amounts;
 
-    @Schema(description = "Named string fields of the event - حقول النصوص المسماة للحدث")
+    @Schema(description = "Business facts of the event, keyed by FIN_EVENT_BUSINESS_FIELD code "
+        + "(PAYMENT_METHOD, EXPENSE_TYPE_CODE, ORGANISATION_CODE, BRANCH_CODE); the key set grows as "
+        + "MDL data, not as a new request field. No account code is read from the payload - "
+        + "الحقائق التجارية للحدث مفتاحها رمز FIN_EVENT_BUSINESS_FIELD")
     private Map<String, String> fields;
 
     @Schema(description = "Entry description (Arabic) - وصف القيد بالعربية",

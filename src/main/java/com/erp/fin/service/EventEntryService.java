@@ -3,40 +3,54 @@ package com.erp.fin.service;
 import com.erp.common.domain.status.ServiceResult;
 import com.erp.common.domain.status.Status;
 import com.erp.common.exception.LocalizedException;
+import com.erp.fin.domain.AccountMappingDomain;
+import com.erp.fin.domain.DimensionValueDomain;
 import com.erp.fin.domain.EventTypeRuleDomain;
+import com.erp.fin.domain.FiscalPeriodDomain;
 import com.erp.fin.domain.JournalEntryDomain;
 import com.erp.fin.dto.EventEntryBuildRequest;
 import com.erp.fin.dto.JournalEntryResponse;
 import com.erp.fin.dto.JournalLineResponse;
 import com.erp.fin.entity.Account;
+import com.erp.fin.entity.AccountMapping;
+import com.erp.fin.entity.DimensionValue;
 import com.erp.fin.entity.EventTypeRule;
 import com.erp.fin.entity.FiscalPeriod;
 import com.erp.fin.entity.JournalEntry;
 import com.erp.fin.entity.RuleLine;
+import com.erp.fin.entity.RuleLineDimension;
 import com.erp.fin.exception.FinErrorCodes;
 import com.erp.fin.mapper.JournalEntryMapper;
+import com.erp.fin.mapper.JournalEntryMapper.BuiltDimension;
 import com.erp.fin.mapper.JournalEntryMapper.BuiltLine;
+import com.erp.fin.repository.AccountMappingRepository;
 import com.erp.fin.repository.AccountRepository;
+import com.erp.fin.repository.DimensionValueRepository;
 import com.erp.fin.repository.EventTypeRuleRepository;
+import com.erp.fin.repository.FiscalPeriodRepository;
 import com.erp.fin.repository.JournalEntryRepository;
+import com.erp.fin.repository.RuleLineDimensionRepository;
 import com.erp.fin.repository.RuleLineRepository;
 import com.erp.fin.service.JournalPostingService.PostingRequest;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Orchestration layer for API-FIN-020 — build and post a journal entry from a canonical
- * accounting event (SVC-API-INT.md, REQ-FIN-010..013 and REQ-FIN-017..021).
- *
- * <p>No caching annotations — FIN's approved cache register is empty. No
- * {@code ALLOWED_SORT_FIELDS}: this service exposes no search.
+ * API-FIN-020 (SVC-API-INT, v2) — build and post a journal entry from a canonical accounting
+ * event: mapped accounts (RULE-FIN-020/021), event-resolved dimension tags (RULE-FIN-027) and
+ * the period covering the event date (RULE-FIN-028), then the shared posting pipeline. No
+ * caching annotations (FIN's register is empty); no search, so no {@code ALLOWED_SORT_FIELDS}.
  */
 @Service
 @RequiredArgsConstructor
@@ -46,42 +60,20 @@ public class EventEntryService {
     private final JournalEntryRepository journalEntryRepository;
     private final EventTypeRuleRepository eventTypeRuleRepository;
     private final RuleLineRepository ruleLineRepository;
+    private final RuleLineDimensionRepository ruleLineDimensionRepository;
     private final AccountRepository accountRepository;
+    private final AccountMappingRepository accountMappingRepository;
+    private final DimensionValueRepository dimensionValueRepository;
+    private final FiscalPeriodRepository fiscalPeriodRepository;
     private final JournalPostingService postingService;
     private final JournalEntryMapper mapper;
 
     /**
-     * API-FIN-020 — check RULE-FIN-004 (QR-FIN-026) → resolve the active rule (QR-FIN-027) →
-     * generate {@code docNo} → build the lines from the rule against the event's fields, the
-     * remainder line last (QR-FIN-028, QR-FIN-025) → validate (QR-FIN-029..032) → post
-     * (QR-FIN-033), all inside ONE transaction (CORE.md "Transaction scope").
-     *
-     * <p><b>Atomic unit: the entry</b> — one event produces exactly one entry, so "per entry" and
-     * "per request" coincide. Nothing is written before validation succeeds.
-     *
-     * <p><b>Fail-fast vs aggregated.</b> The two preconditions are fail-fast, because an
-     * unresolvable reference leaves nothing further to validate: RULE-FIN-004 (a duplicate
-     * {@code eventReference} means the entry already exists) and RULE-FIN-005 (no active rule
-     * means there is nothing to build). The four post-time rules — RULE-FIN-006/007/008/009 — are
-     * aggregated by {@link JournalPostingService}, per REQ-FIN-015 / AC-FIN-015.
-     *
-     * <p><b>Rules delegated, none inlined</b> (A.5.18): RULE-FIN-004 →
-     * {@code JournalEntryDomain.create(...)}; RULE-FIN-003 →
-     * {@code EventTypeRuleDomain.assertRemainderLineSetValid(...)}, the precondition RULE-FIN-010
-     * depends on; the account derivation, the amount sourcing and the remainder computation
-     * (RULE-FIN-010) → {@code EventTypeRuleDomain}'s three derivations; RULE-FIN-006/007/008/009 →
-     * the shared pipeline's own delegations.
-     *
-     * <p><b>Lookup validation.</b> Nothing lookup-backed is taken from the request:
-     * {@code journalTypeCode} is the system-assigned SRS A6 value {@code EVENT_GENERATED}, each
-     * line's {@code directionCode} comes from a {@code RuleLine} already validated against MDL at
-     * API-FIN-011 time, and {@code eventTypeCode} is never persisted by this path — it only
-     * selects the rule, and an unknown value surfaces as {@code FIN-404-NO-ACTIVE-RULE}. There is
-     * therefore no XM-FIN-001 call to make here.
-     *
-     * <p><b>Security.</b> A system-to-system call from the Event consumer's own service principal,
-     * gated by the same interceptor as any authenticated caller and by
-     * {@code PERM_FIN_JOURNAL_ENTRIES_CREATE} (SVC-API-INT.md, API-FIN-020's Security line).
+     * API-FIN-020's Orchestration steps 1–10 in ONE transaction: RULE-FIN-004 pre-check → active
+     * rule → covering period (QR-FIN-059, RULE-FIN-028) → lines and their tags (QR-FIN-057) →
+     * per line the account, the amount and the dimensions → validate, number and post through
+     * {@link JournalPostingService}. Every decision is a Domain call; nothing here reads MDL, the
+     * rule's own codes having been validated when it was written (API-FIN-011/039).
      */
     @Transactional
     @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants)"
@@ -99,17 +91,21 @@ public class EventEntryService {
             .orElseThrow(() -> new LocalizedException(Status.NOT_FOUND,
                 FinErrorCodes.FIN_404_NO_ACTIVE_RULE, request.getEventTypeCode()));
 
+        Optional<FiscalPeriod> covering =
+            fiscalPeriodRepository.findCoveringDate(request.getDocDate(), Limit.of(1));
+        FiscalPeriodDomain.assertDateCovered(covering, request.getDocDate());
+        FiscalPeriod period = covering.orElseThrow();
+
         List<RuleLine> ruleLines =
             ruleLineRepository.findByEventTypeRulePk(rule.getEventTypeRulePk());
         EventTypeRuleDomain.from(rule).assertRemainderLineSetValid(ruleLines);
-
-        FiscalPeriod period = postingService.resolvePeriodContaining(request.getDocDate());
+        Map<Long, List<RuleLineDimension>> tagsByLine = tagsByLine(ruleLines);
 
         JournalEntry posted = postingService.buildValidateAndPost(new PostingRequest(
             period.getFiscalYear(), period, request.getDocDate(),
             JournalPostingService.JOURNAL_TYPE_EVENT_GENERATED, request.getEventReference(),
             request.getDescriptionAr(), request.getDescriptionEn(),
-            buildLines(ruleLines, request)));
+            buildLines(rule, ruleLines, tagsByLine, request)));
 
         List<JournalLineResponse> lineResponses =
             posted.getLines().stream().map(mapper::toLineResponse).toList();
@@ -117,31 +113,38 @@ public class EventEntryService {
         return ServiceResult.success(mapper.toResponse(posted, lineResponses), Status.CREATED);
     }
 
+    /** QR-FIN-057 — every tag of the rule's lines in one read, grouped by rule line. */
+    private Map<Long, List<RuleLineDimension>> tagsByLine(List<RuleLine> ruleLines) {
+        Map<Long, List<RuleLineDimension>> tagsByLine = new HashMap<>();
+        List<Long> lineIds = ruleLines.stream().map(RuleLine::getRuleLinePk).toList();
+        if (lineIds.isEmpty()) {
+            return tagsByLine;
+        }
+        for (RuleLineDimension tag : ruleLineDimensionRepository.findByRuleLine_RuleLinePkIn(lineIds)) {
+            tagsByLine.computeIfAbsent(tag.getRuleLine().getRuleLinePk(), key -> new ArrayList<>())
+                .add(tag);
+        }
+        return tagsByLine;
+    }
+
     /**
-     * QR-FIN-025 / QR-FIN-028 — the rule's lines turned into posting lines against this event,
-     * the remainder line computed last as RULE-FIN-010 requires ("the total minus the sum of every
-     * other line, after every percentage line rounds"; "never itself computed as a percentage").
-     *
-     * <p>Pure fact-gathering and assembly: every branch on a business code lives in
-     * {@code EventTypeRuleDomain} (the account derivation, the amount source, the remainder
-     * difference) or in {@code JournalEntryDomain} (which side an amount lands on), and an account
-     * code that resolves to nothing is the catalog's own {@code FIN-404-ACCOUNT}. Rule-driven lines
-     * carry no dimension tags — ENT-FIN-010 declares no dimension column (DBF-FIN-098..108), so
-     * RULE-FIN-009 has nothing to judge on this path.
-     *
-     * <p><b>Per side, and one marker (ALIGN-BE).</b> The running totals are kept per posting side
-     * ({@code JournalEntryDomain.SideTotals}) and the remainder line takes the difference between
-     * its own side and the opposing one, which is what RULE-FIN-010 means by "the balancing
-     * amount": with base 1000 and lines DEBIT/FIELD 1000, CREDIT/PERCENTAGE 60% and
-     * CREDIT/REMAINDER, the remainder is {@code 1000 − 600 = 400}, not the {@code 1000 − 1600 =
-     * −600} a side-blind total produced. Which line is the remainder is read from
-     * {@code isRemainderFl} alone (DBF-FIN-103) through
-     * {@code EventTypeRuleDomain.isRemainderLine(...)} — the same marker RULE-FIN-003's guard
-     * counts, so guard and builder can no longer disagree about it.
+     * Steps 5–7 in the block's order: every line's account, then every amount with the remainder
+     * lines last per side (RULE-FIN-010, {@code EventTypeRuleDomain}), then every tag's dimension
+     * value. Pure assembly — each branch on a business code is a Domain predicate, and the built
+     * lines carry their {@link BuiltDimension}s so the pipeline judges RULE-FIN-009 exactly as for
+     * a manual line (REQ-FIN-066/067) and writes one row per tag (REQ-FIN-070).
      */
-    private List<BuiltLine> buildLines(List<RuleLine> ruleLines,
+    private List<BuiltLine> buildLines(EventTypeRule rule, List<RuleLine> ruleLines,
+                                       Map<Long, List<RuleLineDimension>> tagsByLine,
                                        EventEntryBuildRequest request) {
-        List<BuiltLine> built = new ArrayList<>(ruleLines.size());
+        Map<Long, Account> accounts = new HashMap<>();
+        for (RuleLine ruleLine : ruleLines) {
+            accounts.put(ruleLine.getRuleLinePk(),
+                resolveAccount(rule, ruleLine, request.getFields()));
+        }
+
+        List<RuleLine> orderedLines = new ArrayList<>(ruleLines.size());
+        Map<Long, BigDecimal> amounts = new HashMap<>();
         List<RuleLine> remainderLines = new ArrayList<>();
         JournalEntryDomain.SideTotals totals = JournalEntryDomain.SideTotals.zero();
 
@@ -153,7 +156,8 @@ public class EventEntryService {
             BigDecimal amount = EventTypeRuleDomain.sourcedAmount(
                 ruleLine.getAmountSourceTypeCode(), ruleLine.getAmountSourceValue(),
                 request.getBaseAmount(), request.getAmounts());
-            built.add(toBuiltLine(ruleLine, amount, request));
+            amounts.put(ruleLine.getRuleLinePk(), amount);
+            orderedLines.add(ruleLine);
             totals = totals.plus(ruleLine.getDirectionCode(), amount);
         }
 
@@ -161,28 +165,75 @@ public class EventEntryService {
             String direction = remainderLine.getDirectionCode();
             BigDecimal remainder = EventTypeRuleDomain.remainderAmount(
                 totals.opposingTotalOf(direction), totals.ownTotalOf(direction));
-            built.add(toBuiltLine(remainderLine, remainder, request));
+            amounts.put(remainderLine.getRuleLinePk(), remainder);
+            orderedLines.add(remainderLine);
             totals = totals.plus(direction, remainder);
+        }
+
+        List<BuiltLine> built = new ArrayList<>(orderedLines.size());
+        for (RuleLine ruleLine : orderedLines) {
+            Long ruleLinePk = ruleLine.getRuleLinePk();
+            built.add(new BuiltLine(accounts.get(ruleLinePk), amounts.get(ruleLinePk),
+                ruleLine.getDirectionCode(),
+                EventTypeRuleDomain.isRemainderLine(ruleLine.getIsRemainderFl()),
+                request.getDescriptionAr(), request.getDescriptionEn(),
+                resolveDimensions(tagsByLine.getOrDefault(ruleLinePk, List.of()),
+                    request.getFields())));
         }
         return built;
     }
 
-    private BuiltLine toBuiltLine(RuleLine ruleLine, BigDecimal amount,
-                                  EventEntryBuildRequest request) {
-        String accountCode = EventTypeRuleDomain.resolveAccountCode(
-            ruleLine.getAccountDerivationTypeCode(), ruleLine.getAccountDerivationValue(),
-            request.getFields());
-        return new BuiltLine(resolveAccountByCode(accountCode), amount,
-            ruleLine.getDirectionCode(),
-            EventTypeRuleDomain.isRemainderLine(ruleLine.getIsRemainderFl()),
-            request.getDescriptionAr(), request.getDescriptionEn(), List.of());
+    /**
+     * Step 5 — CONSTANT: the account whose code is the line's {@code accountDerivationValue};
+     * MAPPING: the event's value for the line's business field (RULE-FIN-021) selects the one
+     * active mapping (QR-FIN-055, RULE-FIN-020), whose account is already fetched. Nothing in
+     * {@code fields} is ever read as an account code (REQ-FIN-047).
+     */
+    private Account resolveAccount(EventTypeRule rule, RuleLine ruleLine,
+                                   Map<String, String> fields) {
+        if (!EventTypeRuleDomain.isMappingDerivation(ruleLine.getAccountDerivationTypeCode())) {
+            return resolveAccountByCode(ruleLine.getAccountDerivationValue());
+        }
+        String businessFieldCode = ruleLine.getAccountBusinessFieldCode();
+        String value = EventTypeRuleDomain.assertFieldPresent(businessFieldCode, fields);
+        Optional<AccountMapping> mapping = accountMappingRepository.findActiveByKey(
+            rule.getEventTypeCode(), businessFieldCode, value);
+        AccountMappingDomain.assertResolved(mapping, businessFieldCode, value);
+        return mapping.orElseThrow().getAccount();
+    }
+
+    /** Step 7 — one {@link BuiltDimension} per tag; a line with no tag builds none. */
+    private List<BuiltDimension> resolveDimensions(List<RuleLineDimension> tags,
+                                                   Map<String, String> fields) {
+        List<BuiltDimension> resolved = new ArrayList<>(tags.size());
+        for (RuleLineDimension tag : tags) {
+            resolved.add(new BuiltDimension(tag.getDimension(), resolveDimensionValue(tag, fields)));
+        }
+        return resolved;
     }
 
     /**
-     * FK resolution by natural key, not a rule: a derived account code that matches no account is
-     * {@code FIN-404-ACCOUNT}. Read through the existing repository layer with no new query
-     * method — an explicit {@code Specification} plus the fluent {@code first()}, the same
-     * A.5.17-sanctioned technique the posting pipeline uses for its own scoped reads.
+     * CONSTANT: the tag's own value; BUSINESS_FIELD: the event's value for the tag's business
+     * field (RULE-FIN-021) resolved by exact code within the tagged dimension (QR-FIN-058,
+     * RULE-FIN-027, ADR-FIN-026). An inactive match is RULE-FIN-009's rejection at post.
+     */
+    private DimensionValue resolveDimensionValue(RuleLineDimension tag,
+                                                 Map<String, String> fields) {
+        if (!EventTypeRuleDomain.isBusinessFieldSource(tag.getValueSourceCode())) {
+            return tag.getDimensionValue();
+        }
+        String value = EventTypeRuleDomain.assertFieldPresent(tag.getBusinessFieldCode(), fields);
+        Long dimensionPk = tag.getDimension().getDimensionPk();
+        Optional<DimensionValue> match =
+            dimensionValueRepository.findByDimension_DimensionPkAndCode(dimensionPk, value);
+        DimensionValueDomain.assertResolvedByCode(dimensionPk, value, match);
+        return match.orElseThrow();
+    }
+
+    /**
+     * FK resolution by natural key, not a rule: a CONSTANT line's account code that matches no
+     * account is {@code FIN-404-ACCOUNT}. An explicit {@code Specification} plus the fluent
+     * {@code first()}, the same A.5.17-sanctioned technique the posting pipeline uses.
      */
     private Account resolveAccountByCode(String accountCode) {
         Specification<Account> ofCode = (root, query, cb) -> cb.equal(root.get("code"),

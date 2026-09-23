@@ -13,10 +13,13 @@ import com.erp.fin.dto.EventTypeRuleSearchRequest;
 import com.erp.fin.dto.EventTypeRuleResponse;
 import com.erp.fin.dto.RuleLineResponse;
 import com.erp.fin.entity.EventTypeRule;
+import com.erp.fin.entity.RuleLine;
+import com.erp.fin.entity.RuleLineDimension;
 import com.erp.fin.exception.FinErrorCodes;
 import com.erp.fin.mapper.EventTypeRuleMapper;
 import com.erp.fin.mapper.RuleLineMapper;
 import com.erp.fin.repository.EventTypeRuleRepository;
+import com.erp.fin.repository.RuleLineDimensionRepository;
 import com.erp.fin.repository.RuleLineRepository;
 import java.util.List;
 import java.util.Map;
@@ -56,6 +59,7 @@ public class EventTypeRuleService {
 
     private final EventTypeRuleRepository repository;
     private final RuleLineRepository lineRepository;
+    private final RuleLineDimensionRepository ruleLineDimensionRepository;
     private final EventTypeRuleMapper mapper;
     private final RuleLineMapper lineMapper;
     private final FinLookupValidationService lookupValidation;
@@ -130,7 +134,8 @@ public class EventTypeRuleService {
      * is the only endpoint that lists rules, so without the lines the Detail pane has no source at
      * all. They are fetched in ONE batch read keyed by the page's ids
      * ({@code findByEventTypeRulePkIn}) and grouped in memory — not one child query per row, the
-     * same arrangement API-FIN-012 uses.
+     * same arrangement API-FIN-012 uses. v2: each line carries its ENT-FIN-016 dimension tags
+     * (SCR-REQ-FIN-003 §B1), read in one further batch keyed by the lines' ids (QR-FIN-057).
      */
     @Transactional(readOnly = true)
     @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants)"
@@ -152,21 +157,42 @@ public class EventTypeRuleService {
             .map(EventTypeRule::getEventTypeRulePk)
             .toList();
 
-        Map<Long, List<RuleLineResponse>> linesByRule = rulePks.isEmpty()
-            ? Map.of()
-            : lineRepository.findByEventTypeRulePkIn(rulePks).stream()
-                .collect(Collectors.groupingBy(
-                    line -> line.getEventTypeRule().getEventTypeRulePk(),
-                    Collectors.mapping(lineMapper::toResponse, Collectors.toList())));
+        List<RuleLine> lines = rulePks.isEmpty()
+            ? List.of()
+            : lineRepository.findByEventTypeRulePkIn(rulePks);
+        Map<Long, List<RuleLineDimension>> tagsByLine = tagsByLine(lines);
+
+        Map<Long, List<RuleLineResponse>> linesByRule = lines.stream()
+            .collect(Collectors.groupingBy(
+                line -> line.getEventTypeRule().getEventTypeRulePk(),
+                Collectors.mapping(line -> lineMapper.toResponse(line,
+                    tagsByLine.getOrDefault(line.getRuleLinePk(), List.of())),
+                    Collectors.toList())));
 
         return ServiceResult.success(page.map(rule -> mapper.toResponse(rule,
             linesByRule.getOrDefault(rule.getEventTypeRulePk(), List.of()))));
     }
 
-    /** ENT-FIN-010's rows for one rule, ordered by {@code lineNo}, already mapped (QR-FIN-016). */
+    /**
+     * ENT-FIN-010's rows for one rule, ordered by {@code lineNo}, each with its ENT-FIN-016 tags,
+     * already mapped (QR-FIN-016, QR-FIN-057).
+     */
     private List<RuleLineResponse> linesOf(Long eventTypeRulePk) {
-        return lineRepository.findByEventTypeRulePk(eventTypeRulePk).stream()
-            .map(lineMapper::toResponse)
+        List<RuleLine> lines = lineRepository.findByEventTypeRulePk(eventTypeRulePk);
+        Map<Long, List<RuleLineDimension>> tagsByLine = tagsByLine(lines);
+        return lines.stream()
+            .map(line -> lineMapper.toResponse(line,
+                tagsByLine.getOrDefault(line.getRuleLinePk(), List.of())))
             .toList();
+    }
+
+    /** The lines' tags in ONE read (QR-FIN-057), grouped by line pk; an empty map for no lines. */
+    private Map<Long, List<RuleLineDimension>> tagsByLine(List<RuleLine> lines) {
+        if (lines.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> linePks = lines.stream().map(RuleLine::getRuleLinePk).toList();
+        return ruleLineDimensionRepository.findByRuleLine_RuleLinePkIn(linePks).stream()
+            .collect(Collectors.groupingBy(tag -> tag.getRuleLine().getRuleLinePk()));
     }
 }

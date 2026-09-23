@@ -247,6 +247,22 @@ public final class PermissionConstants {
      */
     public static final String PERM_FIN_PERIODS_VIEW = "PERM_FIN_PERIODS_VIEW";
 
+    /**
+     * API-FIN-038 (search account mappings, SVC-API-SEARCH) — screen FIN_ACCOUNT_MAPPINGS
+     * (srs-fin.md SCR-REQ-FIN-013 §B4, VIEW is the gateway). Declared with the v2 CRUD sub so the
+     * SEARCH sub can gate on it; the SEC_* seed rows are SEC-BE's, not a migration here.
+     */
+    public static final String PERM_FIN_ACCOUNT_MAPPINGS_VIEW = "PERM_FIN_ACCOUNT_MAPPINGS_VIEW";
+
+    /** API-FIN-039 (create account mapping) — screen FIN_ACCOUNT_MAPPINGS (SCR-REQ-FIN-013 §B4, CREATE). */
+    public static final String PERM_FIN_ACCOUNT_MAPPINGS_CREATE = "PERM_FIN_ACCOUNT_MAPPINGS_CREATE";
+
+    /**
+     * API-FIN-040, 041 (change the account, deactivate) — screen FIN_ACCOUNT_MAPPINGS
+     * (SCR-REQ-FIN-013 §B4: UPDATE covers deactivate, as FIN_ACCOUNTS models it).
+     */
+    public static final String PERM_FIN_ACCOUNT_MAPPINGS_UPDATE = "PERM_FIN_ACCOUNT_MAPPINGS_UPDATE";
+
     // ─────────────────────────────────────────────────────────────────────────────────────────
     // CU — Common Utilities. Backend-only module: CU/SEC-BE.md declares "no screens", so these
     // four codes deliberately DEVIATE from PERM_<PAGE_CODE>_<ACTION> and are the literal strings
@@ -319,10 +335,9 @@ public final class PermissionConstants {
     // ─────────────────────────────────────────────────────────────────────────────────────────
     // FILE — File Service. FILE/SEC-BE.md: SCR-FILE-001 FILE_CATEGORIES exposes the full CRUD set
     // (API-FILE-007); SCR-FILE-002 FILE_BROWSER is VIEW (API-FILE-004/005) + UPDATE/DELETE
-    // (API-FILE-006) with CREATE "contextual in owner module". Only the codes an implemented gate
-    // names are declared here: PERM_FILE_BROWSER_UPDATE / _DELETE are registered by V31 (the
-    // matrix names them) but declare no constant, because FileService.softDelete still selects
-    // between them by request argument and carries no @PreAuthorize yet.
+    // (API-FILE-006) with CREATE "contextual in owner module". PERM_FILE_BROWSER_UPDATE / _DELETE
+    // are registered by V9/V31 and consumed since 2026-09-23 by FileService.softDelete, whose gate
+    // picks the one matching the request's action argument (SpEL on #action).
     // ─────────────────────────────────────────────────────────────────────────────────────────
 
     /** API-FILE-007 (search categories, read one) — screen FILE_CATEGORIES. */
@@ -352,4 +367,10 @@ public final class PermissionConstants {
      * FileService.store() is the gate that consumes it.
      */
     public static final String PERM_FILE_BROWSER_CREATE = "PERM_FILE_BROWSER_CREATE";
+
+    /** API-FILE-006 with action=ARCHIVE — screen FILE_BROWSER; FileService.softDelete() gates on it. */
+    public static final String PERM_FILE_BROWSER_UPDATE = "PERM_FILE_BROWSER_UPDATE";
+
+    /** API-FILE-006 with action=DELETE — screen FILE_BROWSER; FileService.softDelete() gates on it. */
+    public static final String PERM_FILE_BROWSER_DELETE = "PERM_FILE_BROWSER_DELETE";
 }

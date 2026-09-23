@@ -50,5 +50,17 @@ class FieldSemantics(unittest.TestCase):
         self.assertEqual(param.field_meaning, "the value of `parameterName`")
 
 
+class AuthEntryPoint(unittest.TestCase):
+
+    def test_entry_point_resolved_through_the_wired_field_and_commence_body(self):
+        entry = em.find_auth_entry_point([COMMON])
+        self.assertIsNotNone(entry)
+        self.assertEqual((entry.handler, entry.code, entry.value, entry.config),
+                         ("FxSecurityErrorHandler", "FX_401_INVALID_CREDENTIALS", "FX-401-INVALID-CREDENTIALS", "SecurityConfig"))
+
+    def test_no_wiring_means_no_claim(self):
+        self.assertIsNone(em.find_auth_entry_point([LEGACY]))
+
+
 if __name__ == "__main__":
     unittest.main()

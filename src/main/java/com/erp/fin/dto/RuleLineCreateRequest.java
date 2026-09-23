@@ -1,19 +1,22 @@
 package com.erp.fin.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * API-FIN-011 request body (SVC-API-CRUD.md): {@code {accountDerivationTypeCode,
- * accountDerivationValue, amountSourceTypeCode, amountSourceValue?, directionCode,
- * distributionTypeCode, isRemainderFl}}. The owning {@code eventTypeRuleId} travels in the path.
- * Excludes {ruleLinePk, lineNo, createdAt} — {@code lineNo} (DBF-FIN-100) is assigned by the
- * service as the next position within the rule, never submitted.
+ * API-FIN-011 request body (SVC-API-CRUD.md, MODIFIED v2): {@code {accountDerivationTypeCode,
+ * accountDerivationValue?, accountBusinessFieldCode?, amountSourceTypeCode, amountSourceValue?,
+ * directionCode, distributionTypeCode, isRemainderFl, dimensionTags[]}}. The owning
+ * {@code eventTypeRuleId} travels in the path. Excludes {ruleLinePk, lineNo, createdAt} —
+ * {@code lineNo} (DBF-FIN-100) is the rule's highest lineNo + 1, assigned by the service.
  */
 @Data
 @Builder
@@ -28,9 +31,14 @@ public class RuleLineCreateRequest {
         + "- نوع اشتقاق الحساب", example = "CONSTANT")
     private String accountDerivationTypeCode;
 
-    @NotBlank(message = "{validation.required}")
-    @Schema(description = "Account derivation value - قيمة اشتقاق الحساب", example = "1101")
+    @Schema(description = "Constant account code, CONSTANT only - رمز الحساب الثابت",
+        example = "1101")
     private String accountDerivationValue;
+
+    @Size(max = 50, message = "{validation.size}")
+    @Schema(description = "Business field selecting the account, FIN_EVENT_BUSINESS_FIELD lookup, "
+        + "MAPPING only - الحقل التجاري لربط الحساب", example = "PAYMENT_METHOD")
+    private String accountBusinessFieldCode;
 
     @NotBlank(message = "{validation.required}")
     @Size(max = 20, message = "{validation.size}")
@@ -56,4 +64,9 @@ public class RuleLineCreateRequest {
         example = "false")
     @Builder.Default
     private Boolean isRemainderFl = Boolean.FALSE;
+
+    @Valid
+    @Schema(description = "Dimension tags submitted with the line - وسوم الأبعاد على السطر")
+    @Builder.Default
+    private List<RuleLineDimensionTagRequest> dimensionTags = new ArrayList<>();
 }

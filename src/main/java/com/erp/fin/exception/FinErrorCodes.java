@@ -2,17 +2,10 @@ package com.erp.fin.exception;
 
 /**
  * Module-specific error codes for Finance / General Ledger (FIN) — one constant per row of the
- * FIN v1 Error Catalog (packages/backend-execution/_SECTIONS.md). The constant value is the
- * runtime code verbatim ({@code FIN-{http}[-{SLUG}]}, per CORE.md's error-code format), and is
- * both the wire {@code code} in the {@code ApiError} envelope and the i18n message key — same
- * convention as {@code MdlErrorCodes} and {@code SecErrorCodes}.
- *
- * <p>Registration is incremental, per sub (MDL's established pattern): only the codes actually
- * thrown by the code delivered so far are declared here. DATA-DOM-LOOKUP registered the three
- * codes its Domain layer throws — {@code DimensionValueDomain}, {@code EventTypeRuleDomain} and
- * {@code AllocationRuleDomain}; DATA-DOM-MASTER adds the five thrown by {@code AccountDomain}
- * and {@code FiscalPeriodDomain}. The SVC-API phase adds the service-layer not-found and
- * lookup-validation codes.
+ * FIN v2 Error Catalog (packages/v2/backend-execution/_SECTIONS.md). The value is the runtime
+ * code verbatim ({@code FIN-{http}[-{SLUG}]}) and serves as both the wire {@code code} in the
+ * {@code ApiError} envelope and the i18n message key (the {@code MdlErrorCodes} convention).
+ * {@link #FIN_403_SOD_VIOLATION} is struck in that catalog and has no thrower.
  */
 public final class FinErrorCodes {
 
@@ -70,10 +63,10 @@ public final class FinErrorCodes {
     public static final String FIN_409_NOT_REOPENABLE = "FIN-409-NOT-REOPENABLE";
 
     /**
-     * RULE-FIN-015 — the close-approver also holds the journal-entry-creation permission, so the
-     * separation of duties is not satisfied. The two permission facts are read from SEC by the
-     * service and passed into {@code FiscalPeriodDomain} as plain arguments.
-     * APIs: API-FIN-026, API-FIN-027. HTTP 403 ({@code Status.FORBIDDEN}).
+     * RULE-FIN-015 — STRUCK in the v2 Error Catalog: both throw sites were deleted on 2026-09-12
+     * (recorded human decision); the rule is satisfied by the distinct
+     * {@code PERM_FIN_PERIODS_CLOSE_APPROVE} gate alone. The constant and its two bundle keys stay
+     * on record with no thrower until a session removes all three together.
      */
     public static final String FIN_403_SOD_VIOLATION = "FIN-403-SOD-VIOLATION";
 
@@ -105,7 +98,8 @@ public final class FinErrorCodes {
     /**
      * RULE-FIN-004 — an entry has already been produced for this {@code eventReference}
      * (QR-FIN-026, POL-FIN-012; backed by {@code UQ_FIN_JOURNAL_ENTRY_EVENT_REF}). Thrown by
-     * {@code JournalEntryDomain.create(...)}.
+     * {@code JournalEntryDomain.create(...)}; v2 also by {@code FinPersistenceRefusalAdvisor} when
+     * the store refuses a concurrent duplicate on that constraint (ADR-FIN-030, REQ-FIN-072).
      * API: API-FIN-020. HTTP 409.
      */
     public static final String FIN_409_DUPLICATE_EVENT = "FIN-409-DUPLICATE-EVENT";
@@ -218,7 +212,7 @@ public final class FinErrorCodes {
     // ─────────────────────────────────────────────────────────────────────────────────────────
     // SVC-API-INT — the codes API-FIN-014/017/020/021/023/024/025/026/027 add on top of the
     // posting-core set above. Every constant below is a verbatim Error Catalog row
-    // (_SECTIONS.md, "Error Catalog — FIN v1").
+    // (_SECTIONS.md, "Error Catalog — FIN v2").
     // ─────────────────────────────────────────────────────────────────────────────────────────
 
     /**
@@ -248,17 +242,6 @@ public final class FinErrorCodes {
      * API: API-FIN-027. HTTP 409 ({@code Status.CONFLICT}).
      */
     public static final String FIN_409_PERIODS_NOT_CLOSED = "FIN-409-PERIODS-NOT-CLOSED";
-
-    /**
-     * PLATFORM-STD — a rule line configured with {@code accountDerivationTypeCode = MAPPING}
-     * cannot be executed: SRS ENT-FIN-010 defines its {@code accountDerivationValue} as a
-     * mapping-set key, and db-script-fin.md declares no mapping store among FIN's 14 tables.
-     * {@code CONSTANT} and {@code DIRECT} are unaffected. Thrown by
-     * {@code EventTypeRuleDomain.resolveAccountCode(...)}; removed again once the mapping store is
-     * specified.
-     * API: API-FIN-020. HTTP 422 ({@code Status.BUSINESS_RULE_VIOLATION}).
-     */
-    public static final String FIN_422_MAPPING_UNSUPPORTED = "FIN-422-MAPPING-UNSUPPORTED";
 
     /**
      * PLATFORM-STD — unknown recurring template id (ENT-FIN-011, QR-FIN-019). Its own row: the
@@ -305,7 +288,7 @@ public final class FinErrorCodes {
 
     // ─────────────────────────────────────────────────────────────────────────────────────────
     // ALIGN-BE — the four codes the accounting-correctness alignment adds. Every constant below
-    // is a verbatim Error Catalog row (_SECTIONS.md, "Error Catalog — FIN v1").
+    // is a verbatim Error Catalog row (_SECTIONS.md, "Error Catalog — FIN v2").
     // ─────────────────────────────────────────────────────────────────────────────────────────
 
     /**
@@ -389,8 +372,8 @@ public final class FinErrorCodes {
      * requires, so the {@code @PreAuthorize} guard on the FIN service denied the call. Raised by
      * {@code FinForbiddenAdvisor}, which catches Spring Security's {@code AccessDeniedException}
      * on any {@code com.erp.fin.service} method and re-raises it as this code — never thrown by
-     * hand in a service. Distinct from {@link #FIN_403_SOD_VIOLATION}, which is a business rule
-     * (RULE-FIN-015) about two permissions overlapping, not a missing grant.
+     * hand in a service. Distinct from {@link #FIN_403_SOD_VIOLATION}, a struck code with no
+     * thrower.
      *
      * <p>A denial raised by the Spring Security filter chain, before any FIN service is entered,
      * is NOT this code — it is written by {@code SecSecurityErrorHandler} as
@@ -439,4 +422,94 @@ public final class FinErrorCodes {
      * APIs: API-FIN-014, API-FIN-017. HTTP 409 ({@code Status.CONFLICT}).
      */
     public static final String FIN_409_NOT_ACTIVE = "FIN-409-NOT-ACTIVE";
+
+    /**
+     * RULE-FIN-022 — an active mapping already holds the (event type, business field, business
+     * value) key: by the pre-check (QR-FIN-052) or by the store's refusal on
+     * {@code UQ_FIN_ACCOUNT_MAPPING_ACTIVE_KEY}, translated by {@code FinPersistenceRefusalAdvisor}
+     * (ADR-FIN-030). API: API-FIN-039. HTTP 409 ({@code Status.CONFLICT}).
+     */
+    public static final String FIN_409_MAPPING_DUP = "FIN-409-MAPPING-DUP";
+
+    /**
+     * RULE-FIN-018 — a rule line's accountDerivationTypeCode is not an active
+     * ACCOUNT_DERIVATION_TYPE value (DIRECT included, retired in MDL). Thrown by
+     * {@code EventTypeRuleDomain.assertDerivationSupported(...)}.
+     * API: API-FIN-011. HTTP 422 ({@code Status.BUSINESS_RULE_VIOLATION}).
+     */
+    public static final String FIN_422_UNSUPPORTED_DERIVATION = "FIN-422-UNSUPPORTED-DERIVATION";
+
+    /**
+     * RULE-FIN-019 — a CONSTANT line without an account code or with a business field, or a
+     * MAPPING line without a business field or with an account code. Thrown by
+     * {@code EventTypeRuleDomain.assertDerivationSpec(...)}.
+     * API: API-FIN-011. HTTP 422 ({@code Status.BUSINESS_RULE_VIOLATION}).
+     */
+    public static final String FIN_422_DERIVATION_SPEC = "FIN-422-DERIVATION-SPEC";
+
+    /**
+     * RULE-FIN-020 — no ACTIVE account mapping for the rule's event type, the line's business
+     * field and the event's value (QR-FIN-055). Thrown by
+     * {@code AccountMappingDomain.assertResolved(...)}.
+     * API: API-FIN-020. HTTP 422 ({@code Status.BUSINESS_RULE_VIOLATION}).
+     */
+    public static final String FIN_422_UNMAPPED_VALUE = "FIN-422-UNMAPPED-VALUE";
+
+    /**
+     * RULE-FIN-021 — the event does not carry the business field a MAPPING line or a
+     * BUSINESS_FIELD tag names. Thrown by {@code EventTypeRuleDomain.assertFieldPresent(...)}.
+     * API: API-FIN-020. HTTP 422 ({@code Status.BUSINESS_RULE_VIOLATION}).
+     */
+    public static final String FIN_422_MISSING_BUSINESS_FIELD = "FIN-422-MISSING-BUSINESS-FIELD";
+
+    /**
+     * RULE-FIN-023 — the mapping's account is not a leaf or is inactive when the mapping is saved
+     * (QR-FIN-060). Thrown by {@code AccountMappingDomain.assertAccountEligible(...)}.
+     * APIs: API-FIN-039, API-FIN-040. HTTP 422 ({@code Status.BUSINESS_RULE_VIOLATION}).
+     */
+    public static final String FIN_422_MAPPED_ACCOUNT_INELIGIBLE = "FIN-422-MAPPED-ACCOUNT-INELIGIBLE";
+
+    /**
+     * RULE-FIN-024 — businessFieldCode is PAYMENT_METHOD and businessValue is not an active
+     * PAYMENT_METHOD code. Thrown by {@code AccountMappingDomain.assertBusinessValueDefined(...)}.
+     * API: API-FIN-039. HTTP 422 ({@code Status.BUSINESS_RULE_VIOLATION}).
+     */
+    public static final String FIN_422_INVALID_PAYMENT_METHOD = "FIN-422-INVALID-PAYMENT-METHOD";
+
+    /**
+     * RULE-FIN-025 — two tags of one submitted rule line name the same dimension. Thrown by
+     * {@code EventTypeRuleDomain.assertTagsDistinct(...)}.
+     * API: API-FIN-011. HTTP 422 ({@code Status.BUSINESS_RULE_VIOLATION}).
+     */
+    public static final String FIN_422_DIMENSION_TAG_DUP = "FIN-422-DIMENSION-TAG-DUP";
+
+    /**
+     * RULE-FIN-026 — a CONSTANT tag without a value of its own dimension or with a business
+     * field, or a BUSINESS_FIELD tag without a business field or with a value. Thrown by
+     * {@code EventTypeRuleDomain.assertTagMatchesSource(...)}.
+     * API: API-FIN-011. HTTP 422 ({@code Status.BUSINESS_RULE_VIOLATION}).
+     */
+    public static final String FIN_422_DIMENSION_TAG_SOURCE = "FIN-422-DIMENSION-TAG-SOURCE";
+
+    /**
+     * RULE-FIN-027 — the event's value for a BUSINESS_FIELD tag equals the code of no dimension
+     * value of the tagged dimension (QR-FIN-058). Thrown by
+     * {@code DimensionValueDomain.assertResolvedByCode(...)}.
+     * API: API-FIN-020. HTTP 422 ({@code Status.BUSINESS_RULE_VIOLATION}).
+     */
+    public static final String FIN_422_UNRESOLVED_DIMENSION_VALUE = "FIN-422-UNRESOLVED-DIMENSION-VALUE";
+
+    /**
+     * RULE-FIN-028 — no fiscal period's [startDate, endDate] covers the event's docDate
+     * (QR-FIN-059); a calendar-setup error, never the retryable period-not-open answer. Thrown by
+     * {@code FiscalPeriodDomain.assertDateCovered(...)}.
+     * API: API-FIN-020. HTTP 422 ({@code Status.BUSINESS_RULE_VIOLATION}).
+     */
+    public static final String FIN_422_NO_DEFINED_PERIOD = "FIN-422-NO-DEFINED-PERIOD";
+
+    /**
+     * PLATFORM-STD (ADR-FIN-030) — unknown account-mapping id in the path.
+     * APIs: API-FIN-040, API-FIN-041. HTTP 404 ({@code Status.NOT_FOUND}).
+     */
+    public static final String FIN_404_ACCOUNT_MAPPING = "FIN-404-ACCOUNT-MAPPING";
 }
