@@ -8,8 +8,9 @@ responses are not discoverable and must not be fabricated.
 What IS consistent across every module is a `*ErrorCodes.java` class holding
 `public static final String NAME = "VALUE";` constants (OrgErrorCodes,
 SecurityErrorCodes, MasterDataErrorCodes, GlErrorCodes, CommonErrorCodes).
-This is surfaced as one module-level "Known Error Codes" appendix — never
-claimed to apply to any specific endpoint.
+This is surfaced as the module-level "Known Error Codes" table. Which endpoint
+can raise which code is business_error_extractor's job (a source walk from each
+controller method), not this module's.
 """
 
 import re

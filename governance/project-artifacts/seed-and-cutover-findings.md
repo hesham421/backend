@@ -1,7 +1,7 @@
 # FIN production seed & legacy accounting stop — findings and decisions
 
-**Date:** 2026-09-23 · **Status:** seed **executed and verified** on the reset dev PostgreSQL (see §0); Oracle stop script ready, **not executed** (awaiting go-ahead)
-**Deliverables:** [`backend/seed-scripts/fin-seed-production.sql`](backend/seed-scripts/fin-seed-production.sql) · [`backend/seed-scripts/legacy-accounting-stop.sql`](backend/seed-scripts/legacy-accounting-stop.sql) · this file
+**Date:** 2026-09-23 · **Status:** seed **executed and verified** on the reset dev PostgreSQL (see §0); Oracle stop script **executed 2026-09-23 14:17:31.635 UTC** on the user's explicit go — 10 triggers + 2 jobs DISABLED, keep list 11/11 ENABLED, 0 automatic journal rows after the marker (see §0.2)
+**Deliverables:** [`backend/seed-scripts/fin-seed-production.sql`](backend/seed-scripts/fin-seed-production.sql) · [`backend/oracle-cutover/legacy-accounting-stop.sql`](backend/oracle-cutover/legacy-accounting-stop.sql) · this file
 **Scope:** step 1 (seed FIN for 2026) and step 2 (stop the legacy triggers). Step 3 (replay 2026, opening balances) is out of scope but §7 lists what it will need from this seed.
 
 > Facts (§2, §3) are separated from decisions (§6) and from open questions (§8). Where a database did not show something it says *not found*.
@@ -20,7 +20,25 @@
 | Post-check | 326 accounts (+`3200`), 269 leaves, 8 inactive, 1 retained-earnings; every active rule targets a leaf (`54 عملاء محليين`, `00040005 المبيعات`, `82`, `236`, `24`, `30`); `PAYMENT_METHOD = CASH, CHEQUE`; **0 journal entries** |
 | Oracle | confirmed as the production copy used for test (**OQ-02 closed**). Read-only precheck: all 10 stop-list triggers ENABLED, both jobs ENABLED. `LOAN_PAYMENT_DALIY_TR` read: 1,851 lines, batch copy of the payment trigger over `LOAN_PAYMENT_PRE_TR`, writes the journal, **next run tonight 21:00** → added to the stop list as S12 (**OQ-S1 closed**). Stop script **not run** — waiting for an explicit go |
 
-## 1. The finding that governs the whole seed — the approved v2 does not exist here
+## 0.1 Correction, 18:05 — the v2 delta arrived after the searches above
+
+The governance submodule moved from `5d6164a` to `cbc6a0e` (a merge of `origin/main`) and `.claude/commands/FIN/v2/` was generated at 18:02 — **after** both v2 searches. The delta is real and complete: `analysis/modules/FIN/v2/` (71 files: P0…P3.1, pass-1 gate APPROVED), `backend/modules/FIN/packages/v2/` (36 files), `backend/modules/FIN/v2/execution-state.json` (**every phase PENDING, current = CORE** — nothing is built yet). §1 below stands as the record of what was true at seed time; §10 is what v2 changes. The earlier "never produced" conclusion is withdrawn.
+
+## 0.2 Legacy accounting stop — executed
+
+| | |
+|---|---|
+| Go | user: "نعم ابدآ بتنفيذه للايقاف" |
+| Stop marker (`SYSTIMESTAMP`) | **`2026-09-23 14:17:31.635 +00:00`** — the value V2/V3 in the stop script take as `:stop_marker` |
+| Executed | S01–S10 `ALTER TRIGGER … DISABLE`, S11–S12 `DBMS_SCHEDULER.DISABLE(force => TRUE)`, in script order, via node-oracledb as `LOAN_SYS` |
+| V1 | all 10 stop-list triggers `DISABLED`; keep list `11 / 11 ENABLED`; both jobs `enabled=FALSE state=DISABLED` (the 21:00 run will not fire) |
+| V2 | `0` automatic journal rows after the marker |
+| V3 | to be re-run after a business day: `LOAN_PAYMENT` rows after the marker must all have `RESTRICTIONS_MASTER_FK IS NULL` |
+| Rollback | the ROLLBACK COMPANION at the end of `legacy-accounting-stop.sql`, reverse order |
+
+**Consequence in force from this instant:** the legacy system records no accounting. FIN records only the 6 active CONSTANT rules (contracts, settlements, safe transfers) until v2 is built and `fin-seed-v2-delta.sql` activates the other 15 — and nothing at all until the event consumer exists. Every business row saved from now on is a row the 2026 replay (step 3) must pick up; the marker above is its lower bound for "not yet in FIN".
+
+## 1. The finding that governed the v1 seed — v2 was not present when it was written
 
 The brief says the seed must follow "v1 plus the approved v2 delta": a FIN-owned account-mapping store, `FIN_EVENT_BUSINESS_FIELD`, `FIN_DIMENSION_VALUE_SOURCE`, dimension value sources on rule lines, and `DIRECT` removed.
 
@@ -357,9 +375,62 @@ Each row: what the legacy does · what the seed does today · the choice · reco
 | ~~OQ-09~~ | **closed** — seed executed twice on the reset DB, idempotent, verification passed | — | — |
 | OQ-10 | Account `83 (0001000200140001)` is named `'حـساب /'` (a placeholder) and is now the target of custody mapping rows 324/282 | naming only | rename in FIN once the store exists |
 | OQ-11 | **Run the Oracle stop script?** All 12 targets confirmed ENABLED; the nightly job fires at 21:00 today | the legacy keeps writing its journal until this runs | explicit go from the user; rollback companion is in the file |
-| OQ-12 | The 15 MAPPING-dependent rules cover ~85 % of 2026 volume (`FL=7` alone is 1,897 entries). Until D-09 lands, FIN records only contracts, settlements and safe transfers | step 3 replay | build `FIN_ACCOUNT_MAPPING` + `MAPPING` resolution + activate 15 rules + insert seed §6 rows |
+| OQ-12 | The 15 MAPPING-dependent rules cover ~85 % of 2026 volume (`FL=7` alone is 1,897 entries). Until v2 is built, FIN records only contracts, settlements and safe transfers | step 3 replay | **v2 is now specified (§10)**: execute `/FIN/v2/execute-backend`, then run `fin-seed-v2-delta.sql` |
+| **OQ-15** | FIN needs mirrored `<TYPE>_REVERSED` rules (same lines, directions swapped) for every event type, so the rare opposite-sign row, every amount UPDATE and every DELETE can post (D-14) | replay of ~40 rows in 2026; every future correction | add 21 mirrored rules to `fin-seed-v2-delta.sql` (mechanical: copy each rule's lines with DEBIT↔CREDIT) — pending your go |
+| **OQ-13** | The v2 `CHK_FIN_RULE_LINE_DERIVATION_SPEC` rejects the 21 v1-seeded MAPPING lines (key in `account_derivation_value`). The DATA-DOM migration must `UPDATE fin_rule_line SET account_business_field_code = account_derivation_value, account_derivation_value = NULL WHERE account_derivation_type_code = 'MAPPING'` **between** `ADD COLUMN` and `ADD CONSTRAINT` | v2 DATA-DOM migration on any DB carrying the v1 seed | the executor adds the step and files it in the v2 `execution-state.json` `api_doc_gaps[]`; the delta seed repeats it as a no-op safety net |
 
 ---
+
+## 10. v2 — what it specifies, what it changes, and the second seed
+
+Read from `governance/shared/analysis/modules/FIN/v2/` (db-script BLOCK 1–7, SRS RULE-FIN-018..028, A6) and `packages/v2/backend-execution/`.
+
+### 10.1 What v2 adds
+
+| Item | Spec | Effect on this work |
+|---|---|---|
+| `FIN_ACCOUNT_MAPPING` (ENT-FIN-015) | `(event_type_code, business_field_code, business_value) → account_id`, `is_active_fl`; one active row per key (RULE-FIN-022, partial unique index); account must be an active leaf on save (RULE-FIN-023) | the store D-09 waited for. **Keyed per event type** — the global rows I drafted in seed §6 become 45 rows (30 `PAYMENT_METHOD`, 15 `EXPENSE_TYPE_CODE`) |
+| `FIN_RULE_LINE.account_business_field_code` + `account_derivation_value` nullable + `CHK_FIN_RULE_LINE_DERIVATION_SPEC` | MAPPING ⇒ field set, value NULL; CONSTANT ⇒ the reverse (RULE-FIN-019) | **my 21 seeded MAPPING lines hold the key in `account_derivation_value` and will fail the CHECK** — OQ-13 |
+| `FIN_RULE_LINE_DIM` (ENT-FIN-016) | one tag per dimension per line (RULE-FIN-025); `CONSTANT` → a dimension value, `BUSINESS_FIELD` → resolves `fields[code]` against `FIN_DIMENSION_VALUE.code` in that dimension (RULE-FIN-027, ADR-FIN-026) | **F-09 resolved**: ORG/BRANCH can be stamped from the event. The Oracle PKs I used as dimension-value codes are exactly what resolves — ADR-FIN-012's "translation deferred" never bites |
+| MDL `FIN_EVENT_BUSINESS_FIELD` = `PAYMENT_METHOD, EXPENSE_TYPE_CODE, ORGANISATION_CODE, BRANCH_CODE`; `FIN_DIMENSION_VALUE_SOURCE` = `CONSTANT, BUSINESS_FIELD`; `PAYMENT_METHOD` seeds `CHEQUE`; `DIRECT` soft-retired (ADR-FIN-010) | fixed key names for the event's `fields{}` | the event contract uses these codes verbatim (integration plan §3.2 corrected); my key `EXPENSE_TYPE` renamed `EXPENSE_TYPE_CODE` in the generator, the on-disk seed and the live rows; `CASH` still comes from the v1 seed |
+| API-FIN-020 request | `fields{}` keyed by `FIN_EVENT_BUSINESS_FIELD` code, string values; "an extra `fields.accountCode` is simply never looked at" (REQ-FIN-047) | the boundary is now enforced by FIN itself |
+| New errors | `FIN-422-MISSING-BUSINESS-FIELD` (RULE-FIN-021), unmapped-value (RULE-FIN-020), unresolvable-dimension-value (RULE-FIN-027), a distinct no-defined-period configuration error (RULE-FIN-028) vs period-not-open (REQ-FIN-073) | the consumer's failure table in the integration plan §3.4 gains these rows |
+| `FIN_ACCOUNT_MAPPINGS` screen, `PERM_FIN_ACCOUNT_MAPPINGS_VIEW/CREATE/UPDATE` (API-FIN-038..041) | seeded by the v2 SEC-BE migration | no seed row from me |
+
+### 10.2 The second seed — [`fin-seed-v2-delta.sql`](backend/seed-scripts/fin-seed-v2-delta.sql)
+
+Runs **after** `/FIN/v2/execute-backend` has landed the v2 migrations (section 0 refuses otherwise). It: moves the 21 MAPPING lines to v2 shape (safety net), inserts the 45 mapping rows (D-11 targets), tags all 43 rule lines with `ORG ← ORGANISATION_CODE` and `BRANCH ← BRANCH_CODE`, activates the 15 inactive rules, and verifies RULE-FIN-018/019/020/022/023/024/025/026. Not executed — there is no v2 schema yet.
+
+### 10.3 Order of work from here
+
+1. `/FIN/v2/execute-backend` CORE → DATA-DOM → SVC-API → DOC → INT-C → INT-R → SEC-BE → ALIGN-BE (the executor must include the OQ-13 data step in the DATA-DOM migration).
+2. `fin-seed-v2-delta.sql` on the dev DB → 21 rules active, ~100 % of 2026 volume covered.
+3. `legacy-accounting-stop.sql` on Oracle (OQ-11).
+4. Step 3: replay 2026.
+
+## 11. Oracle event-emission scripts (files 1–3) and what writing them changed
+
+Written 2026-09-23 on the user's "نعم اكتبهم". Verified read-only first: `DBMS_AQADM.CREATE_TRANSACTIONAL_EVENT_QUEUE` exists, `compatible = 23.6.0` → TxEventQ, JSON payload (classic-AQ fallback kept as a comment).
+
+| File | Creates | Executed? |
+|---|---|---|
+| [`oracle-aq-setup.sql`](backend/oracle-cutover/oracle-aq-setup.sql) | `ACCOUNTING_EVENT_SEQ`, `ACCOUNTING_EVENT_LOG` (audit + replay source), `ACCOUNTING_EVENT_Q` (single consumer, FIFO, `max_retries 5`, `retry_delay 60`) | no |
+| [`oracle-event-emit-package.sql`](backend/oracle-cutover/oracle-event-emit-package.sql) | `PKG_ACCOUNTING_EVENT.emit(...)` — builds the API-FIN-020 JSON (`fields{}` keyed `PAYMENT_METHOD`, `EXPENSE_TYPE_CODE`, `ORGANISATION_CODE`, `BRANCH_CODE`), logs, enqueues `ON_COMMIT`; never raises; zero amounts logged not sent | no |
+| [`oracle-event-emit-triggers.sql`](backend/oracle-cutover/oracle-event-emit-triggers.sql) | 7 `TRG_AE_*` AFTER-ROW triggers on `LOAN_PAYMENT`, `CONTRACT`, `COMPLAINTS`, `COMPLAINT_DT`, `INVOICE_IMPORT`, `EXPENSE_TYPE_DT`, `TRANSFER_SAFE`; INSERT → event, UPDATE of amount → reversal + new, DELETE → reversal | no |
+
+**Production order:** 1 → 2 → 3 (shadow, legacy still posting) → consumer + comparison → `legacy-accounting-stop.sql`. On the test copy the stop already ran first (§0.2); the three files above can run there any time — nothing in them touches the retired triggers.
+
+### 11.1 Facts established while writing them — two of which corrected the seed
+
+| # | Finding | Decision |
+|---|---|---|
+| **D-14** | Sign, measured on 2026 `LOAN_PAYMENT`: negative is the **normal** value for FL 32 (469/505), 55, 56, 57, 58, 59, 66 (100 %); positive for 7 and 49 (100 %). Legacy flips debit/credit on sign, so the books show `DR 82 / CR 30` for 58/59, `DR 32 / CR 82` for 66, `DR 82 / CR cash` for 32 — the **opposite of the template** I had seeded for 32/58/59/66 | **Applied:** the four rules re-oriented to the books (generator + on-disk seed + `UPDATE` of the 8 live lines); the emit trigger's `normal_sign` = −1 for those seven flags, so `_REVERSED` is the rare case (36 rows of 32, 4 contracts in 2026). **FIN still needs mirrored `<TYPE>_REVERSED` rules** for the rare case — OQ-15 |
+| **D-15** | `docDate`: legacy stamped `SYSDATE` on every journal master; the scripts send the row's business date (`LOAN_PAYMENT_DATE`, `COMPLAINT_DT_DATE`, `INV_IMPORT_DATE`, `EXPENSE_DATE`, `TRANSFER_SAFE_DATE`, `CONTRACT_DATE`, `QUITTANCE_DATE`) | **Applied** (business date is the correct GL date). Consequence: the parallel-run comparison must key on the legacy `CREATED_DATE`, not `RESTRICTIONS_MASTER_DATE`; the 2026 replay uses the business date |
+| ~~OQ-14~~ | The 112 `EXPENSE_TYPE_DT` rows mirrored from `COMPLAINT_DT` are all `COMPLAINT_DT_FL = 50 ايراد شكوي`; the legacy `COMPLAINT_DT` trigger posts only 43/44, so the mirror was the **only** accounting for complaint revenue — not a duplicate | **closed** — `c_skip_complaint_mirrors := FALSE`; the mirror emits `REVENUE_RECEIVED` with `EXPENSE_TYPE_CODE = '1'` |
+| F-14 | `COMPLAINT_DT_FL = 49 رسوم المستثمر` (119 rows in 2026) is posted by **neither** legacy path | no event emitted — consistent with legacy; if it should be accounted, that is a new rule + a trigger branch (one line each) |
+| F-15 | Org/branch for expenses come from `COST_CENTER_FK / SUB_COST_CENTER_FK` (values 1 / 1–3, identical to org/sub), for transfers from `TO_ORGANIZATION_*` — exactly as the legacy triggers stamped them | reproduced |
+| F-16 | `eventReference` = `LEGACY:<TABLE>:<PK>:<ACCOUNTING_EVENT_SEQ>` — a sequence suffix rather than a revision column, because no legacy table may be altered; unique per emission, so update = reversal + new never collides | integration plan §3.2 updated |
+| F-17 | Dead branches FL 8 / 130 **are** emitted (`SUPPLIER_PAYMENT_MADE`, `OWNER_DRAWING`, no FIN rule): a revival fails loudly at FIN (`FIN-404-NO-ACTIVE-RULE` → exception queue) instead of vanishing | D-07 refined |
 
 ### Appendix — evidence trail
 

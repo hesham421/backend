@@ -76,6 +76,9 @@ class RepositoryContext:
     # REGISTRY only (contract id per endpoint). Optional like every other
     # discovered input: absent simply means the docs carry no contract ids.
     execution_plan: Optional[Path] = None
+    # Flyway migration directories, from spring.flyway.locations. Read for the
+    # uniqueness invariants the entities cannot express (partial indexes).
+    migration_roots: list[Path] = field(default_factory=list)
 
 
 def default_backend_root() -> Path:
@@ -385,6 +388,28 @@ def build_openapi_url(backend_root: Path, group_id: str) -> str:
     return f"http://localhost:{port}{context}{api_docs}/{group_id}"
 
 
+FLYWAY_DEFAULT_LOCATIONS = "classpath:db/migration"
+
+
+def find_migration_roots(backend_root: Path) -> list[Path]:
+    """Every existing directory spring.flyway.locations points at (Flyway's own
+    default when the property is absent), under each src/main/resources of a
+    consolidated or reactor layout."""
+    declared = _read_property(backend_root, "spring.flyway.locations") or FLYWAY_DEFAULT_LOCATIONS
+    resource_dirs = [backend_root / "src" / "main" / "resources"] + sorted(backend_root.glob("*/src/main/resources"))
+    roots: list[Path] = []
+    for location in declared.split(","):
+        location = location.strip()
+        if location.startswith("filesystem:"):
+            candidate = Path(location[len("filesystem:"):])
+            candidates = [candidate if candidate.is_absolute() else backend_root / candidate]
+        else:
+            rel = location.split(":", 1)[1] if ":" in location else location
+            candidates = [d / rel.strip("/") for d in resource_dirs]
+        roots += [c for c in candidates if c.is_dir() and c not in roots]
+    return roots
+
+
 # ---------------------------------------------------------------------------
 # Module source root discovery (from a matched group's packages)
 # ---------------------------------------------------------------------------
@@ -544,4 +569,5 @@ def resolve(
         source_root=source_root,
         common_source_roots=common_source_roots,
         execution_plan=execution_plan,
+        migration_roots=find_migration_roots(backend_root),
     )

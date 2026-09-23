@@ -6,6 +6,13 @@ public final class FxDomain {
     private final String code;
     private final boolean active = true;
 
+    private FxDomain(String code) {
+        if (code == null) {
+            throw new LocalizedException(Status.VALIDATION_ERROR, FxErrorCodes.FX_400_CODE_REQUIRED);
+        }
+        this.code = code;
+    }
+
     public static FxDomain create(String code, boolean codeTaken) {
         if (codeTaken) {
             throw new LocalizedException(Status.ALREADY_EXISTS,

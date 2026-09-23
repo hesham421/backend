@@ -29,10 +29,13 @@ leaves the field empty. The renderer never prints a placeholder for missing
 data — it omits the subsection. Nothing here is ever invented.
 """
 
+import checks
 import sync
 from discovery import RepositoryContext
 from extractors import (
+    business_error_extractor,
     common_headers_extractor,
+    constraint_extractor,
     contract_extractor,
     dto_extractor,
     error_mapping_extractor,
@@ -57,15 +60,20 @@ def build_document(context: RepositoryContext):
         document.pagination_envelope = ResponseEnvelope(schema_name=page_schema_name, fields=page_fields)
 
     source_root = context.source_root
+    controller_of: dict[int, tuple[str, str]] = {}
+    classes: dict = {}
     if source_root is not None:
         document.error_codes = exception_extractor.find_error_codes(source_root)
         document.source_facts["auth_annotations"] = security_extractor.count_authorization_annotations(source_root)
+        classes = business_error_extractor.index_module_source(source_root)
+        document.access_denied_overrides = business_error_extractor.find_access_denied_overrides(classes)
 
         for ep in document.endpoints:
             controller_file, method_name = security_extractor.find_controller_for_endpoint(source_root, ep.method, ep.path)
             if not controller_file or not method_name:
                 ep.permission_lookup = security_extractor.CONTROLLER_NOT_MATCHED
                 continue
+            controller_of[id(ep)] = (controller_file.stem, method_name)
             controller_source = controller_file.read_text(encoding="utf-8")
             lookup = security_extractor.resolve_permission(
                 controller_source, method_name, source_root, controller_name=controller_file.stem
@@ -76,22 +84,34 @@ def build_document(context: RepositoryContext):
             ep.permission_lookup = lookup.outcome
             ep.permission_checked = lookup.checked
 
+    status_http: dict[str, str] = {}
     if context.common_source_roots:
+        status_http = error_mapping_extractor.find_status_http_mapping(context.common_source_roots)
         document.error_codes, document.status_mappings = error_mapping_extractor.enrich_error_codes(
             document.error_codes, source_root, context.common_source_roots
         )
         document.common_headers = common_headers_extractor.find_common_headers(context.common_source_roots)
-        error_mapping_extractor.attach_endpoint_error_codes(document)
+        error_mapping_extractor.attach_endpoint_error_codes(
+            document, status_http,
+            service_package_of=lambda name: classes[name].package if name in classes else None,
+        )
         document.pagination_constraints = pagination_extractor.find_pagination_constraints(
             source_root, context.common_source_roots
         )
+        document.field_error_semantics = error_mapping_extractor.find_field_error_semantics(context.common_source_roots)
+
+    if source_root is not None:
+        business_error_extractor.attach_business_errors(document, classes, controller_of, status_http)
+        document.unique_constraints = constraint_extractor.find_unique_constraints(source_root, context.migration_roots)
+        document.source_facts["unique_declared"] = sum(
+            c.raw.count("@UniqueConstraint") for c in classes.values() if "@Entity" in c.raw)
 
     # Last: the contract-id join. It needs the full endpoint list, and it is
     # what makes the generated docs addressable by the ids every other
     # governance artifact (SRS, frontend plan, test manifest) is written in.
     if context.execution_plan is not None:
         entries = contract_extractor.load_api_registry(context.execution_plan)
-        contract_extractor.attach_contract_ids(document, entries, context.execution_plan.name)
+        contract_extractor.attach_contract_ids(document, entries, context.execution_plan.name, source_root)
 
     return document
 
@@ -141,3 +161,18 @@ def run(context: RepositoryContext, mode: str) -> str:
         lines.append(sync.format_report(report))
 
     return "\n".join(lines)
+
+
+def check(context: RepositoryContext) -> tuple[str, int]:
+    """review's report, then every assertion in checks.py; exit status 2 on
+    any FAIL so a pipeline stops on drift, staleness, non-determinism or a
+    silently empty section instead of printing a count nobody reads."""
+    document = build_document(context)
+    files = MarkdownRenderer().render(document)
+    files_again = MarkdownRenderer().render(build_document(context))
+    existing = sync.read_existing(context.output)
+    report = sync.compare(existing, files, document.endpoints, mode="check")
+    results = checks.run_checks(context, document, files, files_again, report, existing)
+    lines = [f"Module      : {context.module}", _contract_line(document), sync.format_report(report), ""]
+    lines.append(checks.format_checks(context.module, results, len(document.endpoints), context.output))
+    return "\n".join(lines), (2 if checks.failed(results) else 0)

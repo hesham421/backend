@@ -24,6 +24,8 @@ under-annotated), not the doc generator.
 python3 generate.py --module SEC --function generate
 python3 generate.py --module SEC --function update
 python3 generate.py --module SEC --function review
+python3 generate.py --module SEC --function check      # review + assertions; exit 2 on any FAIL
+python3 -m unittest discover -s tests -t .             # the extractor tests, fixture Java under tests/fixtures/
 ```
 
 That's it in normal use — see "Automatic discovery" below for what these two
@@ -44,6 +46,13 @@ discovery.py             Resolves --module into a RepositoryContext by reading
                          object carrying repository-shaped knowledge
                          (locations, which module, which shared resources)
                          across the discovery -> pipeline boundary.
+checks.py                `--function check`: the review report plus assertions
+                         that each carry an expected side read from source and
+                         print as a ratio (permissions found / endpoints against
+                         @PreAuthorize in source, ...). Any FAIL exits 2. A
+                         module that legitimately cannot pass one declares it in
+                         waivers/<MOD>.json with check, reason, by, on -- an
+                         invalid waiver waives nothing and is itself a FAIL.
 generator.py             The pipeline: extract -> render -> sync.
                          build_document(context) is the only place that
                          RepositoryContext gets unpacked; run(context, mode)
@@ -100,15 +109,41 @@ extractors/
                          not by guessing off the method name, since names like
                          "create"/"search" repeat across every controller),
                          then looks for @PreAuthorize/@Secured on that method
-                         or on the service method it delegates to. Extracts
-                         only the SecurityPermissions.XXX identifiers, never
-                         evaluates the SpEL expression.
+                         or on the service method it delegates to. Handles the
+                         single-line and the multi-line concatenated spelling
+                         (any number of "..." + "..." parts), @Secured arrays and
+                         `value =`; constants are matched structurally, never by
+                         a PERM_ prefix (CU spells them CONFIG_*). Every lookup
+                         ends in a recorded outcome -- FOUND, DECLARED_NONE, or
+                         one of the NOT_EXTRACTED reasons -- and the docs print
+                         which, so "no permission" is never ambiguous.
+  business_error_extractor.py  BEST-EFFORT, module source required. Indexes
+                         the module's classes and walks each endpoint's call
+                         graph controller -> service -> domain (depth 8, only
+                         into classes in the module's own source), recording
+                         every `(Status, XErrorCodes.Y)` throw site and every
+                         ErrorDetail code reached. Overloads that differ in
+                         what they throw are skipped as ambiguous rather than
+                         picked. Also finds module advisors that catch
+                         AccessDeniedException and re-raise a module code, so
+                         the 403 row names the code the client really receives.
+  constraint_extractor.py  Module source + Flyway migrations required. Reads
+                         @Table(uniqueConstraints) off the entities and replays
+                         the migrations in version order (ADD CONSTRAINT UNIQUE,
+                         CREATE UNIQUE INDEX ... WHERE, inline UNIQUE, and the
+                         DROPs that retire them), reporting only this module's
+                         tables; a partial index's WHERE clause is quoted verbatim.
   exception_extractor.py  BEST-EFFORT, only runs when a module source root is
                          available. Finds every `*ErrorCodes.java` file under
                          the module's own source tree and lists its constants
                          as a module-level "Known Error Codes" appendix.
   error_mapping_extractor.py  BEST-EFFORT, only runs when shared/common
-                         source roots are available. Reads the shared,
+                         source roots are available. Also reads what each
+                         GlobalExceptionHandler method passes to
+                         FieldErrorItem.field(...), verbatim, so index.md can say
+                         what `fieldErrors[].field` carries per failure kind
+                         (it is an error code, not a field path, for a business
+                         multi-error whose throw named no field). Reads the shared,
                          module-independent Status -> HttpStatus table from
                          wherever this platform currently keeps it — the
                          Status enum's own constructor today, an explicit
@@ -135,6 +170,11 @@ extractors/
                          key subset) so any envelope field is documented, and
                          reusing dto_extractor's recursive expansion for
                          nested fields like error.fieldErrors.
+tests/                   unittest suite (`python3 -m unittest discover -s tests -t .`);
+                         fixtures under tests/fixtures/ carry BOTH spellings of
+                         every construct whose alternative once broke a build.
+waivers/                 per-module check waivers, created only when a module
+                         legitimately cannot pass an assertion (none today).
 renderers/
   base.py                Renderer interface: render(ApiDocument) -> {path: text}.
                          A renderer only renders — it must never call an
@@ -282,6 +322,20 @@ extractors or renderers, and they don't know it exists.
 - **review** — runs the same comparison as update but writes nothing. Use it
   to answer "what changed in the API docs?" (e.g. in a PR check) without
   modifying anything.
+- **check** — review, then the assertions in `checks.py`, exit 2 on any FAIL:
+  `deterministic` (two renders identical), `stale` (disk matches the render),
+  `contract-drift` (no declared-vs-served row), `contract-ids` (a registry
+  heading with no parseable row fails), `permissions` (found/endpoints against
+  @PreAuthorize/@Secured counted in source; any NOT_EXTRACTED outcome fails),
+  `auth-determined` (OpenAPI security requirement present when a
+  SecurityFilterChain is declared), `envelope`, `error-codes`, `status-table`,
+  `business-errors` (bound/endpoints against throw sites in source),
+  `field-error-semantics`, `unique-constraints`. Every line is a ratio with
+  its expected side, never a bare count -- a `0/38 while 45 in source` is what
+  a count of 0 hid for four modules. Waive per module in
+  `waivers/<MOD>.json`: `{"waivers": [{"check": "...", "reason": "...", "by":
+  "...", "on": "YYYY-MM-DD"}]}`; the verdict prints WAIVED with the reason.
+  Never satisfy `check` by deleting or loosening an assertion.
 
 `--function` is required and explicit (no auto-detection ambiguity for CI/CD
 — a pipeline always says exactly what it wants). If you're generating output
@@ -290,9 +344,11 @@ folder from before this tool tracked its own output with the marker line,
 that first run will report every file as a conflict (unmanaged) — run
 `--function generate` once to (re)stamp it, or move the old folder aside.
 
-Because rendering is a deterministic function of the current backend state,
-the comparison never needs to diff DTOs/permissions/validations/error-codes
-individually — any such change already shows up as a content difference in
+Rendering is a deterministic function of the current backend state -- every
+mapping and directory listing the tool consumes is sorted, endpoints are
+ordered by group, path and verb rather than by the order springdoc emitted
+them, and `check` proves it by rendering twice -- so the comparison never
+needs to diff DTOs/permissions/validations/error-codes individually — any such change already shows up as a content difference in
 the affected endpoint's file (or in index.md's shared sections), so it's
 picked up automatically.
 
@@ -355,33 +411,44 @@ modules/ORG/api-docs/
   whether declared on the controller method or delegated to a service
   method.
 - (best-effort, needs module source) Module-level known error codes from
-  `*ErrorCodes.java`.
+  `*ErrorCodes.java`, each with how many endpoints' call walks reach a throw
+  site naming it, and the per-endpoint "Business Responses" table those walks
+  produce (HTTP status, wire code, constant, throw site).
+- (best-effort, needs module source + migrations) The uniqueness invariants
+  the database enforces on the module's tables, partial-index scope included.
+- (needs shared source) What `error.fieldErrors[].field` carries per handler.
 - (best-effort, needs shared/common source) Each error code's business
   `Status` and real HTTP status; the framework-level error codes and their
   HTTP status; headers applied globally by shared filters.
 
 ## Limitations
 
-- **Per-endpoint BUSINESS error responses are not documented.** No controller
-  in this codebase declares `@ApiResponse`/`@ApiResponses`. Framework errors
-  structurally guaranteed by an endpoint's own shape are attached per
-  endpoint, but which business error code a given endpoint can raise stays a
-  module-level appendix — with Status/HTTP status attached where a throw site
-  makes it discoverable.
+- **Per-endpoint business responses come from a source walk, not from
+  annotations.** No controller declares `@ApiResponse`/`@ApiResponses`, so each
+  endpoint's "Business Responses" table is what `business_error_extractor`
+  reached by following real calls from the controller method. A code thrown
+  only from code no endpoint reaches (a cross-module entry point, a job) stays
+  in the module catalog marked `unbound`, with its throw sites, and is never
+  attributed on a guess; an ambiguous overload is skipped and said so.
 - **No security scheme is declared in the OpenAPI document.** `OpenApiConfig`
   declares `GroupedOpenApi` beans but no `SecurityScheme`/`OpenAPI` bean, and
   no operation carries a `security` requirement — so every endpoint's
   Authentication line reads "Not determined from the OpenAPI document," even
-  though the app really is behind a JWT filter chain. This is a backend
-  annotation gap: declare the bearer scheme in `OpenApiConfig` and this
-  generator documents it with no change of its own. Required permissions are
-  unaffected — those come from source.
+  though the app really is behind a JWT filter chain. `check` fails
+  `auth-determined` on every module for this reason, deliberately: it is a
+  backend gap with a six-line fix in `OpenApiConfig`, after which this
+  generator documents the scheme and attaches the 401 row with no change of
+  its own. Required permissions are unaffected — those come from source.
 - **Permission and error/status discovery are source-text heuristics, not a
   real Java parser.** They rely on conventions actually observed across this
   codebase's modules (one delegate call per controller method under the same
   method name; `throw new (BusinessException|LocalizedException)(Status.X,
-  SomeErrorCodes.Y, ...)` at the point of use). They silently return nothing
-  for anything they can't confidently resolve — never guess. The class names
+  SomeErrorCodes.Y, ...)` at the point of use). They return nothing for
+  anything they can't confidently resolve — never guess — and, since
+  2026-09-23, say so in the output: an endpoint prints whether its permission
+  lookup found nothing to declare or could not finish, and `check` fails on
+  the latter. Both spellings of every construct that has broken extraction
+  once are pinned by `tests/` against fixture Java. The class names
   they depend on (the permission-constants holder, the Status table's home)
   are matched structurally rather than hardcoded, so a rename degrades into
   partial output instead of silently emptying a whole section.

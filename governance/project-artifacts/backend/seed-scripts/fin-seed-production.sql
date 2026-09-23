@@ -13,17 +13,18 @@
 --   NO opening balances. NO journal entries. Nothing here posts.
 --
 -- WHAT IT MATCHES
---   FIN v1 as built (governance/shared/analysis/modules/FIN/P2/db-script-fin.md + V22). The
---   "approved v2 delta" (account-mapping store, FIN_EVENT_BUSINESS_FIELD, FIN_DIMENSION_VALUE_SOURCE,
---   rule-line dimensions, DIRECT removed) was searched for in this repository, in every branch of
---   the governance submodule (main, feat/v7, rescue/v7-fin-2026-09-19, fin-work-2026-09-19), in
---   governance/shared/backend/modules/FIN and in the live database: it does not exist (findings
---   F-01). Therefore:
---     * nothing is seeded into tables that do not exist;
---     * rules that need a MAPPING derivation are seeded is_active_fl = FALSE, because
---       EventTypeRuleDomain.resolveAccountCode throws FIN-422-MAPPING-UNSUPPORTED for them;
---     * the explicit mapping rows are carried as a commented block (section 6), reviewed now and
---       ready to insert the moment the store lands.
+--   FIN v1 as built (Flyway V22..V34) — the schema live at seed time. The FIN v2 delta
+--   (governance/shared/analysis/modules/FIN/v2/, delivered 2026-09-23 ~18:00) adds
+--   FIN_ACCOUNT_MAPPING, FIN_RULE_LINE_DIM and FIN_RULE_LINE.account_business_field_code, but its
+--   backend execution is still PENDING (/FIN/v2/execute-backend, phase CORE). Therefore:
+--     * nothing is seeded into tables that do not exist yet;
+--     * rules that need a MAPPING derivation are seeded is_active_fl = FALSE, because on v1
+--       EventTypeRuleDomain.resolveAccountCode throws FIN-422-MAPPING-UNSUPPORTED for them, and
+--       their MAPPING lines carry the FIN_EVENT_BUSINESS_FIELD code ('PAYMENT_METHOD' /
+--       'EXPENSE_TYPE_CODE') in account_derivation_value — v1's only column for it;
+--     * fin-seed-v2-delta.sql (run AFTER the v2 migrations) moves those lines to v2 shape, inserts
+--       the FIN_ACCOUNT_MAPPING rows (section 6 below is their reviewed preview), tags every line
+--       with ORG/BRANCH and activates the 15 rules. See seed-and-cutover-findings.md §10 / OQ-13.
 --
 -- ACCOUNTANT DECISIONS APPLIED (2026-09-23, on the user's instruction "do recommended, act as
 -- accountant" — full record in the findings file §6):
@@ -606,14 +607,14 @@ INSERT INTO seed_rule VALUES
 INSERT INTO seed_rule_line VALUES
   ('INSTALLMENT_PAYMENT_RECEIVED', 1, 'MAPPING', 'PAYMENT_METHOD', 'amount', 'DEBIT', 'template 14/22 → 24 الصندوق, 30 when cheque'),
   ('INSTALLMENT_PAYMENT_RECEIVED', 2, 'CONSTANT', '0001000200030001', 'amount', 'CREDIT', 'template 14/23 → 32 العملاء; D-01 → 54 عملاء محليين'),
-  ('INVESTOR_SUPPORT_OR_DRAWING', 1, 'MAPPING', 'PAYMENT_METHOD', 'amount', 'DEBIT', 'template 25/32/22 → 24, 30 when cheque'),
-  ('INVESTOR_SUPPORT_OR_DRAWING', 2, 'CONSTANT', '0001000200130001', 'amount', 'CREDIT', 'template 25/32/23 → 82 جارى/ مساهمين الشركة'),
-  ('INVESTOR_SALES_INVOICE', 1, 'CONSTANT', '0001000200130001', 'amount', 'DEBIT', 'template 25/66/22 → 82'),
-  ('INVESTOR_SALES_INVOICE', 2, 'CONSTANT', '0001000200030001', 'amount', 'CREDIT', 'template 25/66/23 → 32 العملاء; D-01 → 54'),
-  ('LAWYER_ADVANCE', 1, 'MAPPING', 'PAYMENT_METHOD', 'amount', 'DEBIT', 'template 25/58/22 → 24, 30 when cheque'),
-  ('LAWYER_ADVANCE', 2, 'CONSTANT', '0001000200130001', 'amount', 'CREDIT', 'template 25/58/23 → 82'),
-  ('INVESTOR_FEE_2_5', 1, 'MAPPING', 'PAYMENT_METHOD', 'amount', 'DEBIT', 'template 25/59/22 → 24, 30 when cheque'),
-  ('INVESTOR_FEE_2_5', 2, 'CONSTANT', '0001000200130001', 'amount', 'CREDIT', 'template 25/59/23 → 82'),
+  ('INVESTOR_SUPPORT_OR_DRAWING', 1, 'CONSTANT', '0001000200130001', 'amount', 'DEBIT', 'books 2026: DR 82 (469/505 rows negative → legacy flipped template 25/32; D-14)'),
+  ('INVESTOR_SUPPORT_OR_DRAWING', 2, 'MAPPING', 'PAYMENT_METHOD', 'amount', 'CREDIT', 'books 2026: CR 24/30 by payment method'),
+  ('INVESTOR_SALES_INVOICE', 1, 'CONSTANT', '0001000200030001', 'amount', 'DEBIT', 'books 2026: DR 32 العملاء (all 248 rows negative → template flipped; D-14); D-01 → 54'),
+  ('INVESTOR_SALES_INVOICE', 2, 'CONSTANT', '0001000200130001', 'amount', 'CREDIT', 'books 2026: CR 82'),
+  ('LAWYER_ADVANCE', 1, 'CONSTANT', '0001000200130001', 'amount', 'DEBIT', 'books 2026: DR 82 (all 208 rows negative → template flipped; D-14)'),
+  ('LAWYER_ADVANCE', 2, 'MAPPING', 'PAYMENT_METHOD', 'amount', 'CREDIT', 'books 2026: CR 24/30 by payment method'),
+  ('INVESTOR_FEE_2_5', 1, 'CONSTANT', '0001000200130001', 'amount', 'DEBIT', 'books 2026: DR 82 (all 208 rows negative → template flipped; D-14)'),
+  ('INVESTOR_FEE_2_5', 2, 'MAPPING', 'PAYMENT_METHOD', 'amount', 'CREDIT', 'books 2026: CR 24/30 by payment method'),
   ('INVESTOR_FEE', 1, 'MAPPING', 'PAYMENT_METHOD', 'amount', 'DEBIT', 'template 25/59/22 → 24, 30 when cheque'),
   ('INVESTOR_FEE', 2, 'CONSTANT', '0001000200130001', 'amount', 'CREDIT', 'template 25/59/23 → 82'),
   ('EXECUTION_ACTION_FEE', 1, 'CONSTANT', '0001000200130001', 'amount', 'DEBIT', 'observed 2026: DR 82 (legacy amounts negative → sides flipped vs template) F-10'),
@@ -635,14 +636,14 @@ INSERT INTO seed_rule_line VALUES
   ('PURCHASE_INVOICE', 1, 'CONSTANT', '00030003000400330002', 'grossAmount', 'DEBIT', 'template 12/22 PRIMARY → 323 مشتريات; amount = CASH_PRICE'),
   ('PURCHASE_INVOICE', 2, 'MAPPING', 'PAYMENT_METHOD', 'paidAmount', 'CREDIT', 'template 12/23 PRIMARY → 24, 30 when cheque; amount = PAYMENT'),
   ('PURCHASE_INVOICE', 3, 'CONSTANT', '0002000100050001', 'remainingAmount', 'CREDIT', 'template 12/23 non-primary → 85 الموردين; D-01 → 86 موردين محليين; amount = REMAINING'),
-  ('EXPENSE_PAID', 1, 'MAPPING', 'EXPENSE_TYPE', 'amount', 'DEBIT', 'EXPENSE_TYPE.ACCOUNT_CHART_FK of the event''s expenseTypeCode (section 6b, D-11)'),
+  ('EXPENSE_PAID', 1, 'MAPPING', 'EXPENSE_TYPE_CODE', 'amount', 'DEBIT', 'EXPENSE_TYPE.ACCOUNT_CHART_FK of the event''s expenseTypeCode (section 6b, D-11)'),
   ('EXPENSE_PAID', 2, 'MAPPING', 'PAYMENT_METHOD', 'amount', 'CREDIT', '24 cash / 30 cheque'),
   ('REVENUE_RECEIVED', 1, 'MAPPING', 'PAYMENT_METHOD', 'amount', 'DEBIT', '24 cash / 30 cheque'),
-  ('REVENUE_RECEIVED', 2, 'MAPPING', 'EXPENSE_TYPE', 'amount', 'CREDIT', 'EXPENSE_TYPE.ACCOUNT_CHART_FK (section 6b)'),
-  ('CUSTODY_PAID_OUT', 1, 'MAPPING', 'EXPENSE_TYPE', 'amount', 'DEBIT', 'section 6b (141 / 83 / 61 / 26 per type)'),
+  ('REVENUE_RECEIVED', 2, 'MAPPING', 'EXPENSE_TYPE_CODE', 'amount', 'CREDIT', 'EXPENSE_TYPE.ACCOUNT_CHART_FK (section 6b)'),
+  ('CUSTODY_PAID_OUT', 1, 'MAPPING', 'EXPENSE_TYPE_CODE', 'amount', 'DEBIT', 'section 6b (141 / 83 / 61 / 26 per type)'),
   ('CUSTODY_PAID_OUT', 2, 'MAPPING', 'PAYMENT_METHOD', 'amount', 'CREDIT', '24 cash / 30 cheque'),
   ('CUSTODY_RECEIVED', 1, 'MAPPING', 'PAYMENT_METHOD', 'amount', 'DEBIT', '24 cash / 30 cheque'),
-  ('CUSTODY_RECEIVED', 2, 'MAPPING', 'EXPENSE_TYPE', 'amount', 'CREDIT', 'section 6b'),
+  ('CUSTODY_RECEIVED', 2, 'MAPPING', 'EXPENSE_TYPE_CODE', 'amount', 'CREDIT', 'section 6b'),
   ('SAFE_TRANSFER_TO_SAFE', 1, 'CONSTANT', '0001000200010001', 'amount', 'DEBIT', 'p_account_chart_fk_debit := 24 الصندوق'),
   ('SAFE_TRANSFER_TO_SAFE', 2, 'CONSTANT', '0001000200010007', 'amount', 'CREDIT', 'p_account_chart_fk_credit := 30 البنك التجارى'),
   ('SAFE_TRANSFER_TO_BANK', 1, 'CONSTANT', '0001000200010007', 'amount', 'DEBIT', 'p_account_chart_fk_debit := 30'),
@@ -675,25 +676,25 @@ ORDER BY l.event_type_code, l.line_no;
 --   ('PAYMENT_METHOD', 'CASH',   '0001000200010001')  -- 24 الصندوق        ← PAYMENT_TYPE_FK = 0
 --   ('PAYMENT_METHOD', 'CHEQUE', '0001000200010007')  -- 30 البنك التجارى  ← PAYMENT_TYPE_FK = 1 (D-10: one bank account, as legacy)
 --
--- 6b. EXPENSE_TYPE — LOAN_SYS.EXPENSE_TYPE.ACCOUNT_CHART_FK, with D-11 corrections where the
+-- 6b. EXPENSE_TYPE_CODE — LOAN_SYS.EXPENSE_TYPE.ACCOUNT_CHART_FK, with D-11 corrections where the
 --     legacy target is a root/parent (RULE-FIN-007 would reject it) or NULL:
---   ('EXPENSE_TYPE', '1', '00040003')  -- 1 ايرادات عقود (cat 64) → legacy 313 إيرادات متنوعة; 2026 rows 112
---   ('EXPENSE_TYPE', '181', '00040001')  -- 181 ايرادات تسديد عملاء (cat 64) → legacy 309 إيرادات خدمات; 2026 rows 0
---   ('EXPENSE_TYPE', '561', '00040006')  -- 561 ايرادات اخرى (cat 64) → legacy 382 ايرادات أخرى; 2026 rows 7
---   ('EXPENSE_TYPE', '61', '0003000100040029')  -- 61 مصروفات أخرى (cat 65) → legacy 208 تشغيل / أتعاب وإستشارات مهنية; 2026 rows 45
---   ('EXPENSE_TYPE', '81', '0003000100010001')  -- 81 مرتبات (cat 65) → legacy 1 الأصول; 2026 rows 28  ← D-11: was 1 الأصول (root); 2026 postings actually hit 150 تشغيل / راتب أساسي
---   ('EXPENSE_TYPE', '101', '0003000300040031')  -- 101 مصروفات عموميه (cat 65) → legacy 3 المصروفات; 2026 rows 75  ← D-11: was 3 المصروفات (root) / 275 (parent); → 306 أخرى, the misc-expenses leaf
---   ('EXPENSE_TYPE', '161', '0003000100040003')  -- 161 ايجارات (cat 65) → legacy 191 تشغيل / إيجار; 2026 rows 18
---   -- ('EXPENSE_TYPE', '361', NULL)  -- 361 سلف (cat 65): NULL in Oracle, 0 rows — left unmapped; decide when first used
---   -- ('EXPENSE_TYPE', '362', NULL)  -- 362 قرض (cat 65): NULL in Oracle, 0 rows — left unmapped
---   ('EXPENSE_TYPE', '324', '0001000200140001')  -- 324 سداد قرضات (cat 131) → legacy 43 أرصدة مدينة أخرى; 2026 rows 1  ← D-11: was 43 أرصدة مدينة أخرى (parent); → its only leaf 83 'حـساب /' — rename it (OQ-10)
---   ('EXPENSE_TYPE', '381', '0001000200060001')  -- 381 عهدة مبالغ للمحاماه والمحكمة (cat 131) → legacy 61 عهدة مؤقتة; 2026 rows 0
---   ('EXPENSE_TYPE', '401', '0002000100010001')  -- 401 سداد مسحوبات علوش (cat 131) → legacy 141 جاري الشريك 1; 2026 rows 0
---   ('EXPENSE_TYPE', '422', '0001000200010003')  -- 422 تحويلات بنكية (cat 131) → legacy 6 الأصول المتداولة; 2026 rows 0  ← D-11: was 6 الأصول المتداولة (parent); → 26 تحويلات نقدية
---   ('EXPENSE_TYPE', '281', '0002000100010001')  -- 281 سحوبات علوش من المكتب (cat 132) → legacy 141 جاري الشريك 1; 2026 rows 8
---   ('EXPENSE_TYPE', '282', '0001000200140001')  -- 282 قرضات للمستثمريين (cat 132) → legacy 43 أرصدة مدينة أخرى; 2026 rows 2  ← D-11: was 43 (parent); → 83 as above
---   ('EXPENSE_TYPE', '382', '0001000200060001')  -- 382 عهدة مبالغ للمحاماه والمحكمه (cat 132) → legacy 61 عهدة مؤقتة; 2026 rows 0
---   ('EXPENSE_TYPE', '424', '0001000200010003')  -- 424 تحويلات بنكيه صادرة (cat 132) → legacy 6 الأصول المتداولة; 2026 rows 0  ← D-11: was 6 الأصول المتداولة (parent); → 26 تحويلات نقدية
+--   ('EXPENSE_TYPE_CODE', '1', '00040003')  -- 1 ايرادات عقود (cat 64) → legacy 313 إيرادات متنوعة; 2026 rows 112
+--   ('EXPENSE_TYPE_CODE', '181', '00040001')  -- 181 ايرادات تسديد عملاء (cat 64) → legacy 309 إيرادات خدمات; 2026 rows 0
+--   ('EXPENSE_TYPE_CODE', '561', '00040006')  -- 561 ايرادات اخرى (cat 64) → legacy 382 ايرادات أخرى; 2026 rows 7
+--   ('EXPENSE_TYPE_CODE', '61', '0003000100040029')  -- 61 مصروفات أخرى (cat 65) → legacy 208 تشغيل / أتعاب وإستشارات مهنية; 2026 rows 45
+--   ('EXPENSE_TYPE_CODE', '81', '0003000100010001')  -- 81 مرتبات (cat 65) → legacy 1 الأصول; 2026 rows 28  ← D-11: was 1 الأصول (root); 2026 postings actually hit 150 تشغيل / راتب أساسي
+--   ('EXPENSE_TYPE_CODE', '101', '0003000300040031')  -- 101 مصروفات عموميه (cat 65) → legacy 3 المصروفات; 2026 rows 75  ← D-11: was 3 المصروفات (root) / 275 (parent); → 306 أخرى, the misc-expenses leaf
+--   ('EXPENSE_TYPE_CODE', '161', '0003000100040003')  -- 161 ايجارات (cat 65) → legacy 191 تشغيل / إيجار; 2026 rows 18
+--   -- ('EXPENSE_TYPE_CODE', '361', NULL)  -- 361 سلف (cat 65): NULL in Oracle, 0 rows — left unmapped; decide when first used
+--   -- ('EXPENSE_TYPE_CODE', '362', NULL)  -- 362 قرض (cat 65): NULL in Oracle, 0 rows — left unmapped
+--   ('EXPENSE_TYPE_CODE', '324', '0001000200140001')  -- 324 سداد قرضات (cat 131) → legacy 43 أرصدة مدينة أخرى; 2026 rows 1  ← D-11: was 43 أرصدة مدينة أخرى (parent); → its only leaf 83 'حـساب /' — rename it (OQ-10)
+--   ('EXPENSE_TYPE_CODE', '381', '0001000200060001')  -- 381 عهدة مبالغ للمحاماه والمحكمة (cat 131) → legacy 61 عهدة مؤقتة; 2026 rows 0
+--   ('EXPENSE_TYPE_CODE', '401', '0002000100010001')  -- 401 سداد مسحوبات علوش (cat 131) → legacy 141 جاري الشريك 1; 2026 rows 0
+--   ('EXPENSE_TYPE_CODE', '422', '0001000200010003')  -- 422 تحويلات بنكية (cat 131) → legacy 6 الأصول المتداولة; 2026 rows 0  ← D-11: was 6 الأصول المتداولة (parent); → 26 تحويلات نقدية
+--   ('EXPENSE_TYPE_CODE', '281', '0002000100010001')  -- 281 سحوبات علوش من المكتب (cat 132) → legacy 141 جاري الشريك 1; 2026 rows 8
+--   ('EXPENSE_TYPE_CODE', '282', '0001000200140001')  -- 282 قرضات للمستثمريين (cat 132) → legacy 43 أرصدة مدينة أخرى; 2026 rows 2  ← D-11: was 43 (parent); → 83 as above
+--   ('EXPENSE_TYPE_CODE', '382', '0001000200060001')  -- 382 عهدة مبالغ للمحاماه والمحكمه (cat 132) → legacy 61 عهدة مؤقتة; 2026 rows 0
+--   ('EXPENSE_TYPE_CODE', '424', '0001000200010003')  -- 424 تحويلات بنكيه صادرة (cat 132) → legacy 6 الأصول المتداولة; 2026 rows 0  ← D-11: was 6 الأصول المتداولة (parent); → 26 تحويلات نقدية
 --   EXPENSE_TYPE_CUST / EXPENSE_TYPE_DT_CUST: payroll side-copy, not a posting source (findings §2.4).
 
 -- ----------------------------------------------------------------------------

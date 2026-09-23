@@ -31,7 +31,7 @@ import re
 from pathlib import Path
 from typing import Optional
 
-from models.api_doc_model import ApiDocument, ErrorCode, PossibleError, StatusMapping
+from models.api_doc_model import ApiDocument, ErrorCode, FieldErrorSemantics, PossibleError, StatusMapping
 
 # Two shapes of the same shared table are recognised, because this platform
 # has used both: an explicit statusMappings.put(...) table in a helper class,
@@ -232,7 +232,24 @@ def enrich_error_codes(
     return module_error_codes + framework_codes, status_mappings
 
 
-def attach_endpoint_error_codes(document: ApiDocument) -> None:
+def _access_denied_override(ep, overrides, service_package_of):
+    """The advisor whose pointcut covers the class carrying this endpoint's
+    rule, or None. A scope that could not be read is never assumed to match."""
+    if not overrides or not ep.permission_source:
+        return None
+    if ep.permission_source.startswith("service:") and service_package_of:
+        package = service_package_of(ep.permission_source.split(":", 1)[1]) or ""
+        target = package + "."
+    else:
+        target = None
+    for o in overrides:
+        if o.scope_prefix and target and target.startswith(o.scope_prefix):
+            return o
+    return None
+
+
+def attach_endpoint_error_codes(document: ApiDocument, status_http: Optional[dict[str, str]] = None,
+                                service_package_of=None) -> None:
     """Attaches framework-level errors to individual endpoints, but only
     where BOTH halves of the claim are independently verified real facts:
     (a) a per-endpoint property already established by another extractor
@@ -260,6 +277,7 @@ def attach_endpoint_error_codes(document: ApiDocument) -> None:
                                 method runs, unconditionally; the framework
                                 catches malformed JSON globally)
     """
+    values = {c.name: c.value for c in document.error_codes}
     by_status: dict[str, ErrorCode] = {}
     for code in document.error_codes:
         if not code.http_status or code.status:
@@ -284,14 +302,102 @@ def attach_endpoint_error_codes(document: ApiDocument) -> None:
                 "an unauthenticated call is rejected before the controller method runs.",
             )
         if ep.permission or ep.permission_expression:
-            _attach(
-                ep, "FORBIDDEN",
-                "An authorization check was found for this endpoint "
-                "(@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status.",
-            )
+            override = _access_denied_override(ep, document.access_denied_overrides, service_package_of)
+            unscoped = [o for o in document.access_denied_overrides if not o.scope_prefix]
+            if override:
+                http = http_status_label((status_http or {}).get(override.status)) or override.status
+                ep.possible_errors.append(PossibleError(
+                    code=f"{override.code} (`{values.get(override.code, override.code)}`)", http_status=http,
+                    reason=f"An authorization check was found for this endpoint (@PreAuthorize/@Secured); "
+                           f"{override.advisor} wraps `{override.scope_prefix}*`, catches AccessDeniedException "
+                           f"and re-raises it as this module code, so the shared ACCESS_DENIED handler is not reached."))
+            elif unscoped:
+                names = ", ".join(f"{o.advisor} → {o.code}" for o in unscoped)
+                _attach(
+                    ep, "FORBIDDEN",
+                    f"An authorization check was found for this endpoint (@PreAuthorize/@Secured). "
+                    f"GlobalExceptionHandler maps AccessDeniedException to this status, but {names} may "
+                    f"re-raise it as a module code first — its scope could not be read from source.",
+                )
+            else:
+                _attach(
+                    ep, "FORBIDDEN",
+                    "An authorization check was found for this endpoint "
+                    "(@PreAuthorize/@Secured); GlobalExceptionHandler maps AccessDeniedException to this status.",
+                )
         if ep.request_body is not None:
             _attach(
                 ep, "BAD_REQUEST",
                 "Endpoint accepts a JSON request body; GlobalExceptionHandler maps a malformed or "
                 "invalid body (HttpMessageNotReadableException / MethodArgumentNotValidException) to this status.",
             )
+
+
+EXCEPTION_HANDLER_ARGS_RE = re.compile(r"@ExceptionHandler\s*(?:\(([^)]*)\))?")
+EXCEPTION_CLASS_RE = re.compile(r"([\w.]+)\.class")
+HANDLER_NAME_RE = re.compile(r"\b(?:public|protected|private)\b[^;{(]*?\b(\w+)\s*\(")
+FIELD_CALL_RE = re.compile(r"\.field\s*\(")
+TERNARY_NULL_RE = re.compile(r"^(.*?)\s*(!=|==)\s*null\s*\?\s*(.*?)\s*:\s*(.*)$", re.DOTALL)
+PER_THROW_STATUS_RE = re.compile(r"getHttpStatus\(\)")
+
+
+def _balanced_argument(text: str, open_index: int) -> str:
+    depth = 0
+    for i in range(open_index, len(text)):
+        if text[i] == "(":
+            depth += 1
+        elif text[i] == ")":
+            depth -= 1
+            if depth == 0:
+                return text[open_index + 1:i]
+    return text[open_index + 1:]
+
+
+def _field_meaning(expression: str) -> str:
+    """A mechanical reading of the expression: a null-test ternary is spelled
+    out as its two branches; anything else is quoted as-is. Nothing is inferred
+    about what the branches mean."""
+    m = TERNARY_NULL_RE.match(expression)
+    if m:
+        tested, op, when_true, when_false = (g.strip() for g in m.groups())
+        non_null, fallback = (when_true, when_false) if op == "!=" else (when_false, when_true)
+        return f"`{non_null}` when `{tested}` is non-null, otherwise `{fallback}`"
+    return f"the value of `{expression}`"
+
+
+def find_field_error_semantics(common_source_roots: list[Path]) -> list[FieldErrorSemantics]:
+    """What each GlobalExceptionHandler method passes to FieldErrorItem.field(...),
+    verbatim, with the handler's exceptions, HTTP status and error code. The
+    same schema slot carries different things per handler, and only the
+    handler source says which."""
+    rows: list[FieldErrorSemantics] = []
+    constants = find_error_code_constants(common_source_roots)
+    for root in common_source_roots:
+        for path in sorted(root.rglob("GlobalExceptionHandler.java")):
+            text = path.read_text(encoding="utf-8")
+            for chunk in _split_handler_methods(text):
+                field_call = FIELD_CALL_RE.search(chunk)
+                if not field_call:
+                    continue
+                args_m = EXCEPTION_HANDLER_ARGS_RE.match(chunk)
+                exceptions = [e.split(".")[-1] for e in EXCEPTION_CLASS_RE.findall(args_m.group(1) or "")] if args_m else []
+                name_m = HANDLER_NAME_RE.search(chunk)
+                expression = re.sub(r"\s+", " ", _balanced_argument(chunk, field_call.end() - 1).strip())
+                code_m = CREATE_ERROR_CODE_RE.search(chunk) or CREATE_ERROR_CODE_CONST_RE.search(chunk)
+                code = constants.get(code_m.group(1), code_m.group(1)) if code_m else None
+                status_m = RESPONSE_STATUS_RE.search(chunk)
+                shortcut_m = RESPONSE_SHORTCUT_RE.search(chunk)
+                if status_m:
+                    http = http_status_label(status_m.group(1))
+                elif shortcut_m:
+                    http = http_status_label(RESPONSE_SHORTCUT_STATUS[shortcut_m.group(1)])
+                elif PER_THROW_STATUS_RE.search(chunk):
+                    http = "the thrown Status's HTTP status"
+                    code = code or "the thrown error code"
+                else:
+                    http = None
+                rows.append(FieldErrorSemantics(
+                    handler=name_m.group(1) if name_m else "?", exceptions=exceptions,
+                    field_expression=expression, field_meaning=_field_meaning(expression),
+                    http_status=http, code=code))
+    return rows

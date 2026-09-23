@@ -31,6 +31,7 @@ import re
 from pathlib import Path
 from typing import Optional
 
+from extractors import security_extractor
 from models.api_doc_model import ApiDocument, ContractDrift, ContractEntry
 
 # "**API REGISTRY**" heading, then a markdown table whose header row starts
@@ -114,7 +115,60 @@ def load_api_registry(plan_file: Optional[Path]) -> list[ContractEntry]:
     return parse_api_registry(plan_file.read_text(encoding="utf-8", errors="ignore"))
 
 
-def attach_contract_ids(document: ApiDocument, entries: list[ContractEntry], source_label: str) -> None:
+JAVADOC_RE = re.compile(r"/\*\*(.*?)\*/", re.DOTALL)
+CLASS_JAVADOC_RE = re.compile(r"/\*\*(.*?)\*/\s*(?:@[^\n]*\n\s*)*(?:public\s+)?(?:final\s+)?class\b", re.DOTALL)
+
+
+def _method_javadoc(text: str, method_name: str) -> str:
+    lines = text.splitlines()
+    decl = security_extractor._find_declaration_index(lines, method_name)
+    if decl is None:
+        return ""
+    i = decl - 1
+    depth = 0
+    while i >= 0:
+        stripped = lines[i].strip()
+        depth += lines[i].count(")") - lines[i].count("(")
+        if stripped.endswith("*/"):
+            start = i
+            while start >= 0 and "/**" not in lines[start]:
+                start -= 1
+            return "\n".join(lines[max(start, 0):i + 1])
+        if depth > 0 or stripped.startswith(("@", "+", '"')) or not stripped or stripped.startswith(")"):
+            i -= 1
+            continue
+        break
+    return ""
+
+
+def claimed_ids(source_root: Optional[Path], method: str, path: str,
+                registered: set[str], id_prefix: str) -> tuple[list[str], Optional[str]]:
+    """Ids of this module's shape that the served endpoint's controller
+    Javadoc names and no registry row carries: first the method's own Javadoc,
+    else the class Javadoc. Several candidates are all listed -- the reader
+    decides, the tool does not. A signpost, never a registration."""
+    if source_root is None:
+        return [], None
+    controller_file, method_name = security_extractor.find_controller_for_endpoint(source_root, method, path)
+    if not controller_file or not method_name:
+        return [], None
+    text = controller_file.read_text(encoding="utf-8", errors="ignore")
+    id_re = re.compile(rf"\b{re.escape(id_prefix)}\d+\b")
+    ids = [i for i in dict.fromkeys(id_re.findall(_method_javadoc(text, method_name))) if i not in registered]
+    if ids:
+        return ids, f"{controller_file.stem}.{method_name} Javadoc"
+    class_doc = CLASS_JAVADOC_RE.search(text)
+    ids = [i for i in dict.fromkeys(id_re.findall(class_doc.group(1) if class_doc else "")) if i not in registered]
+    return ids, (f"{controller_file.stem} class Javadoc" if ids else None)
+
+
+def _id_prefix(entries: list[ContractEntry]) -> str:
+    prefixes = {e.api_id.rsplit("-", 1)[0] + "-" for e in entries}
+    return prefixes.pop() if len(prefixes) == 1 else "API-"
+
+
+def attach_contract_ids(document: ApiDocument, entries: list[ContractEntry], source_label: str,
+                        source_root: Optional[Path] = None) -> None:
     """Stamps each implemented endpoint with its contract id and records both
     directions of drift on the document. Mutates in place, like the other
     enrich/attach extractors."""
@@ -125,18 +179,23 @@ def attach_contract_ids(document: ApiDocument, entries: list[ContractEntry], sou
     by_key: dict[tuple[str, str], ContractEntry] = {}
     for entry in entries:
         by_key.setdefault(_key(entry.method, entry.path), entry)
+    registered = {e.api_id for e in entries}
+    prefix = _id_prefix(entries)
 
     matched: set[tuple[str, str]] = set()
     for ep in document.endpoints:
         key = _key(ep.method, ep.path)
         entry = by_key.get(key)
         if entry is None:
+            ids, claim_source = claimed_ids(source_root, ep.method, ep.path, registered, prefix)
             document.contract_drift.append(ContractDrift(
                 kind="undeclared",
                 method=ep.method,
                 path=ep.path,
                 detail="implemented but absent from the API REGISTRY — it has no contract id "
                        "any other artifact can refer to",
+                claimed_ids=ids,
+                claim_source=claim_source,
             ))
             continue
         ep.api_id = entry.api_id

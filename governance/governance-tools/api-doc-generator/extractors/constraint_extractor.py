@@ -15,7 +15,10 @@ TABLE_NAME_RE = re.compile(r'\bname\s*=\s*"(\w+)"')
 UNIQUE_CONSTRAINT_RE = re.compile(r"@UniqueConstraint\s*\(([^)]*)\)")
 COLUMN_NAMES_RE = re.compile(r'columnNames\s*=\s*(?:\{([^}]*)\}|"(\w+)")')
 QUOTED_RE = re.compile(r'"(\w+)"')
-COLUMN_FIELD_RE = re.compile(r'@(?:Join)?Column\s*\([^)]*?\bname\s*=\s*"(\w+)"[^)]*\)[^;]*?\b(\w+)\s*(?:=[^;]*)?;', re.DOTALL)
+COLUMN_ANNOTATION_RE = re.compile(r"@(?:Join)?Column\s*\(")
+ANNOTATION_RE = re.compile(r"@[\w.]+(?:\([^()]*(?:\([^()]*\)[^()]*)*\))?")
+FIELD_DECL_RE = re.compile(r"\s*(?:(?:private|protected|public|final|transient|volatile|static)\s+)*"
+                           r"[\w.]+(?:<[^=]*>)?(?:\[\])*\s+(\w+)\s*(?:=|$)")
 
 ADD_UNIQUE_RE = re.compile(r"ALTER\s+TABLE\s+(?:ONLY\s+)?(\w+)\s+ADD\s+CONSTRAINT\s+(\w+)\s+UNIQUE\s*\(([^)]*)\)", re.IGNORECASE)
 CREATE_UNIQUE_INDEX_RE = re.compile(
@@ -44,6 +47,23 @@ def _paren_end(text: str, open_index: int) -> int:
     return len(text)
 
 
+def _column_fields(text: str) -> list[tuple[str, str]]:
+    """(COLUMN, javaField) for every @Column/@JoinColumn(name=...) followed, past
+    any other annotations, by the field it decorates."""
+    pairs: list[tuple[str, str]] = []
+    for m in COLUMN_ANNOTATION_RE.finditer(text):
+        end = _paren_end(text, m.end() - 1)
+        name_m = TABLE_NAME_RE.search(text[m.end():end - 1])
+        semi = text.find(";", end)
+        if not name_m or semi < 0:
+            continue
+        region = ANNOTATION_RE.sub("", text[end:semi])
+        decl = FIELD_DECL_RE.match(region.replace("\n", " ").strip() + " ")
+        if decl:
+            pairs.append((name_m.group(1), decl.group(1)))
+    return pairs
+
+
 def find_entity_constraints(source_root: Path) -> tuple[list[UniqueConstraint], dict[str, dict[str, str]], dict[str, str]]:
     """(constraints declared on entities, {TABLE: {COLUMN: entityField}}, {TABLE: EntityClass})."""
     constraints: list[UniqueConstraint] = []
@@ -63,7 +83,7 @@ def find_entity_constraints(source_root: Path) -> tuple[list[UniqueConstraint], 
         entity = class_m.group(1)
         entity_of[table] = entity
         fields = column_fields.setdefault(table, {})
-        for col, field_name in COLUMN_FIELD_RE.findall(text):
+        for col, field_name in _column_fields(text):
             fields.setdefault(col.upper(), field_name)
         for uc in UNIQUE_CONSTRAINT_RE.finditer(table_body):
             inner = uc.group(1)

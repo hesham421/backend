@@ -5,6 +5,7 @@ generate.py — stable CLI entrypoint for the API documentation generator.
     python3 generate.py --module ORG --function generate
     python3 generate.py --module ORG --function update
     python3 generate.py --module ORG --function review
+    python3 generate.py --module ORG --function check     # review + assertions, exit 2 on any FAIL
 
 Normal usage needs only --module and --function. Everything else --
 which OpenAPI group is ORG's, where its source lives, which shared/common
@@ -34,7 +35,7 @@ import generator
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--module", required=True, help="Module code, e.g. ORG, SECURITY, MASTERDATA (used to auto-discover everything else)")
-    ap.add_argument("--function", required=True, choices=["generate", "update", "review"], help="Execution mode")
+    ap.add_argument("--function", required=True, choices=["generate", "update", "review", "check"], help="Execution mode")
 
     overrides = ap.add_argument_group("explicit overrides (optional — auto-discovered by default)")
     overrides.add_argument("--openapi", help="Override: OpenAPI JSON as a local file path or http(s) URL")
@@ -68,6 +69,10 @@ def main() -> int:
         print(f"Contract    : {context.execution_plan}")
 
     try:
+        if args.function == "check":
+            report, exit_code = generator.check(context)
+            print(report)
+            return exit_code
         report = generator.run(context, mode=args.function)
     except Exception as exc:  # noqa: BLE001 - surface any load/parse failure to the user
         print(f"ERROR: {exc}", file=sys.stderr)

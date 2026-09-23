@@ -256,7 +256,9 @@ configuration change.**
 | Auth | `@PreAuthorize` on `EventEntryService.build` | `PERM_FIN_JOURNAL_ENTRIES_CREATE`; JWT via `JwtAuthenticationFilter`, validated against an `ActiveSession` row; `app.jwt.expiration-ms=3600000` |
 | Dimensions | `EventEntryService.buildLines` javadoc | **rule-driven lines carry no dimension tags** — `ENT-FIN-010` declares no dimension column |
 
-**The finding that shapes the whole design.** Of FIN's three derivation modes:
+> **Superseded 2026-09-23 18:05 by FIN v2** (`governance/shared/analysis/modules/FIN/v2/`, backend execution pending): `DIRECT` is removed (ADR-FIN-010), `MAPPING` is implemented through `FIN_ACCOUNT_MAPPING` keyed per event type (RULE-FIN-020/022), rule lines carry `account_business_field_code`, and `FIN_RULE_LINE_DIM` stamps ORG/BRANCH from the event (RULE-FIN-025..027). The event's `fields{}` keys are the `FIN_EVENT_BUSINESS_FIELD` codes shown in §3.2. The paragraph below describes v1 as it was when this plan was written; Phase 0 in §5 is now "execute `/FIN/v2/execute-backend`", not "specify a store".
+
+**The finding that shaped the v1 design.** Of FIN's three derivation modes:
 
 - `CONSTANT` — boundary-safe, but the account is fixed per rule line.
 - `DIRECT` — **would breach the hard boundary.** It reads the account code out of
@@ -385,23 +387,24 @@ Payload: **JSON**, on a TxEventQ queue `LOAN_SYS.ACCOUNTING_EVENT_Q`.
 
 ```jsonc
 {
-  "eventReference": "LP:7:1048577:1",     // <TABLE>:<FL>:<PK>:<revision>
+  "eventReference": "LEGACY:LOAN_PAYMENT:1048577:9137",   // LEGACY:<TABLE>:<PK>:<ACCOUNTING_EVENT_SEQ> — as PKG_ACCOUNTING_EVENT emits it
   "eventTypeCode":  "INSTALLMENT_PAYMENT_RECEIVED",
   "occurredAt":     "2026-09-22T11:04:19Z",
   "docDate":        "2026-09-22",
   "baseAmount":     250.000,
   "amounts":        { "grossAmount": 250.000 },
-  "fields": {
-    "sourceTable":    "LOAN_PAYMENT",
-    "sourcePk":       "1048577",
-    "orgCode":        "1",
-    "branchCode":     "2",
-    "paymentMethod":  "CASH",         // from PAYMENT_TYPE_FK 0|1 — a business fact
-    "partyType":      "CUSTOMER",
-    "partyCode":      "4412",
-    "contractNo":     "C-2026-0118",
-    "investorCode":   null,
-    "complaintNo":    null
+  "fields": {                          // keys = FIN_EVENT_BUSINESS_FIELD codes (FIN v2, ADR-FIN-013)
+    "PAYMENT_METHOD":    "CASH",       // from PAYMENT_TYPE_FK 0|1 — a business fact; MDL PAYMENT_METHOD code
+    "EXPENSE_TYPE_CODE": null,         // EXPENSE_TYPE_ID as a string, expense events only
+    "ORGANISATION_CODE": "1",          // ORGANIZATION_FK — resolves FIN_DIMENSION_VALUE.code in ORG
+    "BRANCH_CODE":       "2",          // ORGANIZATION_SUB_FK — resolves FIN_DIMENSION_VALUE.code in BRANCH
+    "sourceTable":       "LOAN_PAYMENT",   // the rest are references FIN never reads (REQ-FIN-047)
+    "sourcePk":          "1048577",
+    "partyType":         "CUSTOMER",
+    "partyCode":         "4412",
+    "contractNo":        "C-2026-0118",
+    "investorCode":      null,
+    "complaintNo":       null
   },
   "descriptionAr": "سداد قسط",
   "descriptionEn": "Installment payment"

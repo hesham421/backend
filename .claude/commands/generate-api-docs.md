@@ -79,18 +79,45 @@ changed, and any conflicts.
   changed, deletes endpoint files for endpoints the backend no longer has,
   leaves everything else alone).
 
-### STEP 3 — Report the outcome, concretely
+### STEP 3 — Run the guard, and file every FAIL with an owner
 
-Give the endpoint count, group count, error-code count, output path, and the
-per-endpoint change list. If any section came out EMPTY, say so explicitly and
-name the likely cause — never treat empty as normal:
+```bash
+python3 governance/governance-tools/api-doc-generator/generate.py \
+    --module $MODULE --function check
+```
 
-| Symptom | Likely cause |
-|---|---|
-| No "Common Response Envelope" section | `ApiResponse<T>` wrapper not recognised in the OpenAPI schemas |
-| "HTTP Status" column blank | `Status` → `HttpStatus` table not found in shared source |
-| No "Required permission(s)" anywhere | `@PreAuthorize` constants not resolved from source |
-| Every endpoint says "Authentication: Not determined" | backend declares no `SecurityScheme` in `OpenApiConfig` — a known backend gap, not a generator failure |
+`check` prints everything `review` prints, then one line per assertion, each
+with its **expected side read from source** and a ratio — never a bare count —
+and exits non-zero on any FAIL. Report the block verbatim, then for each FAIL
+name the owner and the item you filed. A FAIL is a correct result when the
+problem is real; never satisfy it by weakening an assertion or by hand-editing
+a generated file. A module that legitimately cannot pass one assertion declares
+that once, with a reason, in
+`governance/governance-tools/api-doc-generator/waivers/$MODULE.json`
+(see the tool's README) — that is the only sanctioned way to silence one.
+
+What each FAIL means, and who can own the fix. Every row lists causes on
+**both** sides, because the generator and the backend have each produced every
+one of these symptoms at least once — a symptom is a question, not a verdict:
+
+| FAIL | Generator-side cause to rule out | Backend/factory-side cause to rule out | File the item with |
+|---|---|---|---|
+| `permissions` — 0/N while source has `@PreAuthorize` | the annotation parser misses a spelling (this is how 4 modules published 0/N until 2026-09-23: a concatenated `@PreAuthorize` never matched) — add the spelling to `tests/fixtures/spellings/` first | the controller delegates to two services, or the service source is outside the module root | generator owner, unless the row says `not extracted: DELEGATE_UNRESOLVED` for a controller that genuinely calls two services |
+| `permissions` — `not extracted` > 0 | route or delegate matcher (`security_extractor`) cannot follow this controller's shape | a controller method that is not a thin delegate | generator owner first |
+| `auth-determined` — 0/N with a `SecurityFilterChain` in source | none: the tool reads `security` from the OpenAPI document and there is none to read | `OpenApiConfig` declares no `SecurityScheme`/`SecurityRequirement`, so springdoc emits no `security` and no endpoint can state that it needs a token — six lines in the backend fix every module at once | backend owner; waive per module only with the backend item's id in the reason |
+| `envelope` — no envelope while `ApiResponse` exists | `is_envelope_shape` no longer matches the wrapper's key set | `ApiResponse<T>` lost the `success`/`data` pair, or a controller returns something else | whichever side changed last |
+| `status-table` / `error-codes` — 0 read while declared | a third spelling of the table or the constants class | the class was renamed or moved out of the shared root | generator owner first |
+| `business-errors` — 0/N bound while source throws | the walk cannot resolve this module's delegate shape (`business_error_extractor`) | services throw only from code the controllers never reach | generator owner first; the `unbound` list names the codes to explain |
+| `contract-ids` — heading present, 0 rows | none: the tool needs a verb+path table | the plan writes its API REGISTRY as prose (NOTIF, FILE today) | factory owner |
+| `contract-drift` — any row | none: both sides are read verbatim | an endpoint the plan never registered, or a registered id nothing serves — the drift table quotes the id a controller Javadoc **claims**, which is a signpost for the registrar, not a registration | factory owner (register or retire the id); backend owner if the served path is the mistake |
+| `stale` | — | the backend changed after the last regeneration | run `--function update`, then STEP 4 |
+| `deterministic` | a new extractor iterates a mapping or directory listing unsorted | — | generator owner |
+
+Then give the endpoint count, group count, error-code count, output path and
+the per-endpoint change list. If a section is EMPTY and `check` did not fail
+on it, say which assertion covered it and why it passed (a legitimately absent
+feature is stated as such in the docs themselves — e.g. an endpoint's
+`Authorization: no @PreAuthorize/@Secured declared — checked …` line).
 
 ### STEP 4 — Publish them (they are NOT published until you do)
 
@@ -134,8 +161,9 @@ Two failure modes worth naming, because neither announces itself:
 
 - **NEVER hand-edit a generated file under `api-docs/`.** It is regenerated
   output; a manual edit is destroyed on the next run AND turns the file into a
-  conflict the tool then refuses to manage. If the docs are wrong, the backend
-  is wrong or under-annotated — fix it there and regenerate.
+  conflict the tool then refuses to manage. If the docs are wrong, either the
+  backend is wrong or under-annotated, or the generator missed something — the
+  STEP 3 table says how to tell the two apart; fix the right one and regenerate.
 - **NEVER pass `--openapi` / `--source` / `--common-source` / `--output` to
   "make it work."** If discovery fails it names the exact flag and why; report
   that instead of working around it.
@@ -156,7 +184,9 @@ Two failure modes worth naming, because neither announces itself:
   rather than guessing when two candidate directories exist — if it says so,
   report that; do not pick one for it.
 - `review` is safe to run any time, including in CI, to answer "have the API
-  docs drifted from the backend?" without touching a file.
+  docs drifted from the backend?" without touching a file. `check` is the CI
+  gate: the same, plus a non-zero exit on drift, staleness, non-determinism or
+  a whole-module silent-empty section (STEP 3).
 - Consumers of this output: the frontend repo and the governance factory, both
   of which read **this same single copy** through their own `governance/shared`
   submodule (there is no second copy to keep in step — superseded 2026-09-17),

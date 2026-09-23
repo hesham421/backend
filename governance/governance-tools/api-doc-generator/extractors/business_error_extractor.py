@@ -8,7 +8,7 @@ from typing import Optional
 from extractors.error_mapping_extractor import THROW_RE, http_status_label
 from models.api_doc_model import AccessDeniedOverride, ApiDocument, BusinessError, BusinessErrorWalk, Endpoint
 
-MAX_DEPTH = 3
+MAX_DEPTH = 8
 
 BLOCK_COMMENT_RE = re.compile(r"/\*.*?\*/", re.DOTALL)
 LINE_COMMENT_RE = re.compile(r"//[^\n]*")
@@ -32,6 +32,9 @@ JAVA_KEYWORDS = {
     "if", "for", "while", "switch", "catch", "return", "new", "super", "this", "synchronized",
     "try", "else", "do", "throw", "case", "instanceof", "assert",
 }
+MODIFIERS = {"public", "protected", "private", "static", "final", "synchronized", "default", "abstract"}
+CONSTRUCTOR = "<init>"
+NEW_RE = re.compile(r"\bnew\s+([A-Z]\w*)\s*\(")
 
 
 @dataclass
@@ -144,7 +147,9 @@ def _parse_class(path: Path) -> Optional[ClassInfo]:
         info.fields.setdefault(m.group(2), m.group(1).split(".")[-1])
     for m in METHOD_HEAD_RE.finditer(clean):
         return_type, name = m.group(1), m.group(2)
-        if name in JAVA_KEYWORDS or return_type.split("<")[0] in JAVA_KEYWORDS | {"else"}:
+        if return_type in MODIFIERS and name == info.name:
+            name, return_type = CONSTRUCTOR, info.name
+        elif name in JAVA_KEYWORDS or return_type.split("<")[0] in JAVA_KEYWORDS | MODIFIERS | {"else"}:
             continue
         params_end = _paren_end(clean, m.end() - 1)
         tail = METHOD_TAIL_RE.match(clean, params_end)
@@ -245,7 +250,15 @@ def _calls_in(cls: ClassInfo, method: MethodInfo, classes: dict[str, ClassInfo])
         target = _receiver_class(receiver, cls, method, classes)
         if target and name in classes[target].methods:
             calls.append((target, name, None))
+    for m in NEW_RE.finditer(body):
+        target = m.group(1)
+        if target in classes and CONSTRUCTOR in classes[target].methods:
+            calls.append((target, CONSTRUCTOR, _arg_count(body, m.end() - 1)))
     return calls
+
+
+def site_label(cls_name: str, method_name: str) -> str:
+    return f"new {cls_name}()" if method_name == CONSTRUCTOR else f"{cls_name}.{method_name}"
 
 
 def walk_endpoint(classes: dict[str, ClassInfo], controller: str, method_name: str,
@@ -267,7 +280,7 @@ def walk_endpoint(classes: dict[str, ClassInfo], controller: str, method_name: s
         if key in seen:
             continue
         seen.add(key)
-        site = f"{cls_name}.{name}"
+        site = site_label(cls_name, name)
         walk.visited.append(site)
         errors.extend(_throws_in(method.body, site))
         if depth >= max_depth:
@@ -304,7 +317,7 @@ def count_throw_sites(classes: dict[str, ClassInfo]) -> dict[str, list[str]]:
         cls = classes[name]
         for method_name in sorted(cls.methods):
             for mi in cls.methods[method_name]:
-                for be in _throws_in(mi.body, f"{name}.{method_name}"):
+                for be in _throws_in(mi.body, site_label(name, method_name)):
                     if be.throw_site not in sites.setdefault(be.code, []):
                         sites[be.code].append(be.throw_site)
     return sites
@@ -324,7 +337,6 @@ def attach_business_errors(document: ApiDocument, classes: dict[str, ClassInfo],
     each bound code's wire value and HTTP status through the tables the document
     already carries, and records per-code binding counts on document.error_codes."""
     values = {c.name: c.value for c in document.error_codes}
-    module_codes = {c.name for c in document.error_codes if not c.http_status or c.status}
     sites = count_throw_sites(classes)
     bound_counts: dict[str, int] = {}
 
@@ -344,11 +356,17 @@ def attach_business_errors(document: ApiDocument, classes: dict[str, ClassInfo],
         for code in {b.code for b in ep.business_errors}:
             bound_counts[code] = bound_counts.get(code, 0) + 1
 
+    advisor_codes = {o.code: o.advisor for o in document.access_denied_overrides}
     for code in document.error_codes:
         code.throw_sites = sites.get(code.name, [])
         code.bound_endpoints = bound_counts.get(code.name, 0)
+        if code.name in advisor_codes:
+            via = sum(1 for ep in document.endpoints if any(pe.code.startswith(code.name + " ") or pe.code == code.name
+                                                            for pe in ep.possible_errors))
+            code.bound_endpoints = via
+            code.bound_via = f"Other Possible Responses, via {advisor_codes[code.name]}"
 
-    document.source_facts["throw_sites"] = sum(len(v) for k, v in sites.items() if k in module_codes or k not in values)
+    document.source_facts["throw_sites"] = sum(len(v) for v in sites.values())
     document.source_facts["endpoints_with_business_errors"] = sum(1 for ep in document.endpoints if ep.business_errors)
     document.source_facts["endpoints_walked_past_controller"] = sum(
         1 for ep in document.endpoints if ep.business_walk and len(ep.business_walk.visited) > 1)

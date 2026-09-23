@@ -17,11 +17,13 @@ from models.api_doc_model import (
     ApiDocument,
     Endpoint,
     ErrorCode,
+    FieldErrorSemantics,
     FieldSpec,
     PaginationConstraints,
     Parameter,
     ResponseEnvelope,
     StatusMapping,
+    UniqueConstraint,
 )
 from renderers.base import Renderer
 
@@ -196,18 +198,86 @@ def _envelope_section(title: str, envelope: ResponseEnvelope | None) -> str:
     return "\n".join(parts)
 
 
-def _error_codes_section(codes: list[ErrorCode]) -> str:
+def _raised_by(c: ErrorCode) -> str:
+    if c.source_file.endswith("GlobalExceptionHandler.java"):
+        return "shared handler (any endpoint)"
+    if c.bound_endpoints:
+        return f"{c.bound_endpoints} endpoint(s) — see their {c.bound_via or 'Business Responses'}"
+    if c.throw_sites:
+        return "unbound — thrown at " + ", ".join(c.throw_sites) + ", reached by no endpoint's call walk"
+    return "no throw site naming it in module source"
+
+
+def _field_error_semantics_section(rows: list[FieldErrorSemantics]) -> str:
+    """One schema slot, several meanings: each row is the expression a
+    handler passes to FieldErrorItem.field(...), quoted, with a mechanical
+    reading of it. No row claims what a branch means beyond its own text."""
+    if not rows:
+        return ""
+    lines = [
+        "### What `error.fieldErrors[].field` carries",
+        "",
+        "Read from `GlobalExceptionHandler.java`: the expression each handler passes to "
+        "`FieldErrorItem.field(...)`. The same slot is filled differently per handler, so a client "
+        "must not assume it is always a request field path — a row whose fallback branch is not a "
+        "field path can put something else there.",
+        "",
+        "| Handler | Exceptions | HTTP Status | Code | `field` holds | Source expression |",
+        "|---|---|---|---|---|---|",
+    ]
+    for r in rows:
+        lines.append(f"| {r.handler} | {', '.join(r.exceptions) or ''} | {r.http_status or ''} | "
+                     f"{r.code or ''} | {r.field_meaning} | `{r.field_expression}` |")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _unique_constraints_section(rows: list[UniqueConstraint]) -> str:
+    if not rows:
+        return ""
+    has_note = any(r.note for r in rows)
+    lines = [
+        "## Uniqueness Invariants",
+        "",
+        "Enforced by the database on this module's own tables, read from each entity's "
+        "`@Table(uniqueConstraints)` and from the Flyway migrations. Scope is the partial index's "
+        "`WHERE` clause verbatim where one exists; a request that violates an invariant is refused.",
+        "",
+        "| Table | Entity | Columns (entity field) | Scope | Constraint | Source |" + (" Note |" if has_note else ""),
+        "|---|---|---|---|---|---|" + ("---|" if has_note else ""),
+    ]
+    for r in rows:
+        cols = ", ".join(f"{c} ({f})" if f else c for c, f in zip(r.columns, r.entity_fields or [""] * len(r.columns)))
+        row = f"| {r.table} | {r.entity or ''} | {cols} | {r.scope} | {r.name} | {', '.join(r.sources)} |"
+        if has_note:
+            row += f" {r.note or ''} |"
+        lines.append(row)
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _error_codes_section(codes: list[ErrorCode], with_binding: bool) -> str:
     if not codes:
         return ""
     has_status = any(c.status or c.http_status for c in codes)
     header = ["Code", "Value", "Source"]
     if has_status:
         header += ["Status", "HTTP Status"]
-    lines = ["## Known Error Codes", "", "| " + " | ".join(header) + " |", "|" + "|".join(["---"] * len(header)) + "|"]
+    if with_binding:
+        header.append("Raised by")
+    lines = ["## Known Error Codes", ""]
+    if with_binding:
+        lines += ["\"Raised by\" counts the endpoints whose controller → service → domain call walk reaches a "
+                  "throw site naming the code. An unbound code is thrown only from code no endpoint's walk "
+                  "reaches (a cross-module entry point, a job, or a call past the walk's depth) — it is listed, "
+                  "not attributed.", ""]
+    lines += ["| " + " | ".join(header) + " |", "|" + "|".join(["---"] * len(header)) + "|"]
     for c in codes:
         row = [c.name, f"`{c.value}`", c.source_file]
         if has_status:
             row += [c.status or "", c.http_status or ""]
+        if with_binding:
+            row.append(_raised_by(c))
         lines.append("| " + " | ".join(row) + " |")
     lines.append("")
     return "\n".join(lines)
@@ -386,6 +456,8 @@ def _endpoint_markdown(ep: Endpoint) -> str:
             parts.append(example)
             parts.append("")
 
+    parts += _business_responses(ep)
+
     if ep.possible_errors:
         parts.append("### Other Possible Responses")
         parts.append("")
@@ -400,6 +472,41 @@ def _endpoint_markdown(ep: Endpoint) -> str:
         parts.append("")
 
     return "\n".join(parts).rstrip() + "\n"
+
+
+def _business_responses(ep: Endpoint) -> list[str]:
+    """Rows are throw sites the controller's call walk reached, each cited.
+    An empty walk says what it walked, so 'none' never masquerades as 'not looked'."""
+    walk = ep.business_walk
+    if walk is None:
+        return []
+    lines = ["### Business Responses", ""]
+    walked = ", ".join(f"`{v}`" for v in walk.visited)
+    if not ep.business_errors:
+        if len(walk.visited) <= 1:
+            lines.append(f"Not determined — the call walk did not resolve a delegate beyond {walked}.")
+        else:
+            lines.append(f"None reached — walked {walked} and found no throw site naming a module error code.")
+    else:
+        lines.append(f"Raised by this endpoint's own rules. Each row cites the throw site it was read from "
+                     f"(walked {walked}).")
+        lines.append("")
+        lines.append("| HTTP Status | Code | Constant | Raised at |")
+        lines.append("|---|---|---|---|")
+        for be in ep.business_errors:
+            where = be.throw_site + (" — as a `fieldErrors[]` entry" if be.kind == "detail" else "")
+            http = be.http_status or (be.status or "not determined")
+            lines.append(f"| {http} | `{be.value}` | {be.code} | {where} |")
+    notes = []
+    if walk.unresolved:
+        notes.append("skipped as ambiguous: " + ", ".join(f"`{u}`" for u in walk.unresolved))
+    if walk.depth_limit_hit:
+        notes.append("calls beyond the walk's depth limit were not followed")
+    if notes:
+        lines.append("")
+        lines.append("Not listed — " + "; ".join(notes) + ".")
+    lines.append("")
+    return lines
 
 
 def _catalog_table(endpoints: list[Endpoint], group: str, group_file: str, with_api_ids: bool) -> str:
@@ -472,7 +579,14 @@ def _contract_section(doc: ApiDocument) -> Optional[str]:
             "|---|---|---|---|---|",
         ]
         for d in doc.contract_drift:
-            lines.append(f"| {d.kind} | {d.api_id or '—'} | {d.method} | `{d.path}` | {d.detail} |")
+            api = d.api_id or "—"
+            detail = d.detail
+            if d.claimed_ids:
+                ids = ", ".join(f"`{i}`" for i in d.claimed_ids)
+                verb = "source claims" if len(d.claimed_ids) == 1 else "source mentions"
+                api = f"— ({verb} {ids}, {d.claim_source}" + (", ambiguous)" if len(d.claimed_ids) > 1 else ")")
+                detail += " — the id quoted is a source comment, not a registered contract; registering it is the API REGISTRY's to do"
+            lines.append(f"| {d.kind} | {api} | {d.method} | `{d.path}` | {detail} |")
         lines.append("")
     return "\n".join(lines)
 
@@ -509,9 +623,11 @@ def _index_markdown(doc: ApiDocument) -> str:
 
     parts.append(_common_headers_section(doc.common_headers))
     parts.append(_envelope_section("Common Response Envelope", doc.response_envelope))
+    parts.append(_field_error_semantics_section(doc.field_error_semantics))
     parts.append(_envelope_section("Pagination Envelope", doc.pagination_envelope))
     parts.append(_pagination_constraints_section(doc.pagination_constraints))
-    parts.append(_error_codes_section(doc.error_codes))
+    parts.append(_unique_constraints_section(doc.unique_constraints))
+    parts.append(_error_codes_section(doc.error_codes, with_binding=any(ep.business_walk for ep in doc.endpoints)))
     parts.append(_status_mappings_section(doc.status_mappings))
 
     parts.append(_contract_section(doc))

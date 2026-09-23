@@ -177,6 +177,7 @@ class ErrorCode:
     # endpoints' walks reached one of them. 0 with sites = unbound.
     throw_sites: list[str] = field(default_factory=list)
     bound_endpoints: int = 0
+    bound_via: Optional[str] = None   # where the binding is rendered when not in Business Responses
 
 
 @dataclass
