@@ -20,6 +20,10 @@ controller method delegates to (by convention: `xxxService.methodName(...)`
 inside the method body, matched back to a `private final X xxxService;`
 field) and check the same-named method on that service class.
 
+Both annotation spellings in this codebase are handled: the single-line
+`@PreAuthorize("...")` and the multi-line string concatenation
+`@PreAuthorize("hasAuthority(T(...)"\n    + ".PERM_X)")`, in any number of parts.
+
 This is a heuristic over source text (regex-based), not a real Java parser.
 The common case is one delegate call per controller method under the same
 method name (e.g. `MasterLookupController.create` -> `MasterLookupService.
@@ -36,10 +40,45 @@ returns nothing — never guesses.
 """
 
 import re
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
-PREAUTH_RE = re.compile(r'@(?:PreAuthorize|Secured)\s*\(\s*"([^"]*)"\s*\)')
+# Outcomes of one endpoint's permission lookup. FOUND is the only one that yields
+# a rule; DECLARED_NONE means every method on the path was read and none carries
+# an annotation (absent by design); the rest mean the lookup could not finish
+# (could not extract) and must never be reported as "no permission".
+FOUND = "FOUND"
+DECLARED_NONE = "DECLARED_NONE"
+CONTROLLER_NOT_MATCHED = "CONTROLLER_NOT_MATCHED"
+DELEGATE_UNRESOLVED = "DELEGATE_UNRESOLVED"
+SERVICE_SOURCE_MISSING = "SERVICE_SOURCE_MISSING"
+SERVICE_METHOD_MISSING = "SERVICE_METHOD_MISSING"
+NOT_EXTRACTED = {CONTROLLER_NOT_MATCHED, DELEGATE_UNRESOLVED, SERVICE_SOURCE_MISSING, SERVICE_METHOD_MISSING}
+
+
+@dataclass
+class AuthorizationRule:
+    annotation: str            # "PreAuthorize" | "Secured"
+    expression: str            # the joined string value, verbatim apart from the join
+    constants: list[str] = field(default_factory=list)
+
+
+@dataclass
+class PermissionLookup:
+    outcome: str
+    constants: list[str] = field(default_factory=list)
+    source_label: Optional[str] = None     # "controller" | "service:<ClassName>"
+    expression: Optional[str] = None
+    checked: list[str] = field(default_factory=list)   # "Class.method" read along the way, in order
+
+    @property
+    def found(self) -> bool:
+        return self.outcome == FOUND
+
+
+AUTH_ANNOTATION_RE = re.compile(r"^@(PreAuthorize|Secured)\b")
+_STRING_LITERAL_RE = re.compile(r'"((?:[^"\\]|\\.)*)"')
 # The SpEL form is hasAuthority(T(<fully.qualified.Holder>).CONSTANT). The
 # holder class name is a per-project choice (this platform uses
 # PermissionConstants; an earlier one used SecurityPermissions), so it is
@@ -105,36 +144,106 @@ def _find_declaration_index(lines: list[str], method_name: str) -> Optional[int]
 
 
 def _collect_annotations_above(lines: list[str], decl_index: int) -> list[str]:
-    """Walks upward collecting annotation lines directly above the method
-    declaration. Tracks paren-depth so a multi-line annotation like
-    `@Operation(\n    summary = "...",\n    description = "..."\n)` gets
-    skipped as one unit instead of being mistaken for the end of the block
-    on its first (non-"@"-prefixed) continuation line."""
-    annotations: list[str] = []
+    """Every annotation directly above the declaration, each returned as ONE
+    string even when it spans several lines (a concatenated @PreAuthorize, a
+    multi-line @Operation). ⚠ The previous version returned only the first
+    line of a multi-line annotation, which is how every concatenated
+    @PreAuthorize in four modules read as "no permission"."""
+    block: list[str] = []
     depth = 0
     i = decl_index - 1
     while i >= 0:
         line = lines[i]
-        net = line.count("(") - line.count(")")
-        depth -= net
-        if depth > 0:
-            i -= 1
-            continue
-        depth = 0
-
         stripped = line.strip()
-        if not stripped:
+        net = _paren_net(line)
+        if depth == 0 and (not stripped or stripped.startswith(("*", "/**", "//")) or stripped.endswith("*/")):
             i -= 1
             continue
-        if stripped.startswith("*") or stripped.startswith("/**") or stripped.endswith("*/"):
-            i -= 1
-            continue
-        if stripped.startswith("@"):
-            annotations.append(stripped)
+        if depth > 0 or net != 0 or stripped.startswith(("@", "+", ")", '"')):
+            block.append(line)
+            depth = max(depth - net, 0)
             i -= 1
             continue
         break
-    return annotations
+    return _split_annotations("\n".join(reversed(block)))
+
+
+def _paren_net(line: str) -> int:
+    masked = _STRING_LITERAL_RE.sub('""', line)
+    return masked.count("(") - masked.count(")")
+
+
+def _split_annotations(text: str) -> list[str]:
+    """Splits a run of annotations into units by balanced parentheses, string
+    literals honoured, so `@A("x(" + ")y")` is one unit and not two."""
+    units: list[str] = []
+    i = 0
+    n = len(text)
+    while i < n:
+        at = text.find("@", i)
+        if at < 0:
+            break
+        j = at + 1
+        while j < n and (text[j].isalnum() or text[j] in "_."):
+            j += 1
+        k = j
+        while k < n and text[k].isspace():
+            k += 1
+        if k < n and text[k] == "(":
+            depth = 0
+            in_string = False
+            m = k
+            while m < n:
+                ch = text[m]
+                if in_string:
+                    if ch == "\\":
+                        m += 1
+                    elif ch == '"':
+                        in_string = False
+                elif ch == '"':
+                    in_string = True
+                elif ch == "(":
+                    depth += 1
+                elif ch == ")":
+                    depth -= 1
+                    if depth == 0:
+                        m += 1
+                        break
+                m += 1
+            units.append(text[at:m].strip())
+            i = m
+        else:
+            units.append(text[at:j].strip())
+            i = j
+    return units
+
+
+def parse_authorization_annotation(annotation: str) -> Optional[AuthorizationRule]:
+    """`@PreAuthorize("a" + "b")`, `@PreAuthorize(value = "a")`, `@Secured({"A", "B"})`:
+    the string literals are joined for PreAuthorize (Java concatenation) and
+    listed for Secured (an authority array). A non-literal part (a constant
+    spliced into the expression) is kept verbatim rather than dropped."""
+    m = AUTH_ANNOTATION_RE.match(annotation)
+    if not m:
+        return None
+    kind = m.group(1)
+    open_paren = annotation.find("(", m.end())
+    if open_paren < 0:
+        return None
+    inner = annotation[open_paren + 1:annotation.rfind(")")]
+    literals = [lit.replace('\\"', '"') for lit in _STRING_LITERAL_RE.findall(inner)]
+    if not literals:
+        return None
+    leftover = _STRING_LITERAL_RE.sub("", inner)
+    leftover = re.sub(r"^\s*value\s*=", "", leftover)
+    leftover = re.sub(r"[\s+{},]", "", leftover)
+    if leftover:
+        expression = re.sub(r"\s+", " ", inner.strip())
+        return AuthorizationRule(kind, expression, extract_permission_constants(expression))
+    if kind == "Secured":
+        return AuthorizationRule(kind, ", ".join(literals), list(literals))
+    expression = "".join(literals)
+    return AuthorizationRule(kind, expression, extract_permission_constants(expression))
 
 
 def _method_body_span(lines: list[str], decl_index: int) -> tuple[int, int]:
@@ -180,16 +289,25 @@ def _find_delegate(source: str, lines: list[str], decl_index: int, method_name: 
     return None, None
 
 
-def find_preauthorize(source: str, method_name: str) -> Optional[str]:
+def find_authorization_rule(source: str, method_name: str) -> Optional[AuthorizationRule]:
     lines = source.splitlines()
     decl_index = _find_declaration_index(lines, method_name)
     if decl_index is None:
         return None
     for annotation in _collect_annotations_above(lines, decl_index):
-        m = PREAUTH_RE.search(annotation)
-        if m:
-            return m.group(1)
+        rule = parse_authorization_annotation(annotation)
+        if rule:
+            return rule
     return None
+
+
+def find_preauthorize(source: str, method_name: str) -> Optional[str]:
+    rule = find_authorization_rule(source, method_name)
+    return rule.expression if rule else None
+
+
+def has_method(source: str, method_name: str) -> bool:
+    return _find_declaration_index(source.splitlines(), method_name) is not None
 
 
 def find_delegate(source: str, method_name: str) -> tuple[Optional[str], Optional[str]]:
@@ -207,31 +325,46 @@ def extract_permission_constants(spel_expression: str) -> list[str]:
 
 
 def resolve_permission(
-    controller_source: str, method_name: str, source_root: Path
-) -> tuple[list[str], Optional[str], Optional[str]]:
-    """Returns (permission_constants, source_label, raw_expression).
-    source_label is "controller" or "service:<ClassName>".
-
-    The raw expression is returned alongside the constants because a real
-    authorization rule does not always name a permission constant -- e.g.
-    `@PreAuthorize("isAuthenticated()")`. Returning only constants made such
-    an endpoint indistinguishable from one with no check at all, which reads
-    as "unprotected" to anyone building a client or a test against these docs.
-    (None, None, None) still means genuinely not discoverable -- never a guess."""
-    expr = find_preauthorize(controller_source, method_name)
-    if expr:
-        return extract_permission_constants(expr), "controller", expr
+    controller_source: str, method_name: str, source_root: Path,
+    controller_name: str = "controller",
+) -> PermissionLookup:
+    """Controller method first, then the service method it delegates to. Every
+    method read is recorded in `checked`, so DECLARED_NONE names exactly what
+    was inspected and a NOT_EXTRACTED outcome names where the walk stopped."""
+    checked = [f"{controller_name}.{method_name}"]
+    rule = find_authorization_rule(controller_source, method_name)
+    if rule:
+        return PermissionLookup(FOUND, rule.constants, "controller", rule.expression, checked)
 
     service_class, service_method = find_delegate(controller_source, method_name)
     if not service_class or not service_method:
-        return [], None, None
+        return PermissionLookup(DELEGATE_UNRESOLVED, checked=checked)
 
-    matches = list(source_root.rglob(f"{service_class}.java"))
+    matches = sorted(source_root.rglob(f"{service_class}.java"))
     if not matches:
-        return [], None, None
+        return PermissionLookup(SERVICE_SOURCE_MISSING, checked=checked + [f"{service_class}.{service_method}"])
 
     service_source = matches[0].read_text(encoding="utf-8")
-    expr = find_preauthorize(service_source, service_method)
-    if not expr:
-        return [], None, None
-    return extract_permission_constants(expr), f"service:{service_class}", expr
+    checked.append(f"{service_class}.{service_method}")
+    if not has_method(service_source, service_method):
+        return PermissionLookup(SERVICE_METHOD_MISSING, checked=checked)
+    rule = find_authorization_rule(service_source, service_method)
+    if not rule:
+        return PermissionLookup(DECLARED_NONE, checked=checked)
+    return PermissionLookup(FOUND, rule.constants, f"service:{service_class}", rule.expression, checked)
+
+
+_COMMENT_RE = re.compile(r"/\*.*?\*/|//[^\n]*", re.DOTALL)
+_AUTH_ANNOTATION_COUNT_RE = re.compile(r"@(?:PreAuthorize|Secured)\s*\(")
+
+
+def count_authorization_annotations(source_root: Path) -> int:
+    """How many @PreAuthorize/@Secured the module's source carries, comments
+    excluded. The expected side of the check mode's permission ratio: not a
+    denominator (a service method need not be an endpoint), an existence signal."""
+    total = 0
+    for path in sorted(source_root.rglob("*.java")):
+        text = _COMMENT_RE.sub("", path.read_text(encoding="utf-8", errors="ignore"))
+        text = _STRING_LITERAL_RE.sub('""', text)
+        total += len(_AUTH_ANNOTATION_COUNT_RE.findall(text))
+    return total

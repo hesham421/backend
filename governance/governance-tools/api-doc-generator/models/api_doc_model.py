@@ -104,6 +104,14 @@ class Endpoint:
     # Populated only by error_mapping_extractor.attach_endpoint_error_codes(),
     # only when common source roots are available -- see PossibleError.
     possible_errors: list[PossibleError] = field(default_factory=list)
+    # How the permission lookup ended (security_extractor outcome constants) and
+    # every Class.method it read. Absent = no module source was available.
+    permission_lookup: Optional[str] = None
+    permission_checked: list[str] = field(default_factory=list)
+    # Populated only by business_error_extractor: the module's own error codes
+    # reachable from this endpoint's controller method, each with its throw site.
+    business_errors: list[BusinessError] = field(default_factory=list)
+    business_walk: Optional[BusinessErrorWalk] = None
 
     def slug(self) -> str:
         if self.operation_id:
@@ -132,6 +140,11 @@ class ContractDrift:
     path: str
     detail: str
     api_id: Optional[str] = None
+    # For an undeclared endpoint: contract ids its controller's own Javadoc
+    # names that no registry row carries. A signpost quoted from source, never
+    # a registration -- see contract_extractor.claimed_ids.
+    claimed_ids: list[str] = field(default_factory=list)
+    claim_source: Optional[str] = None
 
 
 @dataclass
@@ -159,6 +172,73 @@ class ErrorCode:
     # table (e.g. "409 CONFLICT"). Either may be absent independently.
     status: Optional[str] = None
     http_status: Optional[str] = None
+    # Populated only by business_error_extractor: every Class.method in the
+    # module's source that names this code at a throw site, and how many
+    # endpoints' walks reached one of them. 0 with sites = unbound.
+    throw_sites: list[str] = field(default_factory=list)
+    bound_endpoints: int = 0
+
+
+@dataclass
+class BusinessError:
+    """One module error code reachable from an endpoint, read at a real throw
+    site. kind is "thrown" (the LocalizedException's own code) or "detail" (a
+    code carried in fieldErrors[] of a multi-error throw); status is None when
+    a detail's throwing Status was not in the same method body."""
+    code: str
+    value: str
+    throw_site: str
+    kind: str = "thrown"
+    status: Optional[str] = None
+    http_status: Optional[str] = None
+
+
+@dataclass
+class BusinessErrorWalk:
+    """What one endpoint's call walk covered, so an empty result is
+    distinguishable from a walk that never left the controller."""
+    visited: list[str] = field(default_factory=list)
+    unresolved: list[str] = field(default_factory=list)
+    depth_limit_hit: bool = False
+
+
+@dataclass
+class AccessDeniedOverride:
+    """A module advisor that catches AccessDeniedException and re-raises a
+    LocalizedException, so a 403 from its scope carries the module's own code
+    rather than the shared handler's."""
+    advisor: str
+    status: str
+    code: str
+    value: str
+    scope_prefix: Optional[str] = None
+
+
+@dataclass
+class FieldErrorSemantics:
+    """One GlobalExceptionHandler method's contribution to fieldErrors[].field:
+    the expression it passes to .field(...), verbatim, and a mechanical reading of it."""
+    handler: str
+    exceptions: list[str]
+    field_expression: str
+    field_meaning: str
+    http_status: Optional[str] = None
+    code: Optional[str] = None
+
+
+@dataclass
+class UniqueConstraint:
+    """A uniqueness invariant the database enforces, read from the entity's
+    @Table(uniqueConstraints) and/or the Flyway migrations. scope is "all rows"
+    or the partial index's WHERE clause verbatim."""
+    table: str
+    name: str
+    columns: list[str]
+    scope: str = "all rows"
+    entity: Optional[str] = None
+    entity_fields: list[str] = field(default_factory=list)
+    sources: list[str] = field(default_factory=list)
+    note: Optional[str] = None
 
 
 @dataclass
@@ -226,6 +306,15 @@ class ApiDocument:
     # mismatch found while joining.
     contract_source: Optional[str] = None
     contract_drift: list[ContractDrift] = field(default_factory=list)
+    # Populated only by error_mapping_extractor.find_field_error_semantics().
+    field_error_semantics: list[FieldErrorSemantics] = field(default_factory=list)
+    # Populated only by business_error_extractor, module source required.
+    access_denied_overrides: list[AccessDeniedOverride] = field(default_factory=list)
+    # Populated only by constraint_extractor, module source and migrations required.
+    unique_constraints: list[UniqueConstraint] = field(default_factory=list)
+    # Expected-side counts read from source for the check mode's ratios
+    # (annotations, throw sites, ...). Never rendered.
+    source_facts: dict[str, int] = field(default_factory=dict)
 
     def groups(self) -> list[str]:
         seen: list[str] = []

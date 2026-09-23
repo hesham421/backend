@@ -285,8 +285,28 @@ def _auth_section(ep: Endpoint) -> str:
         # the endpoint doesn't read as unprotected.
         lines.append("")
         lines.append(f"**Authorization rule**: `{ep.permission_expression}`{source}")
+    elif ep.permission_lookup:
+        lines.append("")
+        lines.append(f"**Authorization**: {_permission_lookup_text(ep)}")
     lines.append("")
     return "\n".join(lines)
+
+
+def _permission_lookup_text(ep: Endpoint) -> str:
+    """Absent by design reads differently from could-not-extract, and each
+    names what was read, so a reader can verify the claim in source."""
+    checked = " and ".join(f"`{c}`" for c in ep.permission_checked)
+    if ep.permission_lookup == "DECLARED_NONE":
+        return f"no `@PreAuthorize`/`@Secured` declared — checked {checked}."
+    if ep.permission_lookup == "CONTROLLER_NOT_MATCHED":
+        return "not extracted — no controller method matching this route was found in the module source."
+    if ep.permission_lookup == "DELEGATE_UNRESOLVED":
+        return f"not extracted — {checked} delegates to no single resolvable service call."
+    if ep.permission_lookup == "SERVICE_SOURCE_MISSING":
+        return f"not extracted — the service {checked} delegates to has no source file under the module."
+    if ep.permission_lookup == "SERVICE_METHOD_MISSING":
+        return f"not extracted — the delegate method was not found; checked {checked}."
+    return f"not extracted ({ep.permission_lookup})."
 
 
 def _endpoint_markdown(ep: Endpoint) -> str:
@@ -404,8 +424,8 @@ def _group_markdown(group: str, endpoints: list[Endpoint]) -> str:
     """One file per group (= controller, since each controller declares one
     @Tag). Every endpoint becomes a '## {METHOD} {path}' section within this
     single H1 — see _endpoint_markdown's docstring for why nothing inside an
-    endpoint's own markdown may use '## '. Endpoints are emitted in the same
-    order `document.endpoints` already provides them; not re-sorted."""
+    endpoint's own markdown may use '## '. Endpoints are emitted in the order
+    `document.endpoints` provides them, which openapi_extractor sorts."""
     parts = [f"# {group}", ""]
     if len(endpoints) > 1:
         parts.append("**Endpoints in this file:**")

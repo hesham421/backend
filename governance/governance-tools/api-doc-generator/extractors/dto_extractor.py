@@ -142,20 +142,23 @@ def find_page_envelope(openapi: dict) -> tuple[Optional[str], list[FieldSpec]]:
     # PageActiveSessionResponse, ...). Their bookkeeping fields are identical,
     # so the section is named for the generic wrapper rather than for whichever
     # instantiation happened to come first in the document.
-    page_names = [name for name, schema in schemas.items() if is_page_shape(schema)]
+    # ⚠ Sorted, not document order: springdoc emits Page<T>'s properties in an
+    # order that differs between JVM runs, and this table is shared bookkeeping
+    # with no declaration order a reader would look up. Per-endpoint DTO tables
+    # keep document order on purpose -- theirs matches the Java class.
+    page_names = sorted(name for name, schema in schemas.items() if is_page_shape(schema))
     generic_name = _generic_schema_name(page_names)
 
-    for name, schema in schemas.items():
-        if not is_page_shape(schema):
-            continue
+    for name in page_names:
+        schema = schemas[name]
 
         def _resolve(s: dict) -> tuple[dict, Optional[str]]:
             return resolve_ref(s, components)
 
         props = schema.get("properties", {})
         fields = [
-            validation_extractor.build_field_spec(key, prop, False, _resolve)
-            for key, prop in props.items()
+            validation_extractor.build_field_spec(key, props[key], False, _resolve)
+            for key in sorted(props)
             if key != "content"
         ]
         return generic_name, fields

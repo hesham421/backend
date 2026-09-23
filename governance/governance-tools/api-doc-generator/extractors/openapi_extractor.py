@@ -23,6 +23,13 @@ from models.api_doc_model import (
 )
 
 HTTP_METHODS = ("get", "post", "put", "patch", "delete")
+METHOD_ORDER = {m: i for i, m in enumerate(("GET", "POST", "PUT", "PATCH", "DELETE"))}
+
+
+def endpoint_sort_key(ep: Endpoint) -> tuple:
+    """Group (tag), then path, then verb: a total order that owes nothing to
+    the order springdoc happened to emit the paths in."""
+    return (ep.group or "Ungrouped", ep.path, METHOD_ORDER.get(ep.method, 99), ep.method)
 
 
 class OpenApiLoadError(Exception):
@@ -81,7 +88,7 @@ def _security_schemes(openapi: dict) -> list[SecurityScheme]:
             bearer_format=s.get("bearerFormat"),
             description=s.get("description"),
         )
-        for name, s in schemes.items()
+        for name, s in sorted(schemes.items())
     ]
 
 
@@ -190,4 +197,5 @@ def build_document(openapi: dict, module: str) -> ApiDocument:
                 security_schemes=scheme_names,
             ))
 
+    doc.endpoints.sort(key=endpoint_sort_key)
     return doc

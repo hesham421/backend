@@ -59,18 +59,22 @@ def build_document(context: RepositoryContext):
     source_root = context.source_root
     if source_root is not None:
         document.error_codes = exception_extractor.find_error_codes(source_root)
+        document.source_facts["auth_annotations"] = security_extractor.count_authorization_annotations(source_root)
 
         for ep in document.endpoints:
             controller_file, method_name = security_extractor.find_controller_for_endpoint(source_root, ep.method, ep.path)
             if not controller_file or not method_name:
+                ep.permission_lookup = security_extractor.CONTROLLER_NOT_MATCHED
                 continue
             controller_source = controller_file.read_text(encoding="utf-8")
-            permission, source_label, expression = security_extractor.resolve_permission(
-                controller_source, method_name, source_root
+            lookup = security_extractor.resolve_permission(
+                controller_source, method_name, source_root, controller_name=controller_file.stem
             )
-            ep.permission = permission
-            ep.permission_source = source_label
-            ep.permission_expression = expression
+            ep.permission = lookup.constants
+            ep.permission_source = lookup.source_label
+            ep.permission_expression = lookup.expression
+            ep.permission_lookup = lookup.outcome
+            ep.permission_checked = lookup.checked
 
     if context.common_source_roots:
         document.error_codes, document.status_mappings = error_mapping_extractor.enrich_error_codes(

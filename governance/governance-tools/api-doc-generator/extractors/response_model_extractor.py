@@ -40,8 +40,8 @@ def find_envelope(openapi: dict) -> Optional[ResponseEnvelope]:
     # the shared envelope under one arbitrary endpoint's payload type, so the
     # generic name is recovered from the instantiations' common prefix
     # instead -- derived from the real schema names, not hardcoded.
-    matches = [(name, schema) for name, schema in schemas.items()
-               if dto_extractor.is_envelope_shape(schema)]
+    matches = sorted(((name, schema) for name, schema in schemas.items()
+                      if dto_extractor.is_envelope_shape(schema)), key=lambda m: m[0])
     if not matches:
         return None
 

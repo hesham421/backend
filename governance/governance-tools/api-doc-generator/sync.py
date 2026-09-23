@@ -6,10 +6,12 @@ and never formats markdown — it only compares an already-rendered
 {path: content} dict against whatever this tool previously wrote to
 --output, then decides what to write, delete, or leave alone.
 
-Rendering is deterministic (same backend state -> same rendered text), so
-this layer never needs to diff DTOs/permissions/validations/error-codes
-individually: any backend change already shows up as a content difference
-in the relevant rendered file. Shared-doc granularity falls out of diffing
+Rendering must be deterministic (same backend state -> same rendered text) for
+this layer to mean anything; `--function check` proves it by rendering twice,
+because springdoc's Page<T> property order once varied between JVM runs and
+turned every review into noise. Given that, this layer never needs to diff
+DTOs/permissions/validations/error-codes individually: any backend change
+already shows up as a content difference in the relevant rendered file. Shared-doc granularity falls out of diffing
 index.md's own "## " sections via _split_sections/_diff_sections.
 
 Endpoint-level granularity works the SAME way, one level down: every group
