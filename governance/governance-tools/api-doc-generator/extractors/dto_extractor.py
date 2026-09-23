@@ -79,6 +79,9 @@ def _expand_nested(f: FieldSpec, components: dict, visited: frozenset) -> None:
     if ref_name in visited:
         f.recursive_ref = ref_name
         return
+    nested_description = ref_schema.get("description")
+    if nested_description and nested_description != f.description:
+        f.nested_schema_description = nested_description
     f.nested = schema_fields(ref_schema, components, visited | {ref_name})
 
 

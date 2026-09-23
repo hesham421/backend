@@ -79,6 +79,12 @@ class RepositoryContext:
     # Flyway migration directories, from spring.flyway.locations. Read for the
     # uniqueness invariants the entities cannot express (partial indexes).
     migration_roots: list[Path] = field(default_factory=list)
+    # The i18n resource bundles spring.messages.basename points at, and that
+    # basename's file part. Read so each error code can publish the message a
+    # consumer will actually receive for it; absent simply means no message
+    # column is rendered.
+    message_bundles: list[Path] = field(default_factory=list)
+    message_basename: Optional[str] = None
 
 
 def default_backend_root() -> Path:
@@ -428,6 +434,39 @@ def find_migration_roots(backend_root: Path) -> list[Path]:
     return roots
 
 
+MESSAGES_DEFAULT_BASENAME = "messages"
+
+
+def find_message_bundles(backend_root: Path) -> tuple[list[Path], str]:
+    """(bundle files, base file name) for spring.messages.basename -- Spring's
+    own default ("messages") when the property is absent, exactly as Spring
+    itself falls back. Returns every sibling locale variant of the base file
+    (messages.properties, messages_ar.properties, ...) under each
+    src/main/resources of a consolidated or reactor layout.
+
+    Only the first basename is read when several are declared comma-separated:
+    the error-code convention on this platform puts every module's keys into
+    one merged bundle (spring.messages.basename is single-based), so a second
+    basename would be a different concern, not more of the same one."""
+    declared = _read_property(backend_root, "spring.messages.basename") or MESSAGES_DEFAULT_BASENAME
+    first = declared.split(",")[0].strip()
+    rel = first.split(":", 1)[1] if ":" in first else first
+    rel = rel.strip("/")
+    base_name = rel.split("/")[-1]
+    parent_rel = "/".join(rel.split("/")[:-1])
+    resource_dirs = [backend_root / "src" / "main" / "resources"] + sorted(backend_root.glob("*/src/main/resources"))
+    files: list[Path] = []
+    for d in resource_dirs:
+        directory = d / parent_rel if parent_rel else d
+        if not directory.is_dir():
+            continue
+        for candidate in sorted(directory.glob(f"{base_name}*.properties")):
+            tag = candidate.stem
+            if (tag == base_name or tag.startswith(base_name + "_")) and candidate not in files:
+                files.append(candidate)
+    return files, base_name
+
+
 # ---------------------------------------------------------------------------
 # Module source root discovery (from a matched group's packages)
 # ---------------------------------------------------------------------------
@@ -561,6 +600,7 @@ def resolve(
 
     groups = find_openapi_groups(backend_root)
     matched = match_openapi_group(groups, module)
+    message_bundles, message_basename = find_message_bundles(backend_root)
 
     openapi_source = openapi_override
     source_root = source_override
@@ -588,4 +628,6 @@ def resolve(
         common_source_roots=common_source_roots,
         execution_plan=execution_plan,
         migration_roots=find_migration_roots(backend_root),
+        message_bundles=message_bundles,
+        message_basename=message_basename,
     )

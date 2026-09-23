@@ -82,7 +82,8 @@ public final class FinErrorCodes {
      * RULE-FIN-008 — the target period is not Open at post time (QR-FIN-031, POL-FIN-004). Thrown
      * by {@code JournalEntryDomain.assertTargetPeriodOpen(...)} and by
      * {@code JournalEntryDomain.resolveReversalPeriodPk(...)} when RULE-FIN-012 finds no open
-     * period to receive a reversal.
+     * period to receive a reversal. Retryable: the rejection clears once the target period is
+     * opened, and only a SOFT_CLOSE period can return to OPEN, so a retry needs an upper bound.
      * APIs: API-FIN-019, API-FIN-020, API-FIN-014, API-FIN-017, API-FIN-021. HTTP 409.
      */
     public static final String FIN_409_PERIOD_NOT_OPEN = "FIN-409-PERIOD-NOT-OPEN";
@@ -99,7 +100,8 @@ public final class FinErrorCodes {
      * RULE-FIN-004 — an entry has already been produced for this {@code eventReference}
      * (QR-FIN-026, POL-FIN-012; backed by {@code UQ_FIN_JOURNAL_ENTRY_EVENT_REF}). Thrown by
      * {@code JournalEntryDomain.create(...)}; v2 also by {@code FinPersistenceRefusalAdvisor} when
-     * the store refuses a concurrent duplicate on that constraint (ADR-FIN-030, REQ-FIN-072).
+     * the store refuses a concurrent duplicate on that constraint (ADR-FIN-030, REQ-FIN-072). Not
+     * retryable: the entry is already posted, so the consumer acknowledges the message on this code.
      * API: API-FIN-020. HTTP 409.
      */
     public static final String FIN_409_DUPLICATE_EVENT = "FIN-409-DUPLICATE-EVENT";

@@ -27,7 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
  * {@code SEC_ACTION_REG}), which are readable only through SEC's own repositories and entities —
  * SEC publishes no module-registry READ endpoint, and its sanctioned cross-module surface
  * {@code SecModuleRegistryApi} exposes only {@code boolean isModuleActive(String)}, far too narrow
- * to assert 12 screens and 27 action rows. {@code com.erp.architecture.CrossModuleBoundaryArchTest
+ * to assert 13 screens and 30 action rows. {@code com.erp.architecture.CrossModuleBoundaryArchTest
  * #modules_only_expose_their_crossmodule_package_to_outsiders} forbids any class outside
  * {@code com.erp.sec} — {@code com.erp.fin} included — from depending on SEC internals, so this
  * test cannot live beside the rest of FIN's in-process coverage in
@@ -86,17 +86,19 @@ class FinRegistrationInSecIntegrationTest {
             (Specification<ScreenRegistry>) (root, query, cb) ->
                 cb.equal(root.get("module").get("code"), FIN_MODULE_CODE));
 
-        // The spec line says 12 screens; V24's "2. SEC_SCREEN_REG" VALUES list seeds 12 page
-        // codes, named here so the assertion is on the identities and not merely on a count —
-        // a count alone would pass on 12 rows of the wrong screens.
+        // v2: thirteen page codes. V24's "2. SEC_SCREEN_REG" VALUES list seeds the twelve v1
+        // ones and V37__fin_v2_account_mappings_security_seed.sql (section 1) adds
+        // FIN_ACCOUNT_MAPPINGS for SCR-REQ-FIN-013 — srs-fin.md v2 records "SCR-REQ count: 13".
+        // Named here so the assertion is on the identities and not merely on a count.
         assertThat(finScreens)
             .extracting(ScreenRegistry::getPageCode)
             .containsExactlyInAnyOrder(
                 "FIN_ACCOUNTS", "FIN_DIMENSIONS", "FIN_RULES", "FIN_RECURRING_TEMPLATES",
                 "FIN_ALLOCATION_RULES", "FIN_JOURNAL_ENTRIES", "FIN_PERIODS",
                 "FIN_ACCOUNT_LEDGER", "FIN_TRIAL_BALANCE", "FIN_BALANCE_SHEET",
-                "FIN_INCOME_STATEMENT", "FIN_DIMENSION_REPORTS");
-        assertThat(finScreens).hasSize(12);
+                "FIN_INCOME_STATEMENT", "FIN_DIMENSION_REPORTS",
+                "FIN_ACCOUNT_MAPPINGS");
+        assertThat(finScreens).hasSize(13);
         assertThat(finScreens)
             .as("1 ScreenRegistry row PER screen — no duplicate page code")
             .extracting(ScreenRegistry::getPageCode)
@@ -105,10 +107,10 @@ class FinRegistrationInSecIntegrationTest {
             assertThat(screen.getModule().getModuleRegPk())
                 .isEqualTo(finModule.getModuleRegPk()));
 
-        // "1 ActionRegistry row per action": the actions SEC-BE.md's matrix names, seeded by V24's
-        // section 3 (26 rows) plus V28__fin_dimensions_update_action.sql, which adds
-        // FIN_DIMENSIONS/UPDATE. Asserted as the set of PERM_<PAGE_CODE>_<ACTION_CODE> codes, one
-        // row each — the derived shape V24 builds them with.
+        // "1 ActionRegistry row per action", thirty in v2: V24's section 3 (26 rows), plus
+        // V28__fin_dimensions_update_action.sql (FIN_DIMENSIONS/UPDATE), plus V37 section 2's
+        // three FIN_ACCOUNT_MAPPINGS actions VIEW/CREATE/UPDATE. Asserted as the set of
+        // PERM_<PAGE_CODE>_<ACTION_CODE> codes, one row each — the shape V24/V28/V37 derive.
         List<ActionRegistry> finActions = actionRegistryRepository.findAll(
             (Specification<ActionRegistry>) (root, query, cb) ->
                 cb.equal(root.get("screen").get("module").get("code"), FIN_MODULE_CODE));
@@ -137,7 +139,10 @@ class FinRegistrationInSecIntegrationTest {
                 "PERM_FIN_PERIODS_CLOSE_APPROVE",
                 "PERM_FIN_ACCOUNT_LEDGER_VIEW", "PERM_FIN_TRIAL_BALANCE_VIEW",
                 "PERM_FIN_BALANCE_SHEET_VIEW", "PERM_FIN_INCOME_STATEMENT_VIEW",
-                "PERM_FIN_DIMENSION_REPORTS_VIEW");
+                "PERM_FIN_DIMENSION_REPORTS_VIEW",
+                "PERM_FIN_ACCOUNT_MAPPINGS_VIEW", "PERM_FIN_ACCOUNT_MAPPINGS_CREATE",
+                "PERM_FIN_ACCOUNT_MAPPINGS_UPDATE");
+        assertThat(finActions).hasSize(30);
 
         // Every PERM_FIN_* constant FIN's @PreAuthorize gates reference must resolve to one of
         // those rows — a registration that missed one would leave an endpoint permanently

@@ -132,9 +132,18 @@ def _request_body(operation: dict, components: dict) -> Optional[RequestBody]:
     content = body.get("content", {})
     for content_type, media in content.items():
         schema = media.get("schema", {})
-        _, ref_name = dto_extractor.resolve_ref(schema, components)
+        resolved, ref_name = dto_extractor.resolve_ref(schema, components)
         fields = dto_extractor.schema_fields(schema, components)
-        return RequestBody(content_type=content_type, schema_name=ref_name, fields=fields)
+        # The media type's own example first (an @ExampleObject on the
+        # operation), then the schema's (a class-level @Schema(example = ...)
+        # on the request DTO). Either is a payload someone wrote and owns as a
+        # WHOLE; a field-by-field synthesis is only a fallback for when
+        # neither exists -- see RequestBody.example_raw.
+        example = media.get("example")
+        if example is None:
+            example = resolved.get("example")
+        return RequestBody(content_type=content_type, schema_name=ref_name, fields=fields,
+                           example_raw=example, description=resolved.get("description"))
     return None
 
 

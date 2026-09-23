@@ -127,6 +127,14 @@ extractors/
                          picked. Also finds module advisors that catch
                          AccessDeniedException and re-raise a module code, so
                          the 403 row names the code the client really receives.
+                         A `fieldErrors[]` detail is reached through a check
+                         method that names no Status of its own; its Status is
+                         taken from the aggregate throw that actually reaches
+                         it on the same walk (`new LocalizedException(Status.X,
+                         <collected list>)` / `withDetails(Status.X, ...)`),
+                         falling back to the Status the code is registered
+                         with. A detail neither reaches keeps no status rather
+                         than being given one.
   constraint_extractor.py  Module source + Flyway migrations required. Reads
                          @Table(uniqueConstraints) off the entities and replays
                          the migrations in version order (ADD CONSTRAINT UNIQUE,
@@ -136,7 +144,34 @@ extractors/
   exception_extractor.py  BEST-EFFORT, only runs when a module source root is
                          available. Finds every `*ErrorCodes.java` file under
                          the module's own source tree and lists its constants
-                         as a module-level "Known Error Codes" appendix.
+                         as a module-level "Known Error Codes" appendix, each
+                         with its own Javadoc SUMMARY paragraph (markup
+                         removed, block tags and the discussion after the
+                         first `<p>` dropped) as the consumer note -- that is
+                         where a module states when a code is raised and what
+                         makes it stop being raised.
+  message_bundle_extractor.py  Reads the application's own i18n bundles
+                         (spring.messages.basename) and gives each error code
+                         the message the API actually answers with, keyed by
+                         the code's own VALUE -- the wire code doubles as the
+                         message key on this platform. One column per locale
+                         that has content; a code with no bundle entry renders
+                         as an em dash, never as an invented or borrowed
+                         message.
+  response_status_extractor.py  BEST-EFFORT, module source required. springdoc
+                         declares `200` for every operation that carries no
+                         `@ApiResponse`, and no controller here declares one,
+                         so every create published as 200. Resolves the real
+                         success status structurally: controller -> its single
+                         delegate -> that method's `ServiceResult` factory
+                         calls, with the factory's own default Status read
+                         from the wrapper class's source and an explicit
+                         `Status.X` at the call site overriding it, then
+                         through the same shared Status -> HttpStatus table
+                         error_mapping_extractor already reads. Two different
+                         outcomes in one method resolve to nothing rather than
+                         to whichever came first, and the published line names
+                         the constant and method it was read at.
   error_mapping_extractor.py  BEST-EFFORT, only runs when shared/common
                          source roots are available. Also reads what each
                          GlobalExceptionHandler method passes to
@@ -396,6 +431,11 @@ modules/ORG/api-docs/
   `SearchRequest` DTO body, a raw `Pageable` method parameter, or ad-hoc
   `@RequestParam`/`@RequestHeader`s — all fully visible in the OpenAPI JSON,
   no special-casing needed).
+- A request DTO's class-level `@Schema(example = ...)` is published verbatim
+  as the Request Example. A field-by-field synthesis is the fallback for when
+  no whole-payload example exists: it can only ever emit ONE entry of a
+  collection, so for any rule of the form "the set must also contain X" it
+  publishes a payload the server is required to reject.
 - Request/response DTO fields with `@NotBlank`/`@NotNull` → required,
   `@Size` → min/maxLength, `@Pattern` → pattern, `@Schema(description,
   example)` → description/example — expanded recursively into nested fields
@@ -420,6 +460,11 @@ modules/ORG/api-docs/
 - (best-effort, needs shared/common source) Each error code's business
   `Status` and real HTTP status; the framework-level error codes and their
   HTTP status; headers applied globally by shared filters.
+- (needs the i18n bundles) Each error code's ar/en (and any other locale's)
+  message, resolved by the code's own value.
+- (best-effort, needs module source) Each endpoint's real success HTTP status,
+  derived from the `Status` its service returns rather than from springdoc's
+  `200` default.
 
 ## Limitations
 

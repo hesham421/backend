@@ -10,10 +10,12 @@ import com.erp.fin.domain.JournalEntryDomain;
 import com.erp.fin.dto.YearEndCloseResponse;
 import com.erp.fin.entity.FiscalPeriod;
 import com.erp.fin.entity.FiscalYear;
+import com.erp.fin.entity.JournalEntry;
 import com.erp.fin.exception.FinErrorCodes;
 import com.erp.fin.repository.AccountRepository;
 import com.erp.fin.repository.FiscalPeriodRepository;
 import com.erp.fin.repository.FiscalYearRepository;
+import com.erp.fin.repository.JournalEntryRepository;
 import com.erp.fin.service.FiscalPeriodService;
 import com.erp.fin.service.FiscalYearService;
 import com.erp.fin.FinYearEndFixtures.YearEndFixture;
@@ -77,6 +79,8 @@ class FinSoDCoverageIntegrationTest {
     private FiscalPeriodRepository fiscalPeriodRepository;
     @Autowired
     private AccountRepository accountRepository;
+    @Autowired
+    private JournalEntryRepository journalEntryRepository;
 
     @AfterEach
     void clearSecurityContext() {
@@ -118,12 +122,15 @@ class FinSoDCoverageIntegrationTest {
     }
 
     // -----------------------------------------------------------------------------------------
-    // TC-FIN-060 — the same AC-FIN-038 denial on year-end close (API-FIN-027)
+    // TC-FIN-060 / TC-FIN-052 — the same AC-FIN-038 denial on year-end close (API-FIN-027)
     // -----------------------------------------------------------------------------------------
 
     @Test
     void yearEndClose_isDeniedForAPrincipalHoldingOnlyTheEntryCreationPermission() {
-        // Covers: TC-FIN-060, AC-FIN-038
+        // Covers: TC-FIN-060 (v1 plan) and TC-FIN-052 (v2 plan, API-SCENARIOS.md) — one and the
+        // same case: AC-FIN-038 / RULE-FIN-015 on API-FIN-027. The v2 block's "assert the 403 at
+        // the gate, never from inside the service" is what the fully-eligible fixture buys: the
+        // year would otherwise close, so only @PreAuthorize can account for the refusal.
         //
         // The year is built FULLY ELIGIBLE on purpose — every period HARD_CLOSE, a Retained
         // Earnings account marked, an adjacent successor year — so that nothing but the missing
@@ -151,6 +158,17 @@ class FinSoDCoverageIntegrationTest {
             .isNotEmpty()
             .allSatisfy(period ->
                 assertThat(period.getStatusCode()).isEqualTo(FiscalPeriod.STATUS_HARD_CLOSE));
+
+        // TC-FIN-052's "no entry is posted": the denial happens before the method body runs, so
+        // neither the closing entry in this year nor the opening entry in its successor exists.
+        assertThat(countEntriesIn(fixture.year().getFiscalYearPk())).isZero();
+        assertThat(countEntriesIn(fixture.successor().getFiscalYearPk())).isZero();
+    }
+
+    private long countEntriesIn(Long fiscalYearPk) {
+        return journalEntryRepository.count((org.springframework.data.jpa.domain.Specification
+            <JournalEntry>) (root, query, cb) ->
+            cb.equal(root.get("fiscalYear").get("fiscalYearPk"), fiscalYearPk));
     }
 
     // -----------------------------------------------------------------------------------------

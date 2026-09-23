@@ -41,6 +41,12 @@ class FieldSpec:
     # schemas, e.g. a tree node's own child list) — names the schema so the
     # renderer can say "same shape as X" instead of expanding forever.
     recursive_ref: Optional[str] = None
+    # The description of the schema this field's own type refers to (the
+    # nested DTO's class-level @Schema(description = ...)). A DTO author's
+    # note about the whole nested object -- "the field examples below describe
+    # a single entry; the complete payload is on X" -- lives there and nowhere
+    # else, and expanding the nested fields into flat rows used to drop it.
+    nested_schema_description: Optional[str] = None
 
 
 @dataclass
@@ -58,6 +64,18 @@ class RequestBody:
     content_type: str = "application/json"
     schema_name: Optional[str] = None
     fields: list[FieldSpec] = field(default_factory=list)
+    # The schema's OWN example -- a class-level @Schema(example = ...) on the
+    # request DTO, which springdoc emits as the schema's "example". It is the
+    # one payload the DTO's author wrote as a whole and validated against the
+    # module's own rules, so it outranks an example synthesised field by field
+    # (a per-field synthesis can only ever produce one entry of a collection,
+    # which for a rule like "exactly one remainder target" is a payload the
+    # server must reject). Absent = no class-level example was declared.
+    example_raw: Optional[Any] = None
+    # The schema's own description (class-level @Schema(description = ...)),
+    # kept so a warning the DTO author wrote for the whole payload is not lost
+    # when only field rows are rendered.
+    description: Optional[str] = None
 
 
 @dataclass
@@ -69,6 +87,13 @@ class ResponseVariant:
     fields: list[FieldSpec] = field(default_factory=list)
     is_array: bool = False
     is_page: bool = False
+    # Set only when status_code was resolved from the service's own
+    # Status -> HTTP mapping rather than taken from the OpenAPI document.
+    # springdoc declares 200 for every operation that carries no explicit
+    # @ApiResponse, so a service returning Status.CREATED publishes as 200
+    # unless the real status is read from source. Names the constant and the
+    # method it was read at, so the claim is checkable.
+    status_source: Optional[str] = None
 
 
 @dataclass
@@ -178,6 +203,17 @@ class ErrorCode:
     throw_sites: list[str] = field(default_factory=list)
     bound_endpoints: int = 0
     bound_via: Optional[str] = None   # where the binding is rendered when not in Business Responses
+    # Populated only by message_bundle_extractor: {locale tag -> message}, read
+    # from the application's own i18n bundles keyed by this code's VALUE (the
+    # wire code doubles as the message key on this platform). "" is the base
+    # bundle (the fallback every locale resolves through); "ar", "fr", ... are
+    # its locale variants. A code with no bundle entry keeps an empty dict --
+    # never a placeholder, never an invented message.
+    messages: dict[str, str] = field(default_factory=dict)
+    # The constant's own Javadoc, flattened to one paragraph: what the module's
+    # author wrote about when this code is raised and when it stops being
+    # raised. Absent = the constant carries no Javadoc.
+    note: Optional[str] = None
 
 
 @dataclass

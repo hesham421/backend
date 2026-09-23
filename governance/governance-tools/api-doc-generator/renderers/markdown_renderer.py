@@ -82,7 +82,13 @@ def _flatten_fields(fields: list[FieldSpec], prefix: str = "") -> list[FieldSpec
     row instead of expanding forever."""
     flat: list[FieldSpec] = []
     for f in fields:
-        row = replace(f, name=f"{prefix}{f.name}") if prefix else f
+        row = replace(f, name=f"{prefix}{f.name}") if prefix else replace(f)
+        if f.nested_schema_description:
+            # The nested DTO's own class-level note. It qualifies every child
+            # row that follows, so it belongs on the parent row rather than
+            # being dropped when the object is flattened away.
+            row.description = f"{row.description} — " if row.description else ""
+            row.description += f.nested_schema_description
         flat.append(row)
         if f.recursive_ref:
             flat.append(FieldSpec(
@@ -184,6 +190,26 @@ def _example_json(fields: list[FieldSpec]) -> str:
     return "_(partial — only fields with a documented example are shown)_\n\n" + code
 
 
+def _request_example(body) -> str:
+    """The request DTO's OWN example when it declares one (a class-level
+    `@Schema(example = ...)`), otherwise a synthesis from the field examples.
+
+    The order matters and is not a preference: a per-field synthesis can only
+    ever emit ONE entry of a collection, so for any rule of the form "the set
+    must also contain X" it publishes a payload the server is required to
+    reject. A whole-payload example is written and owned by the DTO's author
+    against the module's real rules; it is the one that must win."""
+    if body.example_raw is not None:
+        value = body.example_raw
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except (json.JSONDecodeError, TypeError):
+                return "```json\n" + value + "\n```"
+        return "```json\n" + json.dumps(value, indent=2, ensure_ascii=False) + "\n```"
+    return _example_json(body.fields)
+
+
 def _envelope_section(title: str, envelope: ResponseEnvelope | None) -> str:
     if not envelope:
         return ""
@@ -256,16 +282,52 @@ def _unique_constraints_section(rows: list[UniqueConstraint]) -> str:
     return "\n".join(lines)
 
 
+def _message_locales(codes: list[ErrorCode]) -> list[str]:
+    """Locale tags that actually carry a message, base bundle ("") first. A
+    locale with nothing in it gets no column — an empty column would read as
+    "this API has no message for these codes"."""
+    tags = {tag for c in codes for tag in c.messages}
+    return ([""] if "" in tags else []) + sorted(t for t in tags if t)
+
+
+def _message_header(tag: str) -> str:
+    return "Message" if not tag else f"Message ({tag})"
+
+
+def _cell(text: str) -> str:
+    """One table cell: no newline may survive (it would end the row) and no
+    bare pipe (it would start a new column)."""
+    return text.replace("\n", " ").replace("|", "\\|")
+
+
 def _error_codes_section(codes: list[ErrorCode], with_binding: bool) -> str:
     if not codes:
         return ""
     has_status = any(c.status or c.http_status for c in codes)
+    locales = _message_locales(codes)
+    has_note = any(c.note for c in codes)
     header = ["Code", "Value", "Source"]
+    header += [_message_header(tag) for tag in locales]
     if has_status:
         header += ["Status", "HTTP Status"]
     if with_binding:
         header.append("Raised by")
+    if has_note:
+        header.append("Consumer note")
     lines = ["## Known Error Codes", ""]
+    if locales:
+        # The wire code doubles as the i18n message key on this platform, so
+        # the text a caller actually receives for a code is knowable and is
+        # published here rather than left for the integrator to trigger and
+        # observe. A blank cell means that bundle has no entry for that code.
+        lines += ["A code's value is also its i18n message key, so each row carries the message the API "
+                  "actually answers with. `Message` is the base bundle (the fallback every locale resolves "
+                  "through); a `Message (<tag>)` column is that locale's own bundle. An em dash means that "
+                  "bundle has no entry for that code.", ""]
+    if has_note:
+        lines += ["\"Consumer note\" is the error-code constant's own Javadoc, verbatim apart from markup — "
+                  "when the module's author documented what raises the code and what makes it stop being "
+                  "raised, that is what it says.", ""]
     if with_binding:
         lines += ["\"Raised by\" counts the endpoints whose controller → service → domain call walk reaches a "
                   "throw site naming the code. An unbound code is thrown only from code no endpoint's walk "
@@ -274,11 +336,14 @@ def _error_codes_section(codes: list[ErrorCode], with_binding: bool) -> str:
     lines += ["| " + " | ".join(header) + " |", "|" + "|".join(["---"] * len(header)) + "|"]
     for c in codes:
         row = [c.name, f"`{c.value}`", c.source_file]
+        row += [c.messages.get(tag, "—") for tag in locales]
         if has_status:
             row += [c.status or "", c.http_status or ""]
         if with_binding:
             row.append(_raised_by(c))
-        lines.append("| " + " | ".join(row) + " |")
+        if has_note:
+            row.append(c.note or "—")
+        lines.append("| " + " | ".join(_cell(cell) for cell in row) + " |")
     lines.append("")
     return "\n".join(lines)
 
@@ -427,7 +492,7 @@ def _endpoint_markdown(ep: Endpoint) -> str:
         if table:
             parts.append(table)
             parts.append("")
-        example = _example_json(ep.request_body.fields)
+        example = _request_example(ep.request_body)
         if example:
             parts.append("**Request Example**")
             parts.append("")
@@ -437,6 +502,11 @@ def _endpoint_markdown(ep: Endpoint) -> str:
     for resp in ep.responses:
         parts.append(f"### Response `{resp.status_code}`" + (f" — {resp.description}" if resp.description else ""))
         parts.append("")
+        if resp.status_source:
+            # springdoc declares 200 for an operation with no @ApiResponse, so
+            # a status that differs from it was read from source; say where.
+            parts.append(f"Status read from source: {resp.status_source}.")
+            parts.append("")
         if resp.schema_name:
             shape = resp.schema_name
             if resp.is_array:

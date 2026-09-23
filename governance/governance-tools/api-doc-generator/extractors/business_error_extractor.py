@@ -26,6 +26,15 @@ CHAINED_STATIC_RE = re.compile(r"(?<![\w.])([A-Z]\w*)\s*\.\s*(\w+)\s*\([^()]*\)\
 METHOD_REF_RE = re.compile(r"(?<![\w.])(\w+)\s*::\s*(\w+)")
 DETAIL_RE = re.compile(r"ErrorDetail\s*\.\s*(?:of|ofField)\s*\(\s*(?:[^,()]*,\s*)?\w+\.([A-Z][A-Z0-9_]*)")
 WITH_DETAILS_STATUS_RE = re.compile(r"LocalizedException\s*\.\s*withDetails\s*\(\s*Status\.(\w+)")
+# The multi-error constructor -- new LocalizedException(Status.X, <List<ErrorDetail>>).
+# Its second argument is a collected list, NOT an error-code constant, which is
+# exactly what tells it apart from the single-code form THROW_RE already reads.
+# This is the Status every ErrorDetail gathered for that throw is answered with,
+# and the ONLY place it is stated: a check method that merely RETURNS an
+# ErrorDetail names no Status of its own, so without reading the aggregate throw
+# its rows can only be published as "not determined".
+AGGREGATE_THROW_RE = re.compile(
+    r"new\s+LocalizedException\s*\(\s*Status\.(\w+)\s*,\s*(?!\s*\w+\s*\.\s*[A-Z][A-Z0-9_]*\s*[,)])")
 CATCH_ACCESS_DENIED_RE = re.compile(r"catch\s*\(\s*(?:[\w.]+\s*\|\s*)*AccessDeniedException\b[^)]*\)\s*\{")
 PACKAGE_PREFIX_LITERAL_RE = re.compile(r'"([a-z][\w]*(?:\.[\w]+)+\.)"')
 JAVA_KEYWORDS = {
@@ -172,13 +181,25 @@ def index_module_source(source_root: Path) -> dict[str, ClassInfo]:
     return classes
 
 
-def _throws_in(body: str, site: str) -> list[BusinessError]:
+def aggregate_detail_status(body: str) -> Optional[str]:
+    """The Status a method answers a collected ErrorDetail list with, when its
+    body states exactly one. Two different aggregate statuses in one body
+    resolve to nothing rather than to whichever came first."""
+    statuses = set(WITH_DETAILS_STATUS_RE.findall(body)) | set(AGGREGATE_THROW_RE.findall(body))
+    return next(iter(statuses)) if len(statuses) == 1 else None
+
+
+def _throws_in(body: str, site: str, inherited_detail_status: Optional[str] = None) -> list[BusinessError]:
+    """`inherited_detail_status` is the aggregate Status of a caller already on
+    this walk: a domain check that RETURNS an ErrorDetail is reached only
+    through the method that throws the collected list, so that caller's Status
+    is this detail's Status. Read from a real throw in a really-walked caller,
+    never assumed."""
     found: list[BusinessError] = []
     for m in THROW_RE.finditer(body):
         status, code = m.groups()
         found.append(BusinessError(code=code, value=code, throw_site=site, kind="thrown", status=status))
-    detail_statuses = set(WITH_DETAILS_STATUS_RE.findall(body))
-    status = next(iter(detail_statuses)) if len(detail_statuses) == 1 else None
+    status = aggregate_detail_status(body) or inherited_detail_status
     for m in DETAIL_RE.finditer(body):
         found.append(BusinessError(code=m.group(1), value=m.group(1), throw_site=site, kind="detail", status=status))
     return found
@@ -266,9 +287,9 @@ def walk_endpoint(classes: dict[str, ClassInfo], controller: str, method_name: s
     walk = BusinessErrorWalk()
     errors: list[BusinessError] = []
     seen: set[tuple[str, str, int]] = set()
-    queue: list[tuple[str, str, Optional[int], int]] = [(controller, method_name, None, 0)]
+    queue: list[tuple[str, str, Optional[int], int, Optional[str]]] = [(controller, method_name, None, 0, None)]
     while queue:
-        cls_name, name, argc, depth = queue.pop(0)
+        cls_name, name, argc, depth, detail_status = queue.pop(0)
         cls = classes.get(cls_name)
         if not cls or name not in cls.methods:
             continue
@@ -282,13 +303,14 @@ def walk_endpoint(classes: dict[str, ClassInfo], controller: str, method_name: s
         seen.add(key)
         site = site_label(cls_name, name)
         walk.visited.append(site)
-        errors.extend(_throws_in(method.body, site))
+        detail_status = aggregate_detail_status(method.body) or detail_status
+        errors.extend(_throws_in(method.body, site, detail_status))
         if depth >= max_depth:
             if _calls_in(cls, method, classes):
                 walk.depth_limit_hit = True
             continue
         for target_cls, target_name, target_argc in _calls_in(cls, method, classes):
-            queue.append((target_cls, target_name, target_argc, depth + 1))
+            queue.append((target_cls, target_name, target_argc, depth + 1, detail_status))
     return errors, walk
 
 
@@ -337,6 +359,7 @@ def attach_business_errors(document: ApiDocument, classes: dict[str, ClassInfo],
     each bound code's wire value and HTTP status through the tables the document
     already carries, and records per-code binding counts on document.error_codes."""
     values = {c.name: c.value for c in document.error_codes}
+    registered_status = {c.name: c.status for c in document.error_codes if c.status}
     sites = count_throw_sites(classes)
     bound_counts: dict[str, int] = {}
 
@@ -349,6 +372,15 @@ def attach_business_errors(document: ApiDocument, classes: dict[str, ClassInfo],
         unique: dict[tuple[str, Optional[str], str, str], BusinessError] = {}
         for be in errors:
             be.value = values.get(be.code, be.code)
+            if not be.status:
+                # Last resort: the Status this very code is REGISTERED with in
+                # the module catalog (read by error_mapping_extractor from a
+                # throw site that names both). A detail-kind row reached through
+                # a path that states no Status of its own still answers with the
+                # code's own status -- printing "not determined" for a code whose
+                # status the same run already published two sections above is a
+                # gap in this generator, not in the application.
+                be.status = registered_status.get(be.code)
             if be.status:
                 be.http_status = http_status_label(status_http.get(be.status))
             unique.setdefault((be.code, be.status, be.throw_site, be.kind), be)

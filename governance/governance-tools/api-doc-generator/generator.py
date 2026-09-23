@@ -40,9 +40,11 @@ from extractors import (
     dto_extractor,
     error_mapping_extractor,
     exception_extractor,
+    message_bundle_extractor,
     openapi_extractor,
     pagination_extractor,
     response_model_extractor,
+    response_status_extractor,
     security_extractor,
 )
 from models.api_doc_model import ResponseEnvelope
@@ -101,8 +103,19 @@ def build_document(context: RepositoryContext):
         )
         document.field_error_semantics = error_mapping_extractor.find_field_error_semantics(context.common_source_roots)
 
+    if context.message_bundles:
+        # The message a caller actually receives for each code, keyed by the
+        # code's own value. Runs after enrich_error_codes so the framework-level
+        # codes it appends get their messages too.
+        bundles = message_bundle_extractor.load_bundles(context.message_bundles,
+                                                        context.message_basename or "messages")
+        message_bundle_extractor.attach_messages(document.error_codes, bundles)
+
     if source_root is not None:
         business_error_extractor.attach_business_errors(document, classes, controller_of, status_http)
+        response_status_extractor.attach_response_statuses(
+            document, classes, controller_of, status_http, context.common_source_roots,
+            error_mapping_extractor.http_status_label)
         document.unique_constraints = constraint_extractor.find_unique_constraints(source_root, context.migration_roots)
         document.source_facts["unique_declared"] = sum(
             c.raw.count("@UniqueConstraint") for c in classes.values() if "@Entity" in c.raw)
