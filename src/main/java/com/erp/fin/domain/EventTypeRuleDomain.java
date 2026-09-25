@@ -205,9 +205,11 @@ public final class EventTypeRuleDomain {
      * </ul>
      *
      * @return the line's amount
-     * @throws LocalizedException {@code FIN-422-REMAINDER-MARKER} for a REMAINDER-sourced line, or
+     * @throws LocalizedException {@code FIN-422-REMAINDER-MARKER} for a REMAINDER-sourced line,
      *     {@code FIN-422-INVALID-PERCENTAGE-VALUE} (code review fix) when {@code amountSourceValue}
-     *     is not a well-formed decimal for a PERCENTAGE-sourced line
+     *     is not a well-formed decimal for a PERCENTAGE-sourced line, and for a FIELD-sourced line
+     *     {@code FIN-422-MISSING-AMOUNT-FIELD} when the event carries no such amount or
+     *     {@code FIN-422-NEGATIVE-AMOUNT-FIELD} when it is negative
      */
     public static BigDecimal sourcedAmount(String amountSourceTypeCode,
                                            String amountSourceValue,
@@ -233,9 +235,31 @@ public final class EventTypeRuleDomain {
             return base.multiply(percentage)
                 .divide(ONE_HUNDRED, AMOUNT_SCALE, RoundingMode.HALF_UP);
         }
+        // FIELD. An absent field used to become ZERO and die on CHK_FIN_JOURNAL_LINE_AMOUNT_POSITIVE
+        // as an unlocalized DATA_INTEGRITY_VIOLATION (fin-consumer E2E, 2026-09-24) — now named.
         BigDecimal fieldAmount = eventAmounts == null || amountSourceValue == null
             ? null : eventAmounts.get(amountSourceValue);
-        return fieldAmount == null ? BigDecimal.ZERO : fieldAmount;
+        if (fieldAmount == null) {
+            throw new LocalizedException(Status.BUSINESS_RULE_VIOLATION,
+                FinErrorCodes.FIN_422_MISSING_AMOUNT_FIELD, amountSourceValue);
+        }
+        if (fieldAmount.signum() < 0) {
+            throw new LocalizedException(Status.BUSINESS_RULE_VIOLATION,
+                FinErrorCodes.FIN_422_NEGATIVE_AMOUNT_FIELD, amountSourceValue, fieldAmount);
+        }
+        return fieldAmount;
+    }
+
+    /**
+     * POL-FIN-005 — a sourced (non-remainder) line whose amount is exactly zero carries nothing and
+     * is left out of the entry instead of posting a zero line the CHECK refuses. Real case: a
+     * PURCHASE_INVOICE paid in full has {@code remainingAmount = 0} — every one of the 50 in 2026 —
+     * and must still post {@code grossAmount} against {@code paidAmount}. A remainder line is never
+     * omitted: its non-positive result stays {@code FIN-422-REMAINDER-NOT-POSITIVE}. The entry's
+     * balance is still judged on the lines that remain (RULE-FIN-006).
+     */
+    public static boolean isOmittedZeroLine(BigDecimal sourcedAmount) {
+        return sourcedAmount != null && sourcedAmount.signum() == 0;
     }
 
     /**

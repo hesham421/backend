@@ -42,7 +42,13 @@
 --   D-12  chart topology (sales under expenses, equity under liabilities) carried verbatim: the
 --         code scheme is prefix-based and reparenting would break it; rules no longer post there
 --
--- HOW TO RUN
+-- STATUS (2026-09-24): APPLIED AS FLYWAY MIGRATION
+--   src/main/resources/db/migration/V38__fin_legacy_production_config_seed.sql — this file, minus the
+--   \set / BEGIN / COMMIT lines. Flyway applies it on boot to every environment; the copy here is
+--   the provenance record (decisions, generator notes). Do not run it by hand on a Flyway-managed
+--   database and do not edit V38 — a regeneration (gen_seed.py) is a NEW migration.
+--
+-- HOW TO RUN (only on a database that is NOT Flyway-managed)
 --   psql -v ON_ERROR_STOP=1 -f fin-seed-production.sql
 --   ONE transaction. Section 8 verifies and RAISEs on any integrity failure (everything rolls
 --   back). Re-runnable: every INSERT is ON CONFLICT DO NOTHING on the table's natural key and the
@@ -174,7 +180,7 @@ INSERT INTO seed_chart (code, parent_code, account_type_code, nature_code, is_le
   ('000100010002', '00010001', 'ASSET', 'DEBIT', FALSE, TRUE, 'مشروعات تحت التنفيذ'),  -- pk 9 | type 22 | 2026 postings 0
   ('000100020001', '00010002', 'ASSET', 'DEBIT', FALSE, TRUE, 'النقد'),  -- pk 23 | type 31 | 2026 postings 0 -- nature DERIVED
   ('000100020002', '00010002', 'ASSET', 'DEBIT', FALSE, TRUE, 'المخزون'),  -- pk 31 | type 22 | 2026 postings 0
-  ('000100020003', '00010002', 'ASSET', 'CREDIT', FALSE, TRUE, 'العملاء'),  -- pk 32 | type 23 | 2026 postings 2793
+  ('000100020003', '00010002', 'ASSET', 'DEBIT', FALSE, TRUE, 'العملاء'),  -- pk 32 | type 23 | 2026 postings 2793 -- nature FIXED D-18 (receivable = debit)
   ('000100020004', '00010002', 'ASSET', 'DEBIT', FALSE, TRUE, 'إيرادات مستحقة'),  -- pk 33 | type 22 | 2026 postings 0
   ('000100020005', '00010002', 'ASSET', 'DEBIT', FALSE, TRUE, 'سلف العاملين'),  -- pk 34 | type 22 | 2026 postings 0
   ('000100020006', '00010002', 'ASSET', 'DEBIT', FALSE, TRUE, 'عهد مالية'),  -- pk 35 | type 22 | 2026 postings 0
@@ -243,8 +249,8 @@ INSERT INTO seed_chart (code, parent_code, account_type_code, nature_code, is_le
   ('0001000200020008', '000100020002', 'ASSET', 'DEBIT', TRUE, TRUE, 'مخزن بضاعة بالطريق'),  -- pk 51 | type 22 | 2026 postings 0
   ('0001000200020009', '000100020002', 'ASSET', 'DEBIT', TRUE, TRUE, 'مخزن بضاعة مستلمة'),  -- pk 52 | type 22 | 2026 postings 0
   ('0001000200020010', '000100020002', 'ASSET', 'DEBIT', TRUE, TRUE, 'مخزن بضاعة مسلمة'),  -- pk 53 | type 22 | 2026 postings 0
-  ('0001000200030001', '000100020003', 'ASSET', 'CREDIT', TRUE, TRUE, 'عملاء محليين'),  -- pk 54 | type 23 | 2026 postings 0
-  ('0001000200030002', '000100020003', 'ASSET', 'CREDIT', TRUE, TRUE, 'عملاء دوليين'),  -- pk 55 | type 23 | 2026 postings 0
+  ('0001000200030001', '000100020003', 'ASSET', 'DEBIT', TRUE, TRUE, 'عملاء محليين'),  -- pk 54 | type 23 | 2026 postings 0 -- nature FIXED D-18
+  ('0001000200030002', '000100020003', 'ASSET', 'DEBIT', TRUE, TRUE, 'عملاء دوليين'),  -- pk 55 | type 23 | 2026 postings 0 -- nature FIXED D-18
   ('0001000200040001', '000100020004', 'ASSET', 'DEBIT', TRUE, TRUE, 'إيرادات مستحقة'),  -- pk 56 | type 22 | 2026 postings 0
   ('0001000200040002', '000100020004', 'ASSET', 'DEBIT', TRUE, TRUE, 'إيجارات غير محصلة'),  -- pk 57 | type 22 | 2026 postings 0
   ('0001000200050001', '000100020005', 'ASSET', 'DEBIT', TRUE, TRUE, 'سلف شخصية'),  -- pk 58 | type 22 | 2026 postings 0

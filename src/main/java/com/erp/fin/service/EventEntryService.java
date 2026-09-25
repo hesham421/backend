@@ -156,6 +156,9 @@ public class EventEntryService {
             BigDecimal amount = EventTypeRuleDomain.sourcedAmount(
                 ruleLine.getAmountSourceTypeCode(), ruleLine.getAmountSourceValue(),
                 request.getBaseAmount(), request.getAmounts());
+            if (EventTypeRuleDomain.isOmittedZeroLine(amount)) {
+                continue;   // POL-FIN-005: a zero line carries nothing (e.g. remainingAmount = 0)
+            }
             amounts.put(ruleLine.getRuleLinePk(), amount);
             orderedLines.add(ruleLine);
             totals = totals.plus(ruleLine.getDirectionCode(), amount);

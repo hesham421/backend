@@ -11,7 +11,9 @@
 --   ACCOUNTING_EVENT_SEQ   sequence — the per-emission suffix of eventReference (uniqueness without
 --                          adding a revision column to any legacy table)
 --   ACCOUNTING_EVENT_Q     Transactional Event Queue, JSON payload, single consumer, single shard
---                          (= global FIFO), max_retries 5, exception queue automatic.
+--                          (= global FIFO), max_retries 5.
+--   ACCOUNTING_EVENT_Q_EXCPT its exception queue (section 3b) — NOT automatic on a TxEventQ;
+--                          without it a message past max_retries is purged.
 --                          retry_delay is not a TxEventQ setting — the consumer owns back-off.
 --   ACCOUNTING_EVENT_LOG   a plain table: every emission's reference, type, payload and outcome.
 --                          The queue is the transport; this is the audit and the replay source.
@@ -45,20 +47,26 @@ WHENEVER SQLERROR EXIT FAILURE
 -- PKG_ACCOUNTING_EVENT's body fails to compile with
 --     PLS-00201: identifier 'DBMS_AQ' must be declared
 -- Discovered on the first real run, 2026-09-23. A direct grant is the documented AQ requirement.
--- Granted here via DBA's GRANT ANY OBJECT PRIVILEGE, so no SYS login is needed; on a hardened
--- production instance a DBA runs the same statement instead:
+-- It CANNOT be issued by LOAN_SYS itself — ORA-01749 "Cannot GRANT or REVOKE privileges to or from
+-- yourself" (hit 2026-09-24), DBA role or not. A DBA runs it as SYS, in the PDB, BEFORE this file:
+--     -- on the test copy (container, OS authentication):
+--     docker exec -i erp-oracle bash -lc 'sqlplus -S / as sysdba <<EOF
+--     ALTER SESSION SET CONTAINER = FREEPDB1;
 --     GRANT EXECUTE ON SYS.DBMS_AQ TO LOAN_SYS;
+--     EOF'
+--     -- on production: the same two statements as SYS.
 -- Reverse with: REVOKE EXECUTE ON SYS.DBMS_AQ FROM LOAN_SYS;
+-- This block only CHECKS, and stops the file with a clear message when the grant is missing, so
+-- file 2 does not fail later with the cryptic PLS-00201.
 DECLARE n NUMBER;
 BEGIN
   SELECT COUNT(*) INTO n FROM user_tab_privs
    WHERE table_name = 'DBMS_AQ' AND privilege = 'EXECUTE';
   IF n = 0 THEN
-    EXECUTE IMMEDIATE 'GRANT EXECUTE ON SYS.DBMS_AQ TO LOAN_SYS';
-    DBMS_OUTPUT.PUT_LINE('granted EXECUTE ON SYS.DBMS_AQ to LOAN_SYS');
-  ELSE
-    DBMS_OUTPUT.PUT_LINE('EXECUTE ON SYS.DBMS_AQ already granted directly — skipped');
+    RAISE_APPLICATION_ERROR(-20000,
+      'LOAN_SYS has no direct EXECUTE on SYS.DBMS_AQ. As SYS in FREEPDB1 run: GRANT EXECUTE ON SYS.DBMS_AQ TO LOAN_SYS; then re-run this file.');
   END IF;
+  DBMS_OUTPUT.PUT_LINE('EXECUTE ON SYS.DBMS_AQ granted directly — OK');
 END;
 /
 
@@ -97,6 +105,8 @@ BEGIN
         PAYLOAD           JSON            NOT NULL,
         ENQUEUED_FL       NUMBER(1)       DEFAULT 1 NOT NULL,   -- 0 = emit failed, payload kept for replay
         ENQUEUE_ERROR     VARCHAR2(4000),
+        UNDO_FL           NUMBER(1)       DEFAULT 0 NOT NULL,   -- D-16: 1 = cancels an earlier emission (old value on UPDATE, DELETE)
+        REVERSES_EVENT_REFERENCE VARCHAR2(100),                 -- D-16: that emission's reference, when one was found
         CREATED_DATE      TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
         CREATED_BY        VARCHAR2(100)   DEFAULT SYS_CONTEXT('USERENV','SESSION_USER'),
         CONSTRAINT PK_ACCOUNTING_EVENT_LOG PRIMARY KEY (EVENT_LOG_PK),
@@ -109,6 +119,12 @@ BEGIN
     DBMS_OUTPUT.PUT_LINE('created ACCOUNTING_EVENT_LOG');
   ELSE
     DBMS_OUTPUT.PUT_LINE('ACCOUNTING_EVENT_LOG exists — skipped');
+  END IF;
+  -- D-16 columns, added 2026-09-24 — converge a log table created by the earlier version of this file
+  SELECT COUNT(*) INTO n FROM user_tab_columns WHERE table_name = 'ACCOUNTING_EVENT_LOG' AND column_name = 'UNDO_FL';
+  IF n = 0 THEN
+    EXECUTE IMMEDIATE 'ALTER TABLE ACCOUNTING_EVENT_LOG ADD (UNDO_FL NUMBER(1) DEFAULT 0 NOT NULL, REVERSES_EVENT_REFERENCE VARCHAR2(100))';
+    DBMS_OUTPUT.PUT_LINE('added UNDO_FL / REVERSES_EVENT_REFERENCE to ACCOUNTING_EVENT_LOG');
   END IF;
 END;
 /
@@ -151,9 +167,54 @@ BEGIN
     -- queue that exists, has the wrong shard count and is not started. "Skip if present" would
     -- then never repair it. So converge the settings instead of assuming them.
     DBMS_AQADM.SET_QUEUE_PARAMETER('ACCOUNTING_EVENT_Q', 'SHARD_NUM', 1);
-    DBMS_AQADM.START_QUEUE(queue_name => 'ACCOUNTING_EVENT_Q', enqueue => TRUE, dequeue => TRUE);
-    DBMS_OUTPUT.PUT_LINE('ACCOUNTING_EVENT_Q existed — shard count and start state reasserted');
+    -- START_QUEUE on an already-started queue raises ORA-24210 (second real run, 2026-09-24), so
+    -- start only the side that is actually stopped.
+    DECLARE v_enq VARCHAR2(10); v_deq VARCHAR2(10);
+    BEGIN
+      SELECT TRIM(enqueue_enabled), TRIM(dequeue_enabled) INTO v_enq, v_deq
+        FROM user_queues WHERE name = 'ACCOUNTING_EVENT_Q';
+      IF v_enq <> 'YES' OR v_deq <> 'YES' THEN
+        DBMS_AQADM.START_QUEUE(queue_name => 'ACCOUNTING_EVENT_Q',
+                               enqueue => (v_enq <> 'YES'), dequeue => (v_deq <> 'YES'));
+        DBMS_OUTPUT.PUT_LINE('ACCOUNTING_EVENT_Q existed — started (enqueue was '||v_enq||', dequeue was '||v_deq||')');
+      ELSE
+        DBMS_OUTPUT.PUT_LINE('ACCOUNTING_EVENT_Q existed and is started — shard count reasserted');
+      END IF;
+    END;
   END IF;
+END;
+/
+
+-- ----------------------------------------------------------------------------
+-- 3b. Exception queue — without it a message past max_retries is PURGED (added 2026-09-24)
+-- ----------------------------------------------------------------------------
+-- Oracle 26 DBMS_AQADM: "After the retry limit has been exceeded, the message will be purged from
+-- the queue", and "by default, no exception queue is created for TxEventQs". A rollback of a
+-- dequeue counts as a retry (measured: attempts 0 → 1). So without this section, five rolled-back
+-- deliveries of one message = a committed business fact whose event silently vanished. With it,
+-- the message moves here, and fin-consumer sweeps it into its failure store (FAILED /
+-- EXCEPTION_QUEUE) where it is visible and replayable. Dequeue-only by design.
+DECLARE n NUMBER;
+BEGIN
+  SELECT COUNT(*) INTO n FROM user_queues WHERE name = 'ACCOUNTING_EVENT_Q_EXCPT';
+  IF n = 0 THEN
+    -- Parameter names read from ALL_ARGUMENTS on 23.26.2 (queue_name, exception_queue_name); the
+    -- published reference's "teq_queue_name" is refused here with PLS-00306.
+    DBMS_AQADM.CREATE_EQ_EXCEPTION_QUEUE(queue_name           => 'ACCOUNTING_EVENT_Q',
+                                         exception_queue_name => 'ACCOUNTING_EVENT_Q_EXCPT');
+    DBMS_OUTPUT.PUT_LINE('created exception queue ACCOUNTING_EVENT_Q_EXCPT');
+  ELSE
+    DBMS_OUTPUT.PUT_LINE('ACCOUNTING_EVENT_Q_EXCPT existed');
+  END IF;
+  -- converge: an exception queue is started for DEQUEUE only (enqueue is AQ's own job)
+  DECLARE v_deq VARCHAR2(10);
+  BEGIN
+    SELECT TRIM(dequeue_enabled) INTO v_deq FROM user_queues WHERE name = 'ACCOUNTING_EVENT_Q_EXCPT';
+    IF v_deq <> 'YES' THEN
+      DBMS_AQADM.START_QUEUE(queue_name => 'ACCOUNTING_EVENT_Q_EXCPT', enqueue => FALSE, dequeue => TRUE);
+      DBMS_OUTPUT.PUT_LINE('ACCOUNTING_EVENT_Q_EXCPT started for dequeue');
+    END IF;
+  END;
 END;
 /
 
@@ -176,6 +237,7 @@ END;
 SELECT name, queue_type, enqueue_enabled, dequeue_enabled, max_retries, retry_delay, queue_table
   FROM user_queues WHERE name LIKE 'ACCOUNTING_EVENT_Q%' OR name LIKE 'AQ$_ACCOUNTING%' ORDER BY name;
 -- expected: ACCOUNTING_EVENT_Q NORMAL_QUEUE enq=YES deq=YES max_retries=5 retry_delay=0
+--           ACCOUNTING_EVENT_Q_EXCPT EXCEPTION_QUEUE enq=NO deq=YES (section 3b)
 --           (retry_delay is always 0 on a TxEventQ — see section 3; it is not a defect)
 DECLARE v NUMBER; BEGIN
   DBMS_AQADM.GET_QUEUE_PARAMETER('ACCOUNTING_EVENT_Q', 'SHARD_NUM', v);

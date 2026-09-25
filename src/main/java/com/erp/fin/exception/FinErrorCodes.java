@@ -326,6 +326,25 @@ public final class FinErrorCodes {
     public static final String FIN_422_REMAINDER_NOT_POSITIVE = "FIN-422-REMAINDER-NOT-POSITIVE";
 
     /**
+     * A FIELD-sourced rule line (ENT-FIN-010, {@code amountSourceTypeCode = FIELD}) names an amount
+     * the event does not carry. Previously the missing amount became ZERO and died on
+     * {@code CHK_FIN_JOURNAL_LINE_AMOUNT_POSITIVE} as an unlocalized {@code
+     * DATA_INTEGRITY_VIOLATION} (found by the fin-consumer E2E run, 2026-09-24). Retrying the same
+     * event cannot help: the producer or the rule must change. Thrown by {@code
+     * EventTypeRuleDomain.sourcedAmount(...)}.
+     * API: API-FIN-020. HTTP 422 ({@code Status.BUSINESS_RULE_VIOLATION}).
+     */
+    public static final String FIN_422_MISSING_AMOUNT_FIELD = "FIN-422-MISSING-AMOUNT-FIELD";
+
+    /**
+     * A FIELD-sourced rule line's event amount is negative. POL-FIN-005: amounts are always
+     * positive and the direction carries the sign — a producer sends the mirrored event type, not a
+     * negative amount. Thrown by {@code EventTypeRuleDomain.sourcedAmount(...)}.
+     * API: API-FIN-020. HTTP 422 ({@code Status.BUSINESS_RULE_VIOLATION}).
+     */
+    public static final String FIN_422_NEGATIVE_AMOUNT_FIELD = "FIN-422-NEGATIVE-AMOUNT-FIELD";
+
+    /**
      * Code review fix (correctness) — a rule line (ENT-FIN-010) with
      * {@code amountSourceTypeCode = PERCENTAGE} whose {@code amountSourceValue} (DBF-FIN-104, free
      * text) is not a well-formed decimal. Nothing upstream (the DTO, the create-time validation)
