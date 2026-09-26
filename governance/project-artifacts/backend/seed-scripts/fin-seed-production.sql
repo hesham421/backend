@@ -1,4 +1,13 @@
 -- ============================================================================
+-- SUPERSEDED (2026-09-26) — DO NOT RUN. This content lives in Flyway V38; the chart it seeds was
+-- restructured by V40/V41. Run by hand after V40 it would re-insert the 325 legacy accounts (its
+-- inserts are ON CONFLICT on code, and those codes no longer exist). The guard below refuses.
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM fin_account WHERE code = '110201') THEN
+    RAISE EXCEPTION 'fin-seed-production.sql is superseded by Flyway V38/V40 - do not run it';
+  END IF;
+END $$;
+-- ============================================================================
 -- fin-seed-production.sql — FIN production configuration seed (PostgreSQL)
 -- ============================================================================
 -- Generated 2026-09-23 (generation 2 — accountant decisions applied) from the live legacy

@@ -1,4 +1,12 @@
 -- ============================================================================
+-- SUPERSEDED (2026-09-26) — DO NOT RUN. This content lives in Flyway V39; its mappings name accounts
+-- by legacy codes that Flyway V40 restructured. The guard below refuses.
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM fin_account WHERE code = '110201') THEN
+    RAISE EXCEPTION 'fin-seed-v2-delta.sql is superseded by Flyway V39/V40 - do not run it';
+  END IF;
+END $$;
+-- ============================================================================
 -- fin-seed-v2-delta.sql — FIN v2 configuration delta (PostgreSQL)
 -- ============================================================================
 -- Prepared 2026-09-23 against the FIN v2 analysis delivered the same day:
