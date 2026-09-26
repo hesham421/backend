@@ -288,31 +288,36 @@
 
 | النوع | مدين | دائن |
 |---|---|---|
-| `INSTALLMENT_PAYMENT_RECEIVED` | MAPPING(PAYMENT_METHOD) | عملاء محليين `0001000200030001` |
-| `COURT_INSTALLMENT_PAYMENT` | MAPPING(PAYMENT_METHOD) | عملاء محليين |
-| `LAWYER_FEE_PAYMENT` | MAPPING(PAYMENT_METHOD) | أتعاب وإستشارات مهنية `0003000300040020` |
-| `INVESTOR_FEE` | MAPPING(PAYMENT_METHOD) | جارى مساهمين الشركة `0001000200130001` |
-| `INVESTOR_SUPPORT_OR_DRAWING`، `LAWYER_ADVANCE`، `INVESTOR_FEE_2_5`، `EXECUTION_ACTION_FEE`، `BAEETHA_FEE`، `CIVIL_FEE` | جارى مساهمين الشركة | MAPPING(PAYMENT_METHOD) |
-| `INVESTOR_SALES_INVOICE` | عملاء محليين | جارى مساهمين الشركة |
-| `CONTRACT_CREATED` | جارى مساهمين الشركة | المبيعات `00040005` |
-| `CONTRACT_SETTLEMENT`، `COMPLAINT_SETTLEMENT` | خصم مسموح به `0003000200030002` | عملاء محليين |
-| `PURCHASE_INVOICE` | مشتريات `00030003000400330002` ← `grossAmount` | MAPPING(PAYMENT_METHOD) ← `paidAmount`، وموردين محليين `0002000100050001` ← `remainingAmount` (يُحذف إن كان صفراً) |
+> **الأكواد أدناه بعد إعادة هيكلة الشجرة (Flyway V40، 2026-09-26)**: فئة (1) / مجموعة (2) / حساب (4) / فرعي (6). المرجع: `governance/project-artifacts/fin-chart-of-accounts-review.md`.
+
+| النوع | مدين | دائن |
+|---|---|---|
+| `INSTALLMENT_PAYMENT_RECEIVED` | MAPPING(PAYMENT_METHOD) | ذمم عملاء التقسيط - منتظمة `110201` |
+| `COURT_INSTALLMENT_PAYMENT` | MAPPING(PAYMENT_METHOD) | `110201` |
+| `LAWYER_FEE_PAYMENT` | MAPPING(PAYMENT_METHOD) | إيرادات استرداد أتعاب قضائية `4403` |
+| `INVESTOR_FEE` | MAPPING(PAYMENT_METHOD) | جاري المستثمرين `210201` |
+| `INVESTOR_SUPPORT_OR_DRAWING`، `LAWYER_ADVANCE`، `INVESTOR_FEE_2_5`، `EXECUTION_ACTION_FEE`، `BAEETHA_FEE`، `CIVIL_FEE` | جاري المستثمرين `210201` | MAPPING(PAYMENT_METHOD) |
+| `INVESTOR_SALES_INVOICE` | `110201` | `210201` |
+| `CONTRACT_CREATED` | `210201` | مبيعات التقسيط `4101` |
+| `CONTRACT_SETTLEMENT` | خصومات مخالصات العقود `4901` (مقابل إيراد) | `110201` |
+| `COMPLAINT_SETTLEMENT` | ديون معدومة ومخالصات عملاء متعثرين `6602` | `110201` |
+| `PURCHASE_INVOICE` | مشتريات بضاعة `5102` ← `grossAmount` | MAPPING(PAYMENT_METHOD) ← `paidAmount`، وموردون محليون `210101` ← `remainingAmount` (يُحذف إن كان صفراً) |
 | `EXPENSE_PAID` | MAPPING(EXPENSE_TYPE_CODE) | MAPPING(PAYMENT_METHOD) |
 | `REVENUE_RECEIVED` | MAPPING(PAYMENT_METHOD) | MAPPING(EXPENSE_TYPE_CODE) |
 | `CUSTODY_RECEIVED` | MAPPING(PAYMENT_METHOD) | MAPPING(EXPENSE_TYPE_CODE) |
 | `CUSTODY_PAID_OUT` | MAPPING(EXPENSE_TYPE_CODE) | MAPPING(PAYMENT_METHOD) |
-| `SAFE_TRANSFER_TO_SAFE` | الصندوق `0001000200010001` | البنك التجارى `0001000200010007` |
-| `SAFE_TRANSFER_TO_BANK` | البنك التجارى | الصندوق |
+| `SAFE_TRANSFER_TO_SAFE` | الصندوق الرئيسي `110101` | البنك التجاري `110111` |
+| `SAFE_TRANSFER_TO_BANK` | `110111` | `110101` |
 
-**الـ mappings:**
+**الـ mappings** (تشير إلى الحساب بالـ id، فانتقلت مع إعادة الترميز تلقائيًا):
 
 | الحقل | القيمة ← الحساب |
 |---|---|
-| `PAYMENT_METHOD` (لكل الأنواع التي تستخدمه) | `CASH` ← الصندوق `0001000200010001`، `CHEQUE` ← البنك التجارى `0001000200010007` |
-| `EXPENSE_TYPE_CODE` في `EXPENSE_PAID` | 61 ← تشغيل/أتعاب مهنية `0003000100040029`، 81 ← راتب أساسي `0003000100010001`، 101 ← أخرى `0003000300040031`، 161 ← إيجار `0003000100040003` |
-| `EXPENSE_TYPE_CODE` في `REVENUE_RECEIVED` | 1 ← إيرادات متنوعة `00040003`، 181 ← إيرادات خدمات `00040001`، 561 ← ايرادات أخرى `00040006` |
-| `EXPENSE_TYPE_CODE` في `CUSTODY_RECEIVED` | 324 ← حساب/ `0001000200140001`، 381 ← عهدة مؤقتة `0001000200060001`، 401 ← جاري الشريك 1 `0002000100010001`، 422 ← تحويلات نقدية `0001000200010003` |
-| `EXPENSE_TYPE_CODE` في `CUSTODY_PAID_OUT` | 281 ← جاري الشريك 1، 282 ← حساب/، 382 ← عهدة مؤقتة، 424 ← تحويلات نقدية |
+| `PAYMENT_METHOD` (لكل الأنواع التي تستخدمه) | `CASH` ← الصندوق الرئيسي `110101`، `CHEQUE` ← البنك التجاري `110111` |
+| `EXPENSE_TYPE_CODE` في `EXPENSE_PAID` | 61 مصروفات أخرى ← `6899`، 81 مرتبات ← رواتب أساسية `6101`، 101 مصروفات عمومية ← `6801`، 161 إيجارات ← `6201` |
+| `EXPENSE_TYPE_CODE` في `REVENUE_RECEIVED` | 1 إيرادات عقود ← `4401`، 181 إيرادات تسديد عملاء ← `4402`، 561 إيرادات أخرى ← `4501` |
+| `EXPENSE_TYPE_CODE` في `CUSTODY_RECEIVED` | 324 سداد قرضات ← قروض ممنوحة للمستثمرين `110307`، 381 عهدة المحاماة ← `110303`، 401 سداد مسحوبات علوش ← جاري الشريك - علوش `340101`، 422 تحويلات ← `110103` |
+| `EXPENSE_TYPE_CODE` في `CUSTODY_PAID_OUT` | 281 سحوبات علوش ← `340101`، 282 قرضات للمستثمرين ← `110307`، 382 عهدة المحاماة ← `110303`، 424 تحويلات ← `110103` |
 
 الأنواع 361 و362 و363 **بلا mapping**، والقرار فيها للمالك (D-11).
 
