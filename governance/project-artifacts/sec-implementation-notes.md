@@ -5,12 +5,18 @@ Extracted from the class Javadoc on 2026-09-11, when the SEC sources were trimme
 GOVERNANCE-RULES.md Javadoc limit (~5 lines, one non-obvious fact per block). The SEC classes
 now link here instead of restating the reasoning in every file.
 
-Sources referenced throughout:
-`governance/modules/SEC/P2/db-script-sec.md`,
-`governance/modules/SEC/packages/backend-execution/{CORE,DATA-DOM,SVC-API}*.md`,
-`governance/modules/SEC/P1/srs-sec.md`,
-`governance/modules/SEC/execution-state.json`,
+Sources referenced throughout (governance paths as mounted today — `governance/shared` is the
+shared governance submodule; older sections below were written when these lived under
+`governance/modules/SEC/`):
+`governance/shared/analysis/modules/SEC/P2/db-script-sec.md`,
+`governance/shared/backend/modules/SEC/packages/backend-execution/{CORE,DATA-DOM,SVC-API}*.md`,
+`governance/shared/analysis/modules/SEC/P1/srs-sec.md`,
+`governance/shared/backend/modules/SEC/execution-state.json`,
 `src/main/resources/db/migration/V16__sec_schema.sql`.
+
+Sections are dated decision records. Where a later change superseded a statement, the statement
+has been corrected in place and the change is marked **(updated 2026-10-01)**. For how another
+module integrates with SEC today, read [platform-integration-sec.md](platform-integration-sec.md).
 
 ---
 
@@ -436,8 +442,9 @@ scope (ADR-SEC-002, "wrong/unknown credentials") covers a request that presents 
 
 An authority string **is** an `ActionRegistry.permissionCode` — `PERM_<PAGE_CODE>_<ACTION_CODE>`,
 the same value `RegistryService` derives and `PermissionConstants` declares. `JwtAuthenticationFilter`
-resolves them through `MenuService.effectivePermissionCodes()`, the single effective-grant read path
-CORE.md's REQ-SEC-033 paragraph names — no second resolution query was written. The filter installs a
+resolves them through `MenuService.effectiveAuthorityCodes()` — the effective-grant read path
+CORE.md's REQ-SEC-033 paragraph names, with RULE-SEC-007 applied **(updated 2026-10-01)**;
+`effectivePermissionCodes()` is the same read without the gateway, used by API-SEC-022. The filter installs a
 provisional zero-authority authentication first, purely so that method's own
 `@PreAuthorize("isAuthenticated()")` can be satisfied while the real authority set is being built; it
 is replaced before the chain proceeds and no request is ever handled under it.
@@ -450,11 +457,11 @@ grant. The seed satisfies the same chain by construction.
 ### RULE-SEC-007's placement
 
 The gateway is applied **once, while the authority set is built**, not per endpoint: a non-VIEW
-permission is dropped unless the same screen's `PERM_<PAGE_CODE>_VIEW` is also held. The screen is
-recovered from the code's own shape (everything between `PERM_` and the last `_`), mirroring
-`RegistryService.PERMISSION_CODE_FORMAT` rather than issuing another query — which is why an action
-code containing an underscore would not be gateable, and none exists. A code that does not carry the
-registry shape at all has no screen to gate on and is passed through unchanged.
+permission is dropped unless the same screen's `PERM_<PAGE_CODE>_VIEW` is also held. The screen of
+each held code is its `SEC_SCREEN_REG` row, read in the same query as the codes — never parsed from
+the code's text — so a multi-word action such as `PERM_FIN_PERIODS_CLOSE_APPROVE` is gated by
+`PERM_FIN_PERIODS_VIEW` correctly **(updated 2026-10-01; the first implementation split the code on
+its last underscore, which could not gate a multi-word action)**.
 
 Proven at runtime on a throwaway database: with `PERM_SEC_USERS_VIEW` and `PERM_SEC_USERS_UPDATE`
 both granted, `PATCH /api/v1/sec/users/1` reached the business layer (`409`
@@ -497,32 +504,37 @@ without it would lock every caller out. It seeds 1 module, 9 screens, 13 actions
 `com.erp.sec.security.InternalCallerContext` installs a synthetic authentication carrying one
 authority, `INTERNAL_TRUSTED_CALLER`, for the duration of one in-process call and restores the
 previous context in a `finally`. `PasswordResetService` wraps only the
-`NotificationDispatchApi.dispatch(..)` call site in it, so the anonymous API-SEC-003 can satisfy
+`NotificationDispatchApi.dispatchIndependently(..)` call site in it, so the anonymous API-SEC-003 can satisfy
 NOTIF's `@PreAuthorize("isAuthenticated()")` without NOTIF being touched. No request can obtain the
 authority: `JwtAuthenticationFilter` is the only authentication entry point and strips that exact
 string from every authority set it builds, and the chain configures no other mechanism that grants
 authorities. It lives in `com.erp.sec.security` rather than `com.erp.common.util` because SEC is its
 only consumer and `com.erp.common.**` is shared foundation this phase was scoped not to change.
+Consequence **(updated 2026-10-01)**: because it is outside `com.erp.sec.crossmodule`,
+`CrossModuleBoundaryArchTest` forbids any other module from importing it, so a principal-less caller
+in another module (a scheduled job) has no sanctioned way to pass an `isAuthenticated()` gate yet.
+Moving it to `sec.crossmodule` is the proposed fix and awaits a human decision.
 
 The prescribed build-time ArchUnit guard (no `@RestController`/`@Controller` reaches the gated
-method) is **deferred for the same reason as §2's append-only guard**: `GOVERNANCE-RULES.md` forbids
-creating anything under `src/test/java/` outside the gated `execute-backend-test` phase, and this
-repo has no `src/test` tree at all. Add both together when that phase runs.
+method) is still owed. `src/test` now exists (`CrossModuleBoundaryArchTest`, the SEC integration
+tests), and the append-only half of §2 is covered by `SecCoverageIntegrationTest`; this guard is
+not yet written **(updated 2026-10-01)**.
 
-The transaction half of gap #5 is narrowed, not closed — see `execution-state.json` for the detail:
-NOTIF's `dispatch` is `@Transactional` REQUIRED and joins SEC's transaction, so a failure raised
-inside it now marks the shared transaction rollback-only and REQ-SEC-006's generic 200 becomes a 500.
-The escape is a NOTIF-owned contract change, out of scope here.
+The transaction half of gap #5 is **closed (updated 2026-10-01)**: NOTIF added
+`NotificationDispatchApi.dispatchIndependently`, which sends in a REQUIRES_NEW transaction, and
+`PasswordResetService` calls it. A dispatch failure can no longer mark SEC's transaction
+rollback-only, so REQ-SEC-006's generic 200 holds.
 
 ### Blast radius outside SEC
 
-`@EnableMethodSecurity` activates every `@PreAuthorize` in the deployable. Four live ones exist
-outside `com.erp.sec`, all `isAuthenticated()` and all satisfied by any authenticated caller:
-`DispatchService.dispatch`, `NotificationLookupService.get`, `FileLookupService.get`,
-`FileService.retrieve`. Everything else in CU / NOTIF / FILE sits behind `// TODO: SEC-PENDING`
-comments and stays inert — nothing was added or removed in those modules. The practical change for
-them is the chain's own `anyRequest().authenticated()`: their endpoints now answer `401` without a
-token where they previously answered `200`.
+`@EnableMethodSecurity` activates every `@PreAuthorize` in the deployable. When SEC-BE ran, only
+four gates outside `com.erp.sec` were live (all `isAuthenticated()`); the rest of CU / NOTIF / FILE
+sat behind `// TODO: SEC-PENDING` comments. **(updated 2026-10-01)** Those gates are now live:
+every CU / NOTIF / FILE / MDL / FIN service method carries
+`hasAuthority(T(com.erp.sec.permission.PermissionConstants).PERM_…)` (or `isAuthenticated()` where
+no screen exists), seeded by `V19`/`V21` (MDL), `V24`/`V25` (FIN) and `V31` (CU, NOTIF, FILE). No
+`SEC-PENDING` marker remains. The chain's `anyRequest().authenticated()` answers `401` to any
+request without a token.
 
 ---
 
@@ -583,7 +595,8 @@ argument is `DispatchCommand`, NOTIF's own record, not a JPA entity or internal 
 propagation intent is stated in the method's javadoc at the call site; and the call is wrapped in
 `try/catch (RuntimeException)` that logs at WARN with the stack trace, so it neither surfaces as a
 500 nor is silently swallowed. The one thing the catch cannot do — clear a rollback-only flag set
-inside NOTIF's joined transaction — is already `api_doc_gaps` #5 and stays open there.
+inside NOTIF's joined transaction — was `api_doc_gaps` #5, since closed by
+`dispatchIndependently` (see §9, updated 2026-10-01).
 
 Two further statements were made untrue by the same call and were corrected in PHASE 1 CORE (base
 plan and `CORE/CORE.md`, kept byte-identical): the layer list said the service "integrates (none
@@ -611,6 +624,7 @@ deliver. The same absence keeps NOTIF's own `XM-NOTIF-001` stubbed —
 `com.erp.sec.crossmodule` does not exist. Either SEC supplies `email` among the dispatch
 variables, or SEC exposes a `crossmodule` contact/status reader (which would also close
 `XM-NOTIF-001`); the second is a new cross-module surface and therefore a human decision.
+**Both gaps were later closed — see §14** (and, for `XM-NOTIF-001`, the 2026-10-01 note there).
 
 ---
 
@@ -797,7 +811,7 @@ package-by-feature areas inside one deployable — always deployed together. Cro
 through **direct Spring interface injection**, not loopback HTTP." So the candidate both gap
 entries first listed — "SEC v1 gains a read API" — was the one shape the binding skill forbids.
 The original findings still stand exactly as written: no SEC *endpoint* returns a role's user set,
-and none was added. The 27-endpoint HTTP surface is unchanged, and `/v3/api-docs` gained no path.
+and none was added. The HTTP surface was unchanged by this work, and `/v3/api-docs` gained no path.
 
 Built per the same skill's "Exposing this module to others" — a narrow interface plus its
 read-model, implemented by a small dedicated class delegating to the internal service rather than
@@ -837,10 +851,11 @@ unknown id answers `Optional.empty()`, not a 404: the caller holds only an id, s
 legitimate cross-module answer. With the delivery half already closed by carrying `email` among
 the `DispatchCommand` variables, gap #9 is now closed on both halves.
 
-`com.erp.notif.crossmodule.DefaultRecipientStatusReader` was **deliberately left as a stub**.
-`UserContact.active` is precisely the recipient-active fact its `XM-NOTIF-001` TODO waits for, but
-replacing it is NOTIF's call in NOTIF's own pass; nothing under `src/main/java/com/erp/notif/` or
-`governance/modules/NOTIF/` was touched.
+**(updated 2026-10-01)** NOTIF has since adopted it: the always-true
+`DefaultRecipientStatusReader` stub is gone, replaced by the NOTIF port `RecipientDirectory` and its
+`SecRecipientDirectory` implementation, which reads `UserContact.active` through
+`SecUserDirectoryApi.findContact`. `XM-NOTIF-001` is resolved; an inactive or unknown recipient
+receives nothing (RULE-NOTIF-007).
 
 ### One entity change, and why
 
@@ -851,8 +866,8 @@ than repeat the literal `"ACTIVE"`; the value, the lifecycle and every other mem
 
 ### The module-level cycle, stated rather than discovered
 
-SEC already consumes NOTIF's `NotificationDispatchApi`. Once NOTIF adopts `SecUserDirectoryApi`,
-the two modules point at each other at the **module** level. That is not the circular dependency
+SEC consumes NOTIF's `NotificationDispatchApi`, and NOTIF now consumes `SecUserDirectoryApi`
+**(updated 2026-10-01)**, so the two modules point at each other at the **module** level. That is not the circular dependency
 `build-create-service` forbids — neither crossmodule interface calls the other, and the two paths
 are independent (SEC→NOTIF at reset-token issuance; NOTIF→SEC at delivery, to resolve a bare
 `recipientId`) — but it is real, and is now recorded in the ALIGN `CROSS-MODULE` row so it is
@@ -860,7 +875,7 @@ weighed before any further surface is added in either direction.
 
 ### Owed elsewhere, deliberately not written here
 
-`governance/modules/FIN/P3_1/backend-execution-plan-fin.md:383-386` still says RULE-FIN-015 reads
-the two sets "through SEC's role/grant read APIs". That wording is superseded — it describes
-loopback HTTP between two modules of one deployable — but correcting it is FIN's own pass.
-`governance/modules/FIN/**` was not modified.
+**(updated 2026-10-01)** FIN did not keep a separation-of-duties lookup: `FiscalPeriodService`
+and `FiscalYearService` state that the permission gate itself is the enforcement and that no SoD
+check is to be added back. `findUserIdsHoldingPermission` therefore has no consumer today; it
+remains available for a future module.

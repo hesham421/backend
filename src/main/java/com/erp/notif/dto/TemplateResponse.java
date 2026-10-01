@@ -23,7 +23,7 @@ public class TemplateResponse {
     @Schema(description = "Unique identifier - المعرف الفريد", example = "1")
     private Long id;
 
-    @Schema(description = "Unique template code - رمز القالب الفريد", example = "USER_WELCOME")
+    @Schema(description = "Unique template code - رمز القالب الفريد", example = "PASSWORD_RESET")
     private String templateCode;
 
     @Schema(description = "Template name (Arabic) - اسم القالب بالعربية")

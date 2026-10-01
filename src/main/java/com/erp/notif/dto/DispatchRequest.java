@@ -31,7 +31,7 @@ public class DispatchRequest {
 
     @NotBlank(message = "{validation.required}")
     @Size(max = 80, message = "{validation.size}")
-    @Schema(description = "Template code to resolve - رمز القالب", example = "USER_WELCOME")
+    @Schema(description = "Template code to resolve - رمز القالب", example = "PASSWORD_RESET")
     private String templateCode;
 
     @NotEmpty(message = "{validation.required}")

@@ -14,3 +14,7 @@ Current contents:
 - `INTERFACE-VS-REST-AND-POM-STRUCTURE-RECOMMENDATION.md` — the rationale for the
   single-deployable, package-by-feature Maven layout (referenced by `pom.xml`
   and `Dockerfile`).
+- `PLATFORM-MODULES-INTEGRATION-INDEX.md` — integration reference index for the platform
+  foundation (common, SEC, FILE, NOTIF): status, new-module checklist, reuse in other projects.
+  Per-module detail: `platform-integration-common.md`, `platform-integration-sec.md`,
+  `platform-integration-file.md`, `platform-integration-notif.md`.

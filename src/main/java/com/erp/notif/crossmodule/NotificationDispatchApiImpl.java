@@ -18,6 +18,7 @@ import org.springframework.stereotype.Component;
 public class NotificationDispatchApiImpl implements NotificationDispatchApi {
 
     private final DispatchService dispatchService;
+    private final RecipientDirectory recipientDirectory;
 
     @Override
     public List<Long> dispatch(DispatchCommand command) {
@@ -26,9 +27,12 @@ public class NotificationDispatchApiImpl implements NotificationDispatchApi {
 
     @Override
     public List<Long> dispatchIndependently(DispatchCommand command) {
-        // Delegates to the REQUIRES_NEW entry point so the dispatch commits or rolls back on its own
-        // and never marks the consuming module's transaction rollback-only.
-        return dispatchService.dispatchSystem(toRequest(command)).getData().getLogIds();
+        // The recipient is resolved here, inside the consuming module's transaction, so a user account
+        // that transaction has not committed yet is still visible. The send itself then runs in the
+        // REQUIRES_NEW entry point, committing or rolling back on its own without ever marking the
+        // consuming module's transaction rollback-only.
+        boolean recipientActive = recipientDirectory.isActive(command.recipientId());
+        return dispatchService.dispatchSystem(toRequest(command), recipientActive).getData().getLogIds();
     }
 
     /** Maps the narrow cross-module read-model onto NOTIF's internal request DTO. */

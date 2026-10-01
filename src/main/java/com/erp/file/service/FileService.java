@@ -38,8 +38,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * Orchestration for ENTITY-FILE-001 (FileDocument) — API-FILE-001..006, SCR-FILE-002 File Browser,
- * and the in-process provider (store/retrieve/issueAccessToken) consumed by other modules. Business
+ * Orchestration for ENTITY-FILE-001 (FileDocument) — API-FILE-001..006, SCR-FILE-002 File Browser.
+ * Module-internal: another module reaches FILE over REST, or validates a stored fileId through
+ * {@code com.erp.file.crossmodule.FileDocumentLookupApi} — never by injecting this service. Business
  * decisions are delegated: size/type to {@link FileValidationDomainService} (RULE-FILE-001/002),
  * token crypto to {@link FileAccessTokenDomainService} (RULE-FILE-003), the lifecycle state machine
  * to {@link FileDocumentDomain} (RULE-FILE-006). Metadata reads use the bytes-excluded projection

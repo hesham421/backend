@@ -40,6 +40,9 @@ public final class NotifErrorCodes {
     /** ERR-0004 (PLATFORM-STD) — notification log not found by id. */
     public static final String NOTIF_LOG_NOT_FOUND = "NOTIF_LOG_NOT_FOUND";
 
+    /** XM-NOTIF-002 — template attachmentFileId names no available FILE document. */
+    public static final String NOTIF_TEMPLATE_ATTACHMENT_NOT_FOUND = "NOTIF_TEMPLATE_ATTACHMENT_NOT_FOUND";
+
     /** ERR-0004 (PLATFORM-STD) — unknown lookupKey (API-NOTIF-006). */
     public static final String NOTIF_LOOKUP_KEY_UNKNOWN = "NOTIF_LOOKUP_KEY_UNKNOWN";
 }

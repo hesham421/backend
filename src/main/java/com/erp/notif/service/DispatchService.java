@@ -3,7 +3,7 @@ package com.erp.notif.service;
 import com.erp.common.domain.status.ServiceResult;
 import com.erp.common.domain.status.Status;
 import com.erp.common.exception.LocalizedException;
-import com.erp.notif.crossmodule.RecipientStatusReader;
+import com.erp.notif.crossmodule.RecipientDirectory;
 import com.erp.notif.domain.NotificationChannelConfigDomain;
 import com.erp.notif.domain.NotificationLogDomain;
 import com.erp.notif.domain.NotificationTemplateDomain;
@@ -48,7 +48,7 @@ public class DispatchService {
     private final NotificationTemplateRepository templateRepository;
     private final NotificationChannelConfigRepository channelRepository;
     private final NotificationLogRepository logRepository;
-    private final RecipientStatusReader recipientStatusReader;
+    private final RecipientDirectory recipientDirectory;
     private final ChannelProvider channelProvider;
 
     /** RULE-NOTIF-002 — pure retry-policy value object (attempt ceiling + backoff). */
@@ -66,7 +66,7 @@ public class DispatchService {
     // is NOT NULL, so no screenless dispatch permission can be seeded).
     @PreAuthorize("isAuthenticated()")
     public ServiceResult<DispatchResponse> dispatch(DispatchRequest request) {
-        return doDispatch(request);
+        return doDispatch(request, recipientDirectory.isActive(request.getRecipientId()));
     }
 
     /**
@@ -89,14 +89,20 @@ public class DispatchService {
      * false, this method's own commit never fires, and the NOTIF_LOG row is dropped with no
      * exception (confirmed empirically: the sequence advances, the row never appears). REQUIRES_NEW
      * forces a genuinely independent transaction so the write actually commits.
+     *
+     * <p>The recipient's status is resolved by the caller, <em>before</em> this transaction opens: a
+     * REQUIRES_NEW transaction cannot see a user account the consuming module created in its own,
+     * still-open transaction, so resolving it here would wrongly skip that recipient as unknown.
+     *
+     * @param recipientActive the RULE-NOTIF-007 answer, resolved in the caller's transaction
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @PreAuthorize("isAuthenticated()")
-    public ServiceResult<DispatchResponse> dispatchSystem(DispatchRequest request) {
-        return doDispatch(request);
+    public ServiceResult<DispatchResponse> dispatchSystem(DispatchRequest request, boolean recipientActive) {
+        return doDispatch(request, recipientActive);
     }
 
-    private ServiceResult<DispatchResponse> doDispatch(DispatchRequest request) {
+    private ServiceResult<DispatchResponse> doDispatch(DispatchRequest request, boolean recipientActive) {
         log.info("Dispatching notification: template={}, recipient={}, channels={}",
             request.getTemplateCode(), request.getRecipientId(), request.getChannelHint());
 
@@ -110,12 +116,10 @@ public class DispatchService {
         // row, so it needs no re-check here.
         NotificationTemplateDomain.from(template).assertDispatchable();
 
-        // TODO: XM-NOTIF-002 DEFERRED — validate attachmentFileId via FILE FileService when FILE module
-        // is built. The template's attachmentFileId is accepted as-is (FILE module does not exist yet).
-
-        // RULE-NOTIF-007 — do not dispatch to an inactive recipient; create no logs, keep history.
-        if (!recipientStatusReader.isRecipientActive(request.getRecipientId())) {
-            log.info("Recipient {} is inactive — dispatch skipped (RULE-NOTIF-007); no logs created",
+        // RULE-NOTIF-007 — do not dispatch to an inactive or unknown recipient (XM-NOTIF-001, resolved
+        // through SEC's user directory); create no logs, keep history.
+        if (!recipientActive) {
+            log.info("Recipient {} is inactive or unknown — dispatch skipped (RULE-NOTIF-007); no logs created",
                 request.getRecipientId());
             return ServiceResult.success(DispatchResponse.builder().logIds(List.of()).build());
         }

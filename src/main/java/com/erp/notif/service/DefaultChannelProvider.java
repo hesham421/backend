@@ -19,8 +19,9 @@ import org.springframework.stereotype.Component;
  * included for clients/filters that prefer it) chosen from the bilingual {@link NotificationTemplate}
  * by the {@code variables.get("lang")} the caller supplies (falls back to EN) — a stacked EN+AR body
  * in one email is not how transactional mail is normally sent. The recipient address is read from
- * {@code variables.get("email")}, since NOTIF has no crossmodule contact-lookup for a bare
- * recipientId. Every other channel type (SMS/WHATSAPP/PUSH/INTERNAL) remains the original
+ * {@code variables.get("email")}: the caller supplies it (SEC's {@code SecUserDirectoryApi.findContact}
+ * gives a consuming module the address for a userPk). Template text and every substituted value are
+ * HTML-escaped in the HTML part. Every other channel type (SMS/WHATSAPP/PUSH/INTERNAL) remains the original
  * provider-agnostic stub — logs the send and reports success — until its own concrete provider is
  * chosen (OQ-NOTIF-001, still open for those channels).
  */
@@ -66,7 +67,8 @@ public class DefaultChannelProvider implements ChannelProvider {
 
         String subject = substitute(subjectTemplate, variables);
         String plainBody = substitute(bodyTemplate, variables);
-        String htmlBody = renderHtml(subject, substitute(bodyTemplate, htmlVariables(variables, rtl)), rtl);
+        String htmlBody = renderHtml(escape(subject),
+            substitute(escape(bodyTemplate), htmlVariables(variables, rtl)), rtl);
 
         try {
             MimeMessage message = mailSender.createMimeMessage();
@@ -85,13 +87,15 @@ public class DefaultChannelProvider implements ChannelProvider {
         }
     }
 
-    /** Renders {@code actionLink} as a clickable CTA button for the HTML body only — the recipient
-     * never has to see or manually enter a token. The plain-text alternative keeps the raw URL. */
+    /** HTML-escapes every substituted value, then renders {@code actionLink} as a clickable CTA
+     * button for the HTML body only — the recipient never has to see or manually enter a token. The
+     * plain-text alternative keeps the raw values and URL. */
     private static Map<String, String> htmlVariables(Map<String, String> variables, boolean rtl) {
+        Map<String, String> htmlVars = new HashMap<>();
+        variables.forEach((key, value) -> htmlVars.put(key, escape(value)));
         if (!variables.containsKey("actionLink")) {
-            return variables;
+            return htmlVars;
         }
-        Map<String, String> htmlVars = new HashMap<>(variables);
         String url = variables.get("actionLink");
         String safeUrl = escape(url);
         String label = escape(variables.getOrDefault(rtl ? "ctaLabelAr" : "ctaLabelEn", url));

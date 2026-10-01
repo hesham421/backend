@@ -23,7 +23,7 @@ public class TemplateCreateRequest {
 
     @NotBlank(message = "{validation.required}")
     @Size(max = 80, message = "{validation.size}")
-    @Schema(description = "Unique template code - رمز القالب الفريد", example = "USER_WELCOME")
+    @Schema(description = "Unique template code - رمز القالب الفريد", example = "PASSWORD_RESET")
     private String templateCode;
 
     @NotBlank(message = "{validation.required}")

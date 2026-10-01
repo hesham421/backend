@@ -23,7 +23,8 @@ public interface NotificationDispatchApi {
      * Same semantics as {@link #dispatch}, but committed in its OWN transaction (REQUIRES_NEW), so a
      * dispatch failure can never mark the caller's transaction rollback-only. A caller whose own
      * writes must survive a failed notification — it catches and logs the failure and still expects
-     * to commit, e.g. SEC's password-reset token issuance — MUST use this entry point.
+     * to commit, e.g. SEC's password-reset token issuance — MUST use this entry point. The recipient
+     * is checked inside the caller's transaction, so a user the caller has not yet committed is seen.
      */
     List<Long> dispatchIndependently(DispatchCommand command);
 }

@@ -8,6 +8,7 @@ import com.erp.common.search.PageableBuilder;
 import com.erp.common.search.SearchRequest;
 import com.erp.common.search.SetAllowedFields;
 import com.erp.common.search.SpecBuilder;
+import com.erp.file.crossmodule.FileDocumentLookupApi;
 import com.erp.notif.domain.NotificationTemplateDomain;
 import com.erp.notif.dto.TemplateCreateRequest;
 import com.erp.notif.dto.TemplateResponse;
@@ -43,6 +44,7 @@ public class NotificationTemplateService {
 
     private final NotificationTemplateRepository repository;
     private final NotificationTemplateMapper mapper;
+    private final FileDocumentLookupApi fileDocumentLookupApi;
 
     /** Entity property names (isActive, NOT the DTO's isActiveFl) — filter + sort whitelist. */
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
@@ -63,8 +65,7 @@ public class NotificationTemplateService {
         NotificationTemplateDomain.create(request.getTemplateCode(), request.getNameAr(),
             request.getNameEn(), request.getBodyAr(), request.getBodyEn(), codeTaken);
 
-        // TODO: XM-NOTIF-002 DEFERRED — validate attachmentFileId via FILE FileService when FILE module
-        // is built. Accepted as-is for now (FILE module does not exist yet).
+        assertAttachmentAvailable(request.getAttachmentFileId());
 
         NotificationTemplate saved = repository.save(mapper.toEntity(request));
         log.info("Created NotificationTemplate ID: {}, code: {}", saved.getId(), saved.getTemplateCode());
@@ -116,6 +117,7 @@ public class NotificationTemplateService {
         // templateCode immutability (RULE-NOTIF-006) needs no guard — it is absent from the request.
         // RULE-NOTIF-004 (bilingual body) re-validated on update.
         NotificationTemplateDomain.from(entity).assertBilingualBody(request.getBodyAr(), request.getBodyEn());
+        assertAttachmentAvailable(request.getAttachmentFileId());
 
         mapper.updateEntityFromRequest(entity, request);
         NotificationTemplate saved = repository.save(entity);
@@ -147,6 +149,14 @@ public class NotificationTemplateService {
      * Normalizes a caller-supplied templateCode to the canonical uppercase form
      * NotificationTemplate.onCreate() always applies, so the uniqueness check matches the stored value.
      */
+    /** XM-NOTIF-002 — an optional attachmentFileId must name an available FILE document. */
+    private void assertAttachmentAvailable(Long attachmentFileId) {
+        if (attachmentFileId != null && !fileDocumentLookupApi.isAvailable(attachmentFileId)) {
+            throw new LocalizedException(Status.NOT_FOUND,
+                NotifErrorCodes.NOTIF_TEMPLATE_ATTACHMENT_NOT_FOUND, attachmentFileId);
+        }
+    }
+
     private static String normalize(String templateCode) {
         return templateCode == null ? null : templateCode.trim().toUpperCase();
     }

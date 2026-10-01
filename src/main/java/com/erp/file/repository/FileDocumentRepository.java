@@ -19,7 +19,7 @@ import org.springframework.stereotype.Repository;
  * project's Spring Data JPA / Hibernate 7 versions for this alias-select JPQL shape. Only the
  * download path (QR-FILE-0003) loads the BYTEA content. Ownership is polymorphic with no FK — the
  * owner list matches ownerId/ownerType/moduleCode EXACT with optional fileTypeId/fileStatusId
- * EXACT. Module-internal; consumed only by the FILE services.
+ * EXACT. Module-internal; consumed only by the FILE services and the FILE crossmodule adapter.
  */
 @Repository
 public interface FileDocumentRepository
@@ -54,6 +54,9 @@ public interface FileDocumentRepository
                                          @Param("fileTypeId") String fileTypeId,
                                          @Param("fileStatusId") String fileStatusId,
                                          Pageable pageable);
+
+    /** Existence check for {@code FileDocumentLookupApi} — no content or metadata loaded. */
+    boolean existsByIdAndFileStatusIdNot(Long id, String fileStatusId);
 
     /** QR-FILE-0003 — full row incl. BYTEA content, download path only. */
     @Query("SELECT f FROM FileDocument f WHERE f.id = :id")
