@@ -41,7 +41,8 @@ def main() -> int:
     overrides.add_argument("--openapi", help="Override: OpenAPI JSON as a local file path or http(s) URL")
     overrides.add_argument("--source", type=Path, help="Override: path to the module's own src/main/java")
     overrides.add_argument("--common-source", type=Path, action="append", help="Override: path to a shared/common module's src/main/java (repeatable)")
-    overrides.add_argument("--execution-plan", type=Path, help="Override: path to the module's backend execution plan (read for its API REGISTRY -> contract ids)")
+    overrides.add_argument("--api-spec", type=Path, help="Override: path to the module's API document (api-spec-<mod>.yaml, OpenAPI 3.1 -> contract ids). Default: scripts/gov-module.py plan MOD --json -> api_spec")
+    overrides.add_argument("--execution-plan", type=Path, help="Override: path to the module's backend execution plan (its prose API REGISTRY is read ONLY when no API document exists — a pre-v7 module)")
     overrides.add_argument("--output", type=Path, help="Override: output directory for generated documentation")
     overrides.add_argument("--backend-root", type=Path, help="Override: path to the backend repository root (default: the backend/ repo this governance/ checkout now lives inside)")
     args = ap.parse_args()
@@ -55,6 +56,7 @@ def main() -> int:
             common_source_overrides=args.common_source,
             output_override=args.output,
             execution_plan_override=args.execution_plan,
+            api_spec_override=args.api_spec,
         )
     except discovery.DiscoveryError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
@@ -65,8 +67,12 @@ def main() -> int:
         print(f"Source      : {context.source_root}")
     if context.common_source_roots:
         print(f"Common src  : {', '.join(str(p) for p in context.common_source_roots)}")
-    if context.execution_plan:
+    if context.api_spec:
+        print(f"Contract    : {context.api_spec}")
+    elif context.execution_plan:
         print(f"Contract    : {context.execution_plan}")
+    if context.contract_note:
+        print(f"Contract src: {context.contract_note}")
 
     try:
         if args.function == "check":

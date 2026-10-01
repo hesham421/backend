@@ -109,17 +109,28 @@ def run_checks(context, document: ApiDocument, files: dict[str, str], files_agai
     elif document.contract_source:
         results.append(CheckResult("contract-drift", PASS, "declared and served agree"))
     else:
-        results.append(CheckResult("contract-drift", NA, "no API REGISTRY joined"))
+        results.append(CheckResult("contract-drift", NA, "no API document or API REGISTRY joined"))
 
     plan = context.execution_plan
+    spec = getattr(context, "api_spec", None)
     stamped = sum(1 for ep in endpoints if ep.api_id)
-    if plan is None or not plan.exists():
+    if spec is not None and spec.exists():
+        # The API document is the contract (schema 7). Zero x-api-id
+        # operations in it is the factory's defect, never a reason to fall
+        # back to prose.
+        if document.contract_source:
+            results.append(CheckResult("contract-ids", PASS, f"{_ratio(stamped, n, 'endpoints stamped')} from {spec.name} (API document)"))
+        else:
+            results.append(CheckResult("contract-ids", FAIL,
+                f"{_ratio(0, n, 'endpoints stamped')}: {spec.name} has no operation carrying x-api-id → factory item"))
+    elif plan is None or not plan.exists():
         results.append(CheckResult("contract-ids", NA, "no backend execution plan found for this module"))
     else:
         plan_text = plan.read_text(encoding="utf-8", errors="ignore")
         heading = contract_extractor._REGISTRY_HEADING_RE.search(plan_text) is not None
         if document.contract_source:
-            results.append(CheckResult("contract-ids", PASS, f"{_ratio(stamped, n, 'endpoints stamped')} from {plan.name}"))
+            results.append(CheckResult("contract-ids", PASS, f"{_ratio(stamped, n, 'endpoints stamped')} from {plan.name} "
+                                       f"(FALLBACK: pre-v7 prose API REGISTRY — no API document)"))
         elif heading:
             results.append(CheckResult("contract-ids", FAIL,
                 f"{_ratio(0, n, 'endpoints stamped')}: {plan.name} has an API REGISTRY heading but no parseable "

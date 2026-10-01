@@ -629,11 +629,12 @@ def _contract_section(doc: ApiDocument) -> Optional[str]:
     # endpoint, never written as a literal: a literal would print one module's
     # id (API-SEC-004) into every other module's index, which is the same
     # class of stale cross-module reference this whole section exists to stop.
-    example = f"`{stamped[0]}`, ..." if stamped else "an API REGISTRY id"
+    source_name = "API document" if doc.contract_kind == "api-spec" else "API REGISTRY"
+    example = f"`{stamped[0]}`, ..." if stamped else f"an {source_name} id"
     lines = [
         "## Contract Traceability",
         "",
-        f"Contract ids joined from `{doc.contract_source}` (API REGISTRY): "
+        f"Contract ids joined from `{doc.contract_source}` ({source_name}): "
         f"**{len(stamped)} of {len(doc.endpoints)}** served endpoints carry one.",
         "",
         f"Resolve a contract id ({example}) to a path **here** — the API column of the "
@@ -655,7 +656,7 @@ def _contract_section(doc: ApiDocument) -> Optional[str]:
                 ids = ", ".join(f"`{i}`" for i in d.claimed_ids)
                 verb = "source claims" if len(d.claimed_ids) == 1 else "source mentions"
                 api = f"— ({verb} {ids}, {d.claim_source}" + (", ambiguous)" if len(d.claimed_ids) > 1 else ")")
-                detail += " — the id quoted is a source comment, not a registered contract; registering it is the API REGISTRY's to do"
+                detail += f" — the id quoted is a source comment, not a registered contract; registering it is the {source_name}'s to do"
             lines.append(f"| {d.kind} | {api} | {d.method} | `{d.path}` | {detail} |")
         lines.append("")
     return "\n".join(lines)

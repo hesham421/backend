@@ -69,9 +69,9 @@ This check is **unconditional** — it applies to every entity whose rules answe
 ```
 [ ] A.1.1  — Extends AuditableEntity. Exception: a declared session-artifact exemption
              (own lifecycle fields) — verify the exemption is intentional before flagging
-[ ] A.1.2  — PK @Column name matches the DB script — not a generic "ID" or invented name
+[ ] A.1.2  — PK @Column name matches the DB script (its `dbf-matrix` block) — not a generic "ID" or invented name
 [ ] A.1.3  — PK uses GenerationType.SEQUENCE with @SequenceGenerator, even when the module's
-             db-script declares GENERATED ALWAYS AS IDENTITY (or "BLOCK 1 — SEQUENCES / none"):
+             db-script's ```sql DDL fence declares GENERATED ALWAYS AS IDENTITY (or creates no sequence):
              the skill wins, sequenceName = "SEQ_<TABLE>", and the module's Flyway migration
              creates the sequence. Settled — see GOVERNANCE-RULES.md "Convention Precedence"
 [ ] A.1.4  — allocationSize = 1

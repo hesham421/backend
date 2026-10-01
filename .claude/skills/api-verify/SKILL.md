@@ -1,20 +1,30 @@
 ---
 name: api-verify
-description: "API VERIFICATION (post-implementation). Generates one runnable script that exercises a module's real API in dependency order, plus a problems report — from that module's own api-docs (+ test-execution-manifest when present). Standalone, on demand, never a gate. Use after a backend module's endpoints are implemented and its api-docs are current."
+description: "API VERIFICATION (post-implementation). Holds a module's published api-docs to its API document (api-spec-<mod>.yaml, OpenAPI 3.1): generates one runnable script that exercises the real API in dependency order, plus a problems report, runs it, and records the api_verify row. Standalone, on demand, never a gate. Use after a backend module's endpoints are implemented and its api-docs are regenerated and published."
 ---
-`$GOV` below is the governance root the factory publishes — read it, never type it:
-`governance/shared/$(jq -r '.paths.modules' governance/shared/platform/profile-summary.json | cut -d/ -f1)`.
+Every path below comes from the factory's v7 consumer contract through one tool —
+read it, never type it:
+
+```bash
+python3 scripts/gov-module.py pin                    # exit 3 = pre-v7 project → STOP ("the factory owner runs gov.py upgrade-project")
+python3 scripts/gov-module.py plan <MOD> --json      # api_spec · api_docs · test_plan · exec_units/test_units/integration (tests) · delivered_version · state_file
+```
+
+`<PART>` below is this track's partition, `governance/shared/backend/modules/<MOD>/`
+(the folder holding `plan.state_file`).
 
 
 # Skill: api-verify
 
 ## Description
 
-**API VERIFICATION.** Turns an already-governed module's api-docs (and, when present, its
-test-execution-manifest) into one runnable script that calls the real API end-to-end in
-dependency order, plus a report of what it found. It designs no test and invents no rule,
-message, dependency, or data value of its own — anything not traceable to an input document
-is skipped and named as skipped.
+**API VERIFICATION.** The API document (`plan.api_spec`) is the contract; the api-docs this
+repo publishes (`plan.api_docs`) are the delivered surface. This skill holds the second to the
+first: it turns them into one runnable script that calls the real API end-to-end in dependency
+order, runs it, writes a report of what it found, and records the result as data the factory and
+the frontend read (`api_verify` row). It designs no test and invents no rule, message,
+dependency, or data value of its own — anything not traceable to an input document is skipped
+and named as skipped.
 
 This skill is **translation, not derivation**, and it is **module-agnostic** — it runs
 identically for any `<MOD>` (SEC, FIN, MDL, FILE, CU, NOTIF, or any module registered later).
@@ -26,8 +36,8 @@ it, not this skill.
 
 ## When to Use
 
-- A backend module's endpoints are implemented and its api-docs are current
-  (`$GOV/modules/<MOD>/api-docs/`)
+- A backend module's endpoints are implemented and its api-docs were just regenerated and
+  published (`/generate-api-docs <MOD>` → `<PART>api-docs/`)
 - Post-implementation verification against the real running API — not a code-review, not a
   substitute for `gov-validate-backend-feature`
 - On demand, invoked explicitly for a given `<MOD>` — never automatically, never as a gate
@@ -35,16 +45,18 @@ it, not this skill.
 ## When NOT to Use
 
 - Before the module's api-docs exist or are stale — regenerate them first
-  (`governance/governance-tools/api-doc-generator`); a stale doc produces a script that tests
-  the wrong contract
+  (`/generate-api-docs`); a stale doc produces a script that tests the wrong surface
+- Without an API document (`plan.api_spec` missing — a pre-v7 project): there is no contract to
+  hold the docs to; STOP and say so
 - As a substitute for `gov-enforce-backend-contract` / `gov-validate-backend-feature` — those
   review code and architecture; this skill exercises the live HTTP surface
-- To design new test cases from scratch — that is `test-gen`'s job (test-execution-manifest);
-  this skill only consumes what `test-gen` and the api-docs already established
+- To design new test cases from scratch — the factory's P4 backend test plan
+  (`plan.test_plan`) and the packages' `tests` define them; this skill only consumes what the
+  API document, the test plan and the api-docs already established
 
 ## Responsibilities
 
-- State the tier (Full vs Minimal, see §2) at the start of every run
+- State the inputs read (API document, api-docs, test plan) at the start of every run
 - Produce one script that creates, reads, updates, and deactivates every documented entity in
   dependency order, tears itself down, and reports failures — nothing else
 - Produce a problems report bucketed into *likely real bug* / *test assumption mismatch* /
@@ -53,11 +65,12 @@ it, not this skill.
 ## Constraints
 
 - MUST NOT invent a business rule, error code, dependency edge, or payload value not present
-  in the api-docs or manifest
+  in the API document, the api-docs or the test plan
 - MUST NOT ask questions — an unresolvable ambiguity (a dependency cycle, an ambiguous
   payload) is an ADR-worthy blocker: state it and stop, do not guess
 - MUST NOT change any line artifact, mint any governance ID, or render a gate verdict — this
-  runs entirely outside the governed pipeline
+  runs entirely outside the governed pipeline; its one write into governance is the
+  `api_verify` row (stage J), through `gov-module.py record`
 - MUST NOT perform a hard delete unless the module's own api-docs document one
 - MUST NOT write to the database outside the opt-in, transaction-scoped, run-created-ids-only
   path described in `api-verify-config.md` §4. "Write to the database" here means a *direct*
@@ -74,34 +87,46 @@ it, not this skill.
 
 ## Output
 
-- `$GOV/modules/<MOD>/backend/test-api/test_<mod>_apis.py` (or the language the run targets)
-- `$GOV/modules/<MOD>/backend/test-api/<mod>_problems_report.md`
+- `<PART>test-api/test_<mod>_apis.py` (or the language the run targets)
+- `<PART>test-api/<mod>_problems_report.md`
+- one `api_verify` row in `plan.state_file`:
+  `python3 scripts/gov-module.py record <MOD> api_verify --version <plan.delivered_version> --result PASS|FAIL`
 
 ---
 
-## 1. Inputs and tiers
+## 1. Inputs
 
-Read `governance/shared/platform/rules/api-verify-config.md` §1 for exact paths. Two tiers, decided by what
-`<MOD>`'s own governance folder actually contains — state which one at the start of the run:
+State them at the start of the run. There is one tier: the API document always exists for a
+v7 module, so negatives are never self-derived and never skipped for want of a manifest (the
+test-execution-manifest and `test_gen/` are retired).
 
-| Tier | Present | Generates |
+| Input | Read from | Role |
 |---|---|---|
-| **Full** | api-docs + test-execution-manifest | happy-path CRUD per entity **and** negative (rule-violation) tests; dependency order and RULE→code→TC triples read verbatim from the manifest — zero self-derivation, even with other artifacts also attached |
-| **Minimal** | api-docs only | happy-path CRUD only; FK order inferred from FK-typed fields and "parent …" wording in the request tables; the report states negatives were skipped and why |
+| API document | `plan.api_spec` (`api-spec-<mod>.yaml`, OpenAPI 3.1) | **the contract** — every operation by `x-api-id`: method, path, parameters, request/response schemas, each error response with its catalog codes (`x-error-codes`), paging (`x-paginated`), traces (`x-traces`), the security scheme |
+| api-docs | `plan.api_docs` (`<PART>api-docs/`: `index.md`, then `**/*.md`) | **the delivered surface** — endpoints as the built backend documents them: verbs, paths, request/response field tables, examples, contract ids |
+| test plan | `plan.test_plan` (P4) and the `tests` of `plan.exec_units` / `plan.integration` | the `TC-*` ids a negative or happy path is tagged with — the same id space as the packages' acceptance tests |
+| stack conventions | `governance/shared/platform/rules/api-verify-config.md` when the project publishes it; otherwise the API document's own `servers`, `security`, schemas and error responses | base path, envelopes, error format, permissions (§2) |
+
+Pair operations and documented endpoints by method + path (trailing-segment match when the
+served path carries a base prefix). An operation with no delivered counterpart, or a delivered
+endpoint with no operation, is listed in the report under *contract mismatch*; the script does
+not invent a call for it.
 
 Multi-batch api-docs (a large module documented across several endpoint files): reconcile
-received endpoints against the manifest's ENTITY CRUD CHECKLIST (or the api-docs' own
-catalogue), report entity-level coverage briefly, never ask — list any entity without a
-documented create endpoint as *out of scope for this run*. One function per entity lets a
-later batch append without a rewrite.
+received endpoints against the API document's operations, report entity-level coverage briefly,
+never ask — list every operation without a delivered counterpart as *not yet served*. One
+function per entity lets a later batch append without a rewrite.
 
 ## 2. Stack conventions
 
-All read from `governance/shared/platform/rules/api-verify-config.md` §3 — base path, verb→operation mapping,
-response/paging/error envelopes, error-code format, `DELETE` semantics, permission pattern,
-languages. Do not restate or override those values here or in the generated script; if a
-module's actual behavior disagrees with that file, that is either a documentation gap (flag
-it) or a convention that changed (fix `api-verify-config.md`, not this run).
+Base path, verb→operation mapping, response/paging/error envelopes, error-code format,
+`DELETE` semantics, permission pattern, languages: the API document states what it covers
+(`servers`, `security`, schemas, error responses, `x-paginated`); the rest is read from
+`governance/shared/platform/rules/api-verify-config.md` §3 when the project publishes it. Do
+not restate or override those values here or in the generated script; if a module's actual
+behavior disagrees with them, that is either a contract mismatch (stage G) or a convention that
+changed (fix the source, not this run). Where `api-verify-config.md` is absent, its §4 safety
+rules below still hold as written: Dev/Test target only, DB writes opt-in and off by default.
 
 ## 3. Processing pipeline
 
@@ -120,19 +145,23 @@ endpoints A0 checks through are themselves permission-gated, so a run that verif
 preconditions before granting itself access reports a wall of 403s as "missing preconditions"
 and hides the real state of the data. Order is grants → preconditions → suites.
 
-**A — Inventory.** Parse every documented endpoint: id (`API-*` when the docs carry it), verb,
-path, entity (path segment), operation type (from verb + path suffix), request field table
-(name, type, required, constraints, example), response shape.
+**A — Inventory.** Parse every operation of the API document (`x-api-id`, method, path, entity
+from the path, operation type from verb + path suffix, request/response schemas, error responses
+with their codes) and every documented endpoint of the api-docs (verb, path, request field table
+— name, type, required, constraints, example — response shape). Pair them (§1).
 
-**B — Dependency order.** Full tier: read the manifest's DEPENDENCY ORDER as-is. Minimal tier:
-infer edges from FK-typed fields whose description names a parent, then sort topologically;
-roots first. A cycle or an unresolvable edge → stop and report it as a blocker, do not guess.
+**B — Dependency order.** Infer edges from foreign-key request fields (the API document's
+schemas, `DBF`-typed references in `x-traces`) and the api-docs' "parent …" descriptions, then
+sort topologically; roots first. A cycle or an unresolvable edge → stop and report it as a
+blocker, do not guess.
 
-**C — Negative mapping.** Full tier only: for each manifest RULE → code → TC triple, set up the
-precondition the RULE describes, call the endpoint that must be blocked, assert the HTTP
-status and the runtime error code (format from `api-verify-config.md` §3 — never the
-hyphenated governance RULE id), tag the function with the RULE/TC ids. Minimal tier: none —
-say so. Informational-only RULEs are excluded (the manifest already does this).
+**C — Negative mapping.** For every error response of every operation (`responses.<status>`
+with `x-error-codes`): set up the precondition the catalog row describes (the `RULE-*` the
+backend plan's `error-catalog` block cites for that code — cite it, do not restate it), call the
+endpoint that must be blocked, assert the HTTP status and the runtime code (never the
+hyphenated governance RULE id), and tag the function with the code and the `TC-*` of the test
+plan that names the same operation and code. No such TC → tag the code only and list the
+operation+code as *untraced negative* in the report.
 
 **D — Assembly.** One fixed structure (§4), one `test_<entity>()` per entity in stage-B order,
 FK ids threaded as parameters from the parent's own return value — never hard-coded.
@@ -158,10 +187,13 @@ archive, soft-delete), teardown uses it rather than leaving the row active: an a
 registry entry is not inert test data, it is a value another module's rule may now match on.
 Codes written into such a table carry the run's own namespace so residue is always attributable.
 
-**G — Problems report.** `<mod>_problems_report.md` lists only failures, bucketed: *likely real
-bug* (a documented rejection did not happen, or an unexplained status), *test assumption
-mismatch* (rejected, but with a status the manifest did not state — fix the expectation, not
-the backend), *infrastructure* (connection / timeout — rerun). Ambiguous → *likely real bug*.
+**G — Problems report.** `<mod>_problems_report.md` lists only failures, bucketed: *contract
+mismatch* (the delivered surface departs from the API document — the backend's to fix, or a
+gap recorded for the factory: `gov-module.py record <MOD> api_doc_gaps --key "<METHOD> <path>"
+--resolution "OPEN — …"`), *likely real bug* (a documented rejection did not happen, or an
+unexplained status), *test assumption mismatch* (rejected, but with a status the API document
+did not state — the document is the factory's to fix, through a gap, not the backend),
+*infrastructure* (connection / timeout — rerun). Ambiguous → *likely real bug*.
 
 **H — Log correlation and database access (opt-in).** Log excerpts around a failing call are
 attached as *approximate* unless a trace id exists. Database writes are two-tier: deleting rows
@@ -198,6 +230,16 @@ platform's own documented grant endpoints, under **all** of these, or not at all
 Anything beyond this — creating a role, elevating a human user, touching a grant the run did not
 make — is out of scope and stays out.
 
+**J — The result reaches the factory as data.** After the script runs, record one row:
+
+```bash
+python3 scripts/gov-module.py record <MOD> api_verify --version <plan.delivered_version> --result PASS   # only when the script exits zero
+python3 scripts/gov-module.py record <MOD> api_verify --version <plan.delivered_version> --result FAIL   # otherwise
+```
+
+The frontend's delivery of that version stays OPEN until this row is PASS. Then `python3 scripts/gov-module.py validate <MOD>`
+and `./scripts/governance push` publish the row and the `test-api/` output.
+
 ## 4. Script structure
 
 ```
@@ -233,11 +275,13 @@ docs; FK ids threaded, never literal.
 ## 5. Generation gate (silent; only failures are reported)
 
 ```
+[ ] every operation of the API document has a test function, or is listed as not yet served
+    (contract mismatch)
 [ ] every entity in the api-docs has a test_<entity>() function
 [ ] main() order = stage-B order — no forward FK reference
 [ ] every payload value comes from an example or a marked placeholder
-[ ] negatives only where RULE + code + TC resolve (Full tier) — none self-derived beside a
-    present manifest
+[ ] negatives only where the API document states status + code — none self-derived; tagged
+    with the test plan's TC where one names that operation and code
 [ ] exploratory scenarios only on required/constrained fields; undocumented outcomes use
     run_observation()
 [ ] every create appends its id; cleanup() in finally, reverse order; hard-delete used only if
@@ -260,7 +304,7 @@ docs; FK ids threaded, never literal.
 
 | Consumes (read-only) | Produces | Never |
 |---|---|---|
-| api-docs, the test-execution-manifest (when present), run arguments, `api-verify-config.md` | `test_<mod>_apis.py`, `<mod>_problems_report.md` under `$GOV/modules/<MOD>/backend/test-api/`, the stage-I grant journal | a governance ID of any kind, a change to any line artifact, a gate verdict, a data fix against records it did not create — **one exception, and only one**: the bounded, journalled, self-revoked permission grant of stage I |
+| the API document, the api-docs, the P4 test plan, run arguments, `api-verify-config.md` (when published) | `test_<mod>_apis.py`, `<mod>_problems_report.md` under `<PART>test-api/`, the stage-I grant journal, one `api_verify` row (stage J) | a governance ID of any kind, a change to any line artifact, a gate verdict, a data fix against records it did not create — **one exception, and only one**: the bounded, journalled, self-revoked permission grant of stage I |
 
 ## Related Skills
 

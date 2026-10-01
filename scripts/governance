@@ -31,16 +31,31 @@ on_branch() {   # the guard: never leave the submodule detached
   fi
 }
 
+GM="python3 scripts/gov-module.py"
+
 scope() {   # narrow the checkout to what this track may READ
-  # The patterns are the factory's to decide — derived from the partition table,
-  # not listed here. A submodule hands every consumer the whole repository;
-  # this is the only lever that narrows it, and the reason it matters is that
-  # the wrong tree in front of someone is how six modules' governance came to
-  # be deleted from a frontend session.
-  local pats
-  pats=$(cat .governance-scope 2>/dev/null) || return 0
-  [ -n "$pats" ] || return 0
-  echo "$pats" | xargs git -C "$SM" sparse-checkout set --no-cone
+  # The patterns are the factory's, published in platform/profile-summary.json
+  # (consumer.sparse) and read by scripts/gov-module.py — never kept here. A
+  # submodule hands every consumer the whole repository; this is the only lever
+  # that narrows it, and the wrong tree in front of someone is how six modules'
+  # governance came to be deleted from a frontend session.
+  local pats rc=0
+  pats=$($GM scope 2>/dev/null) || rc=$?
+  if [ "$rc" -eq 3 ]; then
+    echo "  (scope unchanged: the project predates factory schema 7 and publishes no sparse patterns)"; return 0
+  fi
+  [ "$rc" -eq 0 ] && [ -n "$pats" ] || { echo "  (scope unchanged: scripts/gov-module.py scope failed)"; return 0; }
+  echo "$pats" | git -C "$SM" sparse-checkout set --no-cone --stdin
+}
+
+pin() {     # the project is pinned by the factory schema this repo's tooling reads
+  local rc=0
+  $GM pin || rc=$?
+  case "$rc" in
+    0) ;;
+    3) echo "  WARNING: the project predates factory schema 7 — this repo's v7 tooling has nothing to read until the factory owner runs gov.py upgrade-project";;
+    *) echo "  REFUSED: the project's factory schema is not the one this repo's tooling reads — not pinning it"; return 1;;
+  esac
 }
 
 case "${1:-status}" in
@@ -48,8 +63,9 @@ case "${1:-status}" in
     git submodule update --remote --quiet "$SM"
     on_branch
     git -C "$SM" pull -q --ff-only
-    scope
     echo "shared @ $(git -C "$SM" log --oneline -1)"
+    pin || { git -C "$SM" checkout -q "$(git ls-tree HEAD "$SM" | awk '{print $3}')"; echo "  submodule returned to the pinned commit"; exit 1; }
+    scope
     if ! git diff --quiet -- "$SM"; then
       git add "$SM"
       git commit -q -m "governance: advance the pinned commit to $(git -C "$SM" rev-parse --short HEAD)"
@@ -63,8 +79,14 @@ case "${1:-status}" in
     if [ -z "$(git -C "$SM" status --porcelain)" ]; then
       echo "nothing written in shared."
     else
-      echo "writing:"; git -C "$SM" status --short | sed 's/^/  /'
-      git -C "$SM" add -A
+      # only this track's own partition — never the factory's packages inside it,
+      # never another track's tree (scripts/gov-module.py pathspec)
+      SPEC=(); while IFS= read -r l; do SPEC+=("$l"); done < <($GM pathspec)   # bash 3.2 (macOS): no mapfile
+      echo "writing:"; git -C "$SM" status --short -- "${SPEC[@]}" | sed 's/^/  /'
+      git -C "$SM" add -A -- "${SPEC[@]}"
+      left=$(git -C "$SM" status --porcelain | grep -v '^[MADRC] ' | wc -l | tr -d ' ')
+      [ "$left" = "0" ] || echo "  NOT written ($left path(s) outside this track's partition): $(git -C "$SM" status --porcelain | grep -v '^[MADRC] ' | head -5 | tr '\n' ' ')"
+      git -C "$SM" diff --cached --quiet && { echo "nothing of this track's to write."; exit 0; }
       git -C "$SM" commit -q -m "${2:-backend: execution state and generated docs}"
       git -C "$SM" push -q
       echo "pushed shared @ $(git -C "$SM" log --oneline -1)"
@@ -81,7 +103,7 @@ case "${1:-status}" in
     ;;
   status)
     on_branch
-    scope
+    pin || true
     git -C "$SM" fetch -q origin || true
     echo "shared    $(git -C "$SM" log --oneline -1)"
     echo "branch    $(git -C "$SM" rev-parse --abbrev-ref HEAD)"

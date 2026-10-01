@@ -1,6 +1,6 @@
 """
-Reads the module's own API REGISTRY out of its backend execution plan and
-joins it to the implemented endpoints, so every generated endpoint carries
+Reads the module's declared API contract and joins it to the implemented
+endpoints, so every generated endpoint carries
 the contract id (API-<MOD>-NNN) the rest of the governance chain — the SRS,
 the frontend execution plan, the test manifest, the alignment report — is
 written in terms of.
@@ -23,8 +23,18 @@ planned but not implemented (or implemented but not planned) is reported as
 contract drift rather than silently dropped — a stale contract id is exactly
 the failure mode above, and it is only detectable by comparing the two sides.
 
+Where the declared contract comes from
+──────────────────────────────────────
+1. The module's API DOCUMENT (factory schema 7): `api-spec-<mod>.yaml`, the
+   OpenAPI 3.1 document the factory derives from the backend plan and
+   publishes beside the delivered packages. Each operation's `x-api-id`,
+   method and path is one declared entry. This is THE contract.
+2. Only for a pre-v7 module with no API document: the prose API REGISTRY
+   table of its backend execution plan (parse_api_registry). The caller says
+   out loud that it fell back.
+
 Like every other extractor: it finds real metadata or leaves the field empty.
-The registry table is read verbatim; no path is ever inferred from an id.
+The document / registry is read verbatim; no path is ever inferred from an id.
 """
 
 import re
@@ -115,6 +125,99 @@ def load_api_registry(plan_file: Optional[Path]) -> list[ContractEntry]:
     return parse_api_registry(plan_file.read_text(encoding="utf-8", errors="ignore"))
 
 
+# ── the API document (OpenAPI 3.1, factory schema 7) ─────────────────────────
+# Read with a minimal, indentation-tracking line reader rather than a YAML
+# library: this tool takes no third-party dependency, and the three facts it
+# needs (path key, method key, x-api-id scalar) are block-style keys in every
+# document the factory emits. Anything else in the document is ignored.
+
+_HTTP_METHODS = {"get", "post", "put", "patch", "delete", "head", "options", "trace"}
+_KEY_RE = re.compile(r"^(?P<indent> *)(?P<key>'[^']*'|\"[^\"]*\"|[^\s:#][^:#]*?)\s*:(?:\s+(?P<value>.*?))?\s*$")
+
+
+def _unquote(text: str) -> str:
+    text = text.strip()
+    if len(text) >= 2 and text[0] == text[-1] and text[0] in "'\"":
+        return text[1:-1]
+    return text
+
+
+def parse_api_spec(text: str) -> list[ContractEntry]:
+    """Every operation under the document's top-level `paths:` that carries an
+    `x-api-id`, as (id, METHOD, path, summary). An operation without one is
+    not a contract entry and is skipped -- the factory emits one per API
+    block, so a missing id is the document's defect, not something to guess."""
+    entries: list[ContractEntry] = []
+    in_paths = False
+    path_indent = method_indent = None
+    path = method = summary = api_id = None
+
+    def flush():
+        if path and method and api_id:
+            entries.append(ContractEntry(api_id=api_id, method=method.upper(), path=path,
+                                         operation=summary or None))
+
+    for raw in text.splitlines():
+        if not raw.strip() or raw.lstrip().startswith("#"):
+            continue
+        m = _KEY_RE.match(raw)
+        indent = len(raw) - len(raw.lstrip(" "))
+        if indent == 0:
+            if in_paths:
+                flush()
+                path = method = summary = api_id = None
+            in_paths = bool(m) and m.group("key") == "paths" and not m.group("value")
+            continue
+        if not in_paths or not m:
+            continue
+        key, value = _unquote(m.group("key")), m.group("value")
+        if path_indent is None:
+            path_indent = indent
+        if indent == path_indent:
+            flush()
+            path, method, summary, api_id = (key if key.startswith("/") else None), None, None, None
+            method_indent = None
+            continue
+        if path is None or indent < path_indent:
+            continue
+        if method_indent is None and key.lower() in _HTTP_METHODS and not value:
+            method_indent = indent
+        if indent == method_indent:
+            flush()
+            method, summary, api_id = (key if key.lower() in _HTTP_METHODS else None), None, None
+            continue
+        if method and method_indent is not None and indent > method_indent and value:
+            if key == "x-api-id":
+                api_id = _unquote(value)
+            elif key == "summary" and summary is None:
+                summary = _unquote(value)
+    if in_paths:
+        flush()
+    return entries
+
+
+def load_api_spec(spec_file: Optional[Path]) -> list[ContractEntry]:
+    if spec_file is None or not spec_file.exists():
+        return []
+    return parse_api_spec(spec_file.read_text(encoding="utf-8", errors="ignore"))
+
+
+def _segments(path: str) -> list[str]:
+    return [s for s in normalize_path(path).split("/") if s]
+
+
+def _suffix_match(by_key: dict, method: str, path: str):
+    """The document's path may be relative to a server base (`/v1/slots`)
+    while the served path carries the application's prefix
+    (`/api/v1/apt/slots` is NOT that, `/api/v1/slots` is): a declared entry
+    matches when its segments are the served path's trailing segments, and
+    only when exactly one declared entry does."""
+    served = _segments(path)
+    hits = [entry for (m, p), entry in by_key.items()
+            if m == method.strip().upper() and _segments(p) and served[-len(_segments(p)):] == _segments(p)]
+    return hits[0] if len(hits) == 1 else None
+
+
 JAVADOC_RE = re.compile(r"/\*\*(.*?)\*/", re.DOTALL)
 CLASS_JAVADOC_RE = re.compile(r"/\*\*(.*?)\*/\s*(?:@[^\n]*\n\s*)*(?:public\s+)?(?:final\s+)?class\b", re.DOTALL)
 
@@ -167,15 +270,24 @@ def _id_prefix(entries: list[ContractEntry]) -> str:
     return prefixes.pop() if len(prefixes) == 1 else "API-"
 
 
+# What each contract source is called in drift details and the index.
+SOURCE_NAMES = {"api-spec": "API document", "api-registry": "API REGISTRY"}
+
+
 def attach_contract_ids(document: ApiDocument, entries: list[ContractEntry], source_label: str,
-                        source_root: Optional[Path] = None) -> None:
+                        source_root: Optional[Path] = None, kind: str = "api-registry") -> None:
     """Stamps each implemented endpoint with its contract id and records both
     directions of drift on the document. Mutates in place, like the other
-    enrich/attach extractors."""
+    enrich/attach extractors. `kind` is "api-spec" (the module's OpenAPI
+    document -- served paths may carry a base prefix the document's paths do
+    not, so a unique trailing-segment match also counts) or "api-registry"
+    (the pre-v7 prose table, exact paths only)."""
     if not entries:
         return
 
+    name = SOURCE_NAMES.get(kind, kind)
     document.contract_source = source_label
+    document.contract_kind = kind
     by_key: dict[tuple[str, str], ContractEntry] = {}
     for entry in entries:
         by_key.setdefault(_key(entry.method, entry.path), entry)
@@ -186,13 +298,19 @@ def attach_contract_ids(document: ApiDocument, entries: list[ContractEntry], sou
     for ep in document.endpoints:
         key = _key(ep.method, ep.path)
         entry = by_key.get(key)
+        if entry is None and kind == "api-spec":
+            entry = _suffix_match(by_key, ep.method, ep.path)
+            if entry is not None:
+                key = _key(entry.method, entry.path)
+                if key in matched:
+                    entry = None
         if entry is None:
             ids, claim_source = claimed_ids(source_root, ep.method, ep.path, registered, prefix)
             document.contract_drift.append(ContractDrift(
                 kind="undeclared",
                 method=ep.method,
                 path=ep.path,
-                detail="implemented but absent from the API REGISTRY — it has no contract id "
+                detail=f"implemented but absent from the {name} — it has no contract id "
                        "any other artifact can refer to",
                 claimed_ids=ids,
                 claim_source=claim_source,
@@ -210,6 +328,6 @@ def attach_contract_ids(document: ApiDocument, entries: list[ContractEntry], sou
             api_id=entry.api_id,
             method=entry.method,
             path=entry.path,
-            detail="declared in the API REGISTRY but no such endpoint is served — a consumer "
+            detail=f"declared in the {name} but no such endpoint is served — a consumer "
                    "resolving this id from a planning document would call a path that does not exist",
         ))

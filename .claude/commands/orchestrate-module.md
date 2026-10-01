@@ -9,107 +9,78 @@ cross-repo reach into `frontend/`. (The frontend repo has its own separate
 orchestrator; this one never touches it.) Every path below is relative to the
 backend repo root unless said otherwise.
 
-## Step 0 — resolve where governance lives (never type it)
+## Step 0 — the contract comes from one tool (never typed)
 
 ```bash
-SUMMARY=governance/shared/platform/profile-summary.json
-test -f "$SUMMARY" || { echo "MISSING — git submodule update --init governance/shared"; exit 1; }
-MODULES=governance/shared/$(jq -r .paths.modules "$SUMMARY")            # every module's analysis — read-only here
-GOVROOT=governance/shared/$(jq -r .paths.platform "$SUMMARY")           # project-registry.md and the platform artifacts
-PART=governance/shared/$(jq -r .tracks.backend.partition "$SUMMARY")    # this track's own partition ({MOD} unexpanded): execution-state.json, api-docs/, test-api/
-PKGS=governance/shared/$(jq -r .tracks.backend.delivery "$SUMMARY")     # the delivered packages ({MOD} unexpanded) — written by the factory, read here
+./scripts/governance pull                     # start of work: the factory's latest, the pin check, the derived scope
+python3 scripts/gov-module.py pin             # 0 = schema 7 · 3 = pre-v7 · 1 = refused
+python3 scripts/gov-module.py modules         # live modules, wave, backend delivered version
+python3 scripts/gov-module.py plan {MODULE} --json
 ```
 
-**Every governance path lives inside the `governance/shared/` submodule.** The
-analysis this command reads (PRD, SRS, db-script, the execution plan), the
-delivered packages, and this repo's own partition are all in there; the backend
-repo's own tree holds only source, tools, skills and commands. So: bare
-`packages/…` paths below resolve under `$PKGS` with `{MOD}` expanded;
-`execution-state.json` and `api-docs/` under `$PART` with `{MOD}` expanded; and
-bare stage folders — `P0`…`P3_2`, `P1` (SRS/PRD), `P2` (db-script), `test_gen/`,
-`manifest.json` — under `$MODULES/{MODULE}/`. A version-suffixed base (`vN/`)
-applies to each of the three the same way. Nothing is read from a
-`governance/modules/…` path (no such tree), from the backend repo root, or from
-`frontend/`. If a path you are about to read does not begin `governance/shared/`
-and is not source/skill/command, you have the wrong path — resolve it again.
-
-`$MODULES` and `$GOVROOT` below are those values. The profile folder is the
-factory's to name; spelling it here makes a second profile an edit to this file.
+- `pin` exit **3** → the project predates factory schema 7: say so and STOP —
+  *"the factory owner runs `gov.py upgrade-project`"*. Exit **1** → refused; report and STOP.
+- `scripts/gov-module.py` reads every path and vocabulary from what the factory
+  publishes (`platform/profile-summary.json → consumer`, `platform/modules-registry.json`).
+  This command and every dispatch it writes **read paths from `plan --json`**:
+  `exec_plan` (P3.1), `test_plan` (P4), `exec_units` / `test_units` (each with
+  `unit`, `kind`, `tests`, `acceptance: tests-green`, `manifest`, `file`),
+  `integration` (per XM edge: `xm`, `target`, `requires`, `requires_met`, `tests`,
+  `manifest`), `api_spec` (the OpenAPI 3.1 API document — the contract),
+  `contract`, `state_file`, `features`, `phases`, `delivered_version`.
+- **Where this repo writes:** only `governance/shared/backend/modules/{MODULE}/`
+  (`execution-state.json`, `api-docs/`, `test-api/`) — never `…/packages/` (the
+  factory's), never `analysis/`. The state file is written only through
+  `gov-module.py record`.
 
 ## Usage
 
 ```
-/orchestrate-module [MODULE] [PHASE?] [--auto]
+/orchestrate-module [MODULE] [UNIT|PHASE?] [--auto]
 ```
 
-- `MODULE` (required): a live module code. **The live set is read, never
-  typed** — `jq -r '.modules[].code' governance/shared/platform/modules-registry.json`
-  (that file also carries each module's `current_version` — the IFA check below).
-  A module list written into a command is wrong the day a module is added,
-  split or retired, and the symptom is a run that refuses a real module or
-  accepts a dead one. If the argument is not in that file, STOP and say so;
-  do not guess a near-match. Three things must exist, each in its OWN
-  tree — they are not siblings:
-  - `$MODULES/{MODULE}/` — the analysis (P0…P3_2, `test_gen/`, `manifest.json`)
-  - `$PART/execution-state.json` and `$PKGS/backend-execution/` ({MOD} expanded)
-  - `.claude/commands/{MODULE}/execute-backend.md` — the per-module command
+- `MODULE` (required): a module listed by `gov-module.py modules`. If it is not
+  listed, STOP and say so; do not guess a near-match. Also required:
+  `.claude/commands/{MODULE}/execute-backend.md` (or `…/v{N}/` for
+  `delivered_version` N ≥ 2) — generate it with `/generate-module-setup {MODULE}`
+  if missing. If `plan` REFUSES with *"no backend delivery yet"*, the module has
+  not passed its ONE `analysis` review gate (after P4) and the factory has split
+  nothing — STOP.
 
-  If any of this is missing or shaped differently than expected, STOP and ask —
-  never guess a module's structure.
-
-  **VERSION (IFA-aware) — resolve the base BEFORE anything else.** A module
-  that received an incremental feature (IFA) has a current version ≥ 2 and all
-  of the above live under a version-suffixed base. Resolve it directly from
-  the filesystem:
-
-  ```bash
-  # find, not a glob: under zsh an unmatched `v*/` aborts the command with
-  # "no matches found", and 2>/dev/null does not suppress it.
-  find $MODULES/{MODULE} -mindepth 1 -maxdepth 1 -type d -name 'v[0-9]*' \
-    | sort -t v -k2 -n | tail -1
-  ```
-
-  - No `vN` folder found → base `$MODULES/{MODULE}/`      (no suffix, v1)
-  - Highest `vN` folder found → base `$MODULES/{MODULE}/v{N}/`
-
-  Call it `{MBASE}`. Every `$MODULES/{MODULE}/…` and bare
-  `packages/…` / `execution-state.json` path below resolves under `{MBASE}` — `packages/…` under `$PKGS` and `execution-state.json` under `$PART` (each with `{MOD}` expanded, the same `vN/` suffix applied),
-  and the per-module command for a vN module is
-  `.claude/commands/{MODULE}/v{N}/execute-backend.md`. By default orchestrate
-  the CURRENT version; to drive an older frozen version, ask — never assume.
-  Never orchestrate the un-suffixed v1 tree for a module whose current_version
-  is ≥ 2.
-- `PHASE` (optional): if omitted, resume from `execution-state.json`'s
-  `current_phase`/`current_sub` — this command ALWAYS resumes from the last
-  completed point, it never restarts a module from scratch.
+  **VERSION.** The version to orchestrate is `plan.delivered_version` — from the
+  registry, never from the highest `analysis/modules/{MODULE}/vN` folder (a delta
+  `vN` holds only what changed). `plan` already resolves the delta packages
+  (`…/packages/vN/…`). To drive an older frozen version, ask — never assume.
+- `UNIT|PHASE` (optional): if omitted, resume from `gov-module.py delivery
+  {MODULE}` — the first unit (in the order below) not `accepted`. This command
+  ALWAYS resumes; it never restarts a module and never re-runs an accepted unit.
 - `--auto` (optional): AUTONOMOUS mode. Run every remaining phase to completion
   back-to-back WITHOUT pausing for the per-phase confirmation gate. Autonomy
-  never weakens safety: subs still run strictly one at a time, the per-sub
+  never weakens safety: units still run strictly one at a time, the per-unit
   skill-compliance read + STEP 1.3 verification still happen, and the run STILL
-  HALTS on any of — a sub error, a validation failure, a skill-compliance report
-  that's silent or non-compliant, or a spec gap that STEP 2 cannot resolve from
-  the module's own governance artifacts. Every one of those stops is now reached
-  through STEP 1.4 first: on an impasse the orchestrator runs the second-agent
-  debate, and halts only after that debate fails to resolve it — the debate is an
-  added attempt BEFORE the stop, never a replacement for it. `--auto` removes the
-  human pause
-  between clean phases; it removes no check and no stop. Without `--auto`, the
-  per-phase gate applies (recommended for a module's first run or after any spec
-  or skill change).
+  HALTS on any of — a unit error, a failing acceptance test, a skill-compliance
+  report that's silent or non-compliant, or a spec gap that STEP 2 cannot resolve
+  from the module's own governance artifacts. Every one of those stops is now
+  reached through STEP 1.4 first: on an impasse the orchestrator runs the
+  second-agent debate, and halts only after that debate fails to resolve it — the
+  debate is an added attempt BEFORE the stop, never a replacement for it. `--auto`
+  removes the human pause between clean phases; it removes no check and no stop.
+  Without `--auto`, the per-phase gate applies (recommended for a module's first
+  run or after any spec or skill change).
 
-Backend execution phases and their order are **read, never typed** — from
-`.tracks.backend.plans.exec.phases[].key` in `profile-summary.json` (Step 0),
-intersected with what `$PKGS/backend-execution/` actually holds:
+**Order of work — read, never typed.**
+1. The ordinary exec phases, in `plan.phases[]` order, **skipping** the phase
+   with `integration: true`. A phase's units are the `exec_units` whose
+   `manifest` sits in that phase's `folder`, in the order of the folder's
+   `index.md`. Never assume which phase is first or last — there is no fixed
+   phase list, and the integration phase is not necessarily named or placed
+   anywhere in particular.
+2. The integration packages — one per `plan.integration[]` edge (STEP 3.5).
+3. The feature prompts not `done` (STEP 3.6).
+4. The test phase (STEP 4), ending in `api_verify`.
 
-```bash
-EXEC_PHASES=$(jq -r '.tracks.backend.plans.exec.phases[].key' "$SUMMARY")
-```
-
-(As published today that yields `CORE → DATA-DOM → SVC-API → DOC → INT-C →
-INT-R → SEC-BE → ALIGN-BE` — shown to orient you, not to be relied on. A phase
-list typed into a command goes stale the moment the profile gains one.) There
-is no P4/audit phase. Wherever this file says `ALIGN-BE` as the last execution
-phase, read "the LAST key in `$EXEC_PHASES`".
+In this file a **sub** is one dispatchable unit of work: one `exec_units[]`
+entry, one integration package, or one feature prompt.
 
 ## Portability — never hardcode an absolute path
 
@@ -130,8 +101,8 @@ and never touches the module's source files directly.** Its only jobs are:
 
 1. Read state and spec files to brief each dispatch (read-only).
 2. Dispatch exactly ONE Claude Code agent session (via the `Agent` tool) per
-   **sub** — one addressable unit of work (e.g. one entity's slice, one API
-   group). Never per individual task line, never a whole phase in one shot,
+   **sub** — one delivered unit (`plan.exec_units[]`), one integration package,
+   or one feature prompt. Never per individual task line, never a whole phase in one shot,
    regardless of what `execute-backend.md`'s weight table says. That file's
    weight-based chunking ("all LIGHT/MEDIUM → whole phase in one pass") is
    **overridden** by this standing rule: **one dispatched session per sub,
@@ -172,16 +143,18 @@ and never touches the module's source files directly.** Its only jobs are:
 
 ## STEP 0 — Locate module & resume point
 
-1. Read `$PART/execution-state.json` ({MOD} expanded — this repo's own
-   writable partition, e.g. `governance/shared/backend/modules/<MODULE>/`). It is
-   NOT under `$MODULES/` and there is no `backend/` segment inside `$PART`.
-   Note `current_phase`, `current_sub`, and every phase's/sub's `status`.
-2. If a `PHASE` argument was given, use it (but still resume from whatever subs
-   in it are not yet `COMPLETE` — never re-run a `COMPLETE` sub). Otherwise use
-   `current_phase`.
+1. `python3 scripts/gov-module.py state-init {MODULE}` (adds any channel or row
+   list the contract requires; keeps every row), then
+   `python3 scripts/gov-module.py delivery {MODULE}` — per unit `accepted` /
+   `FAILING` / `not run`. That is the progress record: a unit is done when its
+   `package_results` row has `tests_failed: 0`. Read the open rows of
+   `plan.state_file` too (`api_doc_gaps`, `blocked`, `deferred_xm`).
+2. If a `UNIT|PHASE` argument was given, use it (still skipping accepted units).
+   Otherwise start at the first unit, in the order of work above, that is not
+   `accepted`.
 3. Read this module's own `.claude/commands/{MODULE}/execute-backend.md` for its
-   phase list, weight map, and module-specific constraints (those substantive
-   rules still apply — this command overrides only the *session-granularity and
+   Unit Map, weights and module-specific constraints (those substantive rules
+   still apply — this command overrides only the *session-granularity and
    phase-gating* behavior above, not which files never get touched or how errors
    route).
 4. **Skill orientation — mandatory, once per run, before the first phase
@@ -206,8 +179,8 @@ and never touches the module's source files directly.** Its only jobs are:
 
 ## STEP 1 — Per-sub dispatch protocol
 
-For each `PENDING` sub in the confirmed phase, in the order listed in
-`execution-state.json`:
+For each not-yet-accepted sub in the confirmed phase, in the order of work
+(Step 0):
 
 ### 1.1 — Orchestrator prep (read-only, in this session)
 
@@ -217,19 +190,31 @@ Before writing the dispatch prompt, read:
   drift happens: a rule easy to follow at sub 1 silently stops applying by sub
   20 as your recall of "what this command says" degrades. This file on disk is
   authoritative over your memory of it; re-read it fresh every time.
-- The phase's `[PHASE]-HEADER.md` (phase-level contracts/tables) and this sub's
-  spec file, both under `packages/backend-execution/{PHASE}/`; and
-  `packages/backend-execution/_SECTIONS.md` if present (plan-level content
-  outside every phase — Plan Index, DB Alignment Manifest, Error Catalog, Agent
-  Handoff Summary).
-- **`db-script-<mod-lowercase>.md`** for this module (under `$MBASE/P2/`, e.g.
-  `P2/db-script-fin.md` — the file is module-suffixed; `ls $MBASE/P2/` rather
-  than assuming a bare `db-script.md`) — the authoritative source for table and
-  column names, PK/FK/flag suffix conventions, and types. A spec block naming a
-  field is a plan; the db-script is schema ground truth. Never invent a column
-  name. Referred to below as **the db-script**.
-- **The SRS** (`$MBASE/P1/srs-<mod-lowercase>.md`) for the business rules (RULE-IDs) this sub must
-  implement — authoritative for behavior.
+- The unit's own `.md` (`plan.exec_units[].file`) and its manifest (`manifest`
+  → `tests`, the acceptance set), the phase's `*-HEADER.md` beside it, and
+  `_SECTIONS.md` at `plan.exec_packages` (plan content outside every phase).
+  Plan facts are NAMED yaml blocks (```` ```yaml name=<block> ````) — in
+  `_SECTIONS.md` or the unit's `.md`: `error-catalog` (codes, status, message
+  keys), `permission-matrix`, `bootstrap` (seed data), `totals`, `self-check`.
+  Point the agent at the named block, never at a prose table.
+- **The API document** (`plan.api_spec`): every operation this unit builds, by
+  `x-api-id` — method, path, parameters, request/response schemas, each error
+  response's `x-error-codes`, `x-paginated`, `x-traces`. It is the contract the
+  backend implements.
+- **The db-script** as of the delivered version: the latest
+  `P2/db-script-<mod>.md` among `governance/shared/analysis/modules/{MODULE}/`
+  (v1) and its `vK/` folders with K ≤ `plan.delivered_version` (module-suffixed;
+  `ls` rather than assuming a bare `db-script.md`). Its DDL is ONE ```` ```sql ````
+  fence and its field matrix the ```` ```yaml name=dbf-matrix ```` block
+  (`id, table, column, type, entity_field, traces`) — the authoritative source
+  for table and column names, PK/FK/flag suffix conventions, and types. A spec
+  block naming a field is a plan; the db-script is schema ground truth. Never
+  invent a column name. Referred to below as **the db-script**.
+- **The SRS** (`P1/srs-<mod>.md`, same version rule) for the business rules
+  (RULE-IDs) and `AC-*` this sub must satisfy — authoritative for behavior.
+- **The acceptance tests**: each id in the unit's `tests` — a `TC-*` is defined
+  by its `<!-- TC:<id>:START -->` block in `plan.test_plan` (P4) or the test
+  package unit holding it; an `AC-*` by its Given/When/Then in the SRS.
 - **Skill compliance (mandatory — not satisfied by precedent-matching alone).**
   1. Cross-reference this sub's work type against the skills index from STEP 0.4
      and list, explicitly, every skill file this sub triggers before writing the
@@ -254,7 +239,7 @@ Before writing the dispatch prompt, read:
      right call, but it's the user's to bless, not this orchestrator's to
      assume.
 - **The real code precedent to mirror.** Before inventing any structure, find an
-  already-`COMPLETE` analog and copy its exact shape: an earlier COMPLETE sub in
+  already-accepted analog and copy its exact shape: an earlier accepted sub in
   this module (closest by entity shape — flat vs. self-referencing), or failing
   that an already-built sibling module's equivalent
   entity/repository/service/controller/mapper/DTO set. Real, consistent
@@ -281,33 +266,33 @@ of this conversation. It MUST include:
   wiring into; any legacy module's files.
 - **The exact files to read first, in full** (the ones identified in 1.1:
   HEADER, sub spec, the db-script, SRS slice, the named skills, the precedent)
-  — **each as a fully expanded path**, e.g.
-  `governance/shared/backend/modules/<MODULE>/packages/backend-execution/SVC-API/SVC-API-CRUD.md`
-  and `governance/shared/analysis/modules/<MODULE>/P2/db-script-<module>.md`. The
-  dispatched agent has none of this session's variable bindings and no
-  bare-path convention, so `$PKGS/…` or a bare `packages/…` in its prompt is a
-  path it has to guess at — and the tree it would guess (the repo root) has no
-  governance in it at all.
+  — **each as the full repo-relative path `plan --json` gave you this run**
+  (e.g. the unit's `file`, `manifest`, `plan.api_spec`, the db-script). The
+  dispatched agent has none of this session's bindings, so a bare `packages/…`
+  in its prompt is a path it has to guess at — and the tree it would guess (the
+  repo root) has no governance in it at all.
 - **The "don't build a competing implementation" check**: before writing code,
   confirm whether the thing this sub needs already exists (an entity/repository/
   service/controller for this resource). If it exists: integrate/modify it,
   never create a competing new one. If genuinely absent, flag it in the report
   and implement it as a minimal explicit addition.
-- **Contract ground-truth rule (backend)**: the authoritative sources are, in
-  order, the db-script (schema), the SRS (rules), and the sub's own spec block.
-  The backend PRODUCES its API contract (api-docs are generated FROM the code
-  after implementation) — the agent NEVER invents a contract detail the
-  SRS/spec/db-script doesn't give, and NEVER consults the frontend. If a needed
-  detail is confirmed absent or contradictory across those sources, it records
-  ONE `api_doc_gaps[]` entry (shape below) and continues with everything else;
-  it does NOT guess. Only the orchestrator (STEP 2) runs a gap to ground.
-- **OQ-blocked items**: skip, note in the report, and write
+- **Contract ground-truth rule (backend)**: the API document (`plan.api_spec`)
+  is the contract the backend implements — paths, verbs, schemas, status codes,
+  error codes; the db-script (schema), the SRS (rules) and the unit's own spec
+  block complete it. The api-docs are generated FROM the code afterwards and
+  held to the API document by `api-verify`. The agent NEVER invents a contract
+  detail those sources don't give, and NEVER consults the frontend. If a needed
+  detail is confirmed absent or contradictory across them, it records ONE gap
+  (`gov-module.py record … api_doc_gaps`, below) and continues with everything
+  else; it does NOT guess. Only the orchestrator (STEP 2) runs a gap to ground.
+- **OQ-blocked items**: skip, note in the report, write
   `// TODO: OQ-[ID] — pending resolution` only if the spec explicitly names that
-  OQ ID for that exact field/behavior — never invent one.
+  OQ ID for that exact field/behavior — never invent one — and record it:
+  `python3 scripts/gov-module.py record {MODULE} blocked --key OQ-[ID] --resolution "OPEN — <what is missing>"`.
 - **XM-ID prohibition**: an XM-ID is a governance marker, not code — never write
-  an XM-ID reference anywhere in the code. INT-C/INT-R cross-module dependencies
-  are implemented via the established service/interface layer, not by emitting
-  an XM-ID; if one seems needed in code, stop and flag it.
+  an XM-ID reference anywhere in the code. Cross-module dependencies (the
+  integration packages) are implemented via the established service/interface
+  layer, not by emitting an XM-ID; if one seems needed in code, stop and flag it.
 - **No parallel/competing mechanism for an owned responsibility** — use the
   established repository/service/mapper layering; no bypassing it with ad-hoc
   queries, no second HTTP/data path.
@@ -318,17 +303,23 @@ of this conversation. It MUST include:
 - **Validation step**: compile/build the module (`mvn -q -DskipTests compile` at
   minimum; the phase's own `gov-validate-*` skill where it applies) — run it and
   report the real result, never claim success without running it.
-- **execution-state.json update, precisely scoped**: set only this sub's
-  `status` to `"COMPLETE"`; advance `current_sub` only if it still equals this
-  sub's id; if this is the LAST sub in the phase, also set the phase's `status`
-  to `"COMPLETE"` and advance `current_phase`/`current_sub` to the next phase's
-  first sub. If (and only if) a new gap was found, append ONE entry to the
-  top-level `api_doc_gaps[]` in this exact canonical shape (identical to
-  `generate-module-setup.md`'s, so generator and orchestrator never diverge):
-  ```json
-  {"type": "MISSING_IN_DOCS | NAMING_MISMATCH | MAPPING_GAP | ABSENT", "phase": "...", "sub": "...", "endpoint": "[METHOD] [path] or the field/contract in question", "detail": "what was missing/wrong", "resolution": "blocked pending spec clarification", "recorded_at": "[timestamp]"}
+- **Acceptance tests**: write one test per id in the unit's `tests` (named or
+  tagged with the id), run them, and report passed/failed per id. A unit of a
+  phase with `no_tests: true` has none — its acceptance is the clean build.
+- **Recording, precisely scoped — through the tool, never a hand edit of
+  `execution-state.json`**:
+  ```bash
+  python3 scripts/gov-module.py record {MODULE} package <UNIT> --passed <N> --failed <N>
   ```
-  Nothing else in that file may be touched. Append, never overwrite.
+  If (and only if) a new gap was found, ONE row:
+  ```bash
+  python3 scripts/gov-module.py record {MODULE} api_doc_gaps --key "<METHOD> <path> or the field/contract in question" \
+      --resolution "OPEN — <type: MISSING_IN_DOCS | NAMING_MISMATCH | MAPPING_GAP | ABSENT> pending spec clarification" \
+      --detail "<phase/unit> · what was missing/wrong · what was done instead"
+  ```
+  A resolution must START with one of OPEN, DEFERRED, PENDING, RESOLVED, CLOSED,
+  IMPLEMENTED, HUMAN, ADR — the tool refuses anything else ("blocked pending …"
+  is not a resolution). Nothing else in the state file may be touched.
 - **No `git commit`/`git push`** — leave changes in the working tree.
 - **Required report-back format** (cap word count, keep it scannable): sub
   completed y/n; files created/changed (exact paths, plus an explicit "did NOT
@@ -336,7 +327,7 @@ of this conversation. It MUST include:
   and how resolved; any `api_doc_gaps` added; any OQ-blocked items; validation
   result; **skill compliance** (which skill file(s) checked, and for each:
   compliant or a named, justified deviation — not silence); and the exact scope
-  of the `execution-state.json` edit.
+  of each `gov-module.py record` call it made (and its passed/failed counts).
 
 ### 1.3 — Orchestrator verification (after the agent reports, before the next sub)
 
@@ -345,8 +336,10 @@ Do this yourself, read-only, in this session:
   exactly what the agent claimed, nothing more.
 - Re-run the validation command yourself if cheap (`mvn -q -DskipTests compile`),
   or at least read the agent's own run output critically.
-- Re-read the relevant slice of `execution-state.json` to confirm the status
-  update is scoped exactly as instructed (no other phase/sub/gap disturbed).
+- `python3 scripts/gov-module.py delivery {MODULE}` and
+  `python3 scripts/gov-module.py validate {MODULE}` — confirm the unit's row is
+  there with the claimed counts, nothing else was disturbed, and the file holds
+  the contract.
 - Confirm the agent's report actually names the skill file(s) it checked and
   states compliant-or-deviation-with-reason for each — a report silent on this
   means the skill step was skipped, not that no skill applied; do not accept the
@@ -371,12 +364,13 @@ interrupt, is the first response to a stall.
 
 1. **Dispatch a SECOND agent** (`Agent` tool, read-heavy — it analyses, it does
    not write code) briefed with ALL of this module's analysis files:
-   - the PRD (`$MBASE/P0_5/prd-<mod-lowercase>.md`) and the SRS
-     (`$MBASE/P1/srs-<mod-lowercase>.md` — `RULE-ID`s / `AC-*`). The PRD is
-     stage P0_5, NOT P1; `P0/` holds business-policies and the module registry;
-   - the db-script under `$MBASE/P2/`;
-   - the execution plan, this sub's own spec file, the phase's
-     `[PHASE]-HEADER.md`, and `packages/backend-execution/_SECTIONS.md`;
+   - the PRD (`P0_5/prd-<mod>.md`) and the SRS (`P1/srs-<mod>.md` — `RULE-ID`s /
+     `AC-*`), under `governance/shared/analysis/modules/{MODULE}/` (latest
+     version folder ≤ `plan.delivered_version`). The PRD is stage P0_5, NOT P1;
+     `P0/` holds business-policies and the module registry;
+   - the db-script (its ```` ```sql ```` fence and `dbf-matrix` block);
+   - `plan.exec_plan`, `plan.test_plan`, `plan.api_spec`, this sub's own unit
+     `.md` and manifest, the phase's `*-HEADER.md`, and `_SECTIONS.md`;
    - the exact skill files this sub triggers, from `.claude/skills/` (the list
      built in 1.1);
    - PLUS the first agent's FULL account of what it attempted, what it observed,
@@ -384,8 +378,8 @@ interrupt, is the first response to a stall.
 
    Its job: independently reason the impasse against those artifacts and propose
    one concrete, grounded resolution — traceable to a real artifact line, not an
-   opinion. It reads only `.claude/skills/` and this module's own artifacts under
-   `{MBASE}`; it needs nothing else.
+   opinion. It reads only `.claude/skills/` and the artifacts `plan --json` names
+   for this module; it needs nothing else.
 
 2. **Let the two converge.** The orchestrator relays between them — a follow-up
    to the first agent by `agentId` via `SendMessage` carrying the reviewer's
@@ -426,15 +420,18 @@ Resolution stays entirely inside THIS backend repo — the backend is the source
 of truth for its own contracts; there is nothing to ask the frontend. Work the
 gap in this order:
 
-1. **The db-script** (`$MBASE/P2/db-script-<mod-lowercase>.md`) — is the field/column actually
+1. **The db-script** (its `dbf-matrix` block and ```` ```sql ```` fence) — is the field/column actually
    defined, under a different real name or suffix? If so it's a NAMING_MISMATCH:
    correct this side's understanding (spec/comment wording) and proceed.
-2. **The SRS** (`$MBASE/P1/srs-<mod-lowercase>.md`) — does a RULE-ID specify the behavior the spec left
-   implicit? If so it's MISSING_IN_DOCS resolved from the SRS; document it.
-3. **A cross-module (INT-C/INT-R) dependency** — if the gap is a contract owned
-   by ANOTHER backend module, read that module's own governance artifacts
-   (the db-script, SRS, generated `api-docs/`) in this same repo to confirm the
-   real contract. This is a same-repo cross-module read, never a cross-repo one.
+2. **The SRS and the API document** — does a RULE-ID, or the operation in
+   `plan.api_spec`, specify the behavior the spec left implicit? If so it's
+   MISSING_IN_DOCS resolved from there; document it.
+3. **A cross-module dependency** — if the gap is a contract owned by ANOTHER
+   backend module, read that module's published contract
+   (`platform/contracts/contract-<target>.md`), its API document
+   (`gov-module.py plan <TARGET> --json` → `api_spec`) and its published
+   `api-docs/` to confirm the real contract. A read inside `governance/shared`,
+   never a cross-repo one.
 4. **Existing backend source** — an already-built sibling entity's
    entity/mapper/service may already implement the analogous field correctly;
    mirror it (record it as resolved via source).
@@ -448,10 +445,13 @@ gap in this order:
    what you checked, and leave the `api_doc_gaps` entry open with `resolution`
    describing the state. In `--auto`, that post-debate escalation is a HALT.
 
-Whatever the outcome, update the gap's `resolution` in `execution-state.json`
-from the placeholder to a factual note of what was found — keep the entry as a
-historical record, never delete it — and sweep for any stale code comment that
-still describes the field as an open gap. Only once every gap opened in the
+Whatever the outcome, re-record the gap under the SAME key with a factual
+resolution — `RESOLVED — <what was found, where>` when settled in code,
+`HUMAN — <the decision needed>` when escalated, `ADR — <id>` when a decision
+record settles it (`gov-module.py record {MODULE} api_doc_gaps --key "<same key>"
+--resolution "…"` replaces that row; the factory reads it with `gov.py feedback`
+and answers open ones). Never delete a row; sweep for any stale code comment
+that still describes the field as an open gap. Only once every gap opened in the
 current phase reads resolved (or is explicitly escalated) may the phase be
 presented as done.
 
@@ -461,7 +461,8 @@ presented as done.
 
 When the last sub in a phase completes and every gap is resolved:
 1. Own final sweep: `git status --short`, a full compile/validation run,
-   `execution-state.json` phase/sub statuses, and the `api_doc_gaps`
+   `gov-module.py delivery {MODULE}` (every unit of the phase `accepted`),
+   `gov-module.py validate {MODULE}`, and the `api_doc_gaps` / `blocked`
    resolutions.
 2. Report to the user in Arabic, concisely: what got built, any corrections
    applied, any gaps found-and-fixed (with the real root cause, not just
@@ -474,10 +475,48 @@ When the last sub in a phase completes and every gap is resolved:
 
 ---
 
+## STEP 3.5 — Integration packages (after the last ordinary phase closes)
+
+The profile's integration phase (`plan.phases[]` with `integration: true`) is
+NOT built as an ordinary phase. Each XM edge is ONE integration package:
+
+```bash
+python3 scripts/gov-module.py requires {MODULE}
+```
+
+For each `plan.integration[]` edge, in order:
+- **`requires_met: true`** → dispatch it like any sub (STEP 1.1–1.4): the agent
+  reads the package (`manifest` → `XM-…/XM-….md`: target, type, contract, its
+  `do` steps such as a `ddl_patch`), the target's published contract
+  (`plan.contract` of the target / `platform/contracts/contract-<target>.md`), and
+  builds it through the established cross-module layer; writes and runs the
+  package's `tests`; records
+  `python3 scripts/gov-module.py record {MODULE} package <XM-ID> --passed N --failed N`.
+- **`requires_met: false`** → do NOT build it. Record and move on:
+  ```bash
+  python3 scripts/gov-module.py record {MODULE} deferred_xm --key <XM-ID> --resolution "DEFERRED — <requires> not met"
+  ```
+  A deferred edge is picked up by a later run that sees it met.
+
+Integration packages are excluded from the module's own delivery; a deferred one
+never holds the module open. (`gov-module.py delivery` still prints their lines —
+read those as integration status, not as module acceptance.)
+
+## STEP 3.6 — Feature prompts
+
+For each `plan.features[]` entry with `done: false`, in order: dispatch ONE
+agent with the prompt (`file`) — it is a self-contained execution prompt; the
+frozen plans carry a FEATURE LOG line naming it — under the same skill,
+test and verification discipline (STEP 1.2–1.4). When it is green:
+`python3 scripts/gov-module.py record {MODULE} feature <FEAT-ID>`.
+
+---
+
 ## STEP 4 — Test phase (a real gated phase, entered in the same run)
 
-Trigger: STEP 3 just closed the LAST key in `$EXEC_PHASES` (`ALIGN-BE` as published today) — and
-every gap opened during it is resolved (never escalated-and-still-open).
+Trigger: every ordinary exec unit is `accepted`, STEP 3.5 / 3.6 are done (built
+or deferred), and every gap opened so far is resolved (never
+escalated-and-still-open).
 
 > **The test phase is a gated phase.** It is entered behind the explicit human
 > "Proceed?" gate, then runs test → coverage debate → fix as one continued
@@ -485,14 +524,11 @@ every gap opened during it is resolved (never escalated-and-still-open).
 > reach. Code review (`debate-review`) and anything after it stay SEPARATE,
 > manually-run steps — named at the end, never dispatched from here.
 
-Treat the test phase exactly like `CORE … ALIGN-BE`:
-
-1. **Read the test phase(s).** From `execution-state.json` read `test_phases[]`
-   — one entry per real test phase, with its `header_file` naming where that
-   phase's plan actually lives. The delivery comes in two shapes and which one
-   applies is a per-module fact: the split folder `$PKGS/backend-test/` (today
-   the common one) or a single flat `$MBASE/test_gen/backend-test-plan-<mod>.md`.
-   Follow `header_file`; read whatever the array holds; assume no fixed shape.
+1. **Read the test phase.** `plan.test_units` (the P4 backend test packages —
+   each with its `.md` and `tests`) and `plan.test_plan` (the P4 backend test
+   plan, whose `TC-*` blocks are the REQUIRED COVERAGE together with every id in
+   the units' and built integration packages' `tests`). Assume no fixed shape or
+   unit name.
 
 2. **Print the SAME phase-assessment block** used for every execution phase, and
    wait for explicit confirmation (respect `--auto` identically: print but do
@@ -501,43 +537,42 @@ Treat the test phase exactly like `CORE … ALIGN-BE`:
    ══════════════════════════════════════════════════════
    PHASE ASSESSMENT — [MODULE] / TEST
    ══════════════════════════════════════════════════════
-   Test phases  : [list each test phase + its pending subs]
-   Gated by     : all backend execution phases (CORE … ALIGN-BE) — COMPLETE
-   Plan         : run /[MODULE]/execute-backend-test → debate coverage (2nd agent)
-                  → fix agreed fail/blocked → close
+   Test units   : [list each test unit + its TC count]
+   Gated by     : every exec unit accepted (gov-module.py delivery)
+   Plan         : run /[MODULE]/execute-backend-test → api-verify → debate coverage
+                  (2nd agent) → fix agreed fail/blocked → close
    ══════════════════════════════════════════════════════
    Proceed?
    ```
 
 3. **On confirmation, dispatch `/[MODULE]/execute-backend-test`** as this run's
    next phase, using the SAME one-dispatch / wait-for-report / verify discipline
-   as a sub (STEP 1.2 dispatch, STEP 1.3 verification). That command reads the
-   delivered `TC-[MODULE]-<seq>` plan from whichever location its own STEP 0.1
-   records for this module, then —
-   BEFORE any verification runs — regenerates this module's api-docs via
-   `governance/governance-tools/api-doc-generator` (never verify against a
-   possibly-stale copy), then invokes the `api-verify` skill
-   (`.claude/skills/api-verify/SKILL.md`, this repo's sole adopted backend API
-   verification mechanism — TestSprite is retired, never dispatch it) scoped to
-   this module, and emits the governed-plan ↔ api-verify coverage table
-   (`TC-[MODULE]-<seq>` → the matching `test_<entity>()` traceability comment,
-   or "✗ no matching test"). Read that report and that table.
+   as a sub (STEP 1.2 dispatch, STEP 1.3 verification). That command builds and
+   runs the test units (recording a `package` row per unit), then — BEFORE any
+   API verification — regenerates and publishes this module's api-docs into
+   `governance/shared/backend/modules/[MODULE]/api-docs/` via
+   `/generate-api-docs` (never verify against a possibly-stale copy), then
+   invokes the `api-verify` skill (`.claude/skills/api-verify/SKILL.md` — the
+   delivered api-docs held to `plan.api_spec`; TestSprite is retired, never
+   dispatch it), records
+   `python3 scripts/gov-module.py record [MODULE] api_verify --version <plan.delivered_version> --result PASS|FAIL`
+   (PASS only when the script exits zero — the frontend's delivery of this
+   version stays OPEN until this row is PASS), and emits the governed-plan ↔
+   tests coverage table. Read that report and that table.
 
 4. **Coverage decision — adopt a second agent to debate it.** Do not accept the
    run's verdict as final on its own. Dispatch a SECOND agent (read-only,
    separate from the one that produced the report) whose only job is to review
    this module's ANALYSIS files against the coverage table and challenge the
    verdict:
-   - It reads the analysis sources — the PRD (`$MBASE/P0_5/`), the SRS
-     (`$MBASE/P1/`, `AC-*`), the execution
-     plan, and the delivered test plan at the location `header_file` names
-     (including any `INT-XM` phase and the `XM-*`/`UXD-*` those integration
-     `TC-*` trace).
+   - It reads the analysis sources — the PRD (`P0_5/`), the SRS (`P1/`, `AC-*`),
+     `plan.exec_plan`, `plan.test_plan`, `plan.api_spec`, and the integration
+     packages (their `XM-*` and the `tests` they carry).
    - For every claimed GAP it asks: is this genuinely uncovered, or already
-     exercised by another `test_<entity>()` traceability comment under a
-     different `TC-*`? For every claimed PASS it asks: does the
-     `AC-*`/`XM-*`/`UXD-*` behind that `TC-*` actually get verified, or only
-     touched superficially?
+     exercised by another test under a different id? For every claimed PASS it
+     asks: does the `AC-*`/`XM-*` behind that `TC-*` actually get verified, or
+     only touched superficially? An id of a deferred integration package is
+     DEFERRED, not a gap.
    - The two agents exchange until they converge on ONE agreed set of real
      failures / real coverage gaps / blocked items. Only that agreed set is
      written to the report as the verdict — a disputed "gap" that the debate
@@ -551,30 +586,38 @@ Treat the test phase exactly like `CORE … ALIGN-BE`:
    - It fixes application code for real failures and fills real coverage gaps,
      following the binding skills in `.claude/skills/` (a skill outranks
      codebase precedent), then re-runs the affected tests via
-     `/[MODULE]/execute-backend-test` and re-checks coverage until the agreed
-     set is closed.
+     `/[MODULE]/execute-backend-test` (re-recording the affected `package` rows
+     and the `api_verify` row) until the agreed set is closed.
    - It derives everything it can from what it can reach — the analysis files,
-     the code, the skills, `execution-state.json`. It works autonomously on all
-     of that without pausing.
+     the code, the skills, `plan --json`, the state file. It works autonomously
+     on all of that without pausing.
    - **It stops and asks the human ONLY for information it genuinely cannot
      reach** — a business decision not stated in any analysis file, an external
      credential/value, a real-world fact absent from every artifact. It never
      stops to ask for anything derivable from the sources above. When it does
      stop, it reports in Arabic per the communication rule, states exactly what
      human input it needs and why it is unreachable, and waits.
-   - Any item that cannot be closed without that human input is left BLOCKED
-     with the reason recorded; the run halts there rather than presenting the
-     module as done.
+   - Any item that cannot be closed without that human input is recorded
+     (`record {MODULE} blocked --key <id> --resolution "HUMAN — <decision needed>"`)
+     and the run halts there rather than presenting the module as done.
 
-6. **Only when the agreed set is fully closed** (every `TC-*` covered and
-   passing, `test_phases[]` set to COMPLETE), print the closing banner naming
-   the remaining SEPARATE, manually-run steps — do NOT dispatch them:
+6. **Only when the agreed set is fully closed** (`gov-module.py delivery
+   {MODULE}` shows every exec and test unit accepted and the `api_verify` row is
+   PASS for `delivered_version`), run the end of work and print the closing
+   banner naming the remaining SEPARATE, manually-run steps — do NOT dispatch them:
+   ```bash
+   python3 scripts/gov-module.py validate {MODULE}
+   ./scripts/governance push          # stages only this track's partition
+   ```
    ```
    ══════════════════════════════════════════════════════
-   MODULE COMPLETE — [MODULE]
+   MODULE COMPLETE — [MODULE] v[delivered_version]
    ══════════════════════════════════════════════════════
-   Implementation : all phases COMPLETE (CORE → ALIGN-BE)
-   Tests          : all governed TC-* covered & passing (coverage table in report)
+   Implementation : every exec unit accepted (plan.phases order)
+   Integration    : [XM built / deferred]
+   Features       : [FEAT executed / none]
+   Tests          : every governed id covered & passing (coverage table in report)
+   api-verify     : PASS (recorded)
 
    Next steps (run separately, when ready — NOT auto-run from here):
      Code review : debate-review --local
@@ -618,8 +661,13 @@ Treat the test phase exactly like `CORE … ALIGN-BE`:
   `enforce-permissions`' Layer-3 `can()` check were both silently violated
   module-wide). The incident was frontend, the discipline is identical here —
   don't wait for a backend repeat to take it seriously.
-- ALWAYS update `execution-state.json` after every sub, scoped exactly as
-  described — never let two subs' updates land in one dispatch.
+- ALWAYS record every sub through `gov-module.py record` (its `package` row, or
+  `feature`, or `deferred_xm`), scoped exactly as described — never let two subs'
+  rows land in one dispatch, and never hand-edit `execution-state.json`.
+- NEVER build an integration package whose `requires` is not met, and never
+  build the integration phase as an ordinary phase.
+- NEVER read a path the tool did not give you this run — `plan --json` is the
+  only source of governance paths and of the delivered version.
 - ALWAYS keep every code change attributable to a dispatched Claude Code
   session; this orchestrating session reads, briefs, verifies, and reports — it
   does not edit source itself.

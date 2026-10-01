@@ -6,9 +6,11 @@ it works identically for SEC, CU, NOTIF, FILE and any future module that follows
 this platform's existing conventions (a `GroupedOpenApi` bean per module, a
 shared `com.erp.common` foundation), with no generator change required to
 support a new one. It works under both layouts this platform has used: the
-single consolidated POM it builds as today, and a multi-module Maven reactor. There is no governance coupling, no
-execution-plan parsing, no drift/contract verification here. **The
-implemented backend is the only source of truth.**
+single consolidated POM it builds as today, and a multi-module Maven reactor. **The
+implemented backend is the only source of truth** for what the docs say; the one
+governance input is the module's declared contract (its API document,
+`api-spec-<mod>.yaml`), read only to stamp each served endpoint with its
+contract id and report declared-vs-served drift.
 
 ## Purpose
 
@@ -75,13 +77,18 @@ extractors/
                          operations into Endpoint objects: method, path,
                          summary/description, tag, path/query/header params,
                          auth requirement + scheme names. Also reads `info.version`.
-  contract_extractor.py  Joins the module's own API REGISTRY (from its backend
-                         execution plan) to the served endpoints, stamping each
-                         one with its contract id (API-SEC-004, ...) and
-                         reporting both directions of declared-vs-served drift.
+  contract_extractor.py  Joins the module's API DOCUMENT (api-spec-<mod>.yaml,
+                         OpenAPI 3.1 -- each operation's x-api-id, method and
+                         path; read with a stdlib line reader, no YAML library)
+                         to the served endpoints, stamping each one with its
+                         contract id (API-SEC-004, ...) and reporting both
+                         directions of declared-vs-served drift. A pre-v7
+                         module with no API document falls back to the prose
+                         API REGISTRY of its backend execution plan, and the
+                         run says FALLBACK.
                          This is what makes the generated docs addressable by
                          the ids every other governance artifact -- SRS,
-                         frontend execution plan, test manifest -- is written
+                         frontend execution plan, P4 test plan -- is written
                          in; without it, resolving an id to a path meant
                          opening a planning document, which states the path
                          that was PROPOSED, not the one that is served.
@@ -308,9 +315,17 @@ conventions every current module already does, with zero generator changes:
    (a module can depend on several; all are searched). Under the single
    consolidated POM this platform builds as today, shared code already lives
    in the same `src/main/java` tree, so that whole tree is the common root.
-5. **Where does output go?** `governance-repo/modules/<MODULE>/api-docs/` —
-   this tool's own repository, so no discovery is needed, just the
-   already-established convention.
+5. **Where does output go?** The api-docs partition the factory declares:
+   `profile-summary.json → consumer.partitions.api-docs.path`
+   (`backend/modules/<MOD>/api-docs`, inside `governance/shared/`). A pre-v7
+   project declares none; the tool then infers it and refuses when two
+   candidates exist (see `discovery.default_output_dir`).
+6. **Where is the contract?** `scripts/gov-module.py plan <MOD> --json` →
+   `api_spec` (the API document beside the delivered packages) and
+   `exec_plan` (the backend plan as of the DELIVERED version — never the
+   highest `v<N>/` folder: a delta version holds only what changed). When the
+   project predates schema 7 or the module has no delivery yet, the summary's
+   `consumer.publications.api-specs`, then the registry's version for the plan.
 
 Every step degrades to "not found" rather than guessing, exactly like the
 existing best-effort extractors already do — `generate.py` turns that into a
@@ -333,8 +348,9 @@ python3 generate.py --module SEC --function generate \
     --openapi ./openapi.json \
     --source ../../../src/main/java/com/erp/sec \
     --common-source ../../../src/main/java \
-    --execution-plan ../../modules/SEC/P3_1/backend-execution-plan-sec.md \
-    --output ../../modules/SEC/api-docs/
+    --api-spec ../../shared/backend/modules/SEC/packages/api-spec-sec.yaml \
+    --output ../../shared/backend/modules/SEC/api-docs/
+# --execution-plan <plan.md> is read ONLY when no API document exists (pre-v7).
 ```
 
 ## Execution modes (`--function`)
@@ -359,7 +375,8 @@ extractors or renderers, and they don't know it exists.
   modifying anything.
 - **check** — review, then the assertions in `checks.py`, exit 2 on any FAIL:
   `deterministic` (two renders identical), `stale` (disk matches the render),
-  `contract-drift` (no declared-vs-served row), `contract-ids` (a registry
+  `contract-drift` (no declared-vs-served row), `contract-ids` (an API document
+  with no `x-api-id` operation fails; on the pre-v7 fallback, a registry
   heading with no parseable row fails), `permissions` (found/endpoints against
   @PreAuthorize/@Secured counted in source; any NOT_EXTRACTED outcome fails),
   `auth-determined` (OpenAPI security requirement present when a
@@ -413,7 +430,7 @@ Output layout (one `api-docs/` per module, alongside its other governance
 packages, not a shared `output/` under the tool itself):
 
 ```
-modules/ORG/api-docs/
+backend/modules/ORG/api-docs/
 ├── index.md                          module overview, auth, common headers,
 │                                      shared response/pagination envelopes,
 │                                      known error codes (+ Status/HTTP status
@@ -496,11 +513,15 @@ modules/ORG/api-docs/
   they depend on (the permission-constants holder, the Status table's home)
   are matched structurally rather than hardcoded, so a rename degrades into
   partial output instead of silently emptying a whole section.
-- **Contract ids need a machine-readable API REGISTRY.** The registry table is
-  read from the module's `backend-execution-plan*.md` -- the one under its
-  highest `v<N>/` folder that has one (an incremental version, per the IFA
-  convention; read from the filesystem, not the registry), else the module
-  dir's own -- in either spelling in
+- **Contract ids come from the API document.** Schema 7 publishes
+  `api-spec-<mod>.yaml` per module; every operation carries `x-api-id`. A
+  served path may carry a base prefix the document's paths do not
+  (`/api/v1/slots` vs `/v1/slots`): a unique trailing-segment match counts.
+- **Pre-v7 fallback only: a machine-readable API REGISTRY.** With no API
+  document, the registry table is read from the module's
+  `backend-execution-plan*.md` as of its registry version (backend delivery,
+  else `current_version`; the latest folder ≤ that version holding a plan,
+  never simply the highest `v<N>/`), in either spelling in
   use here: a markdown table under `**API REGISTRY**` (SEC, MDL, FIN) or a
   box-drawing (`│`) table under a bare `API REGISTRY` line (CU). NOTIF and
   FILE write their registry as compressed prose — several entries per line,

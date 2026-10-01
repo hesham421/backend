@@ -1,5 +1,16 @@
 # TestSprite Governance — Backend
 
+> **RETIRED — history only.** TestSprite is no longer this repo's backend test
+> mechanism. Module tests are the delivered packages' acceptance tests
+> (`{unit}.package.json → tests`, recorded with `scripts/gov-module.py record MOD
+> package UNIT --passed N --failed N`), and API verification is the `api-verify`
+> skill (the published api-docs held to the module's API document, recorded as
+> the `api_verify` row). The paths below are obsolete: `governance/modules/<MOD>/…`
+> no longer exists, and the v7 partition `governance/shared/backend/modules/<MOD>/`
+> holds only `execution-state.json`, `api-docs/` and `test-api/` — no
+> `testsprite/` archive. Do not start new TestSprite runs or archives from this
+> document.
+
 This document is the single source of truth for how TestSprite (the MCP-based
 AI test generator, wired in `backend/.mcp.json` as the `TestSprite` server)
 is used against this repository, and how its output is organized. Read this

@@ -4,51 +4,56 @@
 Lives at   : backend/.claude/commands/generate-api-docs.md, so it
              auto-loads as a Claude Code slash command
 Runs       : governance/governance-tools/api-doc-generator/generate.py
-Writes to  : $PART/api-docs/  ({MOD} expanded — this track's own writable
-             partition, today governance/shared/backend/modules/<MOD>/)
+Writes to  : governance/shared/backend/modules/<MOD>/api-docs/ — this track's
+             partition, as the factory declares it
+             (profile-summary.json → consumer.partitions.api-docs.path)
+Contract   : the module's API document, `gov-module.py plan <MOD> --json → api_spec`
 ```
 
 (Re)generates a module's API documentation from the **running backend**, so
 the frontend and the `api-verify` skill read documentation that matches the
-implementation instead of a stale hand-written copy.
+implementation instead of a stale hand-written copy. Each served endpoint is
+stamped with its contract id (`x-api-id`) from the module's API document
+(`api-spec-<mod>.yaml`, OpenAPI 3.1, published by the factory beside the
+delivered packages), and every declared-vs-served mismatch is reported.
 
 $ARGUMENTS = MODULE
 
 The module code is the only input. Everything else — which springdoc group the
 module is, the OpenAPI URL, the module's source root, the shared
-`com.erp.common` root, the output directory — is auto-discovered from the
-repository itself. Do NOT pass override flags unless discovery actually fails
+`com.erp.common` root, the output directory, the API document — is
+auto-discovered from the repository itself and from `scripts/gov-module.py`. Do NOT pass override flags unless discovery actually fails
 and names the flag to pass.
 
-## Step 0 — resolve where governance lives (never type it)
+## Step 0 — the contract comes from one tool (never typed)
 
 ```bash
-SUMMARY=governance/shared/platform/profile-summary.json
-test -f "$SUMMARY" || { echo "MISSING — git submodule update --init governance/shared"; exit 1; }
-MODULES=governance/shared/$(jq -r .paths.modules "$SUMMARY")            # every module's analysis — read-only here
-GOVROOT=governance/shared/$(jq -r .paths.platform "$SUMMARY")           # project-registry.md and the platform artifacts
-PART=governance/shared/$(jq -r .tracks.backend.partition "$SUMMARY")    # this track's own partition ({MOD} unexpanded): execution-state.json, api-docs/, test-api/
-PKGS=governance/shared/$(jq -r .tracks.backend.delivery "$SUMMARY")     # the delivered packages ({MOD} unexpanded) — written by the factory, read here
+./scripts/governance pull                         # start of work
+python3 scripts/gov-module.py pin                 # 0 = schema 7 · 3 = pre-v7 · 1 = refused
+python3 scripts/gov-module.py plan $MODULE --json # api_spec, api_docs, delivered_version, …
 ```
 
-Bare `packages/…` paths below resolve under `$PKGS` with `{MOD}` expanded; `execution-state.json`
-and `api-docs/` under `$PART` with `{MOD}` expanded; stage artifacts and `manifest.json` under
-`$MODULES/{MODULE}/`. A version-suffixed base (`vN/`) applies to each of the three the same way —
-with ONE exception: `api-docs/` is never version-suffixed. It is derived from the running
-application, so there is one current set per module, not one per plan version.
-
-`$MODULES`, `$GOVROOT`, `$PART` and `$PKGS` below are those values. The profile
-folder is the factory's to name; spelling it here makes a second profile an edit
-to this file. **`$MODULES` is the read-only analysis tree; api-docs are written
-under `$PART`, never under `$MODULES`** — the two differ (`analysis/modules/<MOD>`
-vs `backend/modules/<MOD>`) and confusing them writes into the factory's
-analysis tree, which the next publish overwrites. Nothing refuses it for you.
+- `plan.api_spec` — the module's API document: **the contract**. The generator
+  reads it itself (`discovery.find_api_spec` calls this same tool) and prints
+  `Contract src: API document api-spec-<mod>.yaml`.
+- Output: `governance/shared/backend/modules/$MODULE/api-docs/` (`index.md`, then
+  `endpoints/*.md`) — the partition the factory declares
+  (`consumer.partitions.api-docs.path`). It is never version-suffixed: derived
+  from the running application, there is one current set per module.
+- This repo writes there and in `execution-state.json` / `test-api/` beside it —
+  never in `…/packages/` (the factory's) and never in `analysis/`.
+- **Pre-v7 project** (`pin` exit 3): the generator still documents the running
+  app, but it has no API document; it then FALLS BACK to the prose API REGISTRY
+  of the backend execution plan for contract ids and says `FALLBACK` on its
+  `Contract src:` / `Contract ids:` lines. Report that fallback; the factory owner
+  runs `gov.py upgrade-project`.
 
 ## Preconditions
 
-**Module validation:** confirm `$MODULES/$MODULE/` exists before
-running anything. Resolve the code from `governance/shared/platform/modules-registry.json` or
-`$GOVROOT/project-registry.md` — never invent one.
+**Module validation:** the module must be listed by
+`python3 scripts/gov-module.py modules` (on a pre-v7 project, which that tool
+refuses: `jq -r '.modules | keys[]' governance/shared/platform/modules-registry.json`)
+— never invent a code.
 
 **Backend running:** the Spring Boot app must be up and `/v3/api-docs/<group>`
 must answer for this module. The generator reads the real port from
@@ -108,8 +113,9 @@ one of these symptoms at least once — a symptom is a question, not a verdict:
 | `envelope` — no envelope while `ApiResponse` exists | `is_envelope_shape` no longer matches the wrapper's key set | `ApiResponse<T>` lost the `success`/`data` pair, or a controller returns something else | whichever side changed last |
 | `status-table` / `error-codes` — 0 read while declared | a third spelling of the table or the constants class | the class was renamed or moved out of the shared root | generator owner first |
 | `business-errors` — 0/N bound while source throws | the walk cannot resolve this module's delegate shape (`business_error_extractor`) | services throw only from code the controllers never reach | generator owner first; the `unbound` list names the codes to explain |
-| `contract-ids` — heading present, 0 rows | none: the tool needs a verb+path table | the plan writes its API REGISTRY as prose (NOTIF, FILE today) | factory owner |
-| `contract-drift` — any row | none: both sides are read verbatim | an endpoint the plan never registered, or a registered id nothing serves — the drift table quotes the id a controller Javadoc **claims**, which is a signpost for the registrar, not a registration | factory owner (register or retire the id); backend owner if the served path is the mistake |
+| `contract-ids` — API document has no `x-api-id` operation | the line reader in `contract_extractor.parse_api_spec` misses the document's layout | the factory published a document without ids | factory owner |
+| `contract-ids` — FALLBACK, heading present, 0 rows (pre-v7 only) | none: the fallback needs a verb+path table | the plan writes its API REGISTRY as prose (NOTIF, FILE) and no API document exists yet | factory owner (`gov.py upgrade-project`) |
+| `contract-drift` — any row | none: both sides are read verbatim | an endpoint the API document does not declare, or a declared operation nothing serves — the drift table quotes the id a controller Javadoc **claims**, which is a signpost, not a registration | backend owner when the served surface departs from the API document (implement to it); otherwise `gov-module.py record $MODULE api_doc_gaps --key "<METHOD> <path>" --resolution "OPEN — …"` for the factory |
 | `stale` | — | the backend changed after the last regeneration | run `--function update`, then STEP 4 |
 | `deterministic` | a new extractor iterates a mapping or directory listing unsorted | — | generator owner |
 
@@ -123,39 +129,24 @@ feature is stated as such in the docs themselves — e.g. an endpoint's
 
 `governance/shared` is a **submodule**: a separate repository mounted here.
 Files the generator wrote there are untracked in *that* repository and invisible
-to everyone else — the factory's `fetch-inputs` and the frontend both read the
-pushed commit, not your working tree. Regenerating and stopping looks like
-success and delivers nothing.
+to everyone else — the factory's `fetch-inputs`, `api-verify` and the frontend
+all read the pushed commit, not your working tree. Regenerating and stopping
+looks like success and delivers nothing.
 
 ```bash
-cd governance/shared
-git fetch origin main
-git merge-base --is-ancestor HEAD origin/main \
-  && git checkout main \
-  || echo "HEAD is NOT on origin/main — skip the checkout, use 'git push HEAD:main' below"
-git status --short                       # the regenerated files
-git add "${PART/\{MOD\}/$MODULE}/api-docs"   # $PART from Step 0 — never a typed path
-git commit -m "api-docs($MODULE): regenerated from the running app"
-git push                                 # or: git push HEAD:main, if the guard said so
-cd ../..
-git add governance/shared                # this repo's pointer to that commit
-git commit -m "bump shared: $MODULE api-docs"
-git push
+python3 scripts/gov-module.py validate $MODULE
+./scripts/governance push "api-docs($MODULE): regenerated from the running app"
 ```
 
-Two failure modes worth naming, because neither announces itself:
+`push` gets the submodule off a detached HEAD, stages **only this track's
+partition** (`gov-module.py pathspec` — never the factory's `packages/`),
+commits, pushes, and commits this repo's pointer. Use it instead of raw `git`:
 
-- **Detached HEAD.** `git submodule update --init` checks out a *commit*, so
-  the submodule normally sits on no branch at all and a plain `git push` has
-  nothing to push to. (Both consumer repos were found detached on 2026-09-17 —
-  this is the normal state, not a mishap.) Getting onto `main` fixes that, but
-  only when the checked-out commit is an **ancestor of `origin/main`** — hence
-  the guard above. When it is not, `git checkout main` would silently move you
-  off the tree you just generated against; commit where you are and
-  `git push HEAD:main` instead.
+- **Detached HEAD.** `git submodule update` checks out a *commit*, so a commit
+  made there is referenced by nothing and a plain `git push` publishes nothing.
+  The script checks out the branch first and says so.
 - **Pointer not bumped.** Pushing the submodule without committing the pointer
-  here leaves this repo claiming the previous api-docs. `gov.py sync` in the
-  factory reports it, but only if someone runs it.
+  here leaves this repo claiming the previous api-docs. The script commits it.
 
 ## Constraints (NON-NEGOTIABLE)
 
@@ -176,11 +167,11 @@ Two failure modes worth naming, because neither announces itself:
 
 ## Notes
 
-- Output always lands in this track's own partition — `$PART` with `{MOD}`
-  expanded, i.e. `governance/shared/backend/modules/[MODULE]/api-docs/`
-  (`index.md` + `endpoints/<group-slug>.md`). The path derives from the tool's
-  own location and `profile-summary.json`, so the command works from any
-  working directory. The generator resolves the layout itself and **refuses**
+- Output always lands in this track's own partition —
+  `governance/shared/backend/modules/[MODULE]/api-docs/`
+  (`index.md` + `endpoints/<group-slug>.md`), read from
+  `profile-summary.json → consumer.partitions.api-docs.path`, so the command
+  works from any working directory. The generator resolves the layout itself and **refuses**
   rather than guessing when two candidate directories exist — if it says so,
   report that; do not pick one for it.
 - `review` is safe to run any time, including in CI, to answer "have the API
@@ -189,7 +180,7 @@ Two failure modes worth naming, because neither announces itself:
   a whole-module silent-empty section (STEP 3).
 - Consumers of this output: the frontend repo and the governance factory, both
   of which read **this same single copy** through their own `governance/shared`
-  submodule (there is no second copy to keep in step — superseded 2026-09-17),
-  and the `api-verify` skill — see
-  `governance/shared/platform/rules/api-verify-config.md` §1, which lists api-docs as its
-  **mandatory** input and says to regenerate rather than trust a stale copy.
+  submodule (the factory merges the folder `index.md` first, then `**/*.md`),
+  and the `api-verify` skill, which holds these api-docs to the API document
+  (`plan.api_spec`) and records `gov-module.py record $MODULE api_verify
+  --version <delivered_version> --result PASS|FAIL`.

@@ -46,36 +46,23 @@ jobs:
           echo "partition=$PARTITION"   >> "$GITHUB_ENV"
           echo "live profile: $PROFILE · modules at $MODULES · $TRACK partition at $PARTITION"
 
-      - name: Every path this repo's execution state names resolves
+      - name: The project is pinned by the factory schema this repo's tooling reads
+        # scripts/gov-module.py reads every path and vocabulary from the factory's
+        # published contract (platform/profile-summary.json → consumer); a project
+        # that predates it is said (exit 3), one pinned by another schema fails.
         run: |
-          python3 - <<'PY'
-          import json, os, pathlib, sys
-          track = os.environ["TRACK"]
-          bad, seen = [], 0
-          # `tracks.<track>.partition` with {MOD} as the wildcard — the same
-          # template every command in this repo resolves, so a future layout
-          # move is picked up here instead of silently un-checked.
-          template = os.environ["partition"]
-          depth = template.split("/").index("{MOD}")
-          for es in sorted(pathlib.Path().glob(template.replace("{MOD}", "*") + "/execution-state.json")):
-              seen += 1
-              mod = es.parts[depth]
-              for key, value in json.loads(es.read_text(encoding="utf-8")).items():
-                  if not key.endswith("_path") or not isinstance(value, str) or not value.strip():
-                      if key.endswith("_path"):
-                          bad.append(f"{mod}: {key} is empty")
-                      continue
-                  if not pathlib.Path(value.strip()).exists():
-                      bad.append(f"{mod}: {key} -> {value} does not exist")
-          if not seen:
-              # A check that examined nothing must say so, not pass quietly.
-              print(f"::error::no execution state found for track {track!r} at {template} — either the submodule is stale or this repo writes nowhere")
-              sys.exit(1)
-          for b in bad:
-              print(f"::error::{b}")
-          print(f"checked {seen} module(s)")
-          sys.exit(1 if bad else 0)
-          PY
+          rc=0; python3 scripts/gov-module.py --track "$TRACK" pin || rc=$?
+          if [ "$rc" -eq 3 ]; then echo "::warning::the governance project predates factory schema 7 — the factory owner runs gov.py upgrade-project"; exit 0; fi
+          exit $rc
+
+      - name: Every execution-state file holds the contract
+        # channels are lists, every row has its key and a resolution starting with a
+        # declared word, delivery rows carry their fields — the partition's own file
+        # and every version folder's (feedback.versioned)
+        run: |
+          rc=0; python3 scripts/gov-module.py --track "$TRACK" validate || rc=$?
+          if [ "$rc" -eq 3 ]; then echo "::warning::pre-v7 project — execution state not validated"; exit 0; fi
+          exit $rc
 
       - name: No governance artifact has reappeared outside the submodule
         # `find`, not a shell glob test: a builtin that is absent, or silently

@@ -353,6 +353,9 @@ class ApiDocument:
     # ids were joined from; contract_drift is every declared-vs-served
     # mismatch found while joining.
     contract_source: Optional[str] = None
+    # "api-spec" (the module's OpenAPI API document, factory schema 7) or
+    # "api-registry" (the pre-v7 prose API REGISTRY fallback).
+    contract_kind: Optional[str] = None
     contract_drift: list[ContractDrift] = field(default_factory=list)
     # Populated only by error_mapping_extractor.find_field_error_semantics().
     field_error_semantics: list[FieldErrorSemantics] = field(default_factory=list)

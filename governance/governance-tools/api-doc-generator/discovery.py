@@ -33,6 +33,8 @@ into a clear message naming the explicit override flag to pass instead.
 
 import json
 import re
+import subprocess
+import sys
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
@@ -72,10 +74,16 @@ class RepositoryContext:
     output: Path
     source_root: Optional[Path] = None
     common_source_roots: list[Path] = field(default_factory=list)
-    # The module's backend execution plan, when one exists — read for its API
-    # REGISTRY only (contract id per endpoint). Optional like every other
-    # discovered input: absent simply means the docs carry no contract ids.
+    # The module's API document (api-spec-<mod>.yaml, OpenAPI 3.1, factory
+    # schema 7) -- THE declared contract: each operation's x-api-id, method
+    # and path. Resolved through scripts/gov-module.py, never typed.
+    api_spec: Optional[Path] = None
+    # The module's backend execution plan as of its delivered version. Read
+    # for its prose API REGISTRY only when there is no API document (a pre-v7
+    # module) -- the fallback, said out loud in contract_note.
     execution_plan: Optional[Path] = None
+    # One line saying where the contract ids come from (or why none do).
+    contract_note: Optional[str] = None
     # Flyway migration directories, from spring.flyway.locations. Read for the
     # uniqueness invariants the entities cannot express (partial indexes).
     migration_roots: list[Path] = field(default_factory=list)
@@ -93,15 +101,11 @@ def default_backend_root() -> Path:
 
 @lru_cache(maxsize=1)
 def _shared_modules_root() -> Path:
-    """Resolves the shared submodule's modules directory the same way every
-    other consumer does: via governance/shared/platform/profile-summary.json's
-    paths.modules, never a hard-coded profile name. That file is what lets a
-    second profile need no edit anywhere -- including here.
-
-    Modules do NOT live at a fixed "governance/shared/backend/modules" path;
-    they live at "governance/shared/<profile>/modules" (today's profile is
-    "erp", giving governance/shared/erp/modules), and the profile folder is
-    the factory's to name, not this tool's to guess."""
+    """Resolves the shared submodule's ANALYSIS modules directory (where each
+    module's plans live) via governance/shared/platform/profile-summary.json's
+    paths.modules (today "analysis/modules"), never a typed path. It is not
+    the backend partition (backend/modules/<MOD>), which holds the delivered
+    packages, the API document and this track's own writes."""
     shared = GOVERNANCE_ROOT / "shared"
     summary_path = shared / "platform" / "profile-summary.json"
     if not summary_path.is_file():
@@ -136,6 +140,10 @@ def _backend_partition_root(module: str) -> Path:
 
 def default_output_dir(module: str) -> Path:
     """Where generated api-docs land.
+
+    Schema 7 DECLARES it -- profile-summary.json -> consumer.partitions.api-docs
+    .path (backend/modules/{MOD}/api-docs) -- and that is read first. Everything
+    below is the pre-v7 inference, kept only for a project that declares nothing.
 
     They live in the shared repo, not in this one: the factory and the frontend
     read the SAME copy, so there is no second copy to drift from. This repo still
@@ -174,6 +182,9 @@ def default_output_dir(module: str) -> Path:
     tracks.backend.partition. That is the factory's to publish, and is recorded
     for it in the backend's execution-state.json rather than guessed at here.
     """
+    declared = _declared_api_docs_dir(module)
+    if declared is not None:
+        return declared
     candidates = [
         _shared_modules_root() / module / "api-docs",
         _backend_partition_root(module) / "api-docs",
@@ -202,38 +213,143 @@ def default_module_dir(module: str) -> Path:
     return _shared_modules_root() / module
 
 
+def _summary() -> dict:
+    path = GOVERNANCE_ROOT / "shared" / "platform" / "profile-summary.json"
+    return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+
+
+def _declared_api_docs_dir(module: str) -> Optional[Path]:
+    """The api-docs partition the factory DECLARES (schema 7:
+    profile-summary.json -> consumer.partitions.api-docs.path). None on a
+    pre-v7 project, which declares nothing and falls back to the inference
+    in default_output_dir."""
+    part = ((_summary().get("consumer") or {}).get("partitions") or {}).get("api-docs") or {}
+    path = part.get("path")
+    if not path:
+        return None
+    return GOVERNANCE_ROOT / "shared" / path.replace("{MOD}", module.upper()).replace("{mod}", module.lower())
+
+
+_PLAN_ERRORS: dict[str, str] = {}
+
+
+@lru_cache(maxsize=None)
+def module_plan(module: str) -> Optional[dict]:
+    """`scripts/gov-module.py plan MOD --json` -- the consumer's one reader of
+    the project repo (schema 7). None when the tool is absent, the project
+    predates schema 7 (exit 3), or the module has no backend delivery yet
+    (exit 1); the reason is kept in module_plan_error."""
+    tool = BACKEND_ROOT / "scripts" / "gov-module.py"
+    if not tool.is_file():
+        _PLAN_ERRORS[module] = f"{tool} not found"
+        return None
+    proc = subprocess.run(
+        [sys.executable, str(tool), "--project", str(GOVERNANCE_ROOT / "shared"), "--track", "backend",
+         "plan", module.upper(), "--json"],
+        capture_output=True, text=True)
+    if proc.returncode != 0:
+        said = (proc.stderr or proc.stdout).strip().splitlines()
+        _PLAN_ERRORS[module] = said[-1] if said else f"gov-module.py exit {proc.returncode}"
+        return None
+    try:
+        return json.loads(proc.stdout)
+    except ValueError as exc:
+        _PLAN_ERRORS[module] = f"gov-module.py plan printed no JSON ({exc})"
+        return None
+
+
+def module_plan_error(module: str) -> Optional[str]:
+    return _PLAN_ERRORS.get(module)
+
+
+def find_api_spec(module: str) -> Optional[Path]:
+    """The module's API document: `plan.api_spec` from gov-module.py, else
+    (no delivery yet, but a v7 project) the summary's
+    consumer.publications.api-specs. Only an existing file counts."""
+    plan = module_plan(module)
+    if plan and plan.get("api_spec"):
+        p = Path(plan["api_spec"])
+        return p if p.is_file() else None
+    home = ((_summary().get("consumer") or {}).get("publications") or {}).get("api-specs")
+    if home:
+        p = GOVERNANCE_ROOT / "shared" / home.replace("{MOD}", module.upper()).replace("{mod}", module.lower())
+        return p if p.is_file() else None
+    return None
+
+
 _VERSION_DIR_RE = re.compile(r"^v(\d+)$")
 
 
-def _plan_search_roots(module_dir: Path) -> list[Path]:
-    """Where to look for the current plan, highest version first (IFA
-    convention: an incremental feature adds v<N>/ directly under the module
-    dir; v10 sorts after v2 numerically). The module dir itself is last, for
-    a module with no v<N>/ at all. Read from the filesystem, never from
-    modules-registry.json's current_version: that copy lags a publish behind
-    (it still says FIN 1 while FIN/v2/ exists)."""
+def _registry_version(module: str) -> Optional[int]:
+    """The module's version as the published registry states it: the backend
+    delivery's version, else current_version. A delta v<N>/ folder holds only
+    what changed, so the HIGHEST folder on disk is never the answer."""
+    reg = GOVERNANCE_ROOT / "shared" / "platform" / "modules-registry.json"
+    if not reg.is_file():
+        return None
+    mods = json.loads(reg.read_text(encoding="utf-8")).get("modules") or {}
+    if isinstance(mods, list):
+        mods = {m.get("code"): m for m in mods}
+    m = mods.get(module.upper()) or {}
+    delivered = ((m.get("delivery") or {}).get("backend") or {}).get("version")
+    v = delivered or m.get("current_version")
+    return int(v) if v else None
+
+
+def _plan_search_roots(module_dir: Path, upto: Optional[int]) -> list[Path]:
+    """Where the plan as of version `upto` lives: v<upto>/, v<upto-1>/, ...
+    v2/, then the module dir itself (v1). The latest folder that HOLDS a plan
+    wins -- the same rule gov-module.py applies to every artifact."""
     versions = [d for d in module_dir.iterdir()
-                if d.is_dir() and _VERSION_DIR_RE.match(d.name)]
+                if d.is_dir() and _VERSION_DIR_RE.match(d.name)
+                and (upto is None or int(_VERSION_DIR_RE.match(d.name).group(1)) <= upto)]
+    if upto is None:
+        versions = []          # no registry version: v1 only, never "the highest folder"
     versions.sort(key=lambda d: int(_VERSION_DIR_RE.match(d.name).group(1)), reverse=True)
     return versions + [module_dir]
 
 
 def find_execution_plan(module: str) -> Optional[Path]:
-    """The module's current backend execution plan: the one under its highest
-    v<N>/ folder that has one (a v<N>/ still at P0 keeps the previous plan
-    current -- SEC/v2/P3_1 is empty today), else under the module dir itself.
-    Matched by role -- backend-execution-plan[-<mod>].md, both spellings in
-    use -- never by a hard-coded phase folder; no match means no contract ids."""
+    """The module's backend execution plan as of its DELIVERED version.
+
+    Schema 7: `plan.exec_plan` from gov-module.py. Pre-v7 fallback: the
+    registry's version (backend delivery, else current_version), searched
+    v<N>/ down to v1 for the latest folder that holds a plan. Matched by role
+    -- backend-execution-plan[-<mod>].md -- never by a hard-coded phase
+    folder; no match means no contract ids."""
+    plan = module_plan(module)
+    if plan and plan.get("exec_plan"):
+        p = Path(plan["exec_plan"])
+        if p.is_file():
+            return p
     module_dir = default_module_dir(module)
     if not module_dir.is_dir():
         return None
-    for root in _plan_search_roots(module_dir):
-        matches = sorted(root.rglob("backend-execution-plan*.md"))
+    for root in _plan_search_roots(module_dir, _registry_version(module)):
+        # The module dir (v1) must not see its own v<N>/ subfolders.
+        matches = sorted(p for p in root.rglob("backend-execution-plan*.md")
+                         if not _VERSION_DIR_RE.match(p.relative_to(root).parts[0]))
         if matches:
             # A split package copy (packages/backend-execution/...) restates
             # parts of the plan; the shallowest match is the plan proper.
             return min(matches, key=lambda p: (len(p.parts), str(p)))
     return None
+
+
+def resolve_contract(module: str, api_spec_override: Optional[Path] = None,
+                     execution_plan_override: Optional[Path] = None) -> tuple[Optional[Path], Optional[Path], str]:
+    """(api_spec, execution_plan, note). The API document wins whenever it
+    exists; the prose API REGISTRY of the plan is read only for a pre-v7
+    module with no API document, and the note says so."""
+    spec = api_spec_override or find_api_spec(module)
+    plan = execution_plan_override or find_execution_plan(module)
+    if spec is not None:
+        return spec, plan, f"API document {spec.name}"
+    why = module_plan_error(module) or "no API document published for this module"
+    if plan is not None:
+        return None, plan, (f"FALLBACK — no API document ({why}); contract ids read from the prose "
+                            f"API REGISTRY of {plan.name} (pre-v7 module)")
+    return None, None, f"none — no API document ({why}) and no backend execution plan"
 
 
 def _normalize(s: str) -> str:
@@ -572,10 +688,12 @@ def resolve(
     common_source_overrides: Optional[list[Path]] = None,
     output_override: Optional[Path] = None,
     execution_plan_override: Optional[Path] = None,
+    api_spec_override: Optional[Path] = None,
 ) -> RepositoryContext:
     backend_root = backend_root or default_backend_root()
     output = output_override or default_output_dir(module)
-    execution_plan = execution_plan_override or find_execution_plan(module)
+    api_spec, execution_plan, contract_note = resolve_contract(module, api_spec_override, execution_plan_override)
+    contract = dict(api_spec=api_spec, execution_plan=execution_plan, contract_note=contract_note)
 
     if openapi_override and source_override:
         # Every input explicitly given -- no repository discovery needed at all.
@@ -585,7 +703,7 @@ def resolve(
             output=output,
             source_root=source_override,
             common_source_roots=common_source_overrides or [],
-            execution_plan=execution_plan,
+            **contract,
         )
 
     if not backend_root.exists():
@@ -596,7 +714,7 @@ def resolve(
             )
         return RepositoryContext(module=module, openapi_source=openapi_override, output=output,
                                source_root=source_override, common_source_roots=common_source_overrides or [],
-                               execution_plan=execution_plan)
+                               **contract)
 
     groups = find_openapi_groups(backend_root)
     matched = match_openapi_group(groups, module)
@@ -626,7 +744,7 @@ def resolve(
         output=output,
         source_root=source_root,
         common_source_roots=common_source_roots,
-        execution_plan=execution_plan,
+        **contract,
         migration_roots=find_migration_roots(backend_root),
         message_bundles=message_bundles,
         message_basename=message_basename,

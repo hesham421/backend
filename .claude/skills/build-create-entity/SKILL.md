@@ -34,8 +34,8 @@ over from another module.
 | `<Entity>` | PascalCase entity name | — |
 | `<ENTITY_CLASS>` | `<CLASS_PREFIX><Entity>` — the actual Java class name | — |
 | `<ENTITY_TABLE>` | `<MODULE_TABLE_PREFIX>_<ENTITY_UPPER>` | UPPER_SNAKE_CASE |
-| `<ENTITY_SEQ>` | Sequence name from the DB script. If the DB script declares `GENERATED ALWAYS AS IDENTITY` or "BLOCK 1 — SEQUENCES / none", it names no sequence — use `SEQ_<ENTITY_TABLE>` and create it in the module's Flyway migration (see step 2) | UPPER_SNAKE_CASE |
-| `<ENTITY_PK_COLUMN>` | PK column name **as defined in the DB script** — entity-specific, never generic `ID` | UPPER_SNAKE_CASE |
+| `<ENTITY_SEQ>` | Sequence name from the DB script's DDL (its one ```` ```sql ```` fence; the PK row of its `dbf-matrix` block names the default). If the DDL declares `GENERATED ALWAYS AS IDENTITY` or creates no sequence for the table, it names none — use `SEQ_<ENTITY_TABLE>` and create it in the module's Flyway migration (see step 2) | UPPER_SNAKE_CASE |
+| `<ENTITY_PK_COLUMN>` | PK column name **as defined in the DB script** (`dbf-matrix` block: the `column` of the entity's identifier row) — entity-specific, never generic `ID` | UPPER_SNAKE_CASE |
 | `<Parent>` / `<PARENT_FK_COLUMN>` | *(optional)* parent entity and its FK column, if this is a child | — |
 | `<base.package>` | Project base package | e.g. the value of `groupId` in `pom.xml` |
 
@@ -98,8 +98,8 @@ private Long id;
 ```
 
 > **When the DB script says `GENERATED ALWAYS AS IDENTITY`, this skill still wins.** Some
-> generated `db-script-*.md` files declare identity columns and a "BLOCK 1 — SEQUENCES / none"
-> block. Ignore that: the entity still uses `GenerationType.SEQUENCE` with
+> generated `db-script-*.md` files declare identity columns in their ```` ```sql ```` DDL fence
+> and create no sequence for the table. Ignore that: the entity still uses `GenerationType.SEQUENCE` with
 > `@SequenceGenerator(..., sequenceName = "SEQ_<ENTITY_TABLE>", allocationSize = 1)`, and the
 > module's own Flyway migration creates those sequences instead of identity columns. This is
 > settled — see `governance/shared/platform/rules/GOVERNANCE-RULES.md` → "Convention Precedence — db-script vs

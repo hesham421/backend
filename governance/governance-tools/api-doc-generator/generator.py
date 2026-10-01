@@ -122,10 +122,17 @@ def build_document(context: RepositoryContext):
 
     # Last: the contract-id join. It needs the full endpoint list, and it is
     # what makes the generated docs addressable by the ids every other
-    # governance artifact (SRS, frontend plan, test manifest) is written in.
-    if context.execution_plan is not None:
+    # governance artifact (SRS, frontend plan, test plan) is written in.
+    # The module's API document is the contract; the prose API REGISTRY of the
+    # plan is read only for a pre-v7 module that has no API document.
+    if context.api_spec is not None:
+        entries = contract_extractor.load_api_spec(context.api_spec)
+        contract_extractor.attach_contract_ids(document, entries, context.api_spec.name, source_root,
+                                               kind="api-spec")
+    elif context.execution_plan is not None:
         entries = contract_extractor.load_api_registry(context.execution_plan)
-        contract_extractor.attach_contract_ids(document, entries, context.execution_plan.name, source_root)
+        contract_extractor.attach_contract_ids(document, entries, context.execution_plan.name, source_root,
+                                               kind="api-registry")
 
     return document
 
@@ -135,11 +142,12 @@ def _contract_line(document) -> str:
     unstamped endpoint or a drifting registry id is precisely what makes a
     consumer fall back to a planning document for a path."""
     if not document.contract_source:
-        return "Contract ids: none — no API REGISTRY found for this module"
+        return "Contract ids: none — no API document and no API REGISTRY found for this module"
     stamped = sum(1 for ep in document.endpoints if ep.api_id)
     drift = len(document.contract_drift)
     suffix = f", {drift} DRIFT (see index.md)" if drift else ""
-    return f"Contract ids: {stamped}/{len(document.endpoints)} from {document.contract_source}{suffix}"
+    fallback = " (FALLBACK: pre-v7 prose API REGISTRY)" if document.contract_kind == "api-registry" else ""
+    return f"Contract ids: {stamped}/{len(document.endpoints)} from {document.contract_source}{fallback}{suffix}"
 
 
 def run(context: RepositoryContext, mode: str) -> str:
