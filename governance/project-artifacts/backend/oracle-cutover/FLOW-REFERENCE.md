@@ -299,8 +299,9 @@
 | `INVESTOR_SUPPORT_OR_DRAWING`، `LAWYER_ADVANCE`، `INVESTOR_FEE_2_5`، `EXECUTION_ACTION_FEE`، `BAEETHA_FEE`، `CIVIL_FEE` | جاري المستثمرين `210201` | MAPPING(PAYMENT_METHOD) |
 | `INVESTOR_SALES_INVOICE` | `110201` | `210201` |
 | `CONTRACT_CREATED` | `210201` | مبيعات التقسيط `4101` |
-| `CONTRACT_SETTLEMENT` | خصومات مخالصات العقود `4901` (مقابل إيراد) | `110201` |
-| `COMPLAINT_SETTLEMENT` | ديون معدومة ومخالصات عملاء متعثرين `6602` | `110201` |
+| `CONTRACT_SETTLEMENT`، `COMPLAINT_SETTLEMENT` | جاري المساهمين `210201` (خصم المخالصة، V43) | العملاء `110201` |
+
+> **قيد السداد المركب (ملاحظات المحاسب، V43):** مدين البنك/الصندوق بالمحصّل + مدين جاري المساهمين بالخصم / دائن العملاء بالإجمالي. يصل من النظام القديم في صفّين، فيُرحَّل قيدين مجموعهما هو القيد المركب: نصف النقد (`INSTALLMENT_PAYMENT_RECEIVED` / `COURT_INSTALLMENT_PAYMENT`) ونصف الخصم (المخالصة أعلاه). الدفاتر تبدأ 2026-10-01 (V42)، وأي حدث تاريخه قبل ذلك يُرفض بـ `FIN-422-NO-DEFINED-PERIOD` ويُوقَف (PARKED).
 | `PURCHASE_INVOICE` | مشتريات بضاعة `5102` ← `grossAmount` | MAPPING(PAYMENT_METHOD) ← `paidAmount`، وموردون محليون `210101` ← `remainingAmount` (يُحذف إن كان صفراً) |
 | `EXPENSE_PAID` | MAPPING(EXPENSE_TYPE_CODE) | MAPPING(PAYMENT_METHOD) |
 | `REVENUE_RECEIVED` | MAPPING(PAYMENT_METHOD) | MAPPING(EXPENSE_TYPE_CODE) |
@@ -315,9 +316,9 @@
 |---|---|
 | `PAYMENT_METHOD` (لكل الأنواع التي تستخدمه) | `CASH` ← الصندوق الرئيسي `110101`، `CHEQUE` ← البنك التجاري `110111` |
 | `EXPENSE_TYPE_CODE` في `EXPENSE_PAID` | 61 مصروفات أخرى ← `6899`، 81 مرتبات ← رواتب أساسية `6101`، 101 مصروفات عمومية ← `6801`، 161 إيجارات ← `6201` |
-| `EXPENSE_TYPE_CODE` في `REVENUE_RECEIVED` | 1 إيرادات عقود ← `4401`، 181 إيرادات تسديد عملاء ← `4402`، 561 إيرادات أخرى ← `4501` |
-| `EXPENSE_TYPE_CODE` في `CUSTODY_RECEIVED` | 324 سداد قرضات ← قروض ممنوحة للمستثمرين `110307`، 381 عهدة المحاماة ← `110303`، 401 سداد مسحوبات علوش ← جاري الشريك - علوش `340101`، 422 تحويلات ← `110103` |
-| `EXPENSE_TYPE_CODE` في `CUSTODY_PAID_OUT` | 281 سحوبات علوش ← `340101`، 282 قرضات للمستثمرين ← `110307`، 382 عهدة المحاماة ← `110303`، 424 تحويلات ← `110103` |
+| `EXPENSE_TYPE_CODE` في `REVENUE_RECEIVED` | 1 و181 ← إيرادات شكوى / خدمات `4401`، 561 إيرادات أخرى ← `4501` |
+| `EXPENSE_TYPE_CODE` في `CUSTODY_RECEIVED` | 324 سداد قرضات ← قرض المساهمين `110307`، 381 عهدة المحاماة ← `110303`، 401 سداد مسحوبات علوش ← جاري المالك / مسحوبات المالك `110309`، 422 تحويلات ← `110103` |
+| `EXPENSE_TYPE_CODE` في `CUSTODY_PAID_OUT` | 281 سحوبات علوش ← `110309`، 282 قرضات للمستثمرين ← `110307`، 382 عهدة المحاماة ← `110303`، 424 تحويلات ← `110103` |
 
 الأنواع 361 و362 و363 **بلا mapping**، والقرار فيها للمالك (D-11).
 

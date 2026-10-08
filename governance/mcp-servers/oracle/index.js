@@ -16,7 +16,9 @@ const SERVICE = process.env.ORACLE_SERVICE ?? "FREEPDB1";
 
 const config = {
   user: process.env.ORACLE_USER ?? "LOAN_SYS",
-  password: Adf525415@ALLOW_WRITE;
+  password: process.env.ORACLE_PASSWORD ?? "LOAN_SYS",
+  connectString: `${HOST}:${PORT}/${SERVICE}`,
+};
 
 // Oracle's own name for the current user's schema — every query below is scoped
 // to it, so the server never reaches into another schema by accident.
