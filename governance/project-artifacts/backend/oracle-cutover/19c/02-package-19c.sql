@@ -100,6 +100,23 @@ CREATE OR REPLACE PACKAGE PKG_ACCOUNTING_EVENT AUTHID DEFINER AS
     p_description_ar   IN VARCHAR2 DEFAULT NULL,
     p_description_en   IN VARCHAR2 DEFAULT NULL);
 
+  -- ---- COMPOUND SETTLEMENT (accountant's notes, owner's choice 2026-10-09) ----
+  -- A settlement is ONE entry: Dr cash + Dr cheque (that day's payments) + Dr shareholders (discount)
+  -- / Cr customers (total). The legacy screens save the day's payments first and the settlement a few
+  -- minutes later, so settle() reverses the day's already-posted payment emissions (action MERGED)
+  -- and emits one settlement event with amounts {cashAmount, chequeAmount, discountAmount,
+  -- totalAmount} (FIN rules: Flyway V44). unsettle() reverses the latest settlement and, when asked,
+  -- re-emits the merged payments as ordinary payments again (settlement cancelled).
+  -- p_kind: 'CONTRACT' (payments LOAN_PAYMENT FL 7) | 'COMPLAINT' (payments COMPLAINT_DT FL 43).
+  PROCEDURE settle(p_kind VARCHAR2, p_pk NUMBER, p_action VARCHAR2, p_discount NUMBER, p_date DATE,
+                   p_org NUMBER, p_sub NUMBER, p_cust NUMBER, p_inv NUMBER, p_contract NUMBER,
+                   p_no VARCHAR2, p_note VARCHAR2);
+  PROCEDURE unsettle(p_kind VARCHAR2, p_pk NUMBER, p_action VARCHAR2, p_restore_payments BOOLEAN);
+  -- a payment whose latest emission is MERGED lives inside a settlement entry
+  FUNCTION  is_merged(p_source_table VARCHAR2, p_source_pk NUMBER) RETURN BOOLEAN;
+  -- an edit of such a payment cannot be posted on its own; it is logged for the accountant
+  PROCEDURE flag_merged_edit(p_source_table VARCHAR2, p_source_pk NUMBER, p_action VARCHAR2);
+
 END PKG_ACCOUNTING_EVENT;
 /
 
@@ -309,6 +326,198 @@ CREATE OR REPLACE PACKAGE BODY PKG_ACCOUNTING_EVENT AS
                NVL(v_type, p_event_type), p_source_table, p_source_pk, p_source_action, v_doc_date, v_amount,
                v_payload, SQLERRM || ' @ ' || DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
   END emit;
+
+  -- ======================================================================================
+  -- COMPOUND SETTLEMENT (2026-10-09) — see the spec
+  -- ======================================================================================
+  FUNCTION latest_action(p_source_table VARCHAR2, p_source_pk NUMBER, p_undo OUT NUMBER) RETURN VARCHAR2 IS
+    v_action VARCHAR2(10);
+  BEGIN
+    SELECT source_action, undo_fl INTO v_action, p_undo FROM (
+      SELECT source_action, undo_fl FROM ACCOUNTING_EVENT_LOG
+       WHERE source_table = p_source_table AND source_pk = p_source_pk AND enqueued_fl = 1
+       ORDER BY event_log_pk DESC) WHERE ROWNUM = 1;
+    RETURN v_action;
+  EXCEPTION WHEN NO_DATA_FOUND THEN p_undo := NULL; RETURN NULL;
+  END;
+
+  FUNCTION is_merged(p_source_table VARCHAR2, p_source_pk NUMBER) RETURN BOOLEAN IS
+    v_undo NUMBER;
+  BEGIN
+    RETURN NVL(latest_action(p_source_table, p_source_pk, v_undo) = 'MERGED', FALSE);
+  END;
+
+  -- the payment's latest emission is an ordinary posted one (not an undo, not merged)
+  FUNCTION is_posted(p_source_table VARCHAR2, p_source_pk NUMBER) RETURN BOOLEAN IS
+    v_undo NUMBER; v_action VARCHAR2(10);
+  BEGIN
+    v_action := latest_action(p_source_table, p_source_pk, v_undo);
+    RETURN v_action IS NOT NULL AND v_action <> 'MERGED' AND v_undo = 0;
+  END;
+
+  PROCEDURE flag_merged_edit(p_source_table VARCHAR2, p_source_pk NUMBER, p_action VARCHAR2) IS
+    v_p JSON_OBJECT_T := JSON_OBJECT_T();
+  BEGIN
+    v_p.put('sourceTable', p_source_table); v_p.put('sourcePk', TO_CHAR(p_source_pk)); v_p.put('sourceAction', p_action);
+    log_only('LEGACY:' || p_source_table || ':' || p_source_pk || ':' || ACCOUNTING_EVENT_SEQ.NEXTVAL, 'MERGED_PAYMENT_EDIT',
+             p_source_table, p_source_pk, p_action, SYSDATE, 0, v_p,
+             'MERGED_INTO_SETTLEMENT: this payment is inside a compound settlement entry; its ' || p_action
+             || ' was not posted - the accountant adjusts the settlement with a manual entry');
+  END;
+
+  -- (re)emit one payment row exactly as its trigger does
+  PROCEDURE emit_payment(p_kind VARCHAR2, p_pay_pk NUMBER, p_action VARCHAR2, p_reverse BOOLEAN, p_no VARCHAR2) IS
+  BEGIN
+    IF p_kind = 'CONTRACT' THEN
+      FOR r IN (SELECT * FROM LOAN_PAYMENT WHERE LOAN_PAYMENT_PK = p_pay_pk) LOOP
+        emit(p_source_table => 'LOAN_PAYMENT', p_source_pk => r.LOAN_PAYMENT_PK, p_source_action => p_action,
+             p_event_type => 'INSTALLMENT_PAYMENT_RECEIVED', p_normal_sign => 1, p_reverse => p_reverse,
+             p_doc_date => r.LOAN_PAYMENT_DATE, p_base_amount => r.LOAN_PAYMENT_VALUE,
+             p_org_fk => r.ORGANIZATION_FK, p_sub_fk => r.ORGANIZATION_SUB_FK, p_payment_type_fk => r.PAYMENT_TYPE_FK,
+             p_party_type => CASE WHEN r.SUPPLIERS_FK IS NOT NULL THEN 'SUPPLIER' WHEN r.CUSTOMERS_FK IS NOT NULL THEN 'CUSTOMER'
+                                  WHEN r.INVESTOR_FK IS NOT NULL THEN 'INVESTOR' END,
+             p_party_pk => COALESCE(r.SUPPLIERS_FK, r.CUSTOMERS_FK, r.INVESTOR_FK),
+             p_contract_pk => r.CONTRACT_FK, p_investor_pk => r.INVESTOR_FK, p_complaint_pk => r.COMPLAINT_FK,
+             p_contract_no => p_no,
+             p_description_ar => 'قيد الى لسداد عميل ' || r.NOTE,
+             p_description_en => 'INSTALLMENT_PAYMENT_RECEIVED ' || r.NOTE);
+      END LOOP;
+    ELSE
+      FOR r IN (SELECT * FROM COMPLAINT_DT WHERE COMPLAINT_DT_PK = p_pay_pk) LOOP
+        emit(p_source_table => 'COMPLAINT_DT', p_source_pk => r.COMPLAINT_DT_PK, p_source_action => p_action,
+             p_event_type => 'COURT_INSTALLMENT_PAYMENT', p_normal_sign => 1, p_reverse => p_reverse,
+             p_doc_date => NVL(r.COMPLAINT_DT_DATE, SYSDATE), p_base_amount => r.VALUE,
+             p_org_fk => r.ORGANIZATION_FK, p_sub_fk => r.ORGANIZATION_SUB_FK, p_payment_type_fk => r.PAYMENT_TYPE_FK,
+             p_contract_pk => r.CONTRACT_FK, p_complaint_pk => r.COMPLAINT_FK, p_complaint_no => p_no,
+             p_description_ar => 'قيد الى ناتج عن سداد شكوى ' || r.NOTS,
+             p_description_en => 'COURT_INSTALLMENT_PAYMENT');
+      END LOOP;
+    END IF;
+  END;
+
+  PROCEDURE settle(p_kind VARCHAR2, p_pk NUMBER, p_action VARCHAR2, p_discount NUMBER, p_date DATE,
+                   p_org NUMBER, p_sub NUMBER, p_cust NUMBER, p_inv NUMBER, p_contract NUMBER,
+                   p_no VARCHAR2, p_note VARCHAR2) IS
+    v_pay_tab VARCHAR2(30) := CASE p_kind WHEN 'CONTRACT' THEN 'LOAN_PAYMENT' ELSE 'COMPLAINT_DT' END;
+    v_type    VARCHAR2(50) := CASE p_kind WHEN 'CONTRACT' THEN 'CONTRACT_SETTLEMENT' ELSE 'COMPLAINT_SETTLEMENT' END;
+    v_date    DATE := TRUNC(NVL(p_date, SYSDATE));
+    v_cash    NUMBER := 0;
+    v_cheque  NUMBER := 0;
+    v_pt      NUMBER;                 -- the ONE payment method the settlement event carries (V45)
+    v_paid    NUMBER := 0;
+    v_disc    NUMBER := ABS(NVL(p_discount, 0));
+    v_total   NUMBER;
+    v_amounts JSON_OBJECT_T := JSON_OBJECT_T();
+    TYPE t_pay IS RECORD (pk NUMBER, v NUMBER, pt NUMBER);
+    TYPE t_pays IS TABLE OF t_pay;
+    v_pays    t_pays;
+    PROCEDURE take(p_pay_pk NUMBER, p_value NUMBER) IS
+    BEGIN
+      IF NOT is_merged(v_pay_tab, p_pay_pk) THEN
+        IF NOT is_posted(v_pay_tab, p_pay_pk) THEN RETURN; END IF;     -- never posted: nothing to absorb
+        emit_payment(p_kind, p_pay_pk, 'MERGED', TRUE, p_no);           -- cancel its own entry
+        IF NOT is_merged(v_pay_tab, p_pay_pk) THEN RETURN; END IF;     -- the cancel failed (logged): leave it standalone
+      END IF;
+      v_paid := v_paid + ABS(p_value);
+    END;
+  BEGIN
+    IF NOT g_enabled THEN RETURN; END IF;
+    IF p_kind = 'CONTRACT' THEN
+      SELECT LOAN_PAYMENT_PK, LOAN_PAYMENT_VALUE, CASE WHEN PAYMENT_TYPE_FK = 1 THEN 1 ELSE 0 END BULK COLLECT INTO v_pays
+        FROM LOAN_PAYMENT WHERE CONTRACT_FK = p_pk AND LOAN_PAYMENT_FL = 7 AND TRUNC(LOAN_PAYMENT_DATE) = v_date
+         AND NVL(LOAN_PAYMENT_VALUE, 0) > 0 ORDER BY LOAN_PAYMENT_PK;
+    ELSE
+      SELECT COMPLAINT_DT_PK, VALUE, CASE WHEN PAYMENT_TYPE_FK = 1 THEN 1 ELSE 0 END BULK COLLECT INTO v_pays
+        FROM COMPLAINT_DT WHERE COMPLAINT_FK = p_pk AND COMPLAINT_DT_FL = 43 AND TRUNC(COMPLAINT_DT_DATE) = v_date
+         AND NVL(VALUE, 0) > 0 ORDER BY COMPLAINT_DT_PK;
+    END IF;
+    -- one method per settlement (the FIN rule maps PAYMENT_METHOD): the larger one is absorbed; on the
+    -- rare mixed day the other method's payments keep their own entries (none in 2026)
+    FOR i IN 1 .. v_pays.COUNT LOOP
+      IF is_merged(v_pay_tab, v_pays(i).pk) OR is_posted(v_pay_tab, v_pays(i).pk) THEN
+        IF v_pays(i).pt = 1 THEN v_cheque := v_cheque + v_pays(i).v; ELSE v_cash := v_cash + v_pays(i).v; END IF;
+      END IF;
+    END LOOP;
+    v_pt := CASE WHEN v_cheque > v_cash THEN 1 ELSE 0 END;
+    FOR i IN 1 .. v_pays.COUNT LOOP
+      IF v_pays(i).pt = v_pt THEN take(v_pays(i).pk, v_pays(i).v); END IF;
+    END LOOP;
+    v_total := v_paid + v_disc;
+    IF v_total = 0 THEN RETURN; END IF;
+    v_amounts.put('paidAmount', v_paid);
+    v_amounts.put('discountAmount', v_disc);
+    v_amounts.put('totalAmount', v_total);
+    emit(p_source_table => CASE p_kind WHEN 'CONTRACT' THEN 'CONTRACT' ELSE 'COMPLAINTS' END,
+         p_source_pk => p_pk, p_source_action => p_action, p_event_type => v_type, p_normal_sign => 1, p_reverse => FALSE,
+         p_doc_date => v_date, p_base_amount => v_total, p_amounts => v_amounts, p_payment_type_fk => v_pt,
+         p_org_fk => p_org, p_sub_fk => p_sub,
+         p_party_type => 'CUSTOMER', p_party_pk => p_cust, p_contract_pk => p_contract, p_investor_pk => p_inv,
+         p_complaint_pk => CASE WHEN p_kind = 'COMPLAINT' THEN p_pk END,
+         p_contract_no  => CASE WHEN p_kind = 'CONTRACT' THEN p_no END,
+         p_complaint_no => CASE WHEN p_kind = 'COMPLAINT' THEN p_no END,
+         p_description_ar => CASE p_kind WHEN 'CONTRACT' THEN 'قيد مركب - مخالصة عقد رقم ' ELSE 'قيد مركب - مخالصة شكوى رقم ' END
+                             || p_no || ' ' || p_note,
+         p_description_en => v_type || ' (compound) ' || p_no);
+  END settle;
+
+  PROCEDURE unsettle(p_kind VARCHAR2, p_pk NUMBER, p_action VARCHAR2, p_restore_payments BOOLEAN) IS
+    v_tab   VARCHAR2(30) := CASE p_kind WHEN 'CONTRACT' THEN 'CONTRACT' ELSE 'COMPLAINTS' END;
+    v_type  VARCHAR2(50) := CASE p_kind WHEN 'CONTRACT' THEN 'CONTRACT_SETTLEMENT' ELSE 'COMPLAINT_SETTLEMENT' END;
+    v_payload CLOB; v_date DATE; v_no VARCHAR2(200); v_pt NUMBER := 0;
+    v_obj JSON_OBJECT_T; v_am JSON_OBJECT_T; v_f JSON_OBJECT_T; v_am2 JSON_OBJECT_T := JSON_OBJECT_T();
+  BEGIN
+    IF NOT g_enabled THEN RETURN; END IF;
+    BEGIN
+      SELECT payload, doc_date INTO v_payload, v_date FROM (
+        SELECT l.payload, l.doc_date FROM ACCOUNTING_EVENT_LOG l
+         WHERE l.source_table = v_tab AND l.source_pk = p_pk AND l.enqueued_fl = 1 AND l.undo_fl = 0
+           AND l.event_type_code IN (v_type, v_type || '_REVERSED')
+           AND NOT EXISTS (SELECT 1 FROM ACCOUNTING_EVENT_LOG u
+                            WHERE u.reverses_event_reference = l.event_reference AND u.enqueued_fl = 1)
+         ORDER BY l.event_log_pk DESC) WHERE ROWNUM = 1;
+      v_obj := JSON_OBJECT_T.parse(v_payload);
+      v_am  := v_obj.get_object('amounts');
+      v_f   := v_obj.get_object('fields');
+      v_no  := COALESCE(v_f.get_string('contractNo'), v_f.get_string('complaintNo'));
+      -- the reversal is posted with today's rule (V45: paidAmount + PAYMENT_METHOD), whatever shape
+      -- the original settlement had
+      IF v_am.has('paidAmount') THEN                       -- V45 shape
+        v_am2 := v_am;
+        v_pt := CASE WHEN v_f.get_string('PAYMENT_METHOD') = 'CHEQUE' THEN 1 ELSE 0 END;
+      ELSIF v_am.has('cashAmount') THEN                    -- V44 shape (cash + cheque)
+        v_am2.put('paidAmount', v_am.get_number('cashAmount') + v_am.get_number('chequeAmount'));
+        v_am2.put('discountAmount', v_am.get_number('discountAmount'));
+        v_am2.put('totalAmount', v_am.get_number('totalAmount'));
+        v_pt := CASE WHEN v_am.get_number('chequeAmount') > 0 THEN 1 ELSE 0 END;
+      ELSE                                                 -- before V44: two lines, {amount}
+        v_am2.put('paidAmount', 0);
+        v_am2.put('discountAmount', v_am.get_number('amount')); v_am2.put('totalAmount', v_am.get_number('amount'));
+      END IF;
+      emit(p_source_table => v_tab, p_source_pk => p_pk, p_source_action => p_action, p_event_type => v_type,
+           p_normal_sign => 1, p_reverse => TRUE, p_doc_date => v_date,
+           p_base_amount => v_am2.get_number('totalAmount'), p_amounts => v_am2, p_payment_type_fk => v_pt,
+           p_org_fk => TO_NUMBER(v_f.get_string('ORGANISATION_CODE')), p_sub_fk => TO_NUMBER(v_f.get_string('BRANCH_CODE')),
+           p_party_type => 'CUSTOMER', p_party_pk => TO_NUMBER(v_f.get_string('partyCode')),
+           p_contract_pk  => CASE WHEN p_kind = 'CONTRACT' THEN p_pk END,
+           p_complaint_pk => CASE WHEN p_kind = 'COMPLAINT' THEN p_pk END,
+           p_contract_no  => CASE WHEN p_kind = 'CONTRACT' THEN v_no END,
+           p_complaint_no => CASE WHEN p_kind = 'COMPLAINT' THEN v_no END,
+           p_description_ar => 'عكس قيد مركب - مخالصة رقم ' || v_no,
+           p_description_en => v_type || ' (compound) reversed ' || v_no);
+    EXCEPTION WHEN NO_DATA_FOUND THEN NULL;  -- nothing posted to undo
+    END;
+    IF p_restore_payments THEN               -- settlement cancelled: the merged payments stand alone again
+      IF p_kind = 'CONTRACT' THEN
+        FOR r IN (SELECT LOAN_PAYMENT_PK pk FROM LOAN_PAYMENT WHERE CONTRACT_FK = p_pk AND LOAN_PAYMENT_FL = 7) LOOP
+          IF is_merged('LOAN_PAYMENT', r.pk) THEN emit_payment('CONTRACT', r.pk, 'UPDATE', FALSE, v_no); END IF;
+        END LOOP;
+      ELSE
+        FOR r IN (SELECT COMPLAINT_DT_PK pk FROM COMPLAINT_DT WHERE COMPLAINT_FK = p_pk AND COMPLAINT_DT_FL = 43) LOOP
+          IF is_merged('COMPLAINT_DT', r.pk) THEN emit_payment('COMPLAINT', r.pk, 'UPDATE', FALSE, v_no); END IF;
+        END LOOP;
+      END IF;
+    END IF;
+  END unsettle;
 
 END PKG_ACCOUNTING_EVENT;
 /
