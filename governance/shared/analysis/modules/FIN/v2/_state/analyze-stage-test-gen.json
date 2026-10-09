@@ -1,0 +1,132 @@
+{
+  "module": "FIN",
+  "version": 2,
+  "scope": "stage:test-gen",
+  "counts": {
+    "CRITICAL": 0,
+    "MAJOR": 0,
+    "MINOR": 0
+  },
+  "clean": true,
+  "blocking": [
+    "CRITICAL",
+    "MAJOR"
+  ],
+  "contracts": [
+    "C10",
+    "C12"
+  ],
+  "skipped": [],
+  "coverage": {
+    "C10.1": 145,
+    "C10.2": 83,
+    "C10.7": 42,
+    "C10.8": 42,
+    "C10.9": 3
+  },
+  "vacuous": [],
+  "metrics": [
+    {
+      "id": "us-req",
+      "from": "US",
+      "to": [
+        "REQ"
+      ],
+      "total": 33,
+      "covered": 32,
+      "pct": 97.0
+    },
+    {
+      "id": "req-ac",
+      "from": "REQ",
+      "to": [
+        "AC"
+      ],
+      "total": 77,
+      "covered": 77,
+      "pct": 100.0
+    },
+    {
+      "id": "req-api",
+      "from": "REQ",
+      "to": [
+        "API"
+      ],
+      "total": 77,
+      "covered": 77,
+      "pct": 100.0
+    },
+    {
+      "id": "req-ux",
+      "from": "REQ",
+      "to": [
+        "SCR",
+        "UXD"
+      ],
+      "total": 77,
+      "covered": 44,
+      "pct": 57.1
+    }
+  ],
+  "findings": [],
+  "provenance": {
+    "rules": {
+      "contracts": "f64e4e09372bf8c538fb1e297e0b748cfa8915a67b31e356b7cc258c5cf50b4f",
+      "checker": "ef31e5be73d71271963020545e7d144b97aa300cee619ee614f8e82eb46e8c99",
+      "policy": "5aec0244e33eac6b544ce162fa268f88b3be192f989897d8b1d784ef369a7b2f"
+    },
+    "resolvable": [
+      "api-docs",
+      "api-verify-report",
+      "api-verify-script",
+      "backend-execution-plan",
+      "backend-test-plan",
+      "business-policies",
+      "change-manifest",
+      "db-script",
+      "domain-profile",
+      "flow-diagram",
+      "frontend-execution-plan",
+      "frontend-test-plan",
+      "module-registry",
+      "platform-summary",
+      "prd",
+      "project-registry",
+      "registry-db",
+      "registry-exec-be",
+      "registry-exec-fe",
+      "registry-srs",
+      "srs",
+      "system-test-index",
+      "test-execution-manifest",
+      "ui-ux-spec"
+    ],
+    "inputs": {
+      "api-docs": "e1eb5161f072cf444c551315fa1ed2d30f217df3b84dbe0b30d31e735f1ff61c",
+      "api-verify-report": "de49617bdf2e080c55d426e8be088ffe99b77be01d2b5be3d3d1aeae6a089dc7",
+      "api-verify-script": "8aeffffb13220ce9fc4bd7fea0d14eab3dc9702beb02c42e66086c87caac2736",
+      "backend-execution-plan": "52c9d1074270a960dad591c777d1e2785bdfd5b3abaf984707ece70585d9bf38",
+      "backend-test-plan": "96641347a4d37f59040095ede719cb2a330222c56388ac698432b3c96a106600",
+      "business-policies": "2a011c08356004af9662ad783583fdeb3665b58ffd62ecf923081e6fd6ce7196",
+      "change-manifest": "fc2c548b981a79e14ddc5b73087bd10cf194f38dee9c08a236125a9fceaa0687",
+      "db-script": "8e862f3dc2ce0ff1a9ca29e0ce7c27d2f5986601d3ac280c1d772989ca26aa36",
+      "domain-profile": "a34a15da38fa0ea53becec281b6072c51844ff4b9a96581af3a85a7d9b1e6822",
+      "flow-diagram": "886b59e78013ef41dac7cb09db2a3e4fa6b72bf22c27f52f816c0329730166fb",
+      "frontend-execution-plan": "e92e74cac754fe2a35c12b0b5e2a5656197bec59f2940111f08c39534ca982d1",
+      "frontend-test-plan": "a1429456908ea9b67e1572a54367337cc38605092578767ef053698530959839",
+      "module-registry": "78e9bd12ace15211329cd7e08ebcf3c87f9c7aa236d14dea4e5a09997b8bd8df",
+      "platform-summary": "48c32c4bce303d897654a88bdbc027fa56c9041c268af29ef31582c6f850f16b",
+      "prd": "cd0dcd4ba52c74a5b54e4e1c0739a761f833abffff8ce8214ba90feb61f81f07",
+      "project-registry": "b65708c8122e848c0306f70ee079aea77d00f88560d6c4d4fd95011b869171b8",
+      "registry-db": "f171597d3ff5a3012085fc5d05559cc0a494d75aad7b9897f1a363e8935c2a7c",
+      "registry-exec-be": "96c3ad3a351d40ae673e02315c6d7b14a3310c1d36ae5088904a8eabf211078a",
+      "registry-exec-fe": "f0fa8f88be3d9ea6844e88203fe800f81a43d9665e026050b0383a8d071d5d17",
+      "registry-srs": "cbb7ad6b5f89061ec30016e63b418773e80f24463a65d5c119f9af31a556bdc5",
+      "srs": "7f31665e53420062e5cc14bfc4a9ccd1df98f0003b7ce6c99cf863d65ac7cd43",
+      "system-test-index": "67d6136b3df1bf00744f47bfd9cc34af944ee01ea67fd14d1999655c0af389b9",
+      "test-execution-manifest": "e1cafb1ab158e6f26cdd6e90b135d250f899d512cbd4c6a11c9857f95746a25f",
+      "ui-ux-spec": "d9923b1955e31f0f7802f67366bb5ac26713cfdc75f7520a40197f776fa05b98"
+    },
+    "at": "2026-09-24T18:03:19+00:00"
+  }
+}

@@ -1,0 +1,293 @@
+{
+  "profile": "erp",
+  "project_file": "project.yaml",
+  "paths": {
+    "profiles": "profiles",
+    "domain": "analysis/domain",
+    "platform": "analysis/platform",
+    "modules": "analysis/modules",
+    "decisions": "analysis/decisions",
+    "overview": "analysis/platform/PROJECT-OVERVIEW.md"
+  },
+  "module_dirs": {
+    "state_dir": "_state",
+    "inputs_dir": "_inputs",
+    "input_meta": "{file}.meta.json",
+    "manifest_file": "manifest.json",
+    "analyze_report": "_state/analyze-{stage}.md",
+    "gate_record": "_state/gate-pass-{pass}.md",
+    "change_manifest": "change-manifest.md"
+  },
+  "tracks": {
+    "backend": {
+      "repo": "backend",
+      "exec_stage": "P3.1",
+      "partition": "backend/modules/{MOD}",
+      "delivery": "backend/modules/{MOD}/packages",
+      "delivery_version_folder": "v{version}",
+      "delivery_current": "platform/modules-registry.json → modules.<MOD>.delivery.backend",
+      "plans": {
+        "exec": {
+          "package": "backend-execution",
+          "phases": [
+            {
+              "key": "CORE",
+              "display": "CORE",
+              "folder": "CORE",
+              "never_split": true,
+              "sub_bearing": false,
+              "integration": false,
+              "binds_api": false
+            },
+            {
+              "key": "DATA-DOM",
+              "display": "DATA+DOM",
+              "folder": "DATA-DOM",
+              "never_split": false,
+              "sub_bearing": false,
+              "integration": false,
+              "binds_api": false,
+              "sub_labels": [
+                "MASTER",
+                "TRANSACTIONAL",
+                "LOOKUP"
+              ]
+            },
+            {
+              "key": "SVC-API",
+              "display": "SVC+API",
+              "folder": "SVC-API",
+              "never_split": false,
+              "sub_bearing": false,
+              "integration": false,
+              "binds_api": false,
+              "sub_labels": [
+                "CRUD",
+                "SEARCH",
+                "INT"
+              ],
+              "split_threshold": {
+                "kind": "API",
+                "count": 8,
+                "op": ">=",
+                "grouping": "CRUD / SEARCH / INT"
+              }
+            },
+            {
+              "key": "DOC",
+              "display": "DOC",
+              "folder": "DOC",
+              "never_split": true,
+              "sub_bearing": false,
+              "integration": false,
+              "binds_api": false
+            },
+            {
+              "key": "INT-C",
+              "display": "INT-C",
+              "folder": "INT-C",
+              "never_split": false,
+              "sub_bearing": false,
+              "integration": false,
+              "binds_api": false,
+              "split_threshold": {
+                "kind": "XM",
+                "count": 5,
+                "op": ">=",
+                "grouping": "per target module"
+              }
+            },
+            {
+              "key": "INT-R",
+              "display": "INT-R",
+              "folder": "INT-R",
+              "never_split": false,
+              "sub_bearing": false,
+              "integration": false,
+              "binds_api": false,
+              "split_threshold": {
+                "kind": "XM",
+                "count": 5,
+                "op": ">=",
+                "grouping": "per target module"
+              }
+            },
+            {
+              "key": "SEC-BE",
+              "display": "SEC-BE",
+              "folder": "SEC-BE",
+              "never_split": true,
+              "sub_bearing": false,
+              "integration": false,
+              "binds_api": false
+            },
+            {
+              "key": "ALIGN-BE",
+              "display": "ALIGN-BE",
+              "folder": "ALIGN-BE",
+              "never_split": true,
+              "sub_bearing": false,
+              "integration": false,
+              "binds_api": false
+            }
+          ]
+        },
+        "test": {
+          "package": "backend-test",
+          "phases": [
+            {
+              "key": "TEST-PLAN-BE",
+              "display": "TEST-PLAN-BE",
+              "folder": "TEST-PLAN-BE",
+              "never_split": false,
+              "sub_bearing": false,
+              "integration": false,
+              "binds_api": false,
+              "sub_labels": [
+                "RULE-SCENARIOS",
+                "API-SCENARIOS"
+              ],
+              "split_threshold": {
+                "kind": "TC",
+                "count": 12,
+                "op": ">",
+                "grouping": "RULE-SCENARIOS / API-SCENARIOS"
+              }
+            },
+            {
+              "key": "INT-XM",
+              "display": "INT-XM",
+              "folder": "INT-XM",
+              "never_split": false,
+              "sub_bearing": false,
+              "integration": true,
+              "binds_api": false,
+              "split_threshold": {
+                "kind": "TC",
+                "count": 8,
+                "op": ">",
+                "grouping": "per target module"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "frontend": {
+      "repo": "frontend",
+      "exec_stage": "P3.2",
+      "partition": "frontend/modules/{MOD}",
+      "delivery": "frontend/modules/{MOD}/packages",
+      "delivery_version_folder": "v{version}",
+      "delivery_current": "platform/modules-registry.json → modules.<MOD>.delivery.frontend",
+      "plans": {
+        "exec": {
+          "package": "frontend-execution",
+          "phases": [
+            {
+              "key": "F1",
+              "display": "F1 — Models & Types",
+              "folder": "F1",
+              "never_split": false,
+              "sub_bearing": true,
+              "integration": false,
+              "binds_api": true
+            },
+            {
+              "key": "F2",
+              "display": "F2 — Data Hooks",
+              "folder": "F2",
+              "never_split": false,
+              "sub_bearing": true,
+              "integration": false,
+              "binds_api": true
+            },
+            {
+              "key": "F3",
+              "display": "F3 — Forms & Validators",
+              "folder": "F3",
+              "never_split": false,
+              "sub_bearing": true,
+              "integration": false,
+              "binds_api": true
+            },
+            {
+              "key": "F4",
+              "display": "F4 — Screens & Routes",
+              "folder": "F4",
+              "never_split": false,
+              "sub_bearing": true,
+              "integration": false,
+              "binds_api": false
+            },
+            {
+              "key": "SEC-FE",
+              "display": "SEC-FE",
+              "folder": "SEC-FE",
+              "never_split": true,
+              "sub_bearing": false,
+              "integration": false,
+              "binds_api": false
+            },
+            {
+              "key": "ALIGN-FE",
+              "display": "ALIGN-FE",
+              "folder": "ALIGN-FE",
+              "never_split": true,
+              "sub_bearing": false,
+              "integration": false,
+              "binds_api": false
+            }
+          ]
+        },
+        "test": {
+          "package": "frontend-test",
+          "phases": [
+            {
+              "key": "TEST-PLAN-FE",
+              "display": "TEST-PLAN-FE",
+              "folder": "TEST-PLAN-FE",
+              "never_split": false,
+              "sub_bearing": false,
+              "integration": false,
+              "binds_api": false,
+              "sub_labels": [
+                "UI-FLOWS",
+                "INT-FLOW"
+              ],
+              "split_threshold": {
+                "kind": "TC",
+                "count": 8,
+                "op": ">",
+                "grouping": "UI-FLOWS / INT-FLOW"
+              }
+            },
+            {
+              "key": "INT-UXD",
+              "display": "INT-UXD",
+              "folder": "INT-UXD",
+              "never_split": false,
+              "sub_bearing": false,
+              "integration": true,
+              "binds_api": false,
+              "split_threshold": {
+                "kind": "TC",
+                "count": 8,
+                "op": ">",
+                "grouping": "per source module"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "languages": {
+    "all": [
+      "ar",
+      "en"
+    ],
+    "primary": "ar",
+    "require_all": true
+  }
+}

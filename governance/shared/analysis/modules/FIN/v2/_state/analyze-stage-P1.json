@@ -1,0 +1,693 @@
+{
+  "module": "FIN",
+  "version": 2,
+  "scope": "stage:P1",
+  "counts": {
+    "CRITICAL": 0,
+    "MAJOR": 0,
+    "MINOR": 70
+  },
+  "clean": true,
+  "blocking": [
+    "CRITICAL",
+    "MAJOR"
+  ],
+  "contracts": [
+    "C5",
+    "C12"
+  ],
+  "skipped": [],
+  "coverage": {
+    "C5.2": 77,
+    "C5.3": 77,
+    "C5.4": 77,
+    "C5.5": 83,
+    "C5.6": 28,
+    "C5.8": 204,
+    "C5.13": 188,
+    "C5.14": 83,
+    "C5.15": 16,
+    "C5.16": 32,
+    "C5.17": 1
+  },
+  "vacuous": [],
+  "metrics": [
+    {
+      "id": "us-req",
+      "from": "US",
+      "to": [
+        "REQ"
+      ],
+      "total": 33,
+      "covered": 32,
+      "pct": 97.0
+    },
+    {
+      "id": "req-ac",
+      "from": "REQ",
+      "to": [
+        "AC"
+      ],
+      "total": 77,
+      "covered": 77,
+      "pct": 100.0
+    },
+    {
+      "id": "req-api",
+      "from": "REQ",
+      "to": [
+        "API"
+      ],
+      "total": 77,
+      "covered": 77,
+      "pct": 100.0
+    },
+    {
+      "id": "req-ux",
+      "from": "REQ",
+      "to": [
+        "SCR",
+        "UXD"
+      ],
+      "total": 77,
+      "covered": 28,
+      "pct": 36.4
+    }
+  ],
+  "findings": [
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-001` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1375
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-002` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1390
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-003` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1405
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-004` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1420
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-005` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1435
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-006` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1450
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-007` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1465
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-008` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1480
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-009` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1495
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-010` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1510
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-011` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1525
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-012` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1540
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-013` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1555
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-014` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1570
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-015` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1585
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-016` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1600
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-017` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1615
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-018` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1630
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-019` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1645
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-020` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1660
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-021` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1675
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-022` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1690
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-023` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1705
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-024` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1720
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-025` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1735
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-026` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1750
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-027` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1765
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-028` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1780
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-029` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1795
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-030` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1810
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-031` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1825
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-032` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1840
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-033` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1855
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-034` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1870
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-035` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1885
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-036` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1900
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-037` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1915
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-038` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1930
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-039` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1945
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-040` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1960
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-041` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1975
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-042` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 1990
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-043` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 2005
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-044` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 2020
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.14",
+      "check": "ac-measurable",
+      "message": "`AC-FIN-046` has no `Then` line \u2014 a criterion with no stated outcome is not a criterion",
+      "artifact": "srs",
+      "line": 2035
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.15",
+      "check": "crud-covered",
+      "message": "`ENT-FIN-010` has 12 requirement(s) and none of them states how it is deleted \u2014 the plan will decide that lifecycle on its own",
+      "artifact": "srs",
+      "line": 115
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.15",
+      "check": "crud-covered",
+      "message": "`ENT-FIN-016` has 8 requirement(s) and none of them states how it is deleted \u2014 the plan will decide that lifecycle on its own",
+      "artifact": "srs",
+      "line": 160
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.15",
+      "check": "crud-covered",
+      "message": "`ENT-FIN-002` has 1 requirement(s) and none of them states how it is read, update, deleted \u2014 the plan will decide that lifecycle on its own",
+      "artifact": "srs",
+      "line": 1160
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.15",
+      "check": "crud-covered",
+      "message": "`ENT-FIN-003` has 6 requirement(s) and none of them states how it is read, deleted \u2014 the plan will decide that lifecycle on its own",
+      "artifact": "srs",
+      "line": 1175
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.15",
+      "check": "crud-covered",
+      "message": "`ENT-FIN-004` has 27 requirement(s) and none of them states how it is updated \u2014 the plan will decide that lifecycle on its own",
+      "artifact": "srs",
+      "line": 1192
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.15",
+      "check": "crud-covered",
+      "message": "`ENT-FIN-006` has 10 requirement(s) and none of them states how it is deleted \u2014 the plan will decide that lifecycle on its own",
+      "artifact": "srs",
+      "line": 1234
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.15",
+      "check": "crud-covered",
+      "message": "`ENT-FIN-007` has 3 requirement(s) and none of them states how it is updated \u2014 the plan will decide that lifecycle on its own",
+      "artifact": "srs",
+      "line": 1247
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.15",
+      "check": "crud-covered",
+      "message": "`ENT-FIN-009` has 5 requirement(s) and none of them states how it is update, deleted \u2014 the plan will decide that lifecycle on its own",
+      "artifact": "srs",
+      "line": 1283
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.15",
+      "check": "crud-covered",
+      "message": "`ENT-FIN-011` has 3 requirement(s) and none of them states how it is updated \u2014 the plan will decide that lifecycle on its own",
+      "artifact": "srs",
+      "line": 1298
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.15",
+      "check": "crud-covered",
+      "message": "`ENT-FIN-012` has 1 requirement(s) and none of them states how it is read, updated \u2014 the plan will decide that lifecycle on its own",
+      "artifact": "srs",
+      "line": 1317
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.15",
+      "check": "crud-covered",
+      "message": "`ENT-FIN-013` has 3 requirement(s) and none of them states how it is update, deleted \u2014 the plan will decide that lifecycle on its own",
+      "artifact": "srs",
+      "line": 1334
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.15",
+      "check": "crud-covered",
+      "message": "`ENT-FIN-014` has 2 requirement(s) and none of them states how it is read, update, deleted \u2014 the plan will decide that lifecycle on its own",
+      "artifact": "srs",
+      "line": 1349
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.16",
+      "check": "feature-unwanted",
+      "message": "`US-FIN-029` is covered by 2 requirement(s) and none states an `unwanted` path \u2014 what the system does when the input, state or sequence is wrong is unspecified for this feature",
+      "artifact": "srs",
+      "line": 137
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.16",
+      "check": "feature-unwanted",
+      "message": "`US-FIN-006` is covered by 4 requirement(s) and none states an `unwanted` path \u2014 what the system does when the input, state or sequence is wrong is unspecified for this feature",
+      "artifact": "srs",
+      "line": 300
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.16",
+      "check": "feature-unwanted",
+      "message": "`US-FIN-007` is covered by 3 requirement(s) and none states an `unwanted` path \u2014 what the system does when the input, state or sequence is wrong is unspecified for this feature",
+      "artifact": "srs",
+      "line": 310
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.16",
+      "check": "feature-unwanted",
+      "message": "`US-FIN-008` is covered by 2 requirement(s) and none states an `unwanted` path \u2014 what the system does when the input, state or sequence is wrong is unspecified for this feature",
+      "artifact": "srs",
+      "line": 320
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.16",
+      "check": "feature-unwanted",
+      "message": "`US-FIN-011` is covered by 3 requirement(s) and none states an `unwanted` path \u2014 what the system does when the input, state or sequence is wrong is unspecified for this feature",
+      "artifact": "srs",
+      "line": 350
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.16",
+      "check": "feature-unwanted",
+      "message": "`US-FIN-012` is covered by 1 requirement(s) and none states an `unwanted` path \u2014 what the system does when the input, state or sequence is wrong is unspecified for this feature",
+      "artifact": "srs",
+      "line": 360
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.16",
+      "check": "feature-unwanted",
+      "message": "`US-FIN-013` is covered by 1 requirement(s) and none states an `unwanted` path \u2014 what the system does when the input, state or sequence is wrong is unspecified for this feature",
+      "artifact": "srs",
+      "line": 370
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.16",
+      "check": "feature-unwanted",
+      "message": "`US-FIN-014` is covered by 1 requirement(s) and none states an `unwanted` path \u2014 what the system does when the input, state or sequence is wrong is unspecified for this feature",
+      "artifact": "srs",
+      "line": 380
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.16",
+      "check": "feature-unwanted",
+      "message": "`US-FIN-015` is covered by 1 requirement(s) and none states an `unwanted` path \u2014 what the system does when the input, state or sequence is wrong is unspecified for this feature",
+      "artifact": "srs",
+      "line": 390
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.16",
+      "check": "feature-unwanted",
+      "message": "`US-FIN-016` is covered by 1 requirement(s) and none states an `unwanted` path \u2014 what the system does when the input, state or sequence is wrong is unspecified for this feature",
+      "artifact": "srs",
+      "line": 400
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.16",
+      "check": "feature-unwanted",
+      "message": "`US-FIN-017` is covered by 1 requirement(s) and none states an `unwanted` path \u2014 what the system does when the input, state or sequence is wrong is unspecified for this feature",
+      "artifact": "srs",
+      "line": 410
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.16",
+      "check": "feature-unwanted",
+      "message": "`US-FIN-018` is covered by 1 requirement(s) and none states an `unwanted` path \u2014 what the system does when the input, state or sequence is wrong is unspecified for this feature",
+      "artifact": "srs",
+      "line": 420
+    },
+    {
+      "severity": "MINOR",
+      "clause": "C5.16",
+      "check": "feature-unwanted",
+      "message": "`US-FIN-019` is covered by 1 requirement(s) and none states an `unwanted` path \u2014 what the system does when the input, state or sequence is wrong is unspecified for this feature",
+      "artifact": "srs",
+      "line": 430
+    }
+  ],
+  "provenance": {
+    "rules": {
+      "contracts": "305e1507cabe7d964971543105fae9f0b64fa47142680c54eeca2cfe709150af",
+      "checker": "c176058e5cdd50814d4764c18d025088ff7b2a4fb2452155765ce731c63867a0",
+      "policy": "16b2c628c459e7ac2ab25d8c92a193bd8e9e51acf301e0b9bedb49f7b87c9c85"
+    },
+    "resolvable": [
+      "backend-execution-plan",
+      "backend-test-plan",
+      "business-policies",
+      "change-manifest",
+      "db-script",
+      "domain-profile",
+      "flow-diagram",
+      "frontend-execution-plan",
+      "frontend-test-plan",
+      "module-registry",
+      "platform-summary",
+      "prd",
+      "project-registry",
+      "registry-db",
+      "registry-exec-be",
+      "registry-exec-fe",
+      "registry-srs",
+      "srs",
+      "system-test-index",
+      "test-execution-manifest",
+      "ui-ux-spec"
+    ],
+    "inputs": {
+      "backend-execution-plan": "52c9d1074270a960dad591c777d1e2785bdfd5b3abaf984707ece70585d9bf38",
+      "backend-test-plan": "09e7c54c7c88c5b192b9d1c8027e4f651ed4da3d4bd28f373603499adfcf087b",
+      "business-policies": "2a011c08356004af9662ad783583fdeb3665b58ffd62ecf923081e6fd6ce7196",
+      "change-manifest": "a9e41f41de80df0c33567cc46db1c9dad12579ee7826c0e4e19deafd5122d98a",
+      "db-script": "8e862f3dc2ce0ff1a9ca29e0ce7c27d2f5986601d3ac280c1d772989ca26aa36",
+      "domain-profile": "a34a15da38fa0ea53becec281b6072c51844ff4b9a96581af3a85a7d9b1e6822",
+      "flow-diagram": "5356a6b4724d7a86ab5ee96653d41643afb3b9f2ba24ea05fac42f93ce9b5c7b",
+      "frontend-execution-plan": "3004d41f0fee99b71a41fe7eaa55df184fe08a5b84bd1d0fb5afc4eb8a0129cb",
+      "frontend-test-plan": "ab93b92be9f0b7d44862a2dd01d233f4433d71fb9dd61ba734a35fe6f18bf1f7",
+      "module-registry": "78e9bd12ace15211329cd7e08ebcf3c87f9c7aa236d14dea4e5a09997b8bd8df",
+      "platform-summary": "48c32c4bce303d897654a88bdbc027fa56c9041c268af29ef31582c6f850f16b",
+      "prd": "cd0dcd4ba52c74a5b54e4e1c0739a761f833abffff8ce8214ba90feb61f81f07",
+      "project-registry": "ec44d4ec4c0be792eb2f477865e2a6df963f279dca2bee9752896f03bcc8a4ec",
+      "registry-db": "f171597d3ff5a3012085fc5d05559cc0a494d75aad7b9897f1a363e8935c2a7c",
+      "registry-exec-be": "96c3ad3a351d40ae673e02315c6d7b14a3310c1d36ae5088904a8eabf211078a",
+      "registry-exec-fe": "f96adf9ef2409df4239603660b55795cfdafc64db8b6542f55e59664192e3467",
+      "registry-srs": "cbb7ad6b5f89061ec30016e63b418773e80f24463a65d5c119f9af31a556bdc5",
+      "srs": "7f31665e53420062e5cc14bfc4a9ccd1df98f0003b7ce6c99cf863d65ac7cd43",
+      "system-test-index": "67d6136b3df1bf00744f47bfd9cc34af944ee01ea67fd14d1999655c0af389b9",
+      "test-execution-manifest": "9cb5fed11e9754e2057beee8cfabcf3f35045ad53d60fe4a1c02c9aa60546fa8",
+      "ui-ux-spec": "7038a7b6edcc3670a09720c2f5c9ab5902f91d3f215b2df0ec6c0261d2d6979b"
+    },
+    "at": "2026-09-23T11:54:56+00:00"
+  }
+}

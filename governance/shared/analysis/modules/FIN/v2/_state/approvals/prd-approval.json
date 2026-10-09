@@ -1,0 +1,11 @@
+{
+  "gate": "prd-approval",
+  "module": "FIN",
+  "version": 2,
+  "by": "hesham421",
+  "at": "2026-09-23T10:09:51+00:00",
+  "after": "P0.5",
+  "artifact_sha": {
+    "prd": "5364c329bd59db128a3065223943864414aaf445d249bb736ef501357b89daa3"
+  }
+}

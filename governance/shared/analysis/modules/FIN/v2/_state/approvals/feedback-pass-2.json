@@ -1,0 +1,206 @@
+{
+  "module": "FIN",
+  "version": 2,
+  "pass": "2",
+  "by": "hesham421",
+  "at": "2026-09-24T03:37:54+00:00",
+  "why": "36 items: FIN v1 debt as waived at pass 1. 13 new frontend items: answered in the v2 plan by ADR-FIN-065; the three app bugs go to the frontend's bug list.",
+  "waived": [
+    [
+      "backend|api_doc_gaps|ENT-FIN-004.docNo (DBF-FIN-035) — API-FIN-019/020/021, 'platform numbering engine'",
+      "HUMAN"
+    ],
+    [
+      "backend|api_doc_gaps|ENT-FIN-010.amountSourceValue (AMOUNT_SOURCE_TYPE=FIELD) — API-FIN-020",
+      "OPEN"
+    ],
+    [
+      "backend|api_doc_gaps|Error Catalog (_SECTIONS.md and its P3_1 mirror) — FIN-422-INVALID-PERCENTAGE-VALUE is a registered, thrown, fully-bundled code with NO catalog row (API-FIN-011 write, API-FIN-020 failure)",
+      "OPEN"
+    ],
+    [
+      "backend|api_doc_gaps|Error Catalog rows FIN-404-YEAR and FIN-404-PERIOD — the API column under-lists the endpoints that raise each code",
+      "OPEN"
+    ],
+    [
+      "backend|api_doc_gaps|FinErrorCodes.FIN_403_SOD_VIOLATION and the FIN-403-SOD-VIOLATION keys in both i18n bundles — a live error code with no throw site on any API",
+      "OPEN"
+    ],
+    [
+      "backend|api_doc_gaps|Four smaller items the FIN frontend raised: two dead catalog rows, an unreachable lookup value, and MDL's uncontracted lookups endpoint",
+      "HUMAN"
+    ],
+    [
+      "backend|api_doc_gaps|PATCH /api/v1/fin/fiscal-periods/{id}/hard-close (API-FIN-026) and POST /api/v1/fin/fiscal-years/{id}/year-end-close (API-FIN-027) — the documented repair path for PERM_FIN_PERIODS_CLOSE_APPROVE does not work",
+      "HUMAN"
+    ],
+    [
+      "backend|api_doc_gaps|POST /api/v1/fin/event-rules/{id}/lines (API-FIN-011) — RuleLineCreateRequest.amountSourceValue is an unconstrained String, so a malformed PERCENTAGE value is persisted and fails only later at API-FIN-020",
+      "OPEN"
+    ],
+    [
+      "backend|api_doc_gaps|POST /api/v1/fin/fiscal-years (API-FIN-023) — generated periods' NAME_AR / NAME_EN and their date spans",
+      "HUMAN"
+    ],
+    [
+      "backend|api_doc_gaps|POST /api/v1/fin/fiscal-years/{id}/year-end-close (API-FIN-027) — Retained Earnings account, next fiscal year, and RULE-FIN-008 on the closing entry",
+      "HUMAN"
+    ],
+    [
+      "backend|api_doc_gaps|POST /api/v1/fin/journal-entries (API-FIN-019) — the SVC-API-CRUD.md block and its P3_1 mirror are NOT identical; the Numbering paragraph exists in one copy only",
+      "OPEN"
+    ],
+    [
+      "backend|api_doc_gaps|POST /api/v1/fin/journal-entries/from-event (API-FIN-020) — request body shape, and ACCOUNT_DERIVATION_TYPE=MAPPING",
+      "HUMAN"
+    ],
+    [
+      "backend|api_doc_gaps|POST /api/v1/fin/recurring-templates/{id}/run (API-FIN-014) — no not-found error code for a RecurringTemplate",
+      "HUMAN"
+    ],
+    [
+      "backend|api_doc_gaps|PUT /api/v1/fin/recurring-templates/{id}/deactivate (API-FIN-036) and PUT /api/v1/fin/allocation-rules/{id}/deactivate (API-FIN-037) — deactivation does NOT stop the run (API-FIN-014, API-FIN-017)",
+      "OPEN"
+    ],
+    [
+      "backend|api_doc_gaps|RecurringTemplateController and AllocationRuleController — neither a recurring template (ENT-FIN-011/012) nor an allocation rule (ENT-FIN-013/014) can be corrected after creation; no update endpoint exists",
+      "OPEN"
+    ],
+    [
+      "backend|api_doc_gaps|SEC — RoleActionGrantRepository.findUserIdsHoldingPermission -> UserService -> SecUserDirectoryApiImpl: zero production callers after FIN's SoD removal (A.2.9 dead-code condition, OUTSIDE FIN)",
+      "OPEN"
+    ],
+    [
+      "backend|api_doc_gaps|Six served FIN endpoints carry no contract id: the five in the api-docs Drift table plus the fiscal-year search added 2026-09-19",
+      "HUMAN"
+    ],
+    [
+      "backend|api_doc_gaps|Six v1 exclusions the frontend is shipping around — confirm deliberate, or schedule them",
+      "HUMAN"
+    ],
+    [
+      "backend|api_doc_gaps|TC-FIN-056 step (d) — API-FIN-019 POST /api/v1/fin/journal-entries with journalTypeCode=CLOSING",
+      "OPEN"
+    ],
+    [
+      "backend|api_doc_gaps|V22__fin_schema.sql:4 — the migration's header comment still reads '146 DBF-IDs', stale since DBF-FIN-147; deliberately NOT corrected by V29",
+      "OPEN"
+    ],
+    [
+      "backend|api_doc_gaps|V24__fin_security_seed.sql:52-53 — a fabricated quotation attributed to srs-fin.md, inside an applied and immutable migration",
+      "OPEN"
+    ],
+    [
+      "backend|api_doc_gaps|XM-FIN-001 — all 13 FIN-owned MDL lookup types; blocks API-FIN-002/006/007/010/011/013/016/019/020 on a fresh deployment",
+      "HUMAN"
+    ],
+    [
+      "backend|api_doc_gaps|common/web/GlobalExceptionHandler — INTERNAL_ERROR, VALIDATION_ERROR and DATA_INTEGRITY_VIOLATION still return hardcoded English (platform-wide)",
+      "OPEN"
+    ],
+    [
+      "backend|api_doc_gaps|every POST .../search endpoint — platform SpecBuilder filter handling",
+      "OPEN"
+    ],
+    [
+      "backend|api_doc_gaps|profile-summary.json declares no api-docs path, and the three places that state one disagree",
+      "HUMAN"
+    ],
+    [
+      "backend|api_doc_gaps|srs-fin.md B1 'Operations' lines — 'read' (and, on two screens, update/deactivate/line-CRUD) specified but not published by any controller",
+      "OPEN"
+    ],
+    [
+      "backend|api_doc_gaps|srs-fin.md SCR-REQ-FIN-007 and SCR-REQ-FIN-003 assert absences that the delivered backend no longer has",
+      "HUMAN"
+    ],
+    [
+      "backend|api_doc_gaps|srs-fin.md §B / Access summary — SCR-REQ-FIN-002 'deactivate' and SCR-REQ-FIN-003 'delete line' are specified but not delivered",
+      "OPEN"
+    ],
+    [
+      "frontend|api_doc_gaps|(not an endpoint) OPTION_PAGE_SIZE = 200 caps every FIN option read; a plain <select> never tells the user it was capped, while the picker Drawers do",
+      "OPEN"
+    ],
+    [
+      "frontend|api_doc_gaps|(not an endpoint) TC-FIN-082 step 2 and TC-FIN-086 step 2 expect a client-side action gate that ADR-FIN-005 removed",
+      "HUMAN"
+    ],
+    [
+      "frontend|api_doc_gaps|(not an endpoint) the FISCAL-YEAR option read behind SCR-FIN-006's header — POST /api/v1/fin/fiscal-years/search (API-FIN-038, provisional id)",
+      "OPEN"
+    ],
+    [
+      "frontend|api_doc_gaps|(not an endpoint) the Route column of the ALIGN-FE operations coverage table (packages/frontend-execution/ALIGN-FE/ALIGN-FE.md), and the 'ONE screen (composite)' UI-pattern lines of SCR-FIN-002/003/004/005/007 in analysis/modules/FIN/P3_2/ui-ux-spec-fin.md",
+      "OPEN"
+    ],
+    [
+      "frontend|api_doc_gaps|(not an endpoint) the Routes line of F4-SCR-FIN-002/003/004/005/007 — 'no :id route', vs erp-drawer-zustand §11 / ui-master-detail-records",
+      "OPEN"
+    ],
+    [
+      "frontend|api_doc_gaps|(not an endpoint) the read that resolves SCR-FIN-002's record page on a cold deep link — POST /api/v1/fin/dimensions/search (API-FIN-005), filter dimensionPk EQUALS",
+      "OPEN"
+    ],
+    [
+      "frontend|api_doc_gaps|(not an endpoint) three app defects found by the live suite, reported and NOT fixed",
+      "OPEN"
+    ],
+    [
+      "frontend|api_doc_gaps|F1-SCR-FIN-007.md (packages/frontend-execution/F1) — Types: line, vs POST /api/v1/fin/fiscal-years/search and API-FIN-027",
+      "OPEN"
+    ],
+    [
+      "frontend|api_doc_gaps|GET /api/v1/fin/reports/income-statement (API-FIN-031) — fromPeriodId / toPeriodId",
+      "OPEN"
+    ],
+    [
+      "frontend|api_doc_gaps|GET /api/v1/fin/reports/trial-balance (API-FIN-029) — the TARGET of the REQ-FIN-046 drill-down that flow-diagram-fin.md specifies for SCR-FIN-010",
+      "OPEN"
+    ],
+    [
+      "frontend|api_doc_gaps|GET /api/v1/mdl/lookups (API-MDL-011)",
+      "OPEN"
+    ],
+    [
+      "frontend|api_doc_gaps|GET /api/v1/sec/menu (API-SEC-027) — the effective-menu read the SEC-FE table's per-action hiding would have to be driven from",
+      "OPEN"
+    ],
+    [
+      "frontend|api_doc_gaps|POST /api/v1/fin/accounts/search — filters[].field createdAt (API-FIN-001)",
+      "OPEN"
+    ],
+    [
+      "frontend|api_doc_gaps|POST /api/v1/fin/dimensions/search (API-FIN-005) and POST /api/v1/fin/dimensions/values/search (API-FIN-008) — filters[].field createdAt on both, and sortOrder on the value search",
+      "OPEN"
+    ],
+    [
+      "frontend|api_doc_gaps|POST /api/v1/fin/event-rules (API-FIN-010) and POST /api/v1/fin/event-rules/{id}/lines (API-FIN-011) — 'Other Possible Responses'",
+      "OPEN"
+    ],
+    [
+      "frontend|api_doc_gaps|POST /api/v1/fin/journal-entries (API-FIN-019) — 409 FIN-409-NOT-POSTABLE-ACCOUNT / FIN-409-INVALID-DIMENSION error body",
+      "OPEN"
+    ],
+    [
+      "frontend|api_doc_gaps|POST /api/v1/fin/journal-entries/from-event (API-FIN-020) — EventEntryBuildRequest.amounts and .fields",
+      "OPEN"
+    ],
+    [
+      "frontend|api_doc_gaps|POST /api/v1/fin/recurring-templates (API-FIN-013) — RecurringTemplateCreateRequest.frequencyCode",
+      "OPEN"
+    ],
+    [
+      "frontend|api_doc_gaps|every nullable field of every FIN response DTO — modelled as `?: T` (T | undefined) while the wire sends JSON null",
+      "OPEN"
+    ],
+    [
+      "frontend|api_doc_gaps|six served endpoints carry no contract id: fiscal-years/search, fiscal-periods/search, and the four deactivates",
+      "OPEN"
+    ],
+    [
+      "frontend|api_doc_gaps|where api-docs belong on this profile — no profile key declares the destination",
+      "HUMAN"
+    ]
+  ]
+}

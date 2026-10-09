@@ -1,0 +1,260 @@
+{
+  "module": "FIN",
+  "version": 2,
+  "generated_at": "2026-09-23",
+  "current_phase": "ALIGN-BE",
+  "current_sub": "ALIGN-BE",
+  "api_docs_path": "governance/shared/backend/modules/FIN/api-docs/",
+  "packages_path": "governance/shared/backend/modules/FIN/packages/v2",
+  "analysis_path": "governance/shared/analysis/modules/FIN/v2",
+  "phases": [
+    {
+      "id": "CORE",
+      "status": "COMPLETE",
+      "subs": [
+        {
+          "id": "CORE",
+          "status": "COMPLETE"
+        }
+      ]
+    },
+    {
+      "id": "DATA-DOM",
+      "status": "COMPLETE",
+      "subs": [
+        {
+          "id": "DATA-DOM-LOOKUP",
+          "status": "COMPLETE"
+        },
+        {
+          "id": "DATA-DOM-MASTER",
+          "status": "COMPLETE"
+        },
+        {
+          "id": "DATA-DOM-TRANSACTIONAL",
+          "status": "COMPLETE"
+        }
+      ]
+    },
+    {
+      "id": "SVC-API",
+      "status": "COMPLETE",
+      "subs": [
+        {
+          "id": "SVC-API-CRUD",
+          "status": "COMPLETE"
+        },
+        {
+          "id": "SVC-API-INT",
+          "status": "COMPLETE"
+        },
+        {
+          "id": "SVC-API-SEARCH",
+          "status": "COMPLETE"
+        }
+      ]
+    },
+    {
+      "id": "DOC",
+      "status": "COMPLETE",
+      "subs": [
+        {
+          "id": "DOC",
+          "status": "COMPLETE"
+        }
+      ]
+    },
+    {
+      "id": "INT-C",
+      "status": "COMPLETE",
+      "subs": [
+        {
+          "id": "INT-C",
+          "status": "COMPLETE"
+        }
+      ]
+    },
+    {
+      "id": "INT-R",
+      "status": "COMPLETE",
+      "subs": [
+        {
+          "id": "INT-R",
+          "status": "COMPLETE"
+        }
+      ]
+    },
+    {
+      "id": "SEC-BE",
+      "status": "COMPLETE",
+      "subs": [
+        {
+          "id": "SEC-BE",
+          "status": "COMPLETE"
+        }
+      ]
+    },
+    {
+      "id": "ALIGN-BE",
+      "status": "COMPLETE",
+      "subs": [
+        {
+          "id": "ALIGN-BE",
+          "status": "COMPLETE"
+        }
+      ]
+    }
+  ],
+  "test_phases": [
+    {
+      "id": "TEST-PLAN-BE",
+      "status": "COMPLETE",
+      "gated_by_phases": [
+        "CORE",
+        "DATA-DOM",
+        "SVC-API",
+        "DOC",
+        "INT-C",
+        "INT-R",
+        "SEC-BE",
+        "ALIGN-BE"
+      ],
+      "header_file": "governance/shared/backend/modules/FIN/packages/v2/backend-test/TEST-PLAN-BE-HEADER.md",
+      "delivered_shape": "A",
+      "mechanism": "api-verify (Full tier)",
+      "executed_at": "2026-09-24",
+      "script": "governance/shared/backend/modules/FIN/v2/test-api/test_fin_apis.py",
+      "raw_report": "governance/shared/backend/modules/FIN/v2/test-api/fin_problems_report.md",
+      "digest": "governance/project-artifacts/TEST-REPORT-FIN-v2-backend-2026-09-24.md",
+      "required_coverage_tc": 89,
+      "covered_tc": 89,
+      "passing_tc": 89,
+      "gap_tc": [],
+      "fail_tc": [],
+      "blocked_tc": [],
+      "blocked_reason": "",
+      "subs": [
+        {
+          "id": "RULE-SCENARIOS",
+          "status": "COMPLETE",
+          "tc_count": 45,
+          "passing_tc": 45,
+          "gap_tc": [],
+          "fail_tc": []
+        },
+        {
+          "id": "API-SCENARIOS",
+          "status": "COMPLETE",
+          "tc_count": 44,
+          "passing_tc": 44,
+          "gap_tc": [],
+          "fail_tc": []
+        }
+      ],
+      "covered_in_junit_tc": [
+        "TC-FIN-012",
+        "TC-FIN-026",
+        "TC-FIN-036",
+        "TC-FIN-038",
+        "TC-FIN-041",
+        "TC-FIN-042",
+        "TC-FIN-044",
+        "TC-FIN-052",
+        "TC-FIN-122",
+        "TC-FIN-128",
+        "TC-FIN-129"
+      ],
+      "skipped_in_api_verify_tc": [
+        "TC-FIN-038",
+        "TC-FIN-052"
+      ],
+      "completion_basis": "COMPLETE: every one of the 89 delivered TCs has a passing counterpart in one instrument or the other. api-verify run 2026-09-24 (RUN_ID 195569): 126 asserted checks, 0 failures, 87 of the 89 TCs asserted in-script. TC-FIN-038 and TC-FIN-052 are named as SKIPPED by api-verify (they need a principal without PERM_FIN_PERIODS_CLOSE_APPROVE, outside api-verify SKILL.md s3-I) and are COVERED in the JUnit track by FinSoDCoverageIntegrationTest#hardClose_isDeniedForAPrincipalHoldingOnlyTheEntryCreationPermission and #yearEndClose_isDeniedForAPrincipalHoldingOnlyTheEntryCreationPermission. TC-FIN-041 is covered substantively by FinYearEndContinuityIntegrationTest; api-verify does reachability only. TC-FIN-042 passes in api-verify against the corrected target year and is covered substantively in JUnit. No coverage GAP and no FAIL."
+    }
+  ],
+  "test_phases_note": "Populated by scan on 2026-09-23 (second pass, after './scripts/governance pull' brought the factory's test-gen publish). Shape B: governance/shared/analysis/modules/FIN/v2/test_gen/backend-test-plan-fin.md now exists (141KB) and carries one <!-- PHASE:TEST-PLAN-BE --> block with two nested subs, RULE-SCENARIOS (lines 83-972, 45 TCs) and API-SCENARIOS (lines 974-1809, 45 TCs) = 90 backend TCs. Shape A (governance/shared/backend/modules/FIN/packages/v2/backend-test/) still holds only .gitkeep and the v2 manifest still reports status.split[\"backend/test\"] = false, so Shape B is the live delivery shape for this module - read the flat plan file, not the split folder. No INT-XM entry: the plan states outright 'scope = module: no INT-XM phase is emitted and none is owed (S2 rule 3)', so its absence is correct, not a gap. Gate passes today - all 8 execution phases are COMPLETE. Also present for the test run: analysis/modules/FIN/v2/test_gen/test-execution-manifest-fin.md (Full tier for api-verify).",
+  "blocked": [],
+  "deferred_xm": [],
+  "api_doc_gaps": [
+    {
+      "type": "MAPPING_GAP",
+      "phase": "DOC",
+      "sub": "DOC",
+      "endpoint": "check assertion contract-drift — 9 of its 10 rows (POST/PUT /api/v1/fin/account-mappings x4, PUT .../event-rules/{id}/deactivate, PUT .../dimensions/values/{id}/deactivate, PUT .../recurring-templates/{id}/deactivate, PUT .../allocation-rules/{id}/deactivate, POST .../fiscal-periods/search)",
+      "detail": "The generator joined the v1 plan: discovery.find_execution_plan() takes the shallowest rglob('backend-execution-plan*.md') match under analysis/modules/FIN/, i.e. P3_1/backend-execution-plan-fin.md (32 ids), and never sees v2/P3_1/backend-execution-plan-fin.md (41 ids, API-FIN-001..041). Report line: 'Contract ids: 32/42 from backend-execution-plan-fin.md, 10 DRIFT'. All nine paths are registered in the v2 API REGISTRY (API-FIN-033..041) with the verb and path the backend serves, verified 2026-09-23 against /v3/api-docs/fin; they are false drift caused by version-unaware plan discovery. Owner: generator (governance-tools/api-doc-generator/discovery.py). Not changed in this phase per DOC scope; no waiver added.",
+      "resolution": "RESOLVED — discovery.find_execution_plan() now searches the module's highest v<N>/ folder that carries a plan (new _plan_search_roots helper, read from the filesystem) before the module dir, so check joins v2/P3_1/backend-execution-plan-fin.md: contract-ids 41/42 stamped, contract-drift 1 row (POST /api/v1/fin/fiscal-years/search), the genuine gap filed separately as api_doc_gaps[1].",
+      "recorded_at": "2026-09-23T20:00:00+04:00"
+    },
+    {
+      "type": "ABSENT",
+      "phase": "DOC",
+      "sub": "DOC",
+      "endpoint": "POST /api/v1/fin/fiscal-years/search",
+      "detail": "Served (FiscalYearController.search, added 2026-09-19, PERM-gated, documented in api-docs/endpoints/fin-fiscal-year-management.md) but absent from the v2 API REGISTRY, which declares API-FIN-001..041 and no fiscal-year search; it is the 10th contract-drift row and the only one that survives a v2-aware join (42 served vs 41 registered). Already recorded in the v1 execution-state.json (api_doc_gaps: 'no fiscal-year list existed') and not carried into the v2 registry by CS-FIN-001. Owner: factory (register an id or retire the endpoint).",
+      "resolution": "OPEN — factory to register API-FIN-042 (or decide retirement); backend serves it today and the frontend's SCR-FIN-007 master pane depends on it",
+      "recorded_at": "2026-09-23T20:00:00+04:00"
+    },
+    {
+      "type": "MISSING_IN_DOCS",
+      "phase": "DOC",
+      "sub": "DOC",
+      "endpoint": "index.md → Known Error Codes (REQ-FIN-075 / AC-FIN-081: FIN-409-PERIOD-NOT-OPEN row)",
+      "detail": "AC-FIN-081 asks the published catalogue to list the period-not-open code once with its ar/en message and the note that it clears when the period is opened. The regenerated catalogue lists FIN-409-PERIOD-NOT-OPEN exactly once with Status CONFLICT / 409, but carries no message text and no consumer note for any code: the generator's ErrorCode model (models/api_doc_model.py) has no message/description field, exception_extractor reads only the constant name and value, and nothing reads messages.properties / messages_ar.properties or the constant's Javadoc (which already states the retry semantics for FIN_409_PERIOD_NOT_OPEN and FIN_409_DUPLICATE_EVENT). Workaround applied in this phase, in source text only: the three consumer-action classes (acknowledge / retry later / needs a fix) are carried in JournalEntryController.buildFromEvent's @Operation(description), which the renderer prints on the API-FIN-020 page. Owner: generator.",
+      "resolution": "RESOLVED — the api-doc-generator now carries each code ar/en message and the constant Javadoc into index.md Known Error Codes (new message_bundle_extractor, ErrorCode model extended, markdown_renderer prints Message / Message (ar) / Consumer note columns). Verified 2026-09-24 against the regenerated catalogue: the FIN_409_PERIOD_NOT_OPEN row appears exactly once and carries en \"The target period is not open\", ar \"الفترة المستهدفة غير مفتوحة\", 409 CONFLICT, and \"Retryable: the rejection clears once the target period is opened\". TC-FIN-127 now asserts all five of those properties and PASSES (api-verify RUN_ID 195569).",
+      "recorded_at": "2026-09-23T20:00:00+04:00"
+    },
+    {
+      "type": "MISSING_IN_DOCS",
+      "phase": "DOC",
+      "sub": "DOC",
+      "endpoint": "POST /api/v1/fin/journal-entries/from-event — Business Responses rows FIN-409-PERIOD-NOT-OPEN and FIN-409-UNBALANCED",
+      "detail": "Both rows print HTTP Status 'not determined' because they are reached as fieldErrors[] details (JournalEntryDomain.checkTargetPeriodOpen / checkBalanced, kind=detail) and the business_error_extractor does not carry the code's own Status/HTTP (409 CONFLICT, which the Known Error Codes table does show) onto a detail-kind row. A consumer reading only the endpoint page cannot see that the retry signal is a 409. Owner: generator.",
+      "resolution": "RESOLVED — a detail-kind Business Responses row now resolves its HTTP status from the code registered Status when the throw site names none (new response_status_extractor). Verified 2026-09-24: `grep \"not determined\"` over api-docs/index.md and every endpoints/*.md returns nothing, and the API-FIN-019 / API-FIN-020 rows for FIN-409-PERIOD-NOT-OPEN and FIN-409-UNBALANCED both print \"409 CONFLICT ... as a `fieldErrors[]` entry\".",
+      "recorded_at": "2026-09-23T20:00:00+04:00"
+    },
+    {
+      "type": "MAPPING_GAP",
+      "phase": "ALIGN-BE",
+      "sub": "ALIGN-BE",
+      "endpoint": "src/test/java/com/erp/sec/FinRegistrationInSecIntegrationTest.finIsRegisteredIntoSecWithOneModuleItsScreensAndItsActions (TC-FIN-044, v1 backend-test) — screen set and action set of module FIN in SEC_SCREEN_REG / SEC_ACTION_REG",
+      "detail": "Fails against the v2 build: `mvn -Dtest='Fin*IntegrationTest' test` on 2026-09-23 → 20 run, 1 failure (the three com.erp.fin suites pass 3+9+7). Line 94 asserts containsExactlyInAnyOrder of the 12 v1 page codes and hasSize(12); the store now holds 13 because V37__fin_v2_account_mappings_security_seed.sql registers FIN_ACCOUNT_MAPPINGS (SCR-REQ-FIN-013, SEC-BE) — unexpected element [FIN_ACCOUNT_MAPPINGS]. The action assertion at line ~124 (27 PERM_FIN_* codes) will fail the same way once line 94 is fixed: V37 adds PERM_FIN_ACCOUNT_MAPPINGS_VIEW / _CREATE / _UPDATE (30 rows). The test's expectation is the v1 registry (12 screens, 27 actions); the v2 SCREEN REGISTRY declares 13 screens and 30 permission names. Owner: the FIN v2 backend-test phase (the test is FIN-owned TC-FIN-044 but lives in com.erp.sec by ArchUnit necessity — see its class Javadoc). Not edited here: ALIGN-BE makes no test change (GOVERNANCE-RULES: no JUnit edits outside execute-backend-test).",
+      "resolution": "RESOLVED — FinRegistrationInSecIntegrationTest was repaired to the v2 SCREEN REGISTRY: the screen assertion now reads hasSize(13) with FIN_ACCOUNT_MAPPINGS in the expected set and the action assertion hasSize(30) with the three PERM_FIN_ACCOUNT_MAPPINGS_* codes. Verified 2026-09-24 by reading the file (lines 95-101, 127-145) and independently by api-verify TC-FIN-044, which asserts 13 screens / 30 actions against the live SEC registry and PASSES.",
+      "recorded_at": "2026-09-23T20:45:00+04:00"
+    },
+    {
+      "type": "MISSING_IN_DOCS",
+      "phase": "ALIGN-BE",
+      "sub": "ALIGN-BE",
+      "endpoint": "Error Catalog — FIN v2 (_SECTIONS.md): FIN-422-INVALID-PERCENTAGE-VALUE has no row (API-FIN-020 rejection, RULE-FIN-010 path)",
+      "detail": "Coverage (b) re-measured 2026-09-23: 51 FinErrorCodes constants = 51 messages.properties keys = 51 messages_ar.properties keys, zero orphans; the only constant with no thrower is the struck FIN-403-SOD-VIOLATION, as the catalog records. Constants-minus-catalog is exactly one element: FIN-422-INVALID-PERCENTAGE-VALUE (FinErrorCodes.FIN_422_INVALID_PERCENTAGE_VALUE, thrown by EventTypeRuleDomain.sourcedAmount when a PERCENTAGE-sourced rule line's amountSourceValue is not a number, reached from EventEntryService on API-FIN-020 and AllocationRuleService on API-FIN-017). `grep -c INVALID-PERCENTAGE-VALUE` over packages/v2/backend-execution/_SECTIONS.md is 0. The v1 execution-state.json already records this omission against the v1 catalog (its 'Error Catalog ... NO catalog row' entry, 2026-09-12) and the v2 delta, which restates the catalog in full as 'the one location of every code', carried the omission forward. Owner: factory (add the row). Not a code defect: the code is registered, bundled and thrown.",
+      "resolution": "OPEN — factory to add the FIN-422-INVALID-PERCENTAGE-VALUE row (RULE-FIN-010 / API-FIN-017, 020 / 422) to the v2 Error Catalog; backend needs no change",
+      "recorded_at": "2026-09-23T20:50:00+04:00"
+    },
+    {
+      "type": "NAMING_MISMATCH",
+      "phase": "TEST-PLAN-BE",
+      "sub": "TEST-PLAN-BE-HEADER",
+      "endpoint": "packages/v2/backend-test/TEST-PLAN-BE-HEADER.md — 'TC count is 52'",
+      "detail": "The delivered v2 split header states 'TC count is 52'. Parsed from the delivery itself, the real count is 89: RULE-SCENARIOS.md carries 45 <!-- TC:...:START --> blocks and API-SCENARIOS.md carries 44 (its 45th TC id, TC-FIN-094, is a prose cross-reference to a RULE-SCENARIOS block, not a block of its own). state.json's atoms[] agrees at 89 unique entries, and the flat Shape B file (analysis/modules/FIN/v2/test_gen/backend-test-plan-fin.md) carries the identical 89-id set — the two shapes have zero symmetric difference. 52 is the v1 TC count carried into the v2 header. Three ids appear in the flat file as prose mentions with no block and are correctly absent from both shapes' atom sets: TC-FIN-053, TC-FIN-092, TC-FIN-130. Consequence: a reader sizing REQUIRED COVERAGE off the header under-counts by 37 TCs; this run used the parsed 89. Owner: factory (the header text is rendered by the test-gen writer, and the same writer's split threshold sentence is what prints the number).",
+      "resolution": "OPEN — factory to emit the header's TC count from the block count it actually wrote (89 for FIN v2), and to reconcile the execution-state note that reports 45+45=90 by double-counting TC-FIN-094; backend needs no change and this run was executed against the parsed count",
+      "recorded_at": "2026-09-23T23:40:00+04:00"
+    },
+    {
+      "type": "DB_PRECONDITION",
+      "phase": "TEST-PLAN-BE",
+      "sub": "API-SCENARIOS",
+      "endpoint": "MDL PAYMENT_METHOD lookup value TRANSFER (TC-FIN-105 precondition; manifest DEPENDENCY ORDER step 0)",
+      "detail": "The manifest states that every PAYMENT_METHOD value but CHEQUE (CASH, TRANSFER) is added in MDL by the deploying organisation, and TC-FIN-105's Preconditions require TRANSFER present so its (inactive) mapping can be saved at all — RULE-FIN-024 refuses a mapping on a PAYMENT_METHOD value MDL does not hold. Observed 2026-09-24: GET /api/v1/mdl/lookups?type=PAYMENT_METHOD returns CASH and CHEQUE only, and creating TRANSFER answers 409 MDL-409-VALUE-DUP — the row exists but is INACTIVE. Cause: an earlier api-verify run seeded TRANSFER and retired it in its own teardown, and MDL publishes no activate endpoint for a lookup value (LookupValueController: create / update{nameAr,nameEn,sortOrder} / DELETE=deactivate / reorder / search), so it cannot be restored through the API. Handled without weakening the case: TRANSFER is no longer added to api-verify's teardown list (it is host reference data, not run residue), and while it stays retired TC-FIN-105 builds its third INACTIVE row on EXPENSE_TYPE_CODE — a FIN_EVENT_BUSINESS_FIELD value this run already uses — so the assertion (exactly 2 active rows, the inactive one excluded) is unchanged. No SQL was executed; api-verify SKILL.md s3-H emits it as a suggestion only: UPDATE MDL_LOOKUP_VALUE SET IS_ACTIVE_FL = TRUE WHERE CODE = 'TRANSFER' AND LOOKUP_TYPE_ID = (SELECT LOOKUP_TYPE_PK FROM MDL_LOOKUP_TYPE WHERE KEY = 'PAYMENT_METHOD'); Owner: the deploying organisation / whoever owns MDL host data in this environment.",
+      "resolution": "OPEN — a human restores the host PAYMENT_METHOD value TRANSFER with the SQL above, after which TC-FIN-105 rebuilds its literal fixture automatically; no backend change is owed",
+      "recorded_at": "2026-09-24T00:55:00+04:00"
+    },
+    {
+      "type": "SPEC_SILENT",
+      "phase": "SVC-API",
+      "sub": "SVC-API-INT",
+      "endpoint": "POST /api/v1/fin/journal-entries/from-event (API-FIN-020) — a FIELD-sourced rule line (amountSourceTypeCode = FIELD)",
+      "detail": "The plan names REMAINDER and PERCENTAGE failure codes but is silent on a FIELD line whose event amount is absent, negative or zero. As built, an absent field became ZERO and died on CHK_FIN_JOURNAL_LINE_AMOUNT_POSITIVE as an unlocalized 409 DATA_INTEGRITY_VIOLATION (found by the fin-consumer E2E run 2026-09-24). Worse, a zero field is a normal business fact: all 50 PURCHASE_INVOICE rows of 2026 are paid in full (remainingAmount = 0), so the seeded 3-line rule could never post one. Implemented with the user's explicit authorisation (2026-09-24, 'do anything with recommended'): absent → 422 FIN-422-MISSING-AMOUNT-FIELD; negative → 422 FIN-422-NEGATIVE-AMOUNT-FIELD (POL-FIN-005: the event type carries the direction); exactly zero on a non-remainder line → the line is omitted (POL-FIN-005: a zero line carries nothing; RULE-FIN-006 still judges the balance on the remaining lines; a remainder line is never omitted and keeps FIN-422-REMAINDER-NOT-POSITIVE). Code: EventTypeRuleDomain.sourcedAmount / isOmittedZeroLine, EventEntryService.buildLines, FinErrorCodes + both message bundles; unit test EventTypeRuleDomainFieldAmountTest (4/4), FinEventEntryV2IntegrationTest still 4/4. Proven end to end: PURCHASE_INVOICE posts Dr purchases / Cr bank with the zero remaining line omitted.",
+      "resolution": "RESOLVED — implemented as above on the user's authority; the factory should fold the three behaviours (two named codes + zero-line omission) into API-FIN-020's Orchestration text so the next version's plan states them",
+      "recorded_at": "2026-09-24T22:00:00+04:00"
+    }
+  ]
+}

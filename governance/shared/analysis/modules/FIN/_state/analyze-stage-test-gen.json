@@ -1,0 +1,123 @@
+{
+  "module": "FIN",
+  "version": 1,
+  "scope": "stage:test-gen",
+  "counts": {
+    "CRITICAL": 0,
+    "MAJOR": 0,
+    "MINOR": 0
+  },
+  "clean": true,
+  "blocking": [
+    "CRITICAL",
+    "MAJOR"
+  ],
+  "contracts": [
+    "C10",
+    "C12"
+  ],
+  "skipped": [],
+  "coverage": {
+    "C10.1": 92,
+    "C10.2": 46
+  },
+  "vacuous": [],
+  "metrics": [
+    {
+      "id": "us-req",
+      "from": "US",
+      "to": [
+        "REQ"
+      ],
+      "total": 19,
+      "covered": 19,
+      "pct": 100.0
+    },
+    {
+      "id": "req-ac",
+      "from": "REQ",
+      "to": [
+        "AC"
+      ],
+      "total": 46,
+      "covered": 46,
+      "pct": 100.0
+    },
+    {
+      "id": "req-api",
+      "from": "REQ",
+      "to": [
+        "API"
+      ],
+      "total": 46,
+      "covered": 46,
+      "pct": 100.0
+    },
+    {
+      "id": "req-ux",
+      "from": "REQ",
+      "to": [
+        "SCR",
+        "UXD"
+      ],
+      "total": 46,
+      "covered": 28,
+      "pct": 60.9
+    }
+  ],
+  "findings": [],
+  "provenance": {
+    "rules": {
+      "contracts": "305e1507cabe7d964971543105fae9f0b64fa47142680c54eeca2cfe709150af",
+      "checker": "85ac9590ba5c51fcff21410d44f9c85069688d433d5ba2ba397d7bd056895b80",
+      "policy": "16b2c628c459e7ac2ab25d8c92a193bd8e9e51acf301e0b9bedb49f7b87c9c85"
+    },
+    "resolvable": [
+      "api-docs",
+      "backend-execution-plan",
+      "backend-test-plan",
+      "business-policies",
+      "db-script",
+      "domain-profile",
+      "flow-diagram",
+      "frontend-execution-plan",
+      "frontend-test-plan",
+      "module-registry",
+      "platform-summary",
+      "prd",
+      "project-registry",
+      "registry-db",
+      "registry-exec-be",
+      "registry-exec-fe",
+      "registry-srs",
+      "srs",
+      "system-test-index",
+      "test-execution-manifest",
+      "ui-ux-spec"
+    ],
+    "inputs": {
+      "api-docs": "c7101d8482be5ff9ec41ff8011b75cada18d4eda03ed416579232ea2f3011f62",
+      "backend-execution-plan": "5ed0754de8307b176749963ef37ed81f9e0957f2dd645de7d9827f7c5d2409b6",
+      "backend-test-plan": "09e7c54c7c88c5b192b9d1c8027e4f651ed4da3d4bd28f373603499adfcf087b",
+      "business-policies": "c554eb8a8fc1dee75c137a5f26b053b3f72f7a243ad6b66c0352c7b425927e0d",
+      "db-script": "eb5c9786e2d8f46917f7e06c5c952c5f86055f7903063f8446209e4964e62994",
+      "domain-profile": "a34a15da38fa0ea53becec281b6072c51844ff4b9a96581af3a85a7d9b1e6822",
+      "flow-diagram": "5356a6b4724d7a86ab5ee96653d41643afb3b9f2ba24ea05fac42f93ce9b5c7b",
+      "frontend-execution-plan": "1ee40d52e5490c5b315130cfc514cdc784ff3cae0f1b565f43a16a5dea0207df",
+      "frontend-test-plan": "ab93b92be9f0b7d44862a2dd01d233f4433d71fb9dd61ba734a35fe6f18bf1f7",
+      "module-registry": "2c87d7b5ab738ace629d1c62bad0a1ff1c5c4985bdad9c686e3a9ccac8b7dc7d",
+      "platform-summary": "92f95565180e1a10a770a4fdec21260b8bdaa5acc2a701a22fd33c7c41d84e0c",
+      "prd": "4e4c599d0fa97ceade98746ff53a1ad2909c5a71518241003987060bce6bc818",
+      "project-registry": "ec44d4ec4c0be792eb2f477865e2a6df963f279dca2bee9752896f03bcc8a4ec",
+      "registry-db": "0f5a46da0155ed4337835a94493a6f20770a8940d86a0b8eb514ca0f1fd8297d",
+      "registry-exec-be": "5e4f4c2d3669bc7f40cf982e82fd2c1a282851b5d395b7fabb7302f794ef99b0",
+      "registry-exec-fe": "f96adf9ef2409df4239603660b55795cfdafc64db8b6542f55e59664192e3467",
+      "registry-srs": "2d4190f612cf6e017c216af488579700f4587af2279851a7b27256a157f68d22",
+      "srs": "ab4c41d5e9b94cb6f629b8fd7fd9cc3924d3076630026f2523a56e5ad4a90b29",
+      "system-test-index": "67d6136b3df1bf00744f47bfd9cc34af944ee01ea67fd14d1999655c0af389b9",
+      "test-execution-manifest": "9cb5fed11e9754e2057beee8cfabcf3f35045ad53d60fe4a1c02c9aa60546fa8",
+      "ui-ux-spec": "3f1e6bf4a86a9365cf12d90364513afba40a85a04ac8942eae97a1e6025bd829"
+    },
+    "at": "2026-09-21T15:28:33+00:00"
+  }
+}

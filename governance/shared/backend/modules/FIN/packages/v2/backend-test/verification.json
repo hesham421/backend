@@ -1,0 +1,13 @@
+{
+  "module": "FIN",
+  "track": "backend",
+  "plan": "test",
+  "version": 2,
+  "verify": "sha256",
+  "source": "governance-shared/analysis/modules/FIN/v2/test_gen/backend-test-plan-fin.md",
+  "checked": 91,
+  "missing": [],
+  "mismatched": [],
+  "ok": true,
+  "at": "2026-09-24T18:05:10+00:00"
+}

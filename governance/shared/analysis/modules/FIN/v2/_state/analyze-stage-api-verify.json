@@ -1,0 +1,126 @@
+{
+  "module": "FIN",
+  "version": 2,
+  "scope": "stage:api-verify",
+  "counts": {
+    "CRITICAL": 0,
+    "MAJOR": 0,
+    "MINOR": 0
+  },
+  "clean": true,
+  "blocking": [
+    "CRITICAL",
+    "MAJOR"
+  ],
+  "contracts": [
+    "C11",
+    "C12"
+  ],
+  "skipped": [],
+  "coverage": {},
+  "vacuous": [],
+  "metrics": [
+    {
+      "id": "us-req",
+      "from": "US",
+      "to": [
+        "REQ"
+      ],
+      "total": 33,
+      "covered": 32,
+      "pct": 97.0
+    },
+    {
+      "id": "req-ac",
+      "from": "REQ",
+      "to": [
+        "AC"
+      ],
+      "total": 77,
+      "covered": 77,
+      "pct": 100.0
+    },
+    {
+      "id": "req-api",
+      "from": "REQ",
+      "to": [
+        "API"
+      ],
+      "total": 77,
+      "covered": 77,
+      "pct": 100.0
+    },
+    {
+      "id": "req-ux",
+      "from": "REQ",
+      "to": [
+        "SCR",
+        "UXD"
+      ],
+      "total": 77,
+      "covered": 44,
+      "pct": 57.1
+    }
+  ],
+  "findings": [],
+  "provenance": {
+    "rules": {
+      "contracts": "305e1507cabe7d964971543105fae9f0b64fa47142680c54eeca2cfe709150af",
+      "checker": "48ed8aa0c57a0322493619a1ea886eaa92090ac9b6a6cd1f6a9a3436667060e3",
+      "policy": "16b2c628c459e7ac2ab25d8c92a193bd8e9e51acf301e0b9bedb49f7b87c9c85"
+    },
+    "resolvable": [
+      "api-docs",
+      "api-verify-report",
+      "api-verify-script",
+      "backend-execution-plan",
+      "backend-test-plan",
+      "business-policies",
+      "change-manifest",
+      "db-script",
+      "domain-profile",
+      "flow-diagram",
+      "frontend-execution-plan",
+      "frontend-test-plan",
+      "module-registry",
+      "platform-summary",
+      "prd",
+      "project-registry",
+      "registry-db",
+      "registry-exec-be",
+      "registry-exec-fe",
+      "registry-srs",
+      "srs",
+      "system-test-index",
+      "test-execution-manifest",
+      "ui-ux-spec"
+    ],
+    "inputs": {
+      "api-docs": "e1eb5161f072cf444c551315fa1ed2d30f217df3b84dbe0b30d31e735f1ff61c",
+      "api-verify-report": "de49617bdf2e080c55d426e8be088ffe99b77be01d2b5be3d3d1aeae6a089dc7",
+      "api-verify-script": "8aeffffb13220ce9fc4bd7fea0d14eab3dc9702beb02c42e66086c87caac2736",
+      "backend-execution-plan": "52c9d1074270a960dad591c777d1e2785bdfd5b3abaf984707ece70585d9bf38",
+      "backend-test-plan": "3b222084103c4ed747a9c1837bbeb75bc0c436ffdb21b346f48b49fe68fc86d2",
+      "business-policies": "2a011c08356004af9662ad783583fdeb3665b58ffd62ecf923081e6fd6ce7196",
+      "change-manifest": "700419c276eaba8f8c9e8e386025154e76a3dce97e2443d1383e9d6106c5eb33",
+      "db-script": "8e862f3dc2ce0ff1a9ca29e0ce7c27d2f5986601d3ac280c1d772989ca26aa36",
+      "domain-profile": "a34a15da38fa0ea53becec281b6072c51844ff4b9a96581af3a85a7d9b1e6822",
+      "flow-diagram": "1ac9b3d3c552bd0cb527b0bdccb6d4a632be9995cde54f27bd80326f6b12b8d1",
+      "frontend-execution-plan": "3ac5f18d8acb30de9dfb3cb4e957c0264882f22cc35d989fe283f578463ea67b",
+      "frontend-test-plan": "5371f98f975ba2216701c16ba9857e4e8e7b8852b2993409313977c45ff0035f",
+      "module-registry": "78e9bd12ace15211329cd7e08ebcf3c87f9c7aa236d14dea4e5a09997b8bd8df",
+      "platform-summary": "48c32c4bce303d897654a88bdbc027fa56c9041c268af29ef31582c6f850f16b",
+      "prd": "cd0dcd4ba52c74a5b54e4e1c0739a761f833abffff8ce8214ba90feb61f81f07",
+      "project-registry": "b65708c8122e848c0306f70ee079aea77d00f88560d6c4d4fd95011b869171b8",
+      "registry-db": "f171597d3ff5a3012085fc5d05559cc0a494d75aad7b9897f1a363e8935c2a7c",
+      "registry-exec-be": "96c3ad3a351d40ae673e02315c6d7b14a3310c1d36ae5088904a8eabf211078a",
+      "registry-exec-fe": "78c582a0499baeb748c292ad46b1915535fc0bbebd23aca3edb1a559686ad3b5",
+      "registry-srs": "cbb7ad6b5f89061ec30016e63b418773e80f24463a65d5c119f9af31a556bdc5",
+      "srs": "7f31665e53420062e5cc14bfc4a9ccd1df98f0003b7ce6c99cf863d65ac7cd43",
+      "system-test-index": "67d6136b3df1bf00744f47bfd9cc34af944ee01ea67fd14d1999655c0af389b9",
+      "test-execution-manifest": "129d20d3254090c784eed8fd8c387fce223ed6999cba4ba8d8ebf2ab37d0219c",
+      "ui-ux-spec": "9f2430a0b3a1c15ba469f08b8e8e293f7ab45dca4fae8364ffc33238707d7deb"
+    },
+    "at": "2026-09-23T21:33:39+00:00"
+  }
+}

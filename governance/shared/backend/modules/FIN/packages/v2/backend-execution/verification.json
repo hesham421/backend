@@ -1,0 +1,13 @@
+{
+  "module": "FIN",
+  "track": "backend",
+  "plan": "exec",
+  "version": 2,
+  "verify": "sha256",
+  "source": "governance-shared/analysis/modules/FIN/v2/P3_1/backend-execution-plan-fin.md",
+  "checked": 54,
+  "missing": [],
+  "mismatched": [],
+  "ok": true,
+  "at": "2026-09-23T18:42:29+00:00"
+}

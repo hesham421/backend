@@ -1,0 +1,9 @@
+{
+  "input": "api-docs",
+  "repo": "backend",
+  "commit": "4cbe04467e5c52e8cc67e56263f9ead06aa645a5",
+  "source": "backend/modules/FIN/api-docs",
+  "file": "api-docs-fin.md",
+  "digest": "e1eb5161f072cf444c551315fa1ed2d30f217df3b84dbe0b30d31e735f1ff61c",
+  "fetched_at": "2026-09-23T20:36:30+00:00"
+}
