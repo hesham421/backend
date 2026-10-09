@@ -1,16 +1,24 @@
 package com.erp.fin;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
 import com.erp.common.domain.status.ServiceResult;
 import com.erp.common.domain.status.Status;
+import com.erp.common.exception.LocalizedException;
 import com.erp.fin.FinYearEndFixtures.YearEndFixture;
 import com.erp.fin.domain.AccountDomain;
 import com.erp.fin.domain.JournalEntryDomain;
+import com.erp.fin.dto.AccountBalanceGroupResponse;
+import com.erp.fin.dto.AccountBalanceRowResponse;
+import com.erp.fin.dto.BalanceSheetResponse;
+import com.erp.fin.dto.IncomeStatementResponse;
 import com.erp.fin.dto.JournalEntryCreateRequest;
 import com.erp.fin.dto.JournalEntryResponse;
 import com.erp.fin.dto.JournalLineCreateRequest;
 import com.erp.fin.dto.JournalLineDimensionCreateRequest;
+import com.erp.fin.dto.TrialBalanceResponse;
+import com.erp.fin.exception.FinErrorCodes;
 import com.erp.fin.entity.Account;
 import com.erp.fin.entity.Dimension;
 import com.erp.fin.entity.DimensionValue;
@@ -27,6 +35,7 @@ import com.erp.fin.repository.FiscalYearRepository;
 import com.erp.fin.repository.JournalLineDimensionRepository;
 import com.erp.fin.repository.JournalLineRepository;
 import com.erp.fin.service.JournalEntryService;
+import com.erp.fin.service.ReportService;
 import com.erp.main.ErpMainApplication;
 import com.erp.sec.permission.PermissionConstants;
 import java.math.BigDecimal;
@@ -60,6 +69,7 @@ class FinReportFilterIntegrationTest {
 
     private static final LocalDate FIXTURE_YEAR_START = LocalDate.of(2043, 1, 1);
     private static final BigDecimal AMOUNT = new BigDecimal("500.00");
+    private static final BigDecimal OTHER_BRANCH_AMOUNT = new BigDecimal("300.00");
 
     @Autowired private AccountRepository accountRepository;
     @Autowired private DimensionRepository dimensionRepository;
@@ -69,6 +79,7 @@ class FinReportFilterIntegrationTest {
     @Autowired private JournalEntryService journalEntryService;
     @Autowired private JournalLineRepository journalLineRepository;
     @Autowired private JournalLineDimensionRepository journalLineDimensionRepository;
+    @Autowired private ReportService reportService;
 
     private FinYearEndFixtures fixtures;
     private PostedActivity activity;
@@ -168,6 +179,111 @@ class FinReportFilterIntegrationTest {
     }
 
     // ---------------------------------------------------------------------------------------
+    // API-FIN-029 / 030 / 031 — the branch (dimension) filter on the three statements
+    // ---------------------------------------------------------------------------------------
+
+    @Test
+    void trialBalanceWithoutADimensionFilterKeepsEveryBranch() {
+        postOtherBranchActivity();
+        TrialBalanceResponse result = trialBalance(null, null);
+
+        assertThat(debitOf(result.getRows(), activity.assetAccount()))
+            .isEqualByComparingTo(AMOUNT.add(OTHER_BRANCH_AMOUNT));
+        assertThat(result.getDimensionValueId()).isNull();
+        assertThat(result.getBalanced()).isTrue();
+    }
+
+    @Test
+    void trialBalanceFilteredToOneBranchKeepsOnlyThatBranchsLines() {
+        Long otherValue = postOtherBranchActivity();
+
+        TrialBalanceResponse branch = trialBalance(null, activity.dimensionValueId());
+        assertThat(debitOf(branch.getRows(), activity.assetAccount())).isEqualByComparingTo(AMOUNT);
+        assertThat(branch.getDimensionValueId()).isEqualTo(activity.dimensionValueId());
+        assertThat(branch.getBalanced()).as("single-branch entries balance per branch").isTrue();
+
+        TrialBalanceResponse other = trialBalance(activity.dimensionId(), otherValue);
+        assertThat(debitOf(other.getRows(), activity.assetAccount()))
+            .isEqualByComparingTo(OTHER_BRANCH_AMOUNT);
+        assertThat(other.getDimensionId()).isEqualTo(activity.dimensionId());
+
+        TrialBalanceResponse all = trialBalance(null, null);
+        assertThat(debitOf(branch.getRows(), activity.assetAccount())
+            .add(debitOf(other.getRows(), activity.assetAccount())))
+            .as("the branches add up to the unfiltered result")
+            .isEqualByComparingTo(debitOf(all.getRows(), activity.assetAccount()));
+    }
+
+    @Test
+    void trialBalanceRejectsAnUnknownDimension() {
+        assertNotFound(() -> trialBalance(-1L, null), FinErrorCodes.FIN_404_DIMENSION);
+    }
+
+    @Test
+    void balanceSheetWithoutADimensionFilterKeepsEveryBranch() {
+        postOtherBranchActivity();
+        assertThat(debitOf(groupRows(balanceSheet(null).getGroups()), activity.assetAccount()))
+            .isEqualByComparingTo(AMOUNT.add(OTHER_BRANCH_AMOUNT));
+    }
+
+    @Test
+    void balanceSheetFilteredToOneBranchKeepsOnlyThatBranchsLines() {
+        postOtherBranchActivity();
+        BalanceSheetResponse branch = balanceSheet(activity.dimensionValueId());
+
+        assertThat(debitOf(groupRows(branch.getGroups()), activity.assetAccount()))
+            .isEqualByComparingTo(AMOUNT);
+        assertThat(branch.getDimensionValueId()).isEqualTo(activity.dimensionValueId());
+    }
+
+    @Test
+    void balanceSheetRejectsAnUnknownDimension() {
+        FinYearEndFixtures.setAuthenticatedPrincipal(
+            "fin-branch-bs", PermissionConstants.PERM_FIN_BALANCE_SHEET_VIEW);
+        assertNotFound(() -> reportService.balanceSheet(activity.fiscalYearId(), null, -1L, null),
+            FinErrorCodes.FIN_404_DIMENSION);
+    }
+
+    @Test
+    void incomeStatementWithoutADimensionFilterKeepsEveryBranch() {
+        postOtherBranchActivity();
+        assertThat(creditOf(groupRows(incomeStatement(null).getGroups()), activity.revenueAccount()))
+            .isEqualByComparingTo(AMOUNT.add(OTHER_BRANCH_AMOUNT));
+    }
+
+    @Test
+    void incomeStatementFilteredToOneBranchKeepsOnlyThatBranchsLines() {
+        postOtherBranchActivity();
+        IncomeStatementResponse branch = incomeStatement(activity.dimensionValueId());
+
+        assertThat(creditOf(groupRows(branch.getGroups()), activity.revenueAccount()))
+            .isEqualByComparingTo(AMOUNT);
+        assertThat(branch.getDimensionValueId()).isEqualTo(activity.dimensionValueId());
+    }
+
+    @Test
+    void incomeStatementRejectsAnUnknownDimension() {
+        FinYearEndFixtures.setAuthenticatedPrincipal(
+            "fin-branch-is", PermissionConstants.PERM_FIN_INCOME_STATEMENT_VIEW);
+        assertNotFound(() -> reportService.incomeStatement(
+            activity.fiscalYearId(), null, null, -1L, null), FinErrorCodes.FIN_404_DIMENSION);
+    }
+
+    @Test
+    void aStatementRejectsAnUnknownValueAndAValueOfAnotherDimension() {
+        assertNotFound(() -> trialBalance(null, -1L), FinErrorCodes.FIN_404_DIMVALUE);
+
+        Dimension otherDimension = dimensionRepository.save(Dimension.builder()
+            .code("D" + FinYearEndFixtures.uniqueSuffix())
+            .nameAr("بُعد آخر").nameEn("Other dimension")
+            .isActiveFl(Boolean.TRUE).build());
+        LocalizedException thrown = catchThrowableOfType(LocalizedException.class,
+            () -> trialBalance(otherDimension.getDimensionPk(), activity.dimensionValueId()));
+        assertThat(thrown).isNotNull();
+        assertThat(thrown.getErrorCode()).isEqualTo(FinErrorCodes.FIN_409_INVALID_DIMENSION);
+    }
+
+    // ---------------------------------------------------------------------------------------
     // QR-FIN-044 — API-FIN-032's dimension report
     // ---------------------------------------------------------------------------------------
 
@@ -199,7 +315,50 @@ class FinReportFilterIntegrationTest {
                                               LocalDate fromDate, LocalDate toDate) {
         return journalLineRepository.aggregateAccountBalances(
             JournalEntry.STATUS_POSTED, JournalEntryDomain.DIRECTION_DEBIT,
-            periodId, fiscalYearId, fromDate, toDate);
+            periodId, fiscalYearId, fromDate, toDate, null, null);
+    }
+
+    private TrialBalanceResponse trialBalance(Long dimensionId, Long dimensionValueId) {
+        FinYearEndFixtures.setAuthenticatedPrincipal(
+            "fin-branch-tb", PermissionConstants.PERM_FIN_TRIAL_BALANCE_VIEW);
+        return reportService.trialBalance(activity.periodId(), null, dimensionId, dimensionValueId)
+            .getData();
+    }
+
+    private BalanceSheetResponse balanceSheet(Long dimensionValueId) {
+        FinYearEndFixtures.setAuthenticatedPrincipal(
+            "fin-branch-bs", PermissionConstants.PERM_FIN_BALANCE_SHEET_VIEW);
+        return reportService.balanceSheet(activity.fiscalYearId(), null, null, dimensionValueId)
+            .getData();
+    }
+
+    private IncomeStatementResponse incomeStatement(Long dimensionValueId) {
+        FinYearEndFixtures.setAuthenticatedPrincipal(
+            "fin-branch-is", PermissionConstants.PERM_FIN_INCOME_STATEMENT_VIEW);
+        return reportService.incomeStatement(
+            activity.fiscalYearId(), null, null, null, dimensionValueId).getData();
+    }
+
+    private static void assertNotFound(Runnable call, String errorCode) {
+        LocalizedException thrown = catchThrowableOfType(LocalizedException.class, call::run);
+        assertThat(thrown).as("expected %s", errorCode).isNotNull();
+        assertThat(thrown.getStatus()).isEqualTo(Status.NOT_FOUND);
+        assertThat(thrown.getErrorCode()).isEqualTo(errorCode);
+    }
+
+    private static List<AccountBalanceRowResponse> groupRows(
+            List<AccountBalanceGroupResponse> groups) {
+        return groups.stream().flatMap(group -> group.getRows().stream()).toList();
+    }
+
+    private static BigDecimal debitOf(List<AccountBalanceRowResponse> rows, Long accountId) {
+        return rows.stream().filter(row -> accountId.equals(row.getAccountId()))
+            .map(AccountBalanceRowResponse::getDebitTotal).findFirst().orElse(BigDecimal.ZERO);
+    }
+
+    private static BigDecimal creditOf(List<AccountBalanceRowResponse> rows, Long accountId) {
+        return rows.stream().filter(row -> accountId.equals(row.getAccountId()))
+            .map(AccountBalanceRowResponse::getCreditTotal).findFirst().orElse(BigDecimal.ZERO);
     }
 
     private List<DimensionBalanceView> dimensionBalances(Long dimensionValueId, Long periodId) {
@@ -233,42 +392,62 @@ class FinReportFilterIntegrationTest {
             .nameAr("قيمة اختبار").nameEn("Test value")
             .isActiveFl(Boolean.TRUE).build());
 
+        PostedActivity posted = new PostedActivity(asset.getAccountPk(), revenue.getAccountPk(),
+            fixture.year().getFiscalYearPk(),
+            period.getFiscalPeriodPk(), period.getStartDate(), period.getEndDate(),
+            period.getStartDate(), dimension.getDimensionPk(), value.getDimensionValuePk());
+        postTaggedEntry(posted, posted.dimensionValueId(), AMOUNT);
+        return posted;
+    }
+
+    /**
+     * A second branch: another value of the fixture's dimension and one entry, of a different
+     * amount, tagged with it — so a filter to the first branch has something to exclude.
+     */
+    private Long postOtherBranchActivity() {
+        DimensionValue other = dimensionValueRepository.save(DimensionValue.builder()
+            .dimension(dimensionRepository.getReferenceById(activity.dimensionId()))
+            .code("V" + FinYearEndFixtures.uniqueSuffix())
+            .nameAr("فرع آخر").nameEn("Other branch")
+            .isActiveFl(Boolean.TRUE).build());
+        postTaggedEntry(activity, other.getDimensionValuePk(), OTHER_BRANCH_AMOUNT);
+        return other.getDimensionValuePk();
+    }
+
+    /** One balanced, POSTED manual entry, both lines tagged with {@code dimensionValueId}. */
+    private void postTaggedEntry(PostedActivity target, Long dimensionValueId, BigDecimal amount) {
         FinYearEndFixtures.setAuthenticatedPrincipal(
             "fin-report-filter-" + FinYearEndFixtures.uniqueSuffix(), PermissionConstants.PERM_FIN_JOURNAL_ENTRIES_CREATE);
 
         JournalLineDimensionCreateRequest tag = JournalLineDimensionCreateRequest.builder()
-            .dimensionId(dimension.getDimensionPk())
-            .dimensionValueId(value.getDimensionValuePk())
+            .dimensionId(target.dimensionId())
+            .dimensionValueId(dimensionValueId)
             .build();
 
         ServiceResult<JournalEntryResponse> posted =
             journalEntryService.createManual(JournalEntryCreateRequest.builder()
-                .docDate(period.getStartDate())
-                .fiscalYearId(fixture.year().getFiscalYearPk())
-                .periodId(period.getFiscalPeriodPk())
+                .docDate(target.docDate())
+                .fiscalYearId(target.fiscalYearId())
+                .periodId(target.periodId())
                 .journalTypeCode("MANUAL")
                 .descriptionEn("Report filter fixture activity")
                 .lines(List.of(
                     JournalLineCreateRequest.builder()
-                        .accountId(asset.getAccountPk()).amount(AMOUNT)
+                        .accountId(target.assetAccount()).amount(amount)
                         .directionCode(JournalEntryDomain.DIRECTION_DEBIT)
                         .dimensions(List.of(tag)).build(),
                     JournalLineCreateRequest.builder()
-                        .accountId(revenue.getAccountPk()).amount(AMOUNT)
+                        .accountId(target.revenueAccount()).amount(amount)
                         .directionCode(JournalEntryDomain.DIRECTION_CREDIT)
                         .dimensions(List.of(tag)).build()))
                 .build());
 
         assertThat(posted.getStatus()).isEqualTo(Status.CREATED);
         SecurityContextHolder.clearContext();
-
-        return new PostedActivity(asset.getAccountPk(), fixture.year().getFiscalYearPk(),
-            period.getFiscalPeriodPk(), period.getStartDate(), period.getEndDate(),
-            period.getStartDate(), dimension.getDimensionPk(), value.getDimensionValuePk());
     }
 
-    private record PostedActivity(Long assetAccount, Long fiscalYearId, Long periodId,
-                                  LocalDate periodStart, LocalDate periodEnd, LocalDate docDate,
-                                  Long dimensionId, Long dimensionValueId) {
+    private record PostedActivity(Long assetAccount, Long revenueAccount, Long fiscalYearId,
+                                  Long periodId, LocalDate periodStart, LocalDate periodEnd,
+                                  LocalDate docDate, Long dimensionId, Long dimensionValueId) {
     }
 }

@@ -30,6 +30,14 @@ public class BalanceSheetResponse {
         example = "2026-12-31")
     private LocalDate asOfDate;
 
+    @Schema(description = "Dimension filter applied (e.g. BRANCH), null when unfiltered - "
+        + "البُعد المُرشَّح", example = "2")
+    private Long dimensionId;
+
+    @Schema(description = "Dimension-value filter applied (e.g. one branch), null when "
+        + "unfiltered - قيمة البُعد المُرشَّحة", example = "5")
+    private Long dimensionValueId;
+
     @Schema(description = "Groups: ASSET, LIABILITY, EQUITY - المجموعات")
     private List<AccountBalanceGroupResponse> groups;
 }

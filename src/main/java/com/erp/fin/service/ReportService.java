@@ -13,6 +13,7 @@ import com.erp.fin.dto.DimensionReportRowResponse;
 import com.erp.fin.dto.IncomeStatementResponse;
 import com.erp.fin.dto.TrialBalanceResponse;
 import com.erp.fin.entity.Account;
+import com.erp.fin.entity.DimensionValue;
 import com.erp.fin.entity.FiscalPeriod;
 import com.erp.fin.entity.JournalEntry;
 import com.erp.fin.exception.FinErrorCodes;
@@ -20,6 +21,7 @@ import com.erp.fin.mapper.ReportMapper;
 import com.erp.fin.repository.AccountBalanceView;
 import com.erp.fin.repository.AccountRepository;
 import com.erp.fin.repository.DimensionRepository;
+import com.erp.fin.repository.DimensionValueRepository;
 import com.erp.fin.repository.FiscalPeriodRepository;
 import com.erp.fin.repository.FiscalYearRepository;
 import com.erp.fin.repository.JournalLineDimensionRepository;
@@ -77,6 +79,7 @@ public class ReportService {
 
     private final AccountRepository accountRepository;
     private final DimensionRepository dimensionRepository;
+    private final DimensionValueRepository dimensionValueRepository;
     private final FiscalPeriodRepository fiscalPeriodRepository;
     private final FiscalYearRepository fiscalYearRepository;
     private final JournalLineRepository journalLineRepository;
@@ -128,20 +131,27 @@ public class ReportService {
      * own period bounds — rather than silently yielding an all-zero report.
      *
      * <p>Note the flag is only meaningful over the UNFILTERED result: asking for one account type
-     * deliberately returns a slice, and a slice of a balanced set need not balance.
+     * deliberately returns a slice, and a slice of a balanced set need not balance. The same holds
+     * for the optional dimension filter ({@link #assertDimensionFilter}): a per-branch trial
+     * balance balances only when every contributing entry tags all its lines with that one branch.
+     * Event entries do (one branch per event); a manual entry spanning branches will not.
      */
     @Transactional(readOnly = true)
     @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants)"
         + ".PERM_FIN_TRIAL_BALANCE_VIEW)")
     public ServiceResult<TrialBalanceResponse> trialBalance(Long periodId,
-                                                            String accountTypeCode) {
+                                                            String accountTypeCode,
+                                                            Long dimensionId,
+                                                            Long dimensionValueId) {
         log.debug("Building trial balance for Period ID: {}", periodId);
 
         if (periodId != null) {
             periodOf(periodId);
         }
+        assertDimensionFilter(dimensionId, dimensionValueId);
 
         List<AccountBalanceRowResponse> rows = balanceRows(periodId, null, null, null,
+            dimensionId, dimensionValueId,
             accountTypeCode == null || accountTypeCode.isBlank()
                 ? List.of() : List.of(accountTypeCode));
 
@@ -151,6 +161,8 @@ public class ReportService {
         return ServiceResult.success(TrialBalanceResponse.builder()
             .periodId(periodId)
             .accountTypeCode(accountTypeCode)
+            .dimensionId(dimensionId)
+            .dimensionValueId(dimensionValueId)
             .rows(rows)
             .totalDebitBalance(totalDebit)
             .totalCreditBalance(totalCredit)
@@ -175,17 +187,22 @@ public class ReportService {
     @PreAuthorize("hasAuthority(T(com.erp.sec.permission.PermissionConstants)"
         + ".PERM_FIN_BALANCE_SHEET_VIEW)")
     public ServiceResult<BalanceSheetResponse> balanceSheet(Long fiscalYearId,
-                                                            LocalDate asOfDate) {
+                                                            LocalDate asOfDate,
+                                                            Long dimensionId,
+                                                            Long dimensionValueId) {
         log.debug("Building balance sheet for FiscalYear ID: {}", fiscalYearId);
 
         assertFiscalYearExists(fiscalYearId);
+        assertDimensionFilter(dimensionId, dimensionValueId);
 
-        List<AccountBalanceRowResponse> rows =
-            balanceRows(null, fiscalYearId, null, asOfDate, BALANCE_SHEET_TYPES);
+        List<AccountBalanceRowResponse> rows = balanceRows(null, fiscalYearId, null, asOfDate,
+            dimensionId, dimensionValueId, BALANCE_SHEET_TYPES);
 
         return ServiceResult.success(BalanceSheetResponse.builder()
             .fiscalYearId(fiscalYearId)
             .asOfDate(asOfDate)
+            .dimensionId(dimensionId)
+            .dimensionValueId(dimensionValueId)
             .groups(groupsOf(rows, BALANCE_SHEET_TYPES))
             .build());
     }
@@ -213,16 +230,19 @@ public class ReportService {
         + ".PERM_FIN_INCOME_STATEMENT_VIEW)")
     public ServiceResult<IncomeStatementResponse> incomeStatement(Long fiscalYearId,
                                                                   Long fromPeriodId,
-                                                                  Long toPeriodId) {
+                                                                  Long toPeriodId,
+                                                                  Long dimensionId,
+                                                                  Long dimensionValueId) {
         log.debug("Building income statement for FiscalYear ID: {}", fiscalYearId);
 
         assertFiscalYearExists(fiscalYearId);
+        assertDimensionFilter(dimensionId, dimensionValueId);
 
         LocalDate fromDate = fromPeriodId == null ? null : periodOf(fromPeriodId).getStartDate();
         LocalDate toDate = toPeriodId == null ? null : periodOf(toPeriodId).getEndDate();
 
-        List<AccountBalanceRowResponse> rows =
-            balanceRows(null, fiscalYearId, fromDate, toDate, INCOME_STATEMENT_TYPES);
+        List<AccountBalanceRowResponse> rows = balanceRows(null, fiscalYearId, fromDate, toDate,
+            dimensionId, dimensionValueId, INCOME_STATEMENT_TYPES);
         List<AccountBalanceGroupResponse> groups = groupsOf(rows, INCOME_STATEMENT_TYPES);
 
         BigDecimal revenueTotal = BigDecimal.ZERO;
@@ -241,6 +261,8 @@ public class ReportService {
             .toPeriodId(toPeriodId)
             .fromDate(fromDate)
             .toDate(toDate)
+            .dimensionId(dimensionId)
+            .dimensionValueId(dimensionValueId)
             .groups(groups)
             .netResult(revenueTotal.subtract(expenseTotal))
             .build());
@@ -290,10 +312,12 @@ public class ReportService {
                                                         Long fiscalYearId,
                                                         LocalDate fromDate,
                                                         LocalDate toDate,
+                                                        Long dimensionId,
+                                                        Long dimensionValueId,
                                                         List<String> accountTypeCodes) {
         List<AccountBalanceView> views = journalLineRepository.aggregateAccountBalances(
             JournalEntry.STATUS_POSTED, JournalEntryDomain.DIRECTION_DEBIT,
-            periodId, fiscalYearId, fromDate, toDate);
+            periodId, fiscalYearId, fromDate, toDate, dimensionId, dimensionValueId);
 
         return views.stream()
             .filter(view -> accountTypeCodes.isEmpty()
@@ -327,6 +351,32 @@ public class ReportService {
         if (!fiscalYearRepository.existsById(fiscalYearId)) {
             throw new LocalizedException(
                 Status.NOT_FOUND, FinErrorCodes.FIN_404_YEAR, fiscalYearId);
+        }
+    }
+
+    /**
+     * Resolves the optional dimension narrowing shared by API-FIN-029 / 030 / 031, so an unknown
+     * id is a 404 rather than a silently all-zero statement. Every code is already registered:
+     * {@code FIN-404-DIMENSION} (unknown dimension), {@code FIN-404-DIMVALUE} (unknown value) and
+     * {@code FIN-409-INVALID-DIMENSION} (a value that does not belong to the stated dimension —
+     * RULE-FIN-009's own wording). A value on its own is enough to select one branch; a dimension
+     * on its own keeps every line tagged with it.
+     */
+    private void assertDimensionFilter(Long dimensionId, Long dimensionValueId) {
+        if (dimensionId != null && !dimensionRepository.existsById(dimensionId)) {
+            throw new LocalizedException(
+                Status.NOT_FOUND, FinErrorCodes.FIN_404_DIMENSION, dimensionId);
+        }
+        if (dimensionValueId == null) {
+            return;
+        }
+        DimensionValue value = dimensionValueRepository.findById(dimensionValueId)
+            .orElseThrow(() -> new LocalizedException(
+                Status.NOT_FOUND, FinErrorCodes.FIN_404_DIMVALUE, dimensionValueId));
+        if (dimensionId != null
+                && !dimensionId.equals(value.getDimension().getDimensionPk())) {
+            throw new LocalizedException(
+                Status.CONFLICT, FinErrorCodes.FIN_409_INVALID_DIMENSION, dimensionValueId);
         }
     }
 

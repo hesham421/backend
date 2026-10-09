@@ -93,7 +93,9 @@ public interface JournalLineRepository
      *
      * <p>Every scoping parameter is optional: a null one drops its predicate, which is how one
      * query serves a period-scoped trial balance, a year-and-cut-off balance sheet and a
-     * year-and-range income statement.
+     * year-and-range income statement. The two dimension predicates are the same EXISTS
+     * narrowing {@link #findAccountLedgerLines} applies, so one branch (a BRANCH dimension value)
+     * can be read on its own; a line counts once however many tags it carries.
      */
     @Query("SELECT a.accountPk AS accountId, a.code AS accountCode, a.nameAr AS accountNameAr, "
         + "a.nameEn AS accountNameEn, a.accountTypeCode AS accountTypeCode, "
@@ -106,6 +108,12 @@ public interface JournalLineRepository
         + "AND (CAST(:fiscalYearId AS Long) IS NULL OR e.fiscalYear.fiscalYearPk = :fiscalYearId) "
         + "AND (CAST(:fromDate AS LocalDate) IS NULL OR e.docDate >= :fromDate) "
         + "AND (CAST(:toDate AS LocalDate) IS NULL OR e.docDate <= :toDate) "
+        + "AND (CAST(:dimensionId AS Long) IS NULL OR EXISTS (SELECT jd.journalLineDimensionPk "
+        + "FROM JournalLineDimension jd WHERE jd.journalLine = l "
+        + "AND jd.dimension.dimensionPk = :dimensionId)) "
+        + "AND (CAST(:dimensionValueId AS Long) IS NULL OR EXISTS (SELECT jv.journalLineDimensionPk "
+        + "FROM JournalLineDimension jv WHERE jv.journalLine = l "
+        + "AND jv.dimensionValue.dimensionValuePk = :dimensionValueId)) "
         + "GROUP BY a.accountPk, a.code, a.nameAr, a.nameEn, a.accountTypeCode, a.natureCode "
         + "ORDER BY a.code ASC")
     List<AccountBalanceView> aggregateAccountBalances(
@@ -114,5 +122,7 @@ public interface JournalLineRepository
         @Param("periodId") Long periodId,
         @Param("fiscalYearId") Long fiscalYearId,
         @Param("fromDate") LocalDate fromDate,
-        @Param("toDate") LocalDate toDate);
+        @Param("toDate") LocalDate toDate,
+        @Param("dimensionId") Long dimensionId,
+        @Param("dimensionValueId") Long dimensionValueId);
 }

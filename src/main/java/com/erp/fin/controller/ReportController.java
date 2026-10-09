@@ -9,6 +9,7 @@ import com.erp.fin.dto.IncomeStatementResponse;
 import com.erp.fin.dto.TrialBalanceResponse;
 import com.erp.fin.service.ReportService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
@@ -62,8 +63,14 @@ public class ReportController {
     @Operation(summary = "Trial balance", description = "ميزان المراجعة المُشتق حيًا")
     public ResponseEntity<ApiResponse<TrialBalanceResponse>> trialBalance(
             @RequestParam(required = false) Long periodId,
-            @RequestParam(required = false) String accountTypeCode) {
-        return operationCode.craftResponse(service.trialBalance(periodId, accountTypeCode));
+            @RequestParam(required = false) String accountTypeCode,
+            @Parameter(description = "Optional dimension filter (e.g. BRANCH) - البُعد")
+            @RequestParam(required = false) Long dimensionId,
+            @Parameter(description = "Optional dimension-value filter (e.g. one branch); alone it "
+                + "selects that value's lines - قيمة البُعد (الفرع)")
+            @RequestParam(required = false) Long dimensionValueId) {
+        return operationCode.craftResponse(
+            service.trialBalance(periodId, accountTypeCode, dimensionId, dimensionValueId));
     }
 
     @GetMapping("/balance-sheet")
@@ -71,8 +78,14 @@ public class ReportController {
     public ResponseEntity<ApiResponse<BalanceSheetResponse>> balanceSheet(
             @RequestParam Long fiscalYearId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-            LocalDate asOfDate) {
-        return operationCode.craftResponse(service.balanceSheet(fiscalYearId, asOfDate));
+            LocalDate asOfDate,
+            @Parameter(description = "Optional dimension filter (e.g. BRANCH) - البُعد")
+            @RequestParam(required = false) Long dimensionId,
+            @Parameter(description = "Optional dimension-value filter (e.g. one branch); alone it "
+                + "selects that value's lines - قيمة البُعد (الفرع)")
+            @RequestParam(required = false) Long dimensionValueId) {
+        return operationCode.craftResponse(
+            service.balanceSheet(fiscalYearId, asOfDate, dimensionId, dimensionValueId));
     }
 
     @GetMapping("/income-statement")
@@ -80,9 +93,14 @@ public class ReportController {
     public ResponseEntity<ApiResponse<IncomeStatementResponse>> incomeStatement(
             @RequestParam Long fiscalYearId,
             @RequestParam(required = false) Long fromPeriodId,
-            @RequestParam(required = false) Long toPeriodId) {
-        return operationCode.craftResponse(
-            service.incomeStatement(fiscalYearId, fromPeriodId, toPeriodId));
+            @RequestParam(required = false) Long toPeriodId,
+            @Parameter(description = "Optional dimension filter (e.g. BRANCH) - البُعد")
+            @RequestParam(required = false) Long dimensionId,
+            @Parameter(description = "Optional dimension-value filter (e.g. one branch); alone it "
+                + "selects that value's lines - قيمة البُعد (الفرع)")
+            @RequestParam(required = false) Long dimensionValueId) {
+        return operationCode.craftResponse(service.incomeStatement(
+            fiscalYearId, fromPeriodId, toPeriodId, dimensionId, dimensionValueId));
     }
 
     @GetMapping("/dimension")

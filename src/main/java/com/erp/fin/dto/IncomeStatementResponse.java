@@ -43,6 +43,14 @@ public class IncomeStatementResponse {
         example = "2026-06-30")
     private LocalDate toDate;
 
+    @Schema(description = "Dimension filter applied (e.g. BRANCH), null when unfiltered - "
+        + "البُعد المُرشَّح", example = "2")
+    private Long dimensionId;
+
+    @Schema(description = "Dimension-value filter applied (e.g. one branch), null when "
+        + "unfiltered - قيمة البُعد المُرشَّحة", example = "5")
+    private Long dimensionValueId;
+
     @Schema(description = "Groups: REVENUE, EXPENSE - المجموعات")
     private List<AccountBalanceGroupResponse> groups;
 

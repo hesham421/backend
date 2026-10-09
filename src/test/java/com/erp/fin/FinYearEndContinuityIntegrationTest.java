@@ -132,7 +132,7 @@ class FinYearEndContinuityIntegrationTest {
         setStatementViewer(PermissionConstants.PERM_FIN_INCOME_STATEMENT_VIEW);
 
         IncomeStatementResponse closedYear =
-            reportService.incomeStatement(closed.year().getFiscalYearPk(), null, null).getData();
+            reportService.incomeStatement(closed.year().getFiscalYearPk(), null, null, null, null).getData();
         Map<Long, BigDecimal> closedBalances = balancesOf(closedYear.getGroups());
         assertThat(closedBalances.keySet())
             .as("the closed year's result accounts are in its income statement")
@@ -143,7 +143,7 @@ class FinYearEndContinuityIntegrationTest {
         assertThat(closedYear.getNetResult()).isEqualByComparingTo(BigDecimal.ZERO);
 
         IncomeStatementResponse newYear = reportService
-            .incomeStatement(closed.successor().getFiscalYearPk(), null, null).getData();
+            .incomeStatement(closed.successor().getFiscalYearPk(), null, null, null, null).getData();
         assertThat(balancesOf(newYear.getGroups()).values())
             .allSatisfy(balance -> assertThat(balance).isEqualByComparingTo(BigDecimal.ZERO));
         assertThat(newYear.getNetResult()).isEqualByComparingTo(BigDecimal.ZERO);
@@ -217,7 +217,7 @@ class FinYearEndContinuityIntegrationTest {
 
     private Map<Long, BigDecimal> balanceSheetBalances(Long fiscalYearPk) {
         BalanceSheetResponse sheet =
-            reportService.balanceSheet(fiscalYearPk, null).getData();
+            reportService.balanceSheet(fiscalYearPk, null, null, null).getData();
         return balancesOf(sheet.getGroups());
     }
 
