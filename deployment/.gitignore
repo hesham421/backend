@@ -1,0 +1,5 @@
+.env.prod
+.env.prod.*
+!.env.prod.example
+__pycache__/
+.DS_Store
