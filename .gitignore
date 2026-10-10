@@ -47,3 +47,6 @@ testsprite_tests/tmp/config.json
 # specific and must never be committed
 __pycache__/
 *.pyc
+
+# Server credentials - never commit
+depoymentssh/
