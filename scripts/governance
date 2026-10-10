@@ -19,7 +19,7 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
 SM=governance/shared
-[ -e "$SM/.git" ] || { echo "governance/shared is not initialised."; echo "  git submodule update --init --recursive"; exit 1; }
+[ -e "$SM/.git" ] || { echo "governance/shared is a local copy, decoupled from the governance factory (2026-10-09)."; echo "  Nothing to pull or push — edit governance/shared/ directly."; exit 1; }
 
 BRANCH=$(git config -f .gitmodules --get "submodule.$SM.branch" || echo main)
 

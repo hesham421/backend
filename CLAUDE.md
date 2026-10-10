@@ -60,6 +60,14 @@ in this repo needs lives inside `backend/governance/`.
 
 ## Where to Find Governance
 
+> **Decoupled from the governance factory (2026-10-09, explicit human decision).**
+> `governance/shared/` is no longer a git submodule: it is a plain, committed copy
+> inside this repository (snapshot of shared commit `1087165`). Nothing here pulls from or pushes to
+> `hesham421/governance-shared` any more, and the factory no longer updates this repo.
+> `./scripts/governance pull|push|status` is retired; ignore every instruction below
+> that says to run it, `git submodule update`, or to "publish" to the factory.
+> Edit `governance/shared/` directly like any other file in this repo.
+
 This repository holds **no governance artifacts**. It knows two things: where
 to read them, and where it may write. Both are the same place — the project
 repository the governance factory publishes, mounted here as a submodule at

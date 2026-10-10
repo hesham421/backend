@@ -32,8 +32,11 @@
 --   docDate          the business date column of the row (LOAN_PAYMENT_DATE, COMPLAINT_DT_DATE,
 --                    INV_IMPORT_DATE, EXPENSE_DATE, TRANSFER_SAFE_DATE, CONTRACT_DATE,
 --                    QUITTANCE_DATE); legacy stamped SYSDATE — findings D-15
---   fields.PAYMENT_METHOD    PAYMENT_TYPE_FK 1 → CHEQUE, anything else (0 or NULL) → CASH,
---                    exactly the legacy CASE (24 stays 24 unless PAYMENT_TYPE_FK = 1)
+--   fields.PAYMENT_METHOD    PAYMENT_TYPE_FK 1 → 'BANK_<BANK_ACCOUNT_FK>' when the row names its bank
+--                    account, else 'CHEQUE'; anything else (0 or NULL) → CASH. The legacy CASE (24
+--                    stays 24 unless PAYMENT_TYPE_FK = 1); the bank account since 2026-10-10 (Flyway
+--                    V46: FIN maps each BANK_<id> to its own bank account — 21/61 Finance House,
+--                    62/81 and CHEQUE the commercial bank)
 --   fields.ORGANISATION_CODE / BRANCH_CODE   the Oracle PKs as strings (= FIN_DIMENSION_VALUE.code)
 --   fields.EXPENSE_TYPE_CODE EXPENSE_TYPE_ID as a string (= FIN_ACCOUNT_MAPPING.business_value)
 --   descriptions     the legacy note prefixes, verbatim, so the two ledgers read alike
@@ -71,7 +74,7 @@ CREATE OR REPLACE PACKAGE PKG_ACCOUNTING_EVENT AUTHID DEFINER AS
   PROCEDURE set_enabled(p_enabled IN BOOLEAN);
   FUNCTION  is_enabled RETURN BOOLEAN;
 
-  FUNCTION payment_method(p_payment_type_fk IN NUMBER) RETURN VARCHAR2;
+  FUNCTION payment_method(p_payment_type_fk IN NUMBER, p_bank_account_fk IN NUMBER DEFAULT NULL) RETURN VARCHAR2;
 
   -- The single emission entry point. p_amounts is a JSON object of named amounts
   -- (e.g. {"amount": 250} or {"grossAmount":..,"paidAmount":..,"remainingAmount":..}); p_base_amount
@@ -98,7 +101,14 @@ CREATE OR REPLACE PACKAGE PKG_ACCOUNTING_EVENT AUTHID DEFINER AS
     p_contract_no      IN VARCHAR2 DEFAULT NULL, -- D-21: the caller's own number when it IS the contract row
     p_complaint_no     IN VARCHAR2 DEFAULT NULL, -- D-21: the caller's own number when it IS the complaint row
     p_description_ar   IN VARCHAR2 DEFAULT NULL,
-    p_description_en   IN VARCHAR2 DEFAULT NULL);
+    p_description_en   IN VARCHAR2 DEFAULT NULL,
+    p_bank_account_fk  IN NUMBER DEFAULT NULL);   -- 2026-10-10: the row's BANK_ACCOUNT_FK (see payment_method)
+
+  -- Re-send one logged emission as a REPLAY under a new reference (2026-10-10, V46 cutover): same
+  -- type and amounts; PAYMENT_METHOD recomputed from the source row's bank account; a V44-shape
+  -- settlement converted to {paidAmount, discountAmount, totalAmount}. Used once, to re-post the
+  -- October 2026 entries FIN reversed when the V46 rules replaced the old ones.
+  PROCEDURE republish(p_event_reference IN VARCHAR2);
 
   -- ---- COMPOUND SETTLEMENT (accountant's notes, owner's choice 2026-10-09) ----
   -- A settlement is ONE entry: Dr cash + Dr cheque (that day's payments) + Dr shareholders (discount)
@@ -132,10 +142,20 @@ CREATE OR REPLACE PACKAGE BODY PKG_ACCOUNTING_EVENT AS
   PROCEDURE set_enabled(p_enabled IN BOOLEAN) IS BEGIN g_enabled := p_enabled; END;
   FUNCTION  is_enabled RETURN BOOLEAN IS BEGIN RETURN g_enabled; END;
 
-  FUNCTION payment_method(p_payment_type_fk IN NUMBER) RETURN VARCHAR2 IS
+  FUNCTION payment_method(p_payment_type_fk IN NUMBER, p_bank_account_fk IN NUMBER DEFAULT NULL) RETURN VARCHAR2 IS
   BEGIN
-    -- legacy: CASE WHEN account = 24 AND PAYMENT_TYPE_FK = 1 THEN 30 ELSE account END → only 1 is a cheque
-    RETURN CASE WHEN p_payment_type_fk = 1 THEN 'CHEQUE' ELSE 'CASH' END;
+    -- legacy: CASE WHEN account = 24 AND PAYMENT_TYPE_FK = 1 THEN 30 ELSE account END → only 1 is non-cash;
+    -- the bank account it went through decides FIN's bank account (V46)
+    RETURN CASE WHEN p_payment_type_fk = 1 THEN
+                  CASE WHEN p_bank_account_fk IS NOT NULL THEN 'BANK_' || p_bank_account_fk ELSE 'CHEQUE' END
+                ELSE 'CASH' END;
+  END;
+
+  -- PAYMENT_METHOD back to (PAYMENT_TYPE_FK, BANK_ACCOUNT_FK), for a reversal rebuilt from a logged payload
+  PROCEDURE decode_method(p_method VARCHAR2, p_pt OUT NUMBER, p_bank OUT NUMBER) IS
+  BEGIN
+    p_pt   := CASE WHEN p_method = 'CASH' OR p_method IS NULL THEN 0 ELSE 1 END;
+    p_bank := CASE WHEN p_method LIKE 'BANK\_%' ESCAPE '\' THEN TO_NUMBER(SUBSTR(p_method, 6)) END;
   END;
 
   FUNCTION contract_no(p_contract_pk IN NUMBER) RETURN VARCHAR2 IS
@@ -207,7 +227,8 @@ CREATE OR REPLACE PACKAGE BODY PKG_ACCOUNTING_EVENT AS
     p_contract_no      IN VARCHAR2 DEFAULT NULL, -- D-21: the caller's own number when it IS the contract row
     p_complaint_no     IN VARCHAR2 DEFAULT NULL, -- D-21: the caller's own number when it IS the complaint row
     p_description_ar   IN VARCHAR2 DEFAULT NULL,
-    p_description_en   IN VARCHAR2 DEFAULT NULL)
+    p_description_en   IN VARCHAR2 DEFAULT NULL,
+    p_bank_account_fk  IN NUMBER DEFAULT NULL)
   IS
     v_seq        NUMBER;
     v_ref        VARCHAR2(100);
@@ -262,7 +283,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_ACCOUNTING_EVENT AS
     END IF;
 
     -- ---- fields{} — business facts only, keys = FIN_EVENT_BUSINESS_FIELD codes ----
-    v_fields.put('PAYMENT_METHOD',    payment_method(p_payment_type_fk));
+    v_fields.put('PAYMENT_METHOD',    payment_method(p_payment_type_fk, p_bank_account_fk));
     IF p_expense_type_id IS NOT NULL THEN v_fields.put('EXPENSE_TYPE_CODE', TO_CHAR(p_expense_type_id)); END IF;
     v_fields.put('ORGANISATION_CODE', TO_CHAR(NVL(p_org_fk, 1)));
     v_fields.put('BRANCH_CODE',       TO_CHAR(p_sub_fk));
@@ -327,6 +348,87 @@ CREATE OR REPLACE PACKAGE BODY PKG_ACCOUNTING_EVENT AS
                v_payload, SQLERRM || ' @ ' || DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
   END emit;
 
+  -- the bank account behind a logged emission, read from its source row now
+  FUNCTION source_bank(p_table VARCHAR2, p_pk NUMBER) RETURN NUMBER IS
+    v NUMBER;
+  BEGIN
+    CASE p_table
+      WHEN 'LOAN_PAYMENT'    THEN SELECT BANK_ACCOUNT_FK INTO v FROM LOAN_PAYMENT    WHERE LOAN_PAYMENT_PK    = p_pk;
+      WHEN 'COMPLAINT_DT'    THEN SELECT BANK_ACCOUNT_FK INTO v FROM COMPLAINT_DT    WHERE COMPLAINT_DT_PK    = p_pk;
+      WHEN 'EXPENSE_TYPE_DT' THEN SELECT BANK_ACCOUNT_FK INTO v FROM EXPENSE_TYPE_DT WHERE EXPENSE_TYPE_DT_ID = p_pk;
+      WHEN 'INVOICE_IMPORT'  THEN SELECT BANK_ACCOUNT_FK INTO v FROM INVOICE_IMPORT  WHERE INVOICE_IMPORT_PK  = p_pk;
+      WHEN 'TRANSFER_SAFE'   THEN SELECT CASE TRANSFER_SAFE_TYPE_FK WHEN 25 THEN FROM_BANK_ACCOUNT_FK ELSE TO_BANK_ACCOUNT_FK END
+                                    INTO v FROM TRANSFER_SAFE WHERE TRANSFER_SAFE_PK = p_pk;
+      -- a settlement carries the bank of the payments it absorbed
+      WHEN 'COMPLAINTS'      THEN SELECT MAX(BANK_ACCOUNT_FK) INTO v FROM COMPLAINT_DT
+                                   WHERE COMPLAINT_FK = p_pk AND COMPLAINT_DT_FL = 43 AND PAYMENT_TYPE_FK = 1;
+      WHEN 'CONTRACT'        THEN SELECT MAX(BANK_ACCOUNT_FK) INTO v FROM LOAN_PAYMENT
+                                   WHERE CONTRACT_FK = p_pk AND LOAN_PAYMENT_FL = 7 AND PAYMENT_TYPE_FK = 1;
+      ELSE v := NULL;
+    END CASE;
+    RETURN v;
+  EXCEPTION WHEN NO_DATA_FOUND THEN RETURN NULL;
+  END;
+
+  PROCEDURE republish(p_event_reference IN VARCHAR2) IS
+    v_row      ACCOUNTING_EVENT_LOG%ROWTYPE;
+    v_obj      JSON_OBJECT_T;
+    v_am       JSON_OBJECT_T;
+    v_am2      JSON_OBJECT_T;
+    v_f        JSON_OBJECT_T;
+    v_method   VARCHAR2(30);
+    v_bank     NUMBER;
+    v_ref      VARCHAR2(100);
+    v_json     CLOB;
+    v_enq_opts   DBMS_AQ.ENQUEUE_OPTIONS_T;
+    v_msg_props  DBMS_AQ.MESSAGE_PROPERTIES_T;
+    v_msg_id     RAW(16);
+  BEGIN
+    SELECT * INTO v_row FROM ACCOUNTING_EVENT_LOG WHERE event_reference = p_event_reference;
+    v_obj := JSON_OBJECT_T.parse(v_row.payload);
+    v_am  := v_obj.get_object('amounts');
+    v_f   := v_obj.get_object('fields');
+
+    -- PAYMENT_METHOD with the bank account (only a non-cash movement has one)
+    v_method := v_f.get_string('PAYMENT_METHOD');
+    IF v_method = 'CHEQUE' THEN
+      v_bank := source_bank(v_row.source_table, v_row.source_pk);
+      IF v_bank IS NOT NULL THEN v_method := 'BANK_' || v_bank; END IF;
+    END IF;
+    IF v_method IS NOT NULL THEN v_f.put('PAYMENT_METHOD', v_method); END IF;
+
+    -- a V44-shape settlement (cashAmount + chequeAmount) becomes the V45 shape
+    IF v_am.has('cashAmount') THEN
+      v_am2 := JSON_OBJECT_T();
+      v_am2.put('paidAmount',     v_am.get_number('cashAmount') + v_am.get_number('chequeAmount'));
+      v_am2.put('discountAmount', v_am.get_number('discountAmount'));
+      v_am2.put('totalAmount',    v_am.get_number('totalAmount'));
+      IF v_am.get_number('chequeAmount') > 0 AND v_f.get_string('PAYMENT_METHOD') = 'CASH' THEN
+        v_bank := source_bank(v_row.source_table, v_row.source_pk);
+        v_f.put('PAYMENT_METHOD', payment_method(1, v_bank));
+      END IF;
+      v_obj.put('amounts', v_am2);
+    END IF;
+
+    v_ref := 'LEGACY:' || v_row.source_table || ':' || v_row.source_pk || ':' || ACCOUNTING_EVENT_SEQ.NEXTVAL;
+    v_f.put('sourceAction', 'REPLAY');
+    v_f.put('republishes', p_event_reference);
+    v_obj.put('fields', v_f);
+    v_obj.put('eventReference', v_ref);
+    v_obj.put('occurredAt', TO_CHAR(SYSTIMESTAMP AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'));
+
+    v_json := v_obj.to_clob();
+    INSERT INTO ACCOUNTING_EVENT_LOG (EVENT_REFERENCE, EVENT_TYPE_CODE, SOURCE_TABLE, SOURCE_PK, SOURCE_ACTION,
+                                      DOC_DATE, BASE_AMOUNT, PAYLOAD, ENQUEUED_FL, UNDO_FL, REVERSES_EVENT_REFERENCE)
+    VALUES (v_ref, v_row.event_type_code, v_row.source_table, v_row.source_pk, 'REPLAY', v_row.doc_date,
+            v_row.base_amount, v_json, 1, 0, NULL);
+    v_msg_props.correlation     := v_ref;
+    v_msg_props.exception_queue := c_exception_queue;
+    v_enq_opts.visibility       := DBMS_AQ.ON_COMMIT;
+    DBMS_AQ.ENQUEUE(queue_name => c_queue, enqueue_options => v_enq_opts, message_properties => v_msg_props,
+                    payload => ACCOUNTING_EVENT_MSG_T(v_json), msgid => v_msg_id);
+  END republish;
+
   -- ======================================================================================
   -- COMPOUND SETTLEMENT (2026-10-09) — see the spec
   -- ======================================================================================
@@ -374,6 +476,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_ACCOUNTING_EVENT AS
              p_event_type => 'INSTALLMENT_PAYMENT_RECEIVED', p_normal_sign => 1, p_reverse => p_reverse,
              p_doc_date => r.LOAN_PAYMENT_DATE, p_base_amount => r.LOAN_PAYMENT_VALUE,
              p_org_fk => r.ORGANIZATION_FK, p_sub_fk => r.ORGANIZATION_SUB_FK, p_payment_type_fk => r.PAYMENT_TYPE_FK,
+             p_bank_account_fk => r.BANK_ACCOUNT_FK,
              p_party_type => CASE WHEN r.SUPPLIERS_FK IS NOT NULL THEN 'SUPPLIER' WHEN r.CUSTOMERS_FK IS NOT NULL THEN 'CUSTOMER'
                                   WHEN r.INVESTOR_FK IS NOT NULL THEN 'INVESTOR' END,
              p_party_pk => COALESCE(r.SUPPLIERS_FK, r.CUSTOMERS_FK, r.INVESTOR_FK),
@@ -388,6 +491,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_ACCOUNTING_EVENT AS
              p_event_type => 'COURT_INSTALLMENT_PAYMENT', p_normal_sign => 1, p_reverse => p_reverse,
              p_doc_date => NVL(r.COMPLAINT_DT_DATE, SYSDATE), p_base_amount => r.VALUE,
              p_org_fk => r.ORGANIZATION_FK, p_sub_fk => r.ORGANIZATION_SUB_FK, p_payment_type_fk => r.PAYMENT_TYPE_FK,
+             p_bank_account_fk => r.BANK_ACCOUNT_FK,
              p_contract_pk => r.CONTRACT_FK, p_complaint_pk => r.COMPLAINT_FK, p_complaint_no => p_no,
              p_description_ar => 'قيد الى ناتج عن سداد شكوى ' || r.NOTS,
              p_description_en => 'COURT_INSTALLMENT_PAYMENT');
@@ -401,14 +505,17 @@ CREATE OR REPLACE PACKAGE BODY PKG_ACCOUNTING_EVENT AS
     v_pay_tab VARCHAR2(30) := CASE p_kind WHEN 'CONTRACT' THEN 'LOAN_PAYMENT' ELSE 'COMPLAINT_DT' END;
     v_type    VARCHAR2(50) := CASE p_kind WHEN 'CONTRACT' THEN 'CONTRACT_SETTLEMENT' ELSE 'COMPLAINT_SETTLEMENT' END;
     v_date    DATE := TRUNC(NVL(p_date, SYSDATE));
-    v_cash    NUMBER := 0;
-    v_cheque  NUMBER := 0;
-    v_pt      NUMBER;                 -- the ONE payment method the settlement event carries (V45)
+    v_key     VARCHAR2(30);           -- the ONE payment method the settlement event carries (V45/V46)
+    v_best    NUMBER := -1;
+    v_pt      NUMBER := 0;
+    v_bank    NUMBER;
     v_paid    NUMBER := 0;
     v_disc    NUMBER := ABS(NVL(p_discount, 0));
     v_total   NUMBER;
     v_amounts JSON_OBJECT_T := JSON_OBJECT_T();
-    TYPE t_pay IS RECORD (pk NUMBER, v NUMBER, pt NUMBER);
+    TYPE t_pay IS RECORD (pk NUMBER, v NUMBER, pt NUMBER, bank NUMBER, k VARCHAR2(30));
+    TYPE t_sum IS TABLE OF NUMBER INDEX BY VARCHAR2(30);
+    v_sum     t_sum;
     TYPE t_pays IS TABLE OF t_pay;
     v_pays    t_pays;
     PROCEDURE take(p_pay_pk NUMBER, p_value NUMBER) IS
@@ -423,24 +530,28 @@ CREATE OR REPLACE PACKAGE BODY PKG_ACCOUNTING_EVENT AS
   BEGIN
     IF NOT g_enabled THEN RETURN; END IF;
     IF p_kind = 'CONTRACT' THEN
-      SELECT LOAN_PAYMENT_PK, LOAN_PAYMENT_VALUE, CASE WHEN PAYMENT_TYPE_FK = 1 THEN 1 ELSE 0 END BULK COLLECT INTO v_pays
+      SELECT LOAN_PAYMENT_PK, LOAN_PAYMENT_VALUE, CASE WHEN PAYMENT_TYPE_FK = 1 THEN 1 ELSE 0 END, BANK_ACCOUNT_FK,
+             payment_method(PAYMENT_TYPE_FK, BANK_ACCOUNT_FK) BULK COLLECT INTO v_pays
         FROM LOAN_PAYMENT WHERE CONTRACT_FK = p_pk AND LOAN_PAYMENT_FL = 7 AND TRUNC(LOAN_PAYMENT_DATE) = v_date
          AND NVL(LOAN_PAYMENT_VALUE, 0) > 0 ORDER BY LOAN_PAYMENT_PK;
     ELSE
-      SELECT COMPLAINT_DT_PK, VALUE, CASE WHEN PAYMENT_TYPE_FK = 1 THEN 1 ELSE 0 END BULK COLLECT INTO v_pays
+      SELECT COMPLAINT_DT_PK, VALUE, CASE WHEN PAYMENT_TYPE_FK = 1 THEN 1 ELSE 0 END, BANK_ACCOUNT_FK,
+             payment_method(PAYMENT_TYPE_FK, BANK_ACCOUNT_FK) BULK COLLECT INTO v_pays
         FROM COMPLAINT_DT WHERE COMPLAINT_FK = p_pk AND COMPLAINT_DT_FL = 43 AND TRUNC(COMPLAINT_DT_DATE) = v_date
          AND NVL(VALUE, 0) > 0 ORDER BY COMPLAINT_DT_PK;
     END IF;
-    -- one method per settlement (the FIN rule maps PAYMENT_METHOD): the larger one is absorbed; on the
-    -- rare mixed day the other method's payments keep their own entries (none in 2026)
+    -- one method per settlement (the FIN rule maps PAYMENT_METHOD — cash or one bank account): the
+    -- largest one is absorbed; on the rare mixed day the others keep their own entries (none in 2026)
     FOR i IN 1 .. v_pays.COUNT LOOP
       IF is_merged(v_pay_tab, v_pays(i).pk) OR is_posted(v_pay_tab, v_pays(i).pk) THEN
-        IF v_pays(i).pt = 1 THEN v_cheque := v_cheque + v_pays(i).v; ELSE v_cash := v_cash + v_pays(i).v; END IF;
+        v_sum(v_pays(i).k) := CASE WHEN v_sum.EXISTS(v_pays(i).k) THEN v_sum(v_pays(i).k) ELSE 0 END + v_pays(i).v;
+        IF v_sum(v_pays(i).k) > v_best THEN
+          v_best := v_sum(v_pays(i).k); v_key := v_pays(i).k; v_pt := v_pays(i).pt; v_bank := v_pays(i).bank;
+        END IF;
       END IF;
     END LOOP;
-    v_pt := CASE WHEN v_cheque > v_cash THEN 1 ELSE 0 END;
     FOR i IN 1 .. v_pays.COUNT LOOP
-      IF v_pays(i).pt = v_pt THEN take(v_pays(i).pk, v_pays(i).v); END IF;
+      IF v_pays(i).k = v_key THEN take(v_pays(i).pk, v_pays(i).v); END IF;
     END LOOP;
     v_total := v_paid + v_disc;
     IF v_total = 0 THEN RETURN; END IF;
@@ -450,7 +561,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_ACCOUNTING_EVENT AS
     emit(p_source_table => CASE p_kind WHEN 'CONTRACT' THEN 'CONTRACT' ELSE 'COMPLAINTS' END,
          p_source_pk => p_pk, p_source_action => p_action, p_event_type => v_type, p_normal_sign => 1, p_reverse => FALSE,
          p_doc_date => v_date, p_base_amount => v_total, p_amounts => v_amounts, p_payment_type_fk => v_pt,
-         p_org_fk => p_org, p_sub_fk => p_sub,
+         p_bank_account_fk => v_bank, p_org_fk => p_org, p_sub_fk => p_sub,
          p_party_type => 'CUSTOMER', p_party_pk => p_cust, p_contract_pk => p_contract, p_investor_pk => p_inv,
          p_complaint_pk => CASE WHEN p_kind = 'COMPLAINT' THEN p_pk END,
          p_contract_no  => CASE WHEN p_kind = 'CONTRACT' THEN p_no END,
@@ -463,7 +574,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_ACCOUNTING_EVENT AS
   PROCEDURE unsettle(p_kind VARCHAR2, p_pk NUMBER, p_action VARCHAR2, p_restore_payments BOOLEAN) IS
     v_tab   VARCHAR2(30) := CASE p_kind WHEN 'CONTRACT' THEN 'CONTRACT' ELSE 'COMPLAINTS' END;
     v_type  VARCHAR2(50) := CASE p_kind WHEN 'CONTRACT' THEN 'CONTRACT_SETTLEMENT' ELSE 'COMPLAINT_SETTLEMENT' END;
-    v_payload CLOB; v_date DATE; v_no VARCHAR2(200); v_pt NUMBER := 0;
+    v_payload CLOB; v_date DATE; v_no VARCHAR2(200); v_pt NUMBER := 0; v_bank NUMBER;
     v_obj JSON_OBJECT_T; v_am JSON_OBJECT_T; v_f JSON_OBJECT_T; v_am2 JSON_OBJECT_T := JSON_OBJECT_T();
   BEGIN
     IF NOT g_enabled THEN RETURN; END IF;
@@ -483,12 +594,13 @@ CREATE OR REPLACE PACKAGE BODY PKG_ACCOUNTING_EVENT AS
       -- the original settlement had
       IF v_am.has('paidAmount') THEN                       -- V45 shape
         v_am2 := v_am;
-        v_pt := CASE WHEN v_f.get_string('PAYMENT_METHOD') = 'CHEQUE' THEN 1 ELSE 0 END;
+        decode_method(v_f.get_string('PAYMENT_METHOD'), v_pt, v_bank);
       ELSIF v_am.has('cashAmount') THEN                    -- V44 shape (cash + cheque)
         v_am2.put('paidAmount', v_am.get_number('cashAmount') + v_am.get_number('chequeAmount'));
         v_am2.put('discountAmount', v_am.get_number('discountAmount'));
         v_am2.put('totalAmount', v_am.get_number('totalAmount'));
         v_pt := CASE WHEN v_am.get_number('chequeAmount') > 0 THEN 1 ELSE 0 END;
+        IF v_pt = 1 THEN v_bank := source_bank(v_tab, p_pk); END IF;
       ELSE                                                 -- before V44: two lines, {amount}
         v_am2.put('paidAmount', 0);
         v_am2.put('discountAmount', v_am.get_number('amount')); v_am2.put('totalAmount', v_am.get_number('amount'));
@@ -496,6 +608,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_ACCOUNTING_EVENT AS
       emit(p_source_table => v_tab, p_source_pk => p_pk, p_source_action => p_action, p_event_type => v_type,
            p_normal_sign => 1, p_reverse => TRUE, p_doc_date => v_date,
            p_base_amount => v_am2.get_number('totalAmount'), p_amounts => v_am2, p_payment_type_fk => v_pt,
+           p_bank_account_fk => v_bank,
            p_org_fk => TO_NUMBER(v_f.get_string('ORGANISATION_CODE')), p_sub_fk => TO_NUMBER(v_f.get_string('BRANCH_CODE')),
            p_party_type => 'CUSTOMER', p_party_pk => TO_NUMBER(v_f.get_string('partyCode')),
            p_contract_pk  => CASE WHEN p_kind = 'CONTRACT' THEN p_pk END,
