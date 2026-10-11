@@ -390,6 +390,37 @@ explicit decision — and if reintroduced, restore the "Running Locally"
 
 ---
 
+## FIN ↔ legacy accounting (LOAN_SYS → FIN) — read before ANY accounting change
+
+The FIN module is LIVE since 2026-10-01 and is fed by the legacy Oracle system
+(`LOAN_SYS`) through triggers → `PKG_ACCOUNTING_EVENT` → AQ → `fin-consumer` →
+FIN rules. The accountant will keep asking for changes (accounts, rules,
+opening balances, re-posting, or the whole model). Before touching any of
+that, read, in this order:
+
+1. `governance/project-artifacts/backend/oracle-cutover/ACCOUNTING-AGREEMENT-AND-FLOW.md`
+   — **the agreed accounting model**: every legacy transaction → event →
+   generated entry, the chart of accounts and mapping tables as they are on
+   production, the decision log (who decided what, when), the change-request
+   playbooks (§8) and the verification queries (§9). It also states the live
+   operating rules: changes are applied **directly on the production
+   databases** (not by running Flyway), yet every change still gets a
+   migration file **plus a hand-inserted `flyway_schema_history` row with
+   the real checksum**; corrections of posted entries are done "clean"
+   (delete FIN entries → fix payload → re-enqueue under the same
+   `event_reference`), not with reversal entries.
+2. `governance/project-artifacts/backend/oracle-cutover/FLOW-REFERENCE.md`
+   — the technical reference of the pipeline (package, queue, consumer, API).
+3. `governance/project-artifacts/backend/oracle-cutover/19c/` — the Oracle
+   19c production files (`02-package-19c.sql`, `03-triggers-19c.sql`) and the
+   deployment logs (`04-*`, `05-*`) of what was actually run on production.
+
+Keep `ACCOUNTING-AGREEMENT-AND-FLOW.md` current: every new accountant
+decision goes into its §7 decision log, every applied change into §2/§4/§5/§6,
+and every open question into §10.
+
+---
+
 ## Database Migration Policy (Flyway)
 
 Schema changes are managed by Flyway (`org.flywaydb:flyway-core` +

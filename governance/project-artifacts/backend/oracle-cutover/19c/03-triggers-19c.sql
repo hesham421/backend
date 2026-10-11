@@ -290,11 +290,22 @@ DECLARE
                  p_org NUMBER, p_sub NUMBER, p_pt NUMBER, p_contract NUMBER, p_complaint NUMBER, p_note VARCHAR2,
                  p_bank NUMBER) IS
     v_type VARCHAR2(50) := CASE p_fl WHEN 43 THEN 'COURT_INSTALLMENT_PAYMENT' WHEN 44 THEN 'LAWYER_FEE_PAYMENT' END;
+    v_lawyer VARCHAR2(30);
   BEGIN
     IF v_type IS NULL THEN RETURN; END IF;
+    -- V47: the complaint's lawyer decides where a lawyer-fee payment is credited; 'NONE' when the complaint
+    -- has none or cannot be read (a legacy trigger on COMPLAINTS cascading here: ORA-04091)
+    IF p_fl = 44 THEN
+      BEGIN
+        SELECT TO_CHAR(LAWYER_NAME_FK) INTO v_lawyer FROM COMPLAINTS WHERE COMPLAINT_ID = p_complaint;
+      EXCEPTION WHEN OTHERS THEN v_lawyer := NULL;
+      END;
+      v_lawyer := NVL(v_lawyer, 'NONE');
+    END IF;
     PKG_ACCOUNTING_EVENT.emit('COMPLAINT_DT', p_pk, p_action, v_type, 1, p_reverse,
       p_doc_date => NVL(p_date, SYSDATE), p_base_amount => p_amount, p_org_fk => p_org, p_sub_fk => p_sub,
-      p_payment_type_fk => p_pt, p_bank_account_fk => p_bank, p_contract_pk => p_contract, p_complaint_pk => p_complaint,
+      p_payment_type_fk => p_pt, p_bank_account_fk => p_bank, p_lawyer_code => v_lawyer,
+      p_contract_pk => p_contract, p_complaint_pk => p_complaint,
       p_description_ar => CASE p_fl WHEN 43 THEN 'قيد الى ناتج عن سداد شكوى ' ELSE 'قيد الى ناتج عن سداد دفعات محامى ' END || p_note,
       p_description_en => v_type);
   END;

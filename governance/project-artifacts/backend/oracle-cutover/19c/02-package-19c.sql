@@ -102,7 +102,8 @@ CREATE OR REPLACE PACKAGE PKG_ACCOUNTING_EVENT AUTHID DEFINER AS
     p_complaint_no     IN VARCHAR2 DEFAULT NULL, -- D-21: the caller's own number when it IS the complaint row
     p_description_ar   IN VARCHAR2 DEFAULT NULL,
     p_description_en   IN VARCHAR2 DEFAULT NULL,
-    p_bank_account_fk  IN NUMBER DEFAULT NULL);   -- 2026-10-10: the row's BANK_ACCOUNT_FK (see payment_method)
+    p_bank_account_fk  IN NUMBER DEFAULT NULL,    -- 2026-10-10: the row's BANK_ACCOUNT_FK (see payment_method)
+    p_lawyer_code      IN VARCHAR2 DEFAULT NULL); -- 2026-10-10: COMPLAINTS.LAWYER_NAME_FK of a lawyer-fee payment (V47)
 
   -- Re-send one logged emission as a REPLAY under a new reference (2026-10-10, V46 cutover): same
   -- type and amounts; PAYMENT_METHOD recomputed from the source row's bank account; a V44-shape
@@ -228,7 +229,8 @@ CREATE OR REPLACE PACKAGE BODY PKG_ACCOUNTING_EVENT AS
     p_complaint_no     IN VARCHAR2 DEFAULT NULL, -- D-21: the caller's own number when it IS the complaint row
     p_description_ar   IN VARCHAR2 DEFAULT NULL,
     p_description_en   IN VARCHAR2 DEFAULT NULL,
-    p_bank_account_fk  IN NUMBER DEFAULT NULL)
+    p_bank_account_fk  IN NUMBER DEFAULT NULL,
+    p_lawyer_code      IN VARCHAR2 DEFAULT NULL)
   IS
     v_seq        NUMBER;
     v_ref        VARCHAR2(100);
@@ -285,6 +287,8 @@ CREATE OR REPLACE PACKAGE BODY PKG_ACCOUNTING_EVENT AS
     -- ---- fields{} — business facts only, keys = FIN_EVENT_BUSINESS_FIELD codes ----
     v_fields.put('PAYMENT_METHOD',    payment_method(p_payment_type_fk, p_bank_account_fk));
     IF p_expense_type_id IS NOT NULL THEN v_fields.put('EXPENSE_TYPE_CODE', TO_CHAR(p_expense_type_id)); END IF;
+    -- V47: the lawyer decides the credit side of a lawyer-fee payment (held lawyer → provision)
+    IF p_lawyer_code IS NOT NULL THEN v_fields.put('LAWYER_CODE', p_lawyer_code); END IF;
     v_fields.put('ORGANISATION_CODE', TO_CHAR(NVL(p_org_fk, 1)));
     v_fields.put('BRANCH_CODE',       TO_CHAR(p_sub_fk));
     -- references FIN never reads (REQ-FIN-047); kept for the consumer's inbox and reconciliation

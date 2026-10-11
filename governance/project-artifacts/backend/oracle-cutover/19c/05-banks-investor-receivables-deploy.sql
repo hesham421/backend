@@ -97,3 +97,17 @@ END;
 /
 -- result: CASH 23 · CASH→BANK_61 1 (the compound settlement) · CHEQUE→BANK_21 19 · →BANK_61 63 ·
 --         →BANK_62 6 · CHEQUE (no bank chosen, → commercial bank) 42
+
+-- ============================================================================
+-- 2026-10-10 (later) — APPLIED on production
+-- 6. Customers' opening balance 30-09-2026 (accountant: "do it, correct later if wrong"): per contract
+--    CASH_TOTAL_CONTRACT − LOAN_PAYMENT FL7 − COMPLAINT_DT FL43 dated < 2026-10-01; contracts settled
+--    (FL13) / complaint-settled (FL45) before October = 0. Matches CONTRACT.REMAINING on all 569 live
+--    contracts. Posted OPENING entries Dr 110201 / Cr 210203 (ORG 1 + BRANCH):
+--      branch 1 أفضل وسيط 1,109,016.419 · branch 2 الوسيط الذهبي 1,714,091.192 · branch 3 الوسائط الفضية 443,292.845
+-- 7. V47 (checksum 294823068, flyway row 44): LAWYER_FEE_PAYMENT credited by fields.LAWYER_CODE —
+--    41 خالد الظفيري (held; 2026: 6,388 collected, 0 paid) → 211001 مخصص محاماة; 138/145/40/NONE → 4403.
+--    PKG v6 (p_lawyer_code) + TRG_AE_COMPLAINT_DT (reads COMPLAINTS.LAWYER_NAME_FK for FL 44).
+--    The 13 live October lawyer-fee events: FIN entries deleted, payloads given LAWYER_CODE and
+--    re-enqueued under the same references → 6 × 211001 (773.956) + 7 × 4403 (1,463.257).
+-- ============================================================================
