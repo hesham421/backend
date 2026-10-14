@@ -1,6 +1,8 @@
 package com.erp.fin.report;
 
 import com.erp.common.print.ReportParams;
+import com.erp.common.search.SearchFilter;
+import com.erp.common.search.SearchOperator;
 import com.erp.fin.dto.FinPrintCriteria;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -36,6 +38,32 @@ final class FinPrintTemplates {
             criteria.add((dimension == null ? params.localized("البُعد", "Dimension") : dimension) + ": " + value);
         } else if (dimension != null) {
             criteria.add(dimension + ": " + params.localized("الكل", "all"));
+        }
+    }
+
+    /** The screen's filters, narrowed to today when they set no {@code docDate} bound — a daily report's default day. */
+    static List<SearchFilter> dayDefault(List<SearchFilter> filters) {
+        boolean dated = filters.stream().anyMatch(filter -> "docDate".equals(filter.getField()));
+        if (dated) {
+            return filters;
+        }
+        String today = LocalDate.now().toString();
+        List<SearchFilter> narrowed = new ArrayList<>(filters);
+        narrowed.add(SearchFilter.builder().field("docDate").operator(SearchOperator.GREATER_THAN_OR_EQUAL).value(today).build());
+        narrowed.add(SearchFilter.builder().field("docDate").operator(SearchOperator.LESS_THAN_OR_EQUAL).value(today).build());
+        return narrowed;
+    }
+
+    /** "From: … To: …" of the {@code docDate} bounds in {@code filters}. */
+    static void dateRange(List<String> criteria, List<SearchFilter> filters, ReportParams params) {
+        for (SearchFilter filter : filters) {
+            if (!"docDate".equals(filter.getField()) || filter.getValue() == null) {
+                continue;
+            }
+            String operator = filter.getOperator() == null ? "EQUALS" : filter.getOperator().name();
+            String label = operator.startsWith("GREATER") ? params.localized("من: ", "From: ")
+                : operator.startsWith("LESS") ? params.localized("إلى: ", "To: ") : params.localized("التاريخ: ", "Date: ");
+            criteria.add(label + filter.getValue());
         }
     }
 

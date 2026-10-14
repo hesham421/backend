@@ -121,6 +121,27 @@ Each prints exactly the records the screen's own `search` returns, in the same o
 The comparison against the screens' search endpoints (records and order) gave **8/8 equal**, plus every
 rule's line count. Only the SEC and MDL screens still use the generic table.
 
+### Daily follow-up reports (extra items in the existing print menus)
+
+| Report | Print menu of | Contents |
+|---|---|---|
+| `FIN_ACCOUNT_STATEMENT`, account statement | Account ledger | The chosen account **and every account under it** (any level, e.g. "cash and equivalents"). Each account shows its opening balance (posted lines before the range), the range's lines with a running balance, the movement and the closing balance, then grand totals. Accounts with neither a balance nor movement are left out. No dates means today |
+| `FIN_DAILY_JOURNAL`, daily journal | Journal entries | The screen's search (today when it sets no date), grouped by journal type, with count and total per type and overall |
+| `FIN_DAILY_EVENTS`, daily loan-system events | Journal entries | The event-generated entries among them, grouped by source table of the event reference (`LEGACY:<TABLE>:…`), for reconciliation |
+| `FIN_PENDING_ENTRIES`, pending entries | Journal entries | Every draft not yet posted, oldest first, with its age in days |
+| `FIN_DAILY_BRANCHES`, today's movement by branch | Dimension reports | Per value of the chosen dimension, for one day: entries, debit, credit, revenue, expense, net |
+
+**Proof of equality: 51/51 equal.**
+- **Statement:** for each account under the chosen one,
+  - the opening balance equals the ledger screen's closing balance on the day before;
+  - every line and running balance equals the ledger's (shifted by the opening balance);
+  - the closing balance equals both combined;
+  - the set of accounts matches.
+- **Daily journal, events and pending:** the same entries as the screen's search, including the default of
+  today.
+- **Branches:** each value's figures equal the aggregation of the same day's posted entries, read entry by
+  entry.
+
 ## 2. Why it does not change any logic
 
 - **Same service and filters.** Each report reads through the service method its screen already uses: the
@@ -171,7 +192,7 @@ the JRE-only Docker image.
 3. Map each item to `ReportResult.row(...)` with `ReportColumn`s copied from the screen's table.
 4. On the frontend, place `<ReportExportMenu reportCode="…" params={…} />` on the screen.
 
-## 4. Report catalogue (22)
+## 4. Report catalogue (27)
 
 | Code | Screen | Reads through |
 |---|---|---|
