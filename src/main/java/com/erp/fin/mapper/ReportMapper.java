@@ -9,6 +9,7 @@ import com.erp.fin.dto.DimensionReportRowResponse;
 import com.erp.fin.entity.Account;
 import com.erp.fin.repository.AccountBalanceView;
 import com.erp.fin.repository.AccountLedgerLineView;
+import com.erp.fin.repository.AccountTreeLedgerLineView;
 import com.erp.fin.repository.DimensionBalanceView;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -50,11 +51,11 @@ public class ReportMapper {
                                                  LocalDate toDate,
                                                  Long dimensionId,
                                                  Long dimensionValueId,
-                                                 List<AccountLedgerLineView> lines) {
+                                                 List<? extends AccountLedgerLineView> lines) {
         if (account == null) {
             return null;
         }
-        List<AccountLedgerLineView> safeLines = lines == null ? List.of() : lines;
+        List<? extends AccountLedgerLineView> safeLines = lines == null ? List.of() : lines;
 
         List<AccountLedgerRowResponse> rows = new ArrayList<>(safeLines.size());
         BigDecimal debitTotal = BigDecimal.ZERO;
@@ -87,6 +88,10 @@ public class ReportMapper {
                 .runningBalance(runningBalance)
                 .descriptionAr(line.getDescriptionAr())
                 .descriptionEn(line.getDescriptionEn())
+                .accountId(line instanceof AccountTreeLedgerLineView tree ? tree.getAccountId() : account.getAccountPk())
+                .accountCode(line instanceof AccountTreeLedgerLineView tree ? tree.getAccountCode() : account.getCode())
+                .accountNameAr(line instanceof AccountTreeLedgerLineView tree ? tree.getAccountNameAr() : account.getNameAr())
+                .accountNameEn(line instanceof AccountTreeLedgerLineView tree ? tree.getAccountNameEn() : account.getNameEn())
                 .build());
         }
 

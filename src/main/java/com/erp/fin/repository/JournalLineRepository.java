@@ -2,6 +2,7 @@ package com.erp.fin.repository;
 
 import com.erp.fin.entity.JournalLine;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -72,6 +73,36 @@ public interface JournalLineRepository
         + "ORDER BY e.docDate ASC, e.docNo ASC, l.lineNo ASC")
     List<AccountLedgerLineView> findAccountLedgerLines(
         @Param("accountId") Long accountId,
+        @Param("postedStatus") String postedStatus,
+        @Param("fromDate") LocalDate fromDate,
+        @Param("toDate") LocalDate toDate,
+        @Param("dimensionId") Long dimensionId,
+        @Param("dimensionValueId") Long dimensionValueId);
+
+    /**
+     * {@link #findAccountLedgerLines} for a parent account: the same POSTED gate, date range, dimension
+     * narrowing and order, over every account in {@code accountIds} (the parent and all its sub-accounts),
+     * each line carrying the account it was posted to.
+     */
+    @Query("SELECT e.journalEntryPk AS journalEntryId, e.docNo AS docNo, e.docDate AS docDate, "
+        + "e.journalTypeCode AS journalTypeCode, e.eventReference AS eventReference, "
+        + "l.journalLinePk AS journalLineId, l.lineNo AS lineNo, l.amount AS amount, "
+        + "l.directionCode AS directionCode, l.descriptionAr AS descriptionAr, "
+        + "l.descriptionEn AS descriptionEn, a.accountPk AS accountId, a.code AS accountCode, "
+        + "a.nameAr AS accountNameAr, a.nameEn AS accountNameEn "
+        + "FROM JournalLine l JOIN l.journalEntry e JOIN l.account a "
+        + "WHERE a.accountPk IN :accountIds AND e.statusCode = :postedStatus "
+        + "AND (CAST(:fromDate AS LocalDate) IS NULL OR e.docDate >= :fromDate) "
+        + "AND (CAST(:toDate AS LocalDate) IS NULL OR e.docDate <= :toDate) "
+        + "AND (CAST(:dimensionId AS Long) IS NULL OR EXISTS (SELECT jd.journalLineDimensionPk "
+        + "FROM JournalLineDimension jd WHERE jd.journalLine = l "
+        + "AND jd.dimension.dimensionPk = :dimensionId)) "
+        + "AND (CAST(:dimensionValueId AS Long) IS NULL OR EXISTS (SELECT jv.journalLineDimensionPk "
+        + "FROM JournalLineDimension jv WHERE jv.journalLine = l "
+        + "AND jv.dimensionValue.dimensionValuePk = :dimensionValueId)) "
+        + "ORDER BY e.docDate ASC, e.docNo ASC, l.lineNo ASC")
+    List<AccountTreeLedgerLineView> findAccountTreeLedgerLines(
+        @Param("accountIds") Collection<Long> accountIds,
         @Param("postedStatus") String postedStatus,
         @Param("fromDate") LocalDate fromDate,
         @Param("toDate") LocalDate toDate,

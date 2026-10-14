@@ -142,6 +142,30 @@ rule's line count. Only the SEC and MDL screens still use the generic table.
 - **Branches:** each value's figures equal the aggregation of the same day's posted entries, read entry by
   entry.
 
+### The account ledger handles parent accounts (screen and print)
+
+**What changed:**
+- **Before:** choosing a parent account (e.g. 1101 "cash and equivalents") on the ledger screen showed
+  nothing, because postings sit on its sub-accounts.
+- **Now:**
+  - `ReportService.accountLedger` returns, for an account that has sub-accounts, the lines of every account
+    under it (any depth). The running balance is signed against the chosen account's nature.
+  - Each row names its account: new fields `accountId`, `accountCode`, `accountNameAr`, `accountNameEn`
+    (additive).
+  - The screen shows an "Account" column when the lines come from more than one account.
+  - The printed ledger template does the same.
+
+**Why existing behaviour is unaffected:**
+- For an account without sub-accounts (every posting account), the same repository query runs as before.
+- The new query `findAccountTreeLedgerLines` is used only for parent accounts, which previously returned
+  an empty ledger.
+- `FinReportFilterIntegrationTest` passes unchanged.
+
+**Proof:**
+- On the screen, a parent's ledger equals its sub-accounts' ledgers merged (lines and closing balance) for
+  "1101", "1" and "21".
+- The printed ledger equals the screen for a parent account, with and without date and branch filters.
+
 ## 2. Why it does not change any logic
 
 - **Same service and filters.** Each report reads through the service method its screen already uses: the

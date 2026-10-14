@@ -71,4 +71,17 @@ public class AccountLedgerRowResponse {
     @Schema(description = "Line description (English) - وصف السطر بالإنجليزية",
         example = "January rent")
     private String descriptionEn;
+
+    @Schema(description = "Account the line was posted to: the ledger's account, or one of its sub-accounts "
+        + "when the ledger is a parent account's - الحساب المرحَّل عليه السطر", example = "79")
+    private Long accountId;
+
+    @Schema(description = "That account's code - رمز الحساب", example = "110101")
+    private String accountCode;
+
+    @Schema(description = "That account's Arabic name - اسم الحساب بالعربية", example = "الصندوق")
+    private String accountNameAr;
+
+    @Schema(description = "That account's English name - اسم الحساب بالإنجليزية", example = "Cash box")
+    private String accountNameEn;
 }

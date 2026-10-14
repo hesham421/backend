@@ -1,9 +1,11 @@
 package com.erp.fin.repository;
 
 import com.erp.fin.entity.Account;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -47,4 +49,8 @@ public interface AccountRepository
      * migration. An empty result is the service's {@code FIN-404-ACCOUNT}.
      */
     Optional<Account> findFirstByIsRetainedEarningsFlTrueOrderByAccountPkAsc();
+
+    /** The whole chart as id → parent pairs, from which the ledger collects a parent account's sub-accounts. */
+    @Query("SELECT a.accountPk AS accountId, p.accountPk AS parentId FROM Account a LEFT JOIN a.parentAccount p")
+    List<AccountTreeNodeView> findTreeNodes();
 }

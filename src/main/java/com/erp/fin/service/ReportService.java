@@ -20,6 +20,7 @@ import com.erp.fin.exception.FinErrorCodes;
 import com.erp.fin.mapper.ReportMapper;
 import com.erp.fin.repository.AccountBalanceView;
 import com.erp.fin.repository.AccountRepository;
+import com.erp.fin.repository.AccountTreeNodeView;
 import com.erp.fin.repository.DimensionRepository;
 import com.erp.fin.repository.DimensionValueRepository;
 import com.erp.fin.repository.FiscalPeriodRepository;
@@ -28,8 +29,14 @@ import com.erp.fin.repository.JournalLineDimensionRepository;
 import com.erp.fin.repository.JournalLineRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -92,7 +99,8 @@ public class ReportService {
      * lines in date order and hands them to the mapper, which accumulates the running balance.
      *
      * <p>The date range and the dimension filters are optional; a null bound simply drops its
-     * predicate. Each returned row carries its {@code journalEntryId} and {@code eventReference},
+     * predicate. A parent account's ledger holds the lines of every account under it (any depth), each
+     * row naming its account, with the running balance signed against the parent's nature. Each returned row carries its {@code journalEntryId} and {@code eventReference},
      * which is REQ-FIN-046's drill-down path out of the report.
      */
     @Transactional(readOnly = true)
@@ -109,10 +117,35 @@ public class ReportService {
             .orElseThrow(() -> new LocalizedException(
                 Status.NOT_FOUND, FinErrorCodes.FIN_404_ACCOUNT, accountId));
 
+        if (accountRepository.existsByParentAccount_AccountPk(accountId)) {
+            return ServiceResult.success(mapper.toAccountLedger(account, fromDate, toDate,
+                dimensionId, dimensionValueId,
+                journalLineRepository.findAccountTreeLedgerLines(subtree(accountId), JournalEntry.STATUS_POSTED,
+                    fromDate, toDate, dimensionId, dimensionValueId)));
+        }
         return ServiceResult.success(mapper.toAccountLedger(account, fromDate, toDate,
             dimensionId, dimensionValueId,
             journalLineRepository.findAccountLedgerLines(accountId, JournalEntry.STATUS_POSTED,
                 fromDate, toDate, dimensionId, dimensionValueId)));
+    }
+
+    /** {@code accountId} and every account under it, at any depth. */
+    private Set<Long> subtree(Long accountId) {
+        Map<Long, List<Long>> childrenOf = new HashMap<>();
+        for (AccountTreeNodeView node : accountRepository.findTreeNodes()) {
+            if (node.getParentId() != null) {
+                childrenOf.computeIfAbsent(node.getParentId(), parent -> new ArrayList<>()).add(node.getAccountId());
+            }
+        }
+        Set<Long> subtree = new LinkedHashSet<>();
+        Deque<Long> pending = new ArrayDeque<>(List.of(accountId));
+        while (!pending.isEmpty()) {
+            Long next = pending.pop();
+            if (subtree.add(next)) {
+                pending.addAll(childrenOf.getOrDefault(next, List.of()));
+            }
+        }
+        return subtree;
     }
 
     /**
