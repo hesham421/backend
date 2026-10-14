@@ -25,4 +25,11 @@ public final class CommonErrorCodes {
 
     /** Same slot and same rules, for a supported field combined with an operator it cannot honour. */
     public static final String UNSUPPORTED_FILTER_OPERATOR = "UNSUPPORTED_FILTER_OPERATOR";
+
+    /** Report printing (common.print): unknown report code, unknown format, bad criteria, too many rows, engine failure. */
+    public static final String REPORT_NOT_FOUND = "REPORT_NOT_FOUND";
+    public static final String PRINT_FORMAT_NOT_SUPPORTED = "PRINT_FORMAT_NOT_SUPPORTED";
+    public static final String REPORT_PARAM_INVALID = "REPORT_PARAM_INVALID";
+    public static final String REPORT_EXPORT_TOO_LARGE = "REPORT_EXPORT_TOO_LARGE";
+    public static final String PRINT_GENERATION_FAILED = "PRINT_GENERATION_FAILED";
 }

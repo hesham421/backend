@@ -54,6 +54,7 @@
              silent false-pass. 1.4.2+ adds Java 25/26 support; confirmed directly in this
              session before bumping. -->
         <archunit.version>1.4.2</archunit.version>
+        <jasperreports.version>7.0.8</jasperreports.version>
 
         <!-- Default: allow forking on non-Windows environments (see the windows-tests-no-fork
              profile below, moved here from the old erp-finance-gl module). -->
@@ -176,6 +177,25 @@
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>${springdoc.version}</version>
+        </dependency>
+
+        <!-- JasperReports 7: printed report exports (common.print). The core jar writes XLSX without POI;
+             jasperreports-pdf adds the PDF exporter; jasperreports-jdt compiles the runtime layouts on a JRE
+             without javac (the Docker image is eclipse-temurin:25-jre-alpine). -->
+        <dependency>
+            <groupId>net.sf.jasperreports</groupId>
+            <artifactId>jasperreports</artifactId>
+            <version>${jasperreports.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.sf.jasperreports</groupId>
+            <artifactId>jasperreports-pdf</artifactId>
+            <version>${jasperreports.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.sf.jasperreports</groupId>
+            <artifactId>jasperreports-jdt</artifactId>
+            <version>${jasperreports.version}</version>
         </dependency>
 
         <!-- Test -->

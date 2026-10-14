@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The "ERP Arabic" font family of every printed report (common.print) and recommended for
+  templates. The TTF files are replaceable: drop another static (non-variable) Arabic+Latin
+  OFL font under the same two names. It MUST map the Arabic Presentation Forms-B (U+FE70-FEFC): the PDF
+  exporter shapes Arabic into those code points (Cairo lacks 52 of them and drops letters). Shipped:
+  IBM Plex Sans Arabic Regular/Bold (SIL OFL 1.1, see erp-arabic/OFL.txt; line height ~1.5 x the font size).
+  Identity-H + embedded: required for Arabic shaping and for viewers without the font.
+-->
+<fontFamilies>
+    <fontFamily name="ERP Arabic">
+        <normal>reports/fonts/erp-arabic/ErpArabic-Regular.ttf</normal>
+        <bold>reports/fonts/erp-arabic/ErpArabic-Bold.ttf</bold>
+        <italic>reports/fonts/erp-arabic/ErpArabic-Regular.ttf</italic>
+        <boldItalic>reports/fonts/erp-arabic/ErpArabic-Bold.ttf</boldItalic>
+        <pdfEncoding>Identity-H</pdfEncoding>
+        <pdfEmbedded>true</pdfEmbedded>
+        <exportFonts>
+            <export key="net.sf.jasperreports.html">'ERP Arabic', 'IBM Plex Sans Arabic', 'Tahoma', sans-serif</export>
+            <export key="net.sf.jasperreports.xhtml">'ERP Arabic', 'IBM Plex Sans Arabic', 'Tahoma', sans-serif</export>
+        </exportFonts>
+    </fontFamily>
+</fontFamilies>
